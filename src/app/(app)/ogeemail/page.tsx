@@ -3,9 +3,9 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-    Archive, Bold, Italic, Underline, Strikethrough, Code, Quote, List, Link2, AlignLeft, AlignCenter, AlignRight,
-    Highlighter, CheckCircle2, AlertTriangle, Mic, Mail, ChevronDown, Inbox, Star, Send, FileText, Trash2, RefreshCw,
-    Filter, Search, Paperclip, X, BrainCircuit, Pencil, CornerUpLeft, CornerUpRight
+    Archive, Bold, Italic, Underline, Strikethrough, List, Link2, AlignLeft, AlignCenter, AlignRight,
+    Highlighter, Mic, Mail, Inbox, Star, Send, FileText, Trash2, RefreshCw,
+    Search, Paperclip, X, BrainCircuit, Pencil, CornerUpLeft, CornerUpRight
 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
