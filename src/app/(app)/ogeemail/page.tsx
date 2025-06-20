@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -233,7 +234,7 @@ export default function OgeeMailPage() {
     });
 
     return () => unsubscribe();
-  }, [db, isAuthReady, userId, showAppToast]);
+  }, [db, isAuthReady, userId, showAppToast, selectedEmail]);
 
   const handleSelectEmail = async (email: Email) => {
     setSelectedEmail(email);
@@ -406,17 +407,19 @@ export default function OgeeMailPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-background">
-       <header className="relative flex h-24 items-center justify-center border-b text-center px-4 sm:px-6">
-        <div className="absolute left-4 md:hidden">
-          <SidebarTrigger />
+       <header className="flex h-24 items-center justify-between border-b px-4 sm:px-6">
+        <div className="flex-1 flex justify-start">
+          <SidebarTrigger className="md:hidden" />
         </div>
-        <div>
+        
+        <div className="flex-shrink-0 text-center">
           <h1 className="text-3xl font-bold font-headline text-primary">OgeeMail</h1>
           <p className="text-muted-foreground">
             Your intelligent and intuitive email client.
           </p>
         </div>
-        <div className="absolute right-4 flex items-center space-x-2">
+
+        <div className="flex-1 flex justify-end items-center space-x-2">
             <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
