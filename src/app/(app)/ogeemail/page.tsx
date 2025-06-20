@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 
 interface Email {
   id: string; 
@@ -155,7 +156,7 @@ export default function OgeeMailPage() {
             subject: "New Feature Alert: AI Summaries",
             from: "product@ogeemo.com",
             to: "you@ogeemo.com",
-            content: "Exciting news! We've just launched AI-powered email summaries. Now you can get the gist of long threads in seconds. Try it out on your next long email!",
+            content: "Exciting news! We have just launched AI-powered email summaries. Now you can get the gist of long threads in seconds. Try it out on your next long email!",
             isRead: true,
             isStarred: true,
             priority: "medium" as "medium",
@@ -172,7 +173,7 @@ export default function OgeeMailPage() {
             subject: "Re: Project Zeus - Budget Approval Needed",
             from: "you@ogeemo.com",
             to: "finance@yourcompany.com",
-            content: "Thanks for sending this over. I've reviewed the budget and it's approved. Let's proceed.",
+            content: "Thanks for sending this over. I have reviewed the budget and it is approved. Let us proceed.",
             isRead: true, isStarred: false, priority: "medium" as "medium",
             receivedAt: new Date(Date.now() - 86400000).toISOString(), tags: ['project', 'finance', 'approved'],
             folder: "sent", isArchived: false, hasAttachments: false, category: "primary" as "primary"
@@ -181,7 +182,7 @@ export default function OgeeMailPage() {
             subject: "Client Follow-up: Q2 Satisfaction Survey",
             from: "you@ogeemo.com",
             to: "feedback@clientcorp.com",
-            content: "Hi team, I just wanted to follow up on the recent survey results. I have some ideas I'd like to discuss regarding the feedback.",
+            content: "Hi team, I just wanted to follow up on the recent survey results. I have some ideas I would like to discuss regarding the feedback.",
             isRead: true, isStarred: true, priority: "medium" as "medium",
             receivedAt: new Date(Date.now() - 86400000 * 2).toISOString(), tags: ['feedback', 'client'],
             folder: "sent", isArchived: false, hasAttachments: false, category: "primary" as "primary"
@@ -208,7 +209,7 @@ export default function OgeeMailPage() {
             subject: "Vacation Plans",
             from: "you@ogeemo.com",
             to: "hr@yourcompany.com",
-            content: "Hi HR, I'd like to request vacation time from July 15th to July 19th. Please let me know if this is approved. Thanks!",
+            content: "Hi HR, I would like to request vacation time from July 15th to July 19th. Please let me know if this is approved. Thanks!",
             isRead: true, isStarred: false, priority: "medium" as "medium",
             receivedAt: new Date(Date.now() - 86400000 * 5).toISOString(), tags: ['hr', 'vacation'],
             folder: "sent", isArchived: false, hasAttachments: false, category: "primary" as "primary"
@@ -405,11 +406,16 @@ export default function OgeeMailPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-background">
-      <header className="text-center p-4 sm:p-6 border-b">
-        <h1 className="text-3xl font-bold font-headline text-primary">OgeeMail</h1>
-        <p className="text-muted-foreground">
-          Your intelligent and intuitive email client.
-        </p>
+       <header className="relative flex h-24 items-center justify-center border-b text-center">
+        <div className="absolute left-4 md:hidden">
+          <SidebarTrigger />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold font-headline text-primary">OgeeMail</h1>
+          <p className="text-muted-foreground">
+            Your intelligent and intuitive email client.
+          </p>
+        </div>
       </header>
       <main className="flex flex-1 min-h-0">
         <div className="w-[260px] flex-shrink-0 bg-card border-r flex flex-col">
