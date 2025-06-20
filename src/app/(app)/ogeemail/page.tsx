@@ -406,7 +406,7 @@ export default function OgeeMailPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-background">
-       <header className="relative flex h-24 items-center justify-center border-b text-center">
+       <header className="relative flex h-24 items-center justify-center border-b text-center px-4 sm:px-6">
         <div className="absolute left-4 md:hidden">
           <SidebarTrigger />
         </div>
@@ -416,15 +416,25 @@ export default function OgeeMailPage() {
             Your intelligent and intuitive email client.
           </p>
         </div>
+        <div className="absolute right-4 flex items-center space-x-2">
+            <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                    type="search"
+                    placeholder="Search mail..."
+                    className="pl-8 sm:w-[200px] lg:w-[300px]"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+            </div>
+            <Button onClick={() => setIsComposeOpen(true)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                <span>Compose</span>
+            </Button>
+        </div>
       </header>
       <main className="flex flex-1 min-h-0">
         <div className="w-[260px] flex-shrink-0 bg-card border-r flex flex-col">
-          <div className="p-4">
-            <Button onClick={() => setIsComposeOpen(true)} className="w-full">
-              <Pencil className="mr-2 h-4 w-4" />
-              <span>Compose</span>
-            </Button>
-          </div>
           <div className="p-4 border-t">
             <h3 className="text-xl font-bold text-foreground">Folders</h3>
           </div>
@@ -445,10 +455,6 @@ export default function OgeeMailPage() {
         <div className="flex flex-1 min-w-0">
             <div className="w-2/5 border-r flex flex-col min-w-0">
                 <div className="p-4 border-b flex items-center justify-between gap-4">
-                    <div className="relative flex-grow">
-                        <Input type="text" placeholder="Search mail..." className="w-full pl-10 pr-4 py-2" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                        <Search className="h-4 w-4 absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-                    </div>
                     <Button variant="ghost" size="icon" title="Refresh"><RefreshCw className="h-5 w-5" /></Button>
                 </div>
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
