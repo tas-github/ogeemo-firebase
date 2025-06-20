@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -106,8 +105,8 @@ export default function ActionManagerPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-11rem)] space-y-6">
-      <header>
-        <h1 className="text-3xl font-bold font-headline">Welcome to your Ogeemo Action Manager</h1>
+      <header className="text-center">
+        <h1 className="text-3xl font-bold font-headline text-chart-5">Welcome to your Ogeemo Action Manager</h1>
         <p className="text-muted-foreground">
           Your intelligent assistant for navigating the Ogeemo platform.
         </p>
