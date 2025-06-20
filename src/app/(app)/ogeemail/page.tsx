@@ -13,7 +13,7 @@ import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tooltip, TooltipProvider } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import {
   Dialog,
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { LoaderCircle } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
 
 interface Email {
   id: string;
@@ -46,7 +47,6 @@ export default function OgeeMailPage() {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [emails, setEmails] = useState<Email[]>([]);
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
-  const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
   const [newEmail, setNewEmail] = useState({ to: '', subject: '', text: '' });
   const [searchQuery, setSearchQuery] = useState('');
@@ -185,21 +185,22 @@ export default function OgeeMailPage() {
         })) as Email[];
         setEmails(fetchedEmails);
 
-        // Update selected email if it's still in the list
         if (selectedEmailId) {
-          const updatedSelected = fetchedEmails.find(e => e.id === selectedEmailId);
-          setSelectedEmail(updatedSelected || null);
-        } else if (fetchedEmails.length > 0) {
-          // Default to selecting the first email if none is selected
-          const firstEmail = fetchedEmails.find(e => e.folder === activeFolder) || fetchedEmails[0];
-          if(firstEmail) {
-            setSelectedEmail(firstEmail);
-            setSelectedEmailId(firstEmail.id);
+          const isSelectedEmailStillVisible = fetchedEmails.some(e => e.id === selectedEmailId);
+          if (!isSelectedEmailStillVisible) {
+            setSelectedEmailId(null);
           }
-        } else {
-          // No emails, so clear selection
-          setSelectedEmail(null);
-          setSelectedEmailId(null);
+        }
+        
+        if (!selectedEmailId && fetchedEmails.length > 0) {
+          const firstVisibleEmail = fetchedEmails.find(e => {
+              if (activeFolder === "inbox") return e.folder === 'inbox';
+              if (activeFolder === "starred") return e.starred && e.folder !== 'trash';
+              return e.folder === activeFolder;
+          });
+          if (firstVisibleEmail) {
+            setSelectedEmailId(firstVisibleEmail.id);
+          }
         }
       }
       setLoading(false);
@@ -214,14 +215,13 @@ export default function OgeeMailPage() {
     });
 
     return () => unsubscribe();
-  }, [isAuthReady, userId, addMockData, selectedEmailId, toast, activeFolder]);
+  }, [isAuthReady, userId, addMockData, toast, activeFolder, selectedEmailId]);
 
   const handleSelectEmail = async (emailId: string) => {
     const email = emails.find(e => e.id === emailId);
     if (!email) return;
 
     setSelectedEmailId(emailId);
-    setSelectedEmail(email);
 
     if (!email.read && userId) {
       const emailRef = doc(db, `artifacts/${appId}/users/${userId}/emails`, emailId);
@@ -237,8 +237,7 @@ export default function OgeeMailPage() {
         const emailRef = doc(db, `artifacts/${appId}/users/${userId}/emails`, emailId);
         await updateDoc(emailRef, { starred: !emailToUpdate.starred });
         toast({
-          title: "Status Updated",
-          description: `Email ${!emailToUpdate.starred ? 'starred' : 'unstarred'}`,
+          description: `Email ${!emailToUpdate.starred ? 'starred' : 'unstarred'}.`,
         });
     }
   };
@@ -260,7 +259,7 @@ export default function OgeeMailPage() {
         fromEmail: 'you@ogeemo.com',
         to: newEmail.to,
         subject: newEmail.subject,
-        text: newEmail.text,
+        text: `<p>${newEmail.text.replace(/\n/g, '</p><p>')}</p>`,
         date: new Date().toISOString(),
         read: true,
         starred: false,
@@ -283,6 +282,8 @@ export default function OgeeMailPage() {
     }
   };
 
+  const selectedEmail = emails.find(e => e.id === selectedEmailId) || null;
+
   const filteredEmails = emails.filter((email) => {
     const lowerCaseQuery = searchQuery.toLowerCase();
     const matchesSearch =
@@ -290,11 +291,13 @@ export default function OgeeMailPage() {
       email.from.toLowerCase().includes(lowerCaseQuery) ||
       email.text.toLowerCase().includes(lowerCaseQuery);
 
-    if (activeFolder === "inbox") return matchesSearch && email.folder === 'inbox';
-    if (activeFolder === "starred") return matchesSearch && email.starred && email.folder !== 'trash';
-    if (activeFolder === "sent") return matchesSearch && email.folder === 'sent';
-    if (activeFolder === "archive") return matchesSearch && email.folder === 'archive';
-    if (activeFolder === "trash") return matchesSearch && email.folder === 'trash';
+    if (!matchesSearch) return false;
+
+    if (activeFolder === "inbox") return email.folder === 'inbox';
+    if (activeFolder === "starred") return email.starred && email.folder !== 'trash';
+    if (activeFolder === "sent") return email.folder === 'sent';
+    if (activeFolder === "archive") return email.folder === 'archive';
+    if (activeFolder === "trash") return email.folder === 'trash';
     return false;
   });
 
@@ -310,45 +313,22 @@ export default function OgeeMailPage() {
 
   const handleFolderChange = (folder: typeof activeFolder) => {
     setActiveFolder(folder);
-    const firstEmailInFolder = emails.find(e => e.folder === folder || (folder === 'starred' && e.starred));
-    if(firstEmailInFolder){
-        handleSelectEmail(firstEmailInFolder.id);
-    } else {
-        setSelectedEmailId(null);
-        setSelectedEmail(null);
-    }
+    setSelectedEmailId(null);
   };
 
   return (
     <TooltipProvider delayDuration={0}>
       <div className="flex h-screen w-full flex-col bg-background text-foreground overflow-hidden">
-        {/* Header */}
-        <header className="flex h-16 shrink-0 items-center border-b px-4 md:px-6">
-            <div className="flex w-full items-center justify-between">
-                <h1 className="text-xl font-bold font-headline text-primary">OgeeMail</h1>
-                <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            type="search"
-                            placeholder="Search mail..."
-                            className="w-full rounded-lg bg-muted pl-8 md:w-[200px] lg:w-[300px]"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <Button onClick={() => setIsComposeOpen(true)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Compose
-                    </Button>
-                </div>
-            </div>
-        </header>
-
         <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
-          {/* Sidebar */}
           <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
             <div className="flex h-full flex-col p-2">
+              <div className="p-2">
+                <Button className="w-full" onClick={() => setIsComposeOpen(true)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Compose
+                </Button>
+              </div>
+              <Separator />
               <nav className="flex flex-col gap-1 p-2">
                 {menuItems.map((item) => (
                   <Button
@@ -371,9 +351,21 @@ export default function OgeeMailPage() {
           </ResizablePanel>
           <ResizableHandle withHandle />
           
-          {/* Email List */}
           <ResizablePanel defaultSize={35} minSize={25}>
-            <div className="flex flex-col overflow-y-auto h-full">
+            <div className="flex flex-col h-full">
+              <div className="p-2 border-b">
+                <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        type="search"
+                        placeholder="Search mail..."
+                        className="w-full rounded-lg bg-muted pl-8"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto">
               {loading ? (
                 <div className="flex h-full items-center justify-center">
                   <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
@@ -413,12 +405,12 @@ export default function OgeeMailPage() {
                   <p>No emails in {activeFolder}.</p>
                 </div>
               )}
+              </div>
             </div>
           </ResizablePanel>
           <ResizableHandle withHandle />
 
-          {/* Email Content */}
-          <ResizablePanel defaultSize={45}>
+          <ResizablePanel defaultSize={45} minSize={30}>
             <div className="flex-1 overflow-y-auto p-4 md:p-6 h-full">
               {selectedEmail ? (
                 <div>
@@ -435,8 +427,18 @@ export default function OgeeMailPage() {
                       </div>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <time>{new Date(selectedEmail.date).toLocaleString()}</time>
-                          <Button variant="ghost" size="icon" title="Reply"><CornerUpLeft className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" title="More"><MoreVertical className="h-4 w-4" /></Button>
+                           <Tooltip>
+                              <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon"><CornerUpLeft className="h-4 w-4" /></Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Reply</p></TooltipContent>
+                           </Tooltip>
+                           <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>More</p></TooltipContent>
+                            </Tooltip>
                       </div>
                   </div>
                   <h2 className="text-2xl font-bold my-4">{selectedEmail.subject}</h2>
@@ -479,3 +481,5 @@ export default function OgeeMailPage() {
     </TooltipProvider>
   );
 }
+
+    
