@@ -7,7 +7,6 @@ import {
   FilePlus2,
   LayoutDashboard,
   Settings,
-  PanelLeft,
   Wand2,
 } from "lucide-react";
 
@@ -19,9 +18,8 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarFooter,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -104,15 +102,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </SidebarContent>
         </Sidebar>
 
-        <main className="flex-1">
-          <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
-            <Button variant="ghost" size="icon" className="md:hidden">
-              <PanelLeft />
-              <span className="sr-only">Toggle Menu</span>
-            </Button>
-            <div className="flex-1" />
+        <main className="flex-1 flex flex-col">
+          <header className="sticky top-0 z-10 flex h-16 items-center border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6 md:hidden">
+            <SidebarTrigger />
           </header>
-          <div className="p-4 sm:p-6">{children}</div>
+          <div className="flex flex-col flex-1 p-4 sm:p-6 min-h-0">{children}</div>
         </main>
       </div>
     </SidebarProvider>
