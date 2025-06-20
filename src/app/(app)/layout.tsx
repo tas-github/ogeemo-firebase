@@ -6,6 +6,7 @@ import {
   Database,
   FilePlus2,
   LayoutDashboard,
+  Mail,
   Settings,
   Wand2,
 } from "lucide-react";
@@ -59,6 +60,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Link href="/action-manager">
                     <Wand2 />
                     <span>Action Manager</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/ogeemail")}
+                  tooltip="OgeeMail"
+                >
+                  <Link href="/ogeemail">
+                    <Mail />
+                    <span>OgeeMail</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
