@@ -406,15 +406,15 @@ export default function OgeeMailPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 flex flex-col flex-1 space-y-4 min-h-0">
-      <header className="text-center">
+    <div className="flex flex-col flex-1 space-y-4 min-h-0">
+      <header className="text-center p-4 sm:p-6">
         <h1 className="text-3xl font-bold font-headline text-primary">OgeeMail</h1>
         <p className="text-muted-foreground">
           Your intelligent and intuitive email client.
         </p>
       </header>
 
-      <Card className="flex-1 flex flex-col min-h-0">
+      <Card className="flex-1 flex flex-col min-h-0 border-x-0 rounded-none">
         <CardHeader className="p-4 border-b flex flex-row items-center justify-between gap-4">
             <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -608,4 +608,3 @@ export default function OgeeMailPage() {
     </div>
   );
 }
-
