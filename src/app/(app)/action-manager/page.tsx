@@ -258,9 +258,9 @@ export default function ActionManagerPage() {
                 <CardContent className="space-y-4">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="w-full justify-between">
+                        <Button variant="outline" className="w-full justify-center">
                           <span>{introTitle}</span>
-                          <ChevronDown className="h-4 w-4" />
+                          <ChevronDown className="h-4 w-4 ml-2" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
