@@ -137,8 +137,8 @@ export default function ActionManagerPage() {
         </p>
       </header>
 
-      <div className="grid md:grid-cols-6 gap-6 flex-1 min-h-0">
-        <div className="md:col-span-1 flex flex-col gap-6">
+      <div className="grid md:grid-cols-10 gap-6 flex-1 min-h-0">
+        <div className="md:col-span-3 flex flex-col gap-6">
            <Card>
             <CardHeader>
                 <CardTitle>Introduction</CardTitle>
@@ -168,7 +168,7 @@ export default function ActionManagerPage() {
            </Card>
         </div>
 
-        <div className="md:col-span-5 flex flex-col">
+        <div className="md:col-span-7 flex flex-col">
             <Card className="flex-1 flex flex-col">
                 <CardHeader>
                     <CardTitle>Tell me what you would like to do</CardTitle>
@@ -253,7 +253,7 @@ export default function ActionManagerPage() {
         </div>
       </div>
 
-      <footer className="py-4">
+      <footer>
         <Card>
             <CardHeader>
                 <CardTitle>Quick Navigation</CardTitle>
