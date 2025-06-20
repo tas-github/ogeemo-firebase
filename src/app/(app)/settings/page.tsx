@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch"
 export default function SettingsPage() {
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold font-headline">Settings</h1>
+      <h1 className="text-3xl font-bold font-headline text-primary">Settings</h1>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
