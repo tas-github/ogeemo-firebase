@@ -22,6 +22,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/logo";
+import { UserNav } from "@/components/user-nav";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -116,10 +117,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </Sidebar>
 
         <main className="flex-1 flex flex-col">
-          <header className="sticky top-0 z-10 flex h-16 items-center border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6 md:hidden">
-            <SidebarTrigger />
+          <header className="sticky top-0 z-10 flex h-16 items-center border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
+            <SidebarTrigger className="md:hidden" />
+            <div className="ml-auto">
+              <UserNav />
+            </div>
           </header>
-          <div className="flex flex-col flex-1 p-4 sm:p-6 min-h-0">{children}</div>
+          <div className="flex flex-col flex-1 min-h-0">{children}</div>
         </main>
       </div>
     </SidebarProvider>

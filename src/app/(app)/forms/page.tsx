@@ -55,7 +55,7 @@ export default function FormsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <h1 className="text-3xl font-bold font-headline text-primary">Form Generation</h1>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
