@@ -16,6 +16,7 @@ import {
   Sidebar,
   SidebarHeader,
   SidebarContent,
+  SidebarFooter,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
@@ -114,14 +115,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarContent>
+          <SidebarFooter>
+            <UserNav />
+          </SidebarFooter>
         </Sidebar>
 
         <main className="flex-1 flex flex-col">
           <header className="sticky top-0 z-10 flex h-16 items-center border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
             <SidebarTrigger className="md:hidden" />
-            <div className="ml-auto">
-              <UserNav />
-            </div>
           </header>
           <div className="flex flex-col flex-1 min-h-0">{children}</div>
         </main>
