@@ -9,10 +9,11 @@ import {
     Highlighter, CheckCircle2, AlertTriangle, Mic, Mail, ChevronDown, Inbox, Star, Send, FileText, Trash2, RefreshCw,
     Filter, Search, Paperclip, X, BrainCircuit, Pencil
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from "@/hooks/use-toast";
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { db, auth } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 interface Email {
   id: string; 
@@ -378,8 +379,14 @@ export default function OgeeMailPage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-muted/20">
-      <main className="flex flex-1 min-h-0 gap-6 p-6">
+    <div className="p-4 sm:p-6 flex flex-col flex-1 space-y-4 min-h-0">
+       <header className="text-center">
+        <h1 className="text-3xl font-bold font-headline text-primary">OgeeMail</h1>
+        <p className="text-muted-foreground">
+          Your intelligent and intuitive email client.
+        </p>
+      </header>
+      <main className="flex flex-1 min-h-0 gap-6">
         <div className="w-[260px] flex-shrink-0 bg-card rounded-lg border flex flex-col">
           <div className="p-4">
             <button onClick={() => setIsComposeOpen(true)} className="w-full py-3 bg-primary text-primary-foreground font-semibold rounded-lg shadow-lg hover:bg-primary/90 transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2">
@@ -554,3 +561,5 @@ export default function OgeeMailPage() {
     </div>
   );
 }
+
+    
