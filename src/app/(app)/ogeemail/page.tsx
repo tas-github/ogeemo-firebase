@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Archive, Bold, Italic, Underline, Strikethrough, Code, Quote, List, Link2, AlignLeft, AlignCenter, AlignRight,
     Highlighter, CheckCircle2, AlertTriangle, Mic, Mail, ChevronDown, Inbox, Star, Send, FileText, Trash2, RefreshCw,
-    Filter, Search, Paperclip, X, BrainCircuit, Pencil
+    Filter, Search, Paperclip, X, BrainCircuit, Pencil, CornerUpLeft, CornerUpRight
 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
@@ -152,13 +152,19 @@ export default function OgeeMailPage() {
             folder: "inbox", isArchived: false, hasAttachments: true, category: "primary" as "primary"
           },
           {
-            subject: "New Feature Alert: Ogeemo File Manager",
+            subject: "New Feature Alert: AI Summaries",
             from: "product@ogeemo.com",
             to: "you@ogeemo.com",
-            content: "Exciting news! We've just launched the new Ogeemo File Manager. Check out how it simplifies Google Drive for you.",
-            isRead: false, isStarred: true, priority: "medium" as "medium",
-            receivedAt: new Date(Date.now() - 86400000).toISOString(), tags: ['feature', 'new'],
-            folder: "inbox", isArchived: false, hasAttachments: false, category: "updates" as "updates"
+            content: "Exciting news! We've just launched AI-powered email summaries. Now you can get the gist of long threads in seconds. Try it out on your next long email!",
+            isRead: true,
+            isStarred: true,
+            priority: "medium" as "medium",
+            receivedAt: new Date(Date.now() - 86400000).toISOString(),
+            tags: ["feature", "new", "ai"],
+            folder: "inbox",
+            isArchived: false,
+            hasAttachments: false,
+            category: "updates" as "updates",
           },
         ];
         const sentEmails = [
@@ -227,6 +233,15 @@ export default function OgeeMailPage() {
 
     return () => unsubscribe();
   }, [db, isAuthReady, userId, showAppToast]);
+
+  const handleSelectEmail = async (email: Email) => {
+    setSelectedEmail(email);
+    if (!email.isRead) {
+      if (!db || !userId) return;
+      const emailRef = doc(db, `artifacts/${appId}/users/${userId}/emails`, email.id);
+      await updateDoc(emailRef, { isRead: true });
+    }
+  }
 
   const toggleReadStatus = async (id: string) => {
     if (!db || !userId) return;
@@ -407,7 +422,7 @@ export default function OgeeMailPage() {
           <div className="p-4 border-t">
             <h3 className="text-xl font-bold text-foreground">Folders</h3>
           </div>
-          <nav className="p-4 space-y-1 overflow-y-auto">
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {menuItems.map((item) => {
               const IconComponent = item.icon;
               const isActive = activeFolder === item.id;
@@ -421,70 +436,78 @@ export default function OgeeMailPage() {
           </nav>
         </div>
 
-        <div className="flex-1 bg-card flex flex-col min-w-0">
-          <div className="p-4 border-b flex items-center justify-between gap-4">
-            <h2 className="text-xl font-bold text-foreground whitespace-nowrap">{activeFolder.charAt(0).toUpperCase() + activeFolder.slice(1)} ({filteredEmails.filter(e => !e.isRead).length})</h2>
-            <div className="relative flex-grow max-w-md">
-                <Input type="text" placeholder="Search mail..." className="w-full pl-10 pr-4 py-2" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                <Search className="h-4 w-4 absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="icon" title="Refresh"><RefreshCw className="h-5 w-5" /></Button>
-              <Button variant="ghost" size="icon" title="Filter"><Filter className="h-5 w-5" /></Button>
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {filteredEmails.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground"><p>No emails found.</p></div>
-            ) : (
-              filteredEmails.map(email => (
-                <div key={email.id} className={cn('p-4 border-b border-border/50 cursor-pointer transition-all duration-200', selectedEmail?.id === email.id ? 'bg-secondary border-l-4 border-primary' : 'hover:bg-secondary/50', !email.isRead ? 'font-semibold bg-primary/5' : 'text-foreground')} onClick={() => setSelectedEmail(email)}>
-                  <div className="flex justify-between items-start mb-1">
-                    <span className={cn('text-sm truncate w-2/3', !email.isRead ? 'text-foreground' : 'text-muted-foreground')}>{email.from}</span>
-                    <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">{new Date(email.receivedAt).toLocaleDateString()}</span>
-                  </div>
-                  <p className={cn('text-base truncate', !email.isRead ? 'text-foreground' : 'text-foreground/80')}>{email.subject}</p>
-                  <div className="flex items-center space-x-2 mt-2">
-                    {email.isStarred && (<Star className="h-4 w-4 text-yellow-500 fill-current" />)}
-                    {email.hasAttachments && (<Paperclip className="h-4 w-4 text-muted-foreground" />)}
-                    {email.tags && email.tags.map(tag => (<span key={tag} className="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded-full">{tag}</span>))}
-                  </div>
+        <div className="flex flex-1 min-w-0">
+            <div className="w-2/5 border-r flex flex-col min-w-0">
+                <div className="p-4 border-b flex items-center justify-between gap-4">
+                    <div className="relative flex-grow">
+                        <Input type="text" placeholder="Search mail..." className="w-full pl-10 pr-4 py-2" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                        <Search className="h-4 w-4 absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+                    </div>
+                    <Button variant="ghost" size="icon" title="Refresh"><RefreshCw className="h-5 w-5" /></Button>
                 </div>
-              ))
-            )}
-          </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    {filteredEmails.length === 0 ? (
+                    <div className="p-8 text-center text-muted-foreground"><p>No emails found.</p></div>
+                    ) : (
+                    filteredEmails.map(email => (
+                        <div key={email.id} className={cn('p-4 border-b border-border/50 cursor-pointer transition-all duration-200', selectedEmail?.id === email.id ? 'bg-secondary border-l-4 border-primary' : 'hover:bg-secondary/50', !email.isRead ? 'font-semibold bg-primary/5' : 'text-foreground')} onClick={() => handleSelectEmail(email)}>
+                        <div className="flex justify-between items-start mb-1">
+                            <span className={cn('text-sm truncate w-2/3', !email.isRead ? 'text-foreground font-bold' : 'text-muted-foreground')}>{email.from}</span>
+                            <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">{new Date(email.receivedAt).toLocaleDateString()}</span>
+                        </div>
+                        <p className={cn('text-base truncate', !email.isRead ? 'text-foreground' : 'text-foreground/80')}>{email.subject}</p>
+                        <div className="flex items-center space-x-2 mt-2">
+                            {email.isStarred && (<Star className="h-4 w-4 text-yellow-500 fill-current" />)}
+                            {email.hasAttachments && (<Paperclip className="h-4 w-4 text-muted-foreground" />)}
+                            {email.tags && email.tags.map(tag => (<span key={tag} className="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded-full">{tag}</span>))}
+                        </div>
+                        </div>
+                    ))
+                    )}
+                </div>
+            </div>
+            <div className="flex-1 flex flex-col min-w-0">
+                {selectedEmail ? (
+                    <>
+                        <div className="p-4 border-b bg-card flex justify-between items-center">
+                            <div className="flex-1 min-w-0">
+                                <h2 className="text-xl font-bold text-foreground truncate">{selectedEmail.subject}</h2>
+                                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                                    <Star onClick={() => toggleStarredStatus(selectedEmail.id)} className={cn("h-4 w-4 cursor-pointer", selectedEmail.isStarred ? 'text-yellow-500 fill-current' : 'text-muted-foreground')}/> 
+                                    <span>From: {selectedEmail.from}</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Button variant="ghost" size="icon" title="Reply"><CornerUpLeft className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" title="Forward"><CornerUpRight className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" title="Delete" onClick={() => deleteEmail(selectedEmail.id)}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                        </div>
+                        <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
+                            <p className="text-sm text-muted-foreground">To: {selectedEmail.to}</p>
+                            {selectedEmail.cc && <p className="text-sm text-muted-foreground">Cc: {selectedEmail.cc}</p>}
+                            <div className="text-xs text-muted-foreground mt-1 mb-4">{new Date(selectedEmail.receivedAt).toLocaleString()}</div>
+                            <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedEmail.content }} />
+                            {selectedEmail.tags?.includes('action-required') && (
+                                <div className="mt-6 p-3 bg-destructive/10 border border-destructive/20 text-destructive-foreground rounded-lg flex items-center space-x-2">
+                                <BrainCircuit className="h-5 w-5" />
+                                <p className="font-semibold">AI Insight: This email likely requires your urgent attention.</p>
+                                </div>
+                            )}
+                        </div>
+                    </>
+                ) : (
+                    <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                        <div className="text-center">
+                            <Mail className="h-16 w-16 mx-auto mb-4"/>
+                            <p>Select an email to read</p>
+                            <p className="text-sm">Nothing selected</p>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
       </main>
-
-      {selectedEmail && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4 lg:p-0" onClick={() => setSelectedEmail(null)}>
-          <div className="bg-card rounded-xl shadow-2xl w-full max-w-3xl h-[90vh] lg:h-[80vh] flex flex-col transform scale-100 opacity-100 transition-all duration-300 ease-out border" onClick={(e) => e.stopPropagation()}>
-            <div className="p-4 border-b bg-muted/50 flex justify-between items-center rounded-t-xl">
-              <h2 className="text-xl font-bold text-foreground break-words">{selectedEmail.subject}</h2>
-              <button onClick={() => setSelectedEmail(null)} className="p-2 rounded-full hover:bg-secondary transition-colors duration-200"><X className="h-6 w-6 text-muted-foreground" /></button>
-            </div>
-            <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
-              <p className="text-sm text-muted-foreground mb-1">From: <span className="font-semibold text-foreground">{selectedEmail.from}</span></p>
-              <p className="text-sm text-muted-foreground">To: {selectedEmail.to}</p>
-              {selectedEmail.cc && <p className="text-sm text-muted-foreground">Cc: {selectedEmail.cc}</p>}
-              <div className="text-xs text-muted-foreground mt-1">{new Date(selectedEmail.receivedAt).toLocaleString()}</div>
-              <hr className="my-4" />
-              <div className="text-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedEmail.content }} />
-              {selectedEmail.tags?.includes('action-required') && (
-                <div className="mt-6 p-3 bg-destructive/10 border border-destructive/20 text-destructive-foreground rounded-lg flex items-center space-x-2">
-                  <BrainCircuit className="h-5 w-5" />
-                  <p className="font-semibold">AI Insight: This email likely requires your urgent attention.</p>
-                </div>
-              )}
-            </div>
-            <div className="p-4 border-t bg-muted/50 flex justify-end space-x-3 rounded-b-xl">
-                <Button onClick={() => toggleReadStatus(selectedEmail.id)}>{selectedEmail.isRead ? 'Mark as Unread' : 'Mark as Read'}</Button>
-                <Button onClick={() => toggleStarredStatus(selectedEmail.id)} variant="secondary">{selectedEmail.isStarred ? 'Unstar' : 'Star'}</Button>
-                <Button onClick={() => deleteEmail(selectedEmail.id)} variant="destructive">Delete</Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {isComposeOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
