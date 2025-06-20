@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -309,7 +310,7 @@ export default function OgeeMailPage() {
 
   const handleFolderChange = (folder: typeof activeFolder) => {
     setActiveFolder(folder);
-    const firstEmailInFolder = emails.find(e => e.folder === folder);
+    const firstEmailInFolder = emails.find(e => e.folder === folder || (folder === 'starred' && e.starred));
     if(firstEmailInFolder){
         handleSelectEmail(firstEmailInFolder.id);
     } else {
