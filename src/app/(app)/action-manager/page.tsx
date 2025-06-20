@@ -237,7 +237,7 @@ export default function ActionManagerPage() {
       <footer className="pt-0">
         <div className="grid md:grid-cols-2 gap-6 items-start">
             <Card>
-                <CardHeader>
+                <CardHeader className="text-center">
                     <CardTitle>Quick Navigation</CardTitle>
                     <CardDescription>Jump to any manager instantly.</CardDescription>
                 </CardHeader>
@@ -251,7 +251,7 @@ export default function ActionManagerPage() {
                 </CardContent>
             </Card>
              <Card>
-                <CardHeader>
+                <CardHeader className="text-center">
                     <CardTitle>Introduction</CardTitle>
                     <CardDescription>Select a topic to learn more about Ogeemo.</CardDescription>
                 </CardHeader>
