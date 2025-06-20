@@ -157,7 +157,7 @@ export default function OgeeMailPage() {
             subject: "New Feature Alert: AI Summaries",
             from: "product@ogeemo.com",
             to: "you@ogeemo.com",
-            content: "Exciting news! We have just launched AI-powered email summaries. Now you can get the gist of long threads in seconds. Try it out on your next long email!",
+            content: "Exciting news! We've just launched AI-powered email summaries. Now you can get the gist of long threads in seconds. Try it out on your next long email!",
             isRead: true,
             isStarred: true,
             priority: "medium" as "medium",
@@ -407,19 +407,22 @@ export default function OgeeMailPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-background">
-       <header className="flex h-24 items-center justify-between border-b px-4 sm:px-6">
-        <div className="flex-1 flex justify-start">
+       <header className="flex h-24 items-center justify-between border-b">
+        {/* Left column for sidebar trigger and spacing */}
+        <div className="flex-1 flex justify-start pl-4 sm:pl-6">
           <SidebarTrigger className="md:hidden" />
         </div>
         
-        <div className="flex-shrink-0 text-center">
+        {/* Middle column for title */}
+        <div className="flex-shrink-0 text-center px-4">
           <h1 className="text-3xl font-bold font-headline text-primary">OgeeMail</h1>
           <p className="text-muted-foreground">
             Your intelligent and intuitive email client.
           </p>
         </div>
 
-        <div className="flex-1 flex justify-end items-center space-x-2">
+        {/* Right column for search and compose */}
+        <div className="flex-1 flex justify-end items-center space-x-2 pr-4 sm:pr-6">
             <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
