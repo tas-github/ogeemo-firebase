@@ -152,7 +152,7 @@ export default function ActionManagerPage() {
 
       <div className="flex-1 min-h-0">
         <Card className="h-full flex flex-col">
-            <CardHeader>
+            <CardHeader className="text-center">
                 <CardTitle>Tell me what you would like to do</CardTitle>
                 <CardDescription>
                 Ask me anything about Ogeemo or describe what you'd like to accomplish.
