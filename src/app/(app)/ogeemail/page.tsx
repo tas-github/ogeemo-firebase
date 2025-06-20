@@ -43,7 +43,6 @@ export default function OgeeMailPage() {
   const [newEmail, setNewEmail] = useState({ to: '', subject: '', content: '', cc: '', bcc: '' });
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
-  const [showBenefits, setShowBenefits] = useState(false);
   const [activeFolder, setActiveFolder] = useState("inbox");
   const [showCcBcc, setShowCcBcc] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
@@ -279,19 +278,19 @@ export default function OgeeMailPage() {
 
   if (loading || !isAuthReady) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-blue-50 to-purple-100 font-body text-gray-800 antialiased">
+      <div className="flex items-center justify-center h-full bg-background">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-lg font-medium text-gray-700">Loading OgeeMail...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-primary mx-auto mb-4"></div>
+          <p className="text-lg font-medium text-muted-foreground">Loading OgeeMail...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-100 font-body text-gray-800 antialiased">
-      <header className="bg-white/90 backdrop-blur-sm shadow-sm p-4 border-b border-gray-200 sticky top-0 z-20 rounded-b-xl">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <div className="flex flex-col h-full bg-muted/20">
+      <header className="shrink-0 bg-card/90 backdrop-blur-sm shadow-sm px-6 py-4 border-b">
+        <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="bg-primary p-2 rounded-lg shadow-md">
               <Mail className="h-7 w-7 text-primary-foreground" />
@@ -300,83 +299,63 @@ export default function OgeeMailPage() {
               Ogeemo Mail
             </h1>
             {userId && (
-              <span className="text-xs text-gray-500 ml-4 hidden sm:block">User ID: {userId.substring(0, 8)}...</span>
+              <span className="text-xs text-muted-foreground ml-4 hidden sm:block">User ID: {userId.substring(0, 8)}...</span>
             )}
           </div>
           <div className="flex items-center space-x-4">
             <div className="relative">
-              <input type="text" placeholder="Search mail..." className="pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200 shadow-sm text-sm" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-              <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input type="text" placeholder="Search mail..." className="pl-10 pr-4 py-2 border border-input rounded-full focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200 shadow-sm text-sm" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
             </div>
-            <button onClick={() => setIsComposeOpen(true)} className="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold rounded-full shadow-lg hover:from-blue-600 hover:to-purple-600 transform hover:scale-105 transition-all duration-300">
+            <button onClick={() => setIsComposeOpen(true)} className="px-6 py-2 bg-primary text-primary-foreground font-semibold rounded-full shadow-lg hover:bg-primary/90 transform hover:scale-105 transition-all duration-300">
               Compose
             </button>
           </div>
         </div>
       </header>
-      
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 cursor-pointer" onClick={() => setShowBenefits(!showBenefits)}>
-          <div className="p-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-blue-600">Benefits of Ogeemo Mail Manager</h2>
-              <p className="text-sm text-gray-500">Discover how Ogeemo enhances your email productivity</p>
-            </div>
-            <ChevronDown className={`w-5 h-5 transition-transform ${showBenefits ? 'rotate-180' : ''}`} />
-          </div>
-          {showBenefits && (
-            <div className="p-4 border-t border-gray-100">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200"><h3 className="font-semibold text-blue-800 mb-2">Ogeemo Powered Composition</h3><p className="text-blue-700 text-sm">Intelligent email writing with optimization and enhancement</p></div>
-                <div className="p-4 bg-purple-50 rounded-lg border border-purple-200"><h3 className="font-semibold text-purple-800 mb-2">Voice-to-Text Input</h3><p className="text-purple-700 text-sm">Hands-free email creation with speech recognition</p></div>
-                <div className="p-4 bg-green-50 rounded-lg border border-green-200"><h3 className="font-semibold text-green-800 mb-2">Smart Templates</h3><p className="text-green-700 text-sm">Professional email templates with AI suggestions</p></div>
-                <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200"><h3 className="font-semibold text-yellow-800 mb-2">Analytics & Tracking</h3><p className="text-yellow-700 text-sm">Response rates and productivity insights</p></div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
 
-      <main className="max-w-7xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-          <div className="p-4 border-b border-gray-200 bg-gray-50"><h3 className="text-xl font-bold text-gray-700">Folders</h3></div>
-          <nav className="p-4 space-y-1">
+      <main className="flex flex-1 min-h-0 gap-6 p-6">
+        <div className="w-[260px] flex-shrink-0 bg-card rounded-lg border flex flex-col">
+          <div className="p-4 border-b">
+            <h3 className="text-xl font-bold text-foreground">Folders</h3>
+          </div>
+          <nav className="p-4 space-y-1 overflow-y-auto">
             {menuItems.map((item) => {
               const IconComponent = item.icon;
               const isActive = activeFolder === item.id;
               return (
-                <button key={item.id} onClick={() => setActiveFolder(item.id)} className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors ${isActive ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-100'}`}>
+                <button key={item.id} onClick={() => setActiveFolder(item.id)} className={cn('w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors', isActive ? 'bg-secondary text-secondary-foreground font-medium' : 'text-muted-foreground hover:bg-secondary/50 hover:text-secondary-foreground')}>
                   <div className="flex items-center space-x-3"><IconComponent className="h-5 w-5" /><span>{item.label}</span></div>
-                  {item.count > 0 && (<span className={`px-2 py-0.5 text-xs rounded-full ${isActive ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"}`}>{item.count}</span>)}
+                  {item.count > 0 && (<span className={cn('px-2 py-0.5 text-xs rounded-full', isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>{item.count}</span>)}
                 </button>
               );
             })}
           </nav>
         </div>
 
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-          <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-700">{activeFolder.charAt(0).toUpperCase() + activeFolder.slice(1)} ({filteredEmails.filter(e => !e.isRead).length})</h2>
+        <div className="flex-1 bg-card rounded-lg border flex flex-col min-w-0">
+          <div className="p-4 border-b flex items-center justify-between">
+            <h2 className="text-xl font-bold text-foreground">{activeFolder.charAt(0).toUpperCase() + activeFolder.slice(1)} ({filteredEmails.filter(e => !e.isRead).length})</h2>
             <div className="flex items-center space-x-2">
-              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200" title="Refresh"><RefreshCw className="h-5 w-5 text-gray-600" /></button>
-              <button className="p-2 rounded-full hover:bg-gray-100 transition-colors duration-200" title="Filter"><Filter className="h-5 w-5 text-gray-600" /></button>
+              <button className="p-2 rounded-full hover:bg-secondary transition-colors duration-200" title="Refresh"><RefreshCw className="h-5 w-5 text-muted-foreground" /></button>
+              <button className="p-2 rounded-full hover:bg-secondary transition-colors duration-200" title="Filter"><Filter className="h-5 w-5 text-muted-foreground" /></button>
             </div>
           </div>
-          <div className="h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
+          <div className="flex-1 overflow-y-auto custom-scrollbar">
             {filteredEmails.length === 0 ? (
-              <div className="p-8 text-center text-gray-500"><p>No emails found.</p></div>
+              <div className="p-8 text-center text-muted-foreground"><p>No emails found.</p></div>
             ) : (
               filteredEmails.map(email => (
-                <div key={email.id} className={cn('p-4 border-b border-gray-100 cursor-pointer transition-all duration-200', selectedEmail?.id === email.id ? 'bg-blue-50 border-l-4 border-blue-500' : 'hover:bg-gray-50', !email.isRead ? 'font-semibold bg-blue-50/70' : 'text-gray-700')} onClick={() => setSelectedEmail(email)}>
+                <div key={email.id} className={cn('p-4 border-b border-border/50 cursor-pointer transition-all duration-200', selectedEmail?.id === email.id ? 'bg-secondary border-l-4 border-primary' : 'hover:bg-secondary/50', !email.isRead ? 'font-semibold bg-primary/5' : 'text-foreground')} onClick={() => setSelectedEmail(email)}>
                   <div className="flex justify-between items-start mb-1">
-                    <span className={cn('text-sm truncate w-2/3', !email.isRead ? 'text-gray-900' : 'text-gray-600')}>{email.from}</span>
-                    <span className="text-xs text-gray-500 flex-shrink-0 ml-2">{new Date(email.receivedAt).toLocaleDateString()}</span>
+                    <span className={cn('text-sm truncate w-2/3', !email.isRead ? 'text-foreground' : 'text-muted-foreground')}>{email.from}</span>
+                    <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">{new Date(email.receivedAt).toLocaleDateString()}</span>
                   </div>
-                  <p className={cn('text-base truncate', !email.isRead ? 'text-gray-900' : 'text-gray-800')}>{email.subject}</p>
+                  <p className={cn('text-base truncate', !email.isRead ? 'text-foreground' : 'text-foreground/80')}>{email.subject}</p>
                   <div className="flex items-center space-x-2 mt-2">
                     {email.isStarred && (<Star className="h-4 w-4 text-yellow-500 fill-current" />)}
-                    {email.hasAttachments && (<Paperclip className="h-4 w-4 text-gray-400" />)}
-                    {email.tags && email.tags.map(tag => (<span key={tag} className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">{tag}</span>))}
+                    {email.hasAttachments && (<Paperclip className="h-4 w-4 text-muted-foreground" />)}
+                    {email.tags && email.tags.map(tag => (<span key={tag} className="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded-full">{tag}</span>))}
                   </div>
                 </div>
               ))
@@ -387,29 +366,29 @@ export default function OgeeMailPage() {
 
       {selectedEmail && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4 lg:p-0" onClick={() => setSelectedEmail(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl h-[90vh] lg:h-[80vh] flex flex-col transform scale-100 opacity-100 transition-all duration-300 ease-out" onClick={(e) => e.stopPropagation()}>
-            <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center rounded-t-xl">
-              <h2 className="text-xl font-bold text-gray-800 break-words">{selectedEmail.subject}</h2>
-              <button onClick={() => setSelectedEmail(null)} className="p-2 rounded-full hover:bg-gray-200 transition-colors duration-200"><X className="h-6 w-6 text-gray-600" /></button>
+          <div className="bg-card rounded-xl shadow-2xl w-full max-w-3xl h-[90vh] lg:h-[80vh] flex flex-col transform scale-100 opacity-100 transition-all duration-300 ease-out border" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 border-b bg-muted/50 flex justify-between items-center rounded-t-xl">
+              <h2 className="text-xl font-bold text-foreground break-words">{selectedEmail.subject}</h2>
+              <button onClick={() => setSelectedEmail(null)} className="p-2 rounded-full hover:bg-secondary transition-colors duration-200"><X className="h-6 w-6 text-muted-foreground" /></button>
             </div>
             <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
-              <p className="text-sm text-gray-600 mb-1">From: <span className="font-semibold">{selectedEmail.from}</span></p>
-              <p className="text-sm text-gray-600">To: {selectedEmail.to}</p>
-              {selectedEmail.cc && <p className="text-sm text-gray-600">Cc: {selectedEmail.cc}</p>}
-              <div className="text-xs text-gray-500 mt-1">{new Date(selectedEmail.receivedAt).toLocaleString()}</div>
-              <hr className="my-4 border-gray-200" />
-              <div className="text-gray-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedEmail.content }} />
+              <p className="text-sm text-muted-foreground mb-1">From: <span className="font-semibold text-foreground">{selectedEmail.from}</span></p>
+              <p className="text-sm text-muted-foreground">To: {selectedEmail.to}</p>
+              {selectedEmail.cc && <p className="text-sm text-muted-foreground">Cc: {selectedEmail.cc}</p>}
+              <div className="text-xs text-muted-foreground mt-1">{new Date(selectedEmail.receivedAt).toLocaleString()}</div>
+              <hr className="my-4" />
+              <div className="text-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: selectedEmail.content }} />
               {selectedEmail.tags?.includes('action-required') && (
-                <div className="mt-6 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center space-x-2">
+                <div className="mt-6 p-3 bg-destructive/10 border border-destructive/20 text-destructive-foreground rounded-lg flex items-center space-x-2">
                   <BrainCircuit className="h-5 w-5" />
                   <p className="font-semibold">AI Insight: This email likely requires your urgent attention.</p>
                 </div>
               )}
             </div>
-            <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end space-x-3 rounded-b-xl">
-                <button onClick={() => toggleReadStatus(selectedEmail.id)} className="px-5 py-2 bg-blue-500 text-white text-sm rounded-full shadow-md hover:bg-blue-600 transition-colors duration-200">{selectedEmail.isRead ? 'Mark as Unread' : 'Mark as Read'}</button>
-                <button onClick={() => toggleStarredStatus(selectedEmail.id)} className="px-5 py-2 bg-yellow-500 text-white text-sm rounded-full shadow-md hover:bg-yellow-600 transition-colors duration-200">{selectedEmail.isStarred ? 'Unstar' : 'Star'}</button>
-                <button onClick={() => deleteEmail(selectedEmail.id)} className="px-5 py-2 bg-red-500 text-white text-sm rounded-full shadow-md hover:bg-red-600 transition-colors duration-200">Delete</button>
+            <div className="p-4 border-t bg-muted/50 flex justify-end space-x-3 rounded-b-xl">
+                <button onClick={() => toggleReadStatus(selectedEmail.id)} className="px-5 py-2 bg-primary text-primary-foreground text-sm rounded-full shadow-md hover:bg-primary/90 transition-colors duration-200">{selectedEmail.isRead ? 'Mark as Unread' : 'Mark as Read'}</button>
+                <button onClick={() => toggleStarredStatus(selectedEmail.id)} className="px-5 py-2 bg-yellow-400 text-black text-sm rounded-full shadow-md hover:bg-yellow-500 transition-colors duration-200">{selectedEmail.isStarred ? 'Unstar' : 'Star'}</button>
+                <button onClick={() => deleteEmail(selectedEmail.id)} className="px-5 py-2 bg-destructive text-destructive-foreground text-sm rounded-full shadow-md hover:bg-destructive/90 transition-colors duration-200">Delete</button>
             </div>
           </div>
         </div>
@@ -417,68 +396,68 @@ export default function OgeeMailPage() {
 
       {isComposeOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl transform scale-100 opacity-100 transition-all duration-300 ease-out flex flex-col h-[90vh] md:h-[80vh]">
-            <div className="p-5 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-purple-500 flex justify-between items-center rounded-t-xl">
-              <h2 className="text-2xl font-bold text-white">Compose New Mail</h2>
-              <button onClick={handleCloseCompose} className="p-2 rounded-full hover:bg-white/20 transition-colors duration-200"><X className="h-6 w-6 text-white" /></button>
+          <div className="bg-card rounded-xl shadow-2xl w-full max-w-3xl transform scale-100 opacity-100 transition-all duration-300 ease-out flex flex-col h-[90vh] md:h-[80vh] border">
+            <div className="p-5 border-b bg-primary flex justify-between items-center rounded-t-xl">
+              <h2 className="text-2xl font-bold text-primary-foreground">Compose New Mail</h2>
+              <button onClick={handleCloseCompose} className="p-2 rounded-full hover:bg-white/20 transition-colors duration-200"><X className="h-6 w-6 text-primary-foreground" /></button>
             </div>
             <div className="p-5 space-y-4 flex-1 overflow-y-auto custom-scrollbar">
               <div className="flex items-center space-x-3">
-                  <label htmlFor="to" className="text-sm font-medium text-gray-700 w-16 shrink-0">To</label>
-                  <input type="email" id="to" className="flex-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-400 focus:border-transparent" placeholder="Recipients" value={newEmail.to} onChange={(e) => setNewEmail(prev => ({ ...prev, to: e.target.value }))} />
-                  <button onClick={() => handleMicClick('to')} className={cn("p-2 rounded-full", activeVoiceInput === 'to' && isListening ? "bg-red-500 text-white animate-pulse" : "hover:bg-gray-100")}><Mic className="h-5 w-5" /></button>
-                  <button type="button" className="px-3 py-2 text-xs font-medium rounded-full text-blue-600 hover:bg-blue-50" onClick={() => setShowCcBcc(!showCcBcc)}>{showCcBcc ? 'Hide' : 'Cc/Bcc'}</button>
+                  <label htmlFor="to" className="text-sm font-medium text-foreground w-16 shrink-0">To</label>
+                  <input type="email" id="to" className="flex-1 w-full px-4 py-2 border border-input rounded-lg focus:ring-ring focus:border-transparent" placeholder="Recipients" value={newEmail.to} onChange={(e) => setNewEmail(prev => ({ ...prev, to: e.target.value }))} />
+                  <button onClick={() => handleMicClick('to')} className={cn("p-2 rounded-full", activeVoiceInput === 'to' && isListening ? "bg-destructive text-destructive-foreground animate-pulse" : "hover:bg-secondary")}><Mic className="h-5 w-5" /></button>
+                  <button type="button" className="px-3 py-2 text-xs font-medium rounded-full text-primary hover:bg-secondary" onClick={() => setShowCcBcc(!showCcBcc)}>{showCcBcc ? 'Hide' : 'Cc/Bcc'}</button>
               </div>
               {showCcBcc && (
                   <>
                     <div className="flex items-center space-x-3">
-                      <label htmlFor="cc" className="text-sm font-medium text-gray-700 w-16 shrink-0">CC</label>
-                      <input type="email" id="cc" className="flex-1 w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Carbon copy" value={newEmail.cc || ''} onChange={(e) => setNewEmail(prev => ({ ...prev, cc: e.target.value }))} />
-                      <button onClick={() => handleMicClick('cc')} className={cn("p-2 rounded-full", activeVoiceInput === 'cc' && isListening ? "bg-red-500 text-white animate-pulse" : "hover:bg-gray-100")}><Mic className="h-5 w-5" /></button>
+                      <label htmlFor="cc" className="text-sm font-medium text-foreground w-16 shrink-0">CC</label>
+                      <input type="email" id="cc" className="flex-1 w-full px-4 py-2 border border-input rounded-lg" placeholder="Carbon copy" value={newEmail.cc || ''} onChange={(e) => setNewEmail(prev => ({ ...prev, cc: e.target.value }))} />
+                      <button onClick={() => handleMicClick('cc')} className={cn("p-2 rounded-full", activeVoiceInput === 'cc' && isListening ? "bg-destructive text-destructive-foreground animate-pulse" : "hover:bg-secondary")}><Mic className="h-5 w-5" /></button>
                     </div>
                     <div className="flex items-center space-x-3">
-                      <label htmlFor="bcc" className="text-sm font-medium text-gray-700 w-16 shrink-0">BCC</label>
-                      <input type="email" id="bcc" className="flex-1 w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Blind carbon copy" value={newEmail.bcc || ''} onChange={(e) => setNewEmail(prev => ({ ...prev, bcc: e.target.value }))} />
-                      <button onClick={() => handleMicClick('bcc')} className={cn("p-2 rounded-full", activeVoiceInput === 'bcc' && isListening ? "bg-red-500 text-white animate-pulse" : "hover:bg-gray-100")}><Mic className="h-5 w-5" /></button>
+                      <label htmlFor="bcc" className="text-sm font-medium text-foreground w-16 shrink-0">BCC</label>
+                      <input type="email" id="bcc" className="flex-1 w-full px-4 py-2 border border-input rounded-lg" placeholder="Blind carbon copy" value={newEmail.bcc || ''} onChange={(e) => setNewEmail(prev => ({ ...prev, bcc: e.target.value }))} />
+                      <button onClick={() => handleMicClick('bcc')} className={cn("p-2 rounded-full", activeVoiceInput === 'bcc' && isListening ? "bg-destructive text-destructive-foreground animate-pulse" : "hover:bg-secondary")}><Mic className="h-5 w-5" /></button>
                     </div>
                   </>
                 )}
               <div className="flex items-center space-x-3">
-                <label htmlFor="subject" className="text-sm font-medium text-gray-700 w-16 shrink-0">Subject</label>
-                <input type="text" id="subject" className="flex-1 w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="Subject" value={newEmail.subject} onChange={(e) => setNewEmail(prev => ({ ...prev, subject: e.target.value }))} />
-                <button onClick={() => handleMicClick('subject')} className={cn("p-2 rounded-full", activeVoiceInput === 'subject' && isListening ? "bg-red-500 text-white animate-pulse" : "hover:bg-gray-100")}><Mic className="h-5 w-5" /></button>
+                <label htmlFor="subject" className="text-sm font-medium text-foreground w-16 shrink-0">Subject</label>
+                <input type="text" id="subject" className="flex-1 w-full px-4 py-2 border border-input rounded-lg" placeholder="Subject" value={newEmail.subject} onChange={(e) => setNewEmail(prev => ({ ...prev, subject: e.target.value }))} />
+                <button onClick={() => handleMicClick('subject')} className={cn("p-2 rounded-full", activeVoiceInput === 'subject' && isListening ? "bg-destructive text-destructive-foreground animate-pulse" : "hover:bg-secondary")}><Mic className="h-5 w-5" /></button>
               </div>
               
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
-                  <label className="text-sm font-medium text-gray-700">Message</label>
-                  <button onClick={() => handleMicClick('content')} className={cn("p-2 rounded-full", activeVoiceInput === 'content' && isListening ? "bg-red-500 text-white animate-pulse" : "hover:bg-gray-100")}><Mic className="h-5 w-5" /></button>
+                  <label className="text-sm font-medium text-foreground">Message</label>
+                  <button onClick={() => handleMicClick('content')} className={cn("p-2 rounded-full", activeVoiceInput === 'content' && isListening ? "bg-destructive text-destructive-foreground animate-pulse" : "hover:bg-secondary")}><Mic className="h-5 w-5" /></button>
                 </div>
-                <div className="bg-gray-50 border rounded-lg p-2 overflow-x-auto">
+                <div className="bg-muted border rounded-lg p-2 overflow-x-auto">
                     <div className="flex items-center flex-nowrap gap-1">
-                        <button type="button" className="p-1.5 rounded hover:bg-gray-200" onClick={() => applyTextFormatting('bold')} title="Bold"><Bold size={16}/></button>
-                        <button type="button" className="p-1.5 rounded hover:bg-gray-200" onClick={() => applyTextFormatting('italic')} title="Italic"><Italic size={16}/></button>
-                        <button type="button" className="p-1.5 rounded hover:bg-gray-200" onClick={() => applyTextFormatting('underline')} title="Underline"><Underline size={16}/></button>
-                        <button type="button" className="p-1.5 rounded hover:bg-gray-200" onClick={() => applyTextFormatting('strikeThrough')} title="Strikethrough"><Strikethrough size={16}/></button>
-                        <button type="button" className="p-1.5 rounded hover:bg-gray-200" onClick={() => applyTextFormatting('insertUnorderedList')} title="Bullet List"><List size={16}/></button>
-                        <button type="button" className="p-1.5 rounded hover:bg-gray-200" onClick={() => { const url = prompt("Enter URL:"); if (url) applyTextFormatting('createLink', url); }} title="Insert Link"><Link2 size={16}/></button>
-                        <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                        <button type="button" className="p-1.5 rounded hover:bg-gray-200" onClick={() => applyTextFormatting('justifyLeft')} title="Align Left"><AlignLeft size={16}/></button>
-                        <button type="button" className="p-1.5 rounded hover:bg-gray-200" onClick={() => applyTextFormatting('justifyCenter')} title="Align Center"><AlignCenter size={16}/></button>
-                        <button type="button" className="p-1.5 rounded hover:bg-gray-200" onClick={() => applyTextFormatting('justifyRight')} title="Align Right"><AlignRight size={16}/></button>
-                        <div className="w-px h-5 bg-gray-300 mx-1"></div>
+                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('bold')} title="Bold"><Bold size={16}/></button>
+                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('italic')} title="Italic"><Italic size={16}/></button>
+                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('underline')} title="Underline"><Underline size={16}/></button>
+                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('strikeThrough')} title="Strikethrough"><Strikethrough size={16}/></button>
+                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('insertUnorderedList')} title="Bullet List"><List size={16}/></button>
+                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => { const url = prompt("Enter URL:"); if (url) applyTextFormatting('createLink', url); }} title="Insert Link"><Link2 size={16}/></button>
+                        <div className="w-px h-5 bg-border mx-1"></div>
+                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('justifyLeft')} title="Align Left"><AlignLeft size={16}/></button>
+                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('justifyCenter')} title="Align Center"><AlignCenter size={16}/></button>
+                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('justifyRight')} title="Align Right"><AlignRight size={16}/></button>
+                        <div className="w-px h-5 bg-border mx-1"></div>
                         <input type="color" value={textFormatting.highlightColor} onChange={(e) => setTextFormatting(prev => ({ ...prev, highlightColor: e.target.value }))} className="w-6 h-6 border-none bg-transparent cursor-pointer" title="Highlight Color"/>
-                        <button type="button" className="p-1.5 rounded hover:bg-gray-200" onClick={highlightSelectedText} title="Highlight Selection"><Highlighter size={16}/></button>
+                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={highlightSelectedText} title="Highlight Selection"><Highlighter size={16}/></button>
                     </div>
                 </div>
-                <div ref={contentRef} contentEditable="true" className="w-full min-h-[300px] p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md border bg-white" onInput={handleContentInput} dangerouslySetInnerHTML={{ __html: newEmail.content }} placeholder="Compose your message..." />
+                <div ref={contentRef} contentEditable="true" className="w-full min-h-[300px] p-3 focus:outline-none focus:ring-2 focus:ring-ring rounded-md border bg-card" onInput={handleContentInput} dangerouslySetInnerHTML={{ __html: newEmail.content }} placeholder="Compose your message..." />
               </div>
             </div>
-            <div className="p-5 border-t border-gray-200 bg-gray-50 flex justify-between items-center rounded-b-xl">
-                <div className="text-sm text-gray-500">{getWordCount()} words / {getCharacterCount()} chars</div>
+            <div className="p-5 border-t bg-muted/50 flex justify-between items-center rounded-b-xl">
+                <div className="text-sm text-muted-foreground">{getWordCount()} words / {getCharacterCount()} chars</div>
                 <div className="flex space-x-3">
-                    <button onClick={handleCloseCompose} className="px-6 py-2 bg-gray-300 text-gray-800 font-semibold rounded-full shadow-md hover:bg-gray-400">Cancel</button>
-                    <button onClick={handleSendEmail} className="px-6 py-2 bg-gradient-to-r from-green-500 to-teal-500 text-white font-semibold rounded-full shadow-lg hover:from-green-600 hover:to-teal-600">Send</button>
+                    <button onClick={handleCloseCompose} className="px-6 py-2 bg-muted text-muted-foreground font-semibold rounded-full shadow-md hover:bg-muted/80">Cancel</button>
+                    <button onClick={handleSendEmail} className="px-6 py-2 bg-green-500 text-white font-semibold rounded-full shadow-lg hover:bg-green-600">Send</button>
                 </div>
             </div>
           </div>
@@ -487,12 +466,12 @@ export default function OgeeMailPage() {
 
       {showCloseConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-[1001] flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">Discard Changes?</h3>
-            <p className="text-gray-600 mb-6">You have unsaved changes. Are you sure you want to close?</p>
+          <div className="bg-card rounded-lg shadow-xl p-6 max-w-sm w-full text-center border">
+            <h3 className="text-xl font-bold text-foreground mb-4">Discard Changes?</h3>
+            <p className="text-muted-foreground mb-6">You have unsaved changes. Are you sure you want to close?</p>
             <div className="flex justify-center space-x-4">
-              <button onClick={() => setShowCloseConfirm(false)} className="px-5 py-2 rounded-full border border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-100">Keep Editing</button>
-              <button onClick={confirmCloseCompose} className="px-5 py-2 rounded-full bg-red-500 text-white font-semibold hover:bg-red-600">Discard</button>
+              <button onClick={() => setShowCloseConfirm(false)} className="px-5 py-2 rounded-full border bg-background text-foreground font-semibold hover:bg-secondary">Keep Editing</button>
+              <button onClick={confirmCloseCompose} className="px-5 py-2 rounded-full bg-destructive text-destructive-foreground font-semibold hover:bg-destructive/90">Discard</button>
             </div>
           </div>
         </div>

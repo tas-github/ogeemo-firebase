@@ -142,7 +142,7 @@ export default function ActionManagerPage() {
   ];
 
   return (
-    <div className="flex flex-col flex-1 space-y-4 min-h-0">
+    <div className="p-4 sm:p-6 flex flex-col flex-1 space-y-4 min-h-0">
       <header className="text-center">
         <h1 className="text-3xl font-bold font-headline text-primary">Welcome to your Ogeemo Action Manager</h1>
         <p className="text-muted-foreground">
