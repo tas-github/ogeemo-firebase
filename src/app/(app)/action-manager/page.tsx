@@ -15,6 +15,7 @@ import {
   User,
   Users,
   LoaderCircle,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,11 +29,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { askOgeemo } from "@/ai/flows/ogeemo-chat";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -51,6 +52,18 @@ export default function ActionManagerPage() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  const introContent = {
+    welcome:
+      "Ogeemo is your central hub for productivity. Use this Action Manager to chat with Ogeemo, learn about its features, and quickly navigate to different modules.",
+    about:
+      "Ogeemo is an intelligent platform designed to streamline your workflow by integrating tasks, communication, and project management into a single, cohesive experience.",
+    howTo:
+      "Simply type your request or question into the chat box, or click the microphone to use your voice. You can ask for information, tell Ogeemo to perform an action, or use the quick navigation links below.",
+  };
+
+  const [selectedIntro, setSelectedIntro] = useState(introContent.welcome);
+  const [introTitle, setIntroTitle] = useState("Welcome & Overview");
 
   const { isListening, startListening, stopListening, isSupported } =
     useSpeechToText({
@@ -137,137 +150,144 @@ export default function ActionManagerPage() {
         </p>
       </header>
 
-      <div className="grid md:grid-cols-10 gap-6 flex-1 min-h-0">
-        <div className="md:col-span-3 flex flex-col gap-6">
-           <Card>
+      <div className="flex-1 min-h-0">
+        <Card className="h-full flex flex-col">
             <CardHeader>
-                <CardTitle>Introduction</CardTitle>
+                <CardTitle>Tell me what you would like to do</CardTitle>
+                <CardDescription>
+                Ask me anything about Ogeemo or describe what you'd like to accomplish.
+                </CardDescription>
             </CardHeader>
-            <CardContent>
-                <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="item-1">
-                        <AccordionTrigger>Welcome & Overview</AccordionTrigger>
-                        <AccordionContent>
-                        Ogeemo is your central hub for productivity. Use this Action Manager to chat with Ogeemo, learn about its features, and quickly navigate to different modules.
-                        </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="item-2">
-                        <AccordionTrigger>About Ogeemo</AccordionTrigger>
-                        <AccordionContent>
-                        Ogeemo is an intelligent platform designed to streamline your workflow by integrating tasks, communication, and project management into a single, cohesive experience.
-                        </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="item-3">
-                        <AccordionTrigger>How to Use Ogeemo</AccordionTrigger>
-                        <AccordionContent>
-                        Simply type your request or question into the chat box, or click the microphone to use your voice. You can ask for information, tell Ogeemo to perform an action, or use the quick navigation links below.
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
-            </CardContent>
-           </Card>
-        </div>
-
-        <div className="md:col-span-7 flex flex-col">
-            <Card className="flex-1 flex flex-col">
-                <CardHeader>
-                    <CardTitle>Tell me what you would like to do</CardTitle>
-                    <CardDescription>
-                    Ask me anything about Ogeemo or describe what you'd like to accomplish.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1 overflow-hidden">
-                   <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
-                        <div className="space-y-4">
-                            {messages.map((message) => (
-                                <div
-                                key={message.id}
-                                className={cn(
-                                    "flex items-start gap-3",
-                                    message.sender === "user" ? "justify-end" : "justify-start"
-                                )}
-                                >
-                                {message.sender === "ogeemo" && (
-                                    <Avatar className="h-8 w-8">
-                                    <AvatarFallback><Bot /></AvatarFallback>
-                                    </Avatar>
-                                )}
-                                <div
-                                    className={cn(
-                                    "max-w-xs md:max-w-md lg:max-w-lg rounded-lg px-4 py-2 text-sm",
-                                    message.sender === "user"
-                                        ? "bg-primary text-primary-foreground"
-                                        : "bg-muted"
-                                    )}
-                                >
-                                    {message.text}
-                                </div>
-                                {message.sender === "user" && (
-                                    <Avatar className="h-8 w-8">
-                                    <AvatarFallback><User /></AvatarFallback>
-                                    </Avatar>
-                                )}
-                                </div>
-                            ))}
-                            {isLoading && (
-                                <div className="flex items-start gap-3 justify-start">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarFallback><Bot /></AvatarFallback>
-                                </Avatar>
-                                <div className="bg-muted rounded-lg px-4 py-2 text-sm flex items-center">
-                                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                                </div>
-                                </div>
+            <CardContent className="flex-1 overflow-hidden">
+               <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
+                    <div className="space-y-4">
+                        {messages.map((message) => (
+                            <div
+                            key={message.id}
+                            className={cn(
+                                "flex items-start gap-3",
+                                message.sender === "user" ? "justify-end" : "justify-start"
                             )}
-                        </div>
-                    </ScrollArea>
-                </CardContent>
-                <CardFooter>
-                    <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="icon" 
-                          className={cn("flex-shrink-0", isListening && "text-destructive animate-pulse")}
-                          onClick={isListening ? stopListening : startListening}
-                          disabled={!isSupported || isLoading}
-                          title={!isSupported ? "Voice input not supported" : (isListening ? "Stop listening" : "Start listening")}
-                        >
-                            <Mic className="h-5 w-5" />
-                            <span className="sr-only">Use Voice</span>
-                        </Button>
-                        <Input
-                            placeholder="Enter your message here..."
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            disabled={isLoading}
-                            autoComplete="off"
-                        />
-                        <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-                            <Send className="h-5 w-5" />
-                            <span className="sr-only">Send Message</span>
-                        </Button>
-                    </form>
-                </CardFooter>
-            </Card>
-        </div>
+                            >
+                            {message.sender === "ogeemo" && (
+                                <Avatar className="h-8 w-8">
+                                <AvatarFallback><Bot /></AvatarFallback>
+                                </Avatar>
+                            )}
+                            <div
+                                className={cn(
+                                "max-w-xs md:max-w-md lg:max-w-lg rounded-lg px-4 py-2 text-sm",
+                                message.sender === "user"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-muted"
+                                )}
+                            >
+                                {message.text}
+                            </div>
+                            {message.sender === "user" && (
+                                <Avatar className="h-8 w-8">
+                                <AvatarFallback><User /></AvatarFallback>
+                                </Avatar>
+                            )}
+                            </div>
+                        ))}
+                        {isLoading && (
+                            <div className="flex items-start gap-3 justify-start">
+                            <Avatar className="h-8 w-8">
+                                <AvatarFallback><Bot /></AvatarFallback>
+                            </Avatar>
+                            <div className="bg-muted rounded-lg px-4 py-2 text-sm flex items-center">
+                                <LoaderCircle className="h-4 w-4 animate-spin" />
+                            </div>
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
+            </CardContent>
+            <CardFooter>
+                <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      className={cn("flex-shrink-0", isListening && "text-destructive animate-pulse")}
+                      onClick={isListening ? stopListening : startListening}
+                      disabled={!isSupported || isLoading}
+                      title={!isSupported ? "Voice input not supported" : (isListening ? "Stop listening" : "Start listening")}
+                    >
+                        <Mic className="h-5 w-5" />
+                        <span className="sr-only">Use Voice</span>
+                    </Button>
+                    <Input
+                        placeholder="Enter your message here..."
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        disabled={isLoading}
+                        autoComplete="off"
+                    />
+                    <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+                        <Send className="h-5 w-5" />
+                        <span className="sr-only">Send Message</span>
+                    </Button>
+                </form>
+            </CardFooter>
+        </Card>
       </div>
 
-      <footer>
-        <Card>
-            <CardHeader>
-                <CardTitle>Quick Navigation</CardTitle>
-                <CardDescription>Jump to any manager instantly.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-                {quickNavItems.map((item) => (
-                    <Button key={item.label} variant="outline" className="flex flex-col h-20 gap-2">
-                        <item.icon className="w-6 h-6" />
-                        <span>{item.label}</span>
-                    </Button>
-                ))}
-            </CardContent>
-        </Card>
+      <footer className="pt-0">
+        <div className="grid md:grid-cols-2 gap-6 items-start">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Quick Navigation</CardTitle>
+                    <CardDescription>Jump to any manager instantly.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {quickNavItems.map((item) => (
+                        <Button key={item.label} variant="outline" className="flex flex-col h-20 gap-2">
+                            <item.icon className="w-6 h-6" />
+                            <span>{item.label}</span>
+                        </Button>
+                    ))}
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Introduction</CardTitle>
+                    <CardDescription>Select a topic to learn more about Ogeemo.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                          <span>{introTitle}</span>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                        <DropdownMenuItem onSelect={() => {
+                          setIntroTitle("Welcome & Overview");
+                          setSelectedIntro(introContent.welcome);
+                        }}>
+                          Welcome & Overview
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => {
+                          setIntroTitle("About Ogeemo");
+                          setSelectedIntro(introContent.about);
+                        }}>
+                          About Ogeemo
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => {
+                          setIntroTitle("How to Use Ogeemo");
+                          setSelectedIntro(introContent.howTo);
+                        }}>
+                          How to Use Ogeemo
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <p className="text-sm text-muted-foreground min-h-[6rem]">{selectedIntro}</p>
+                </CardContent>
+            </Card>
+        </div>
       </footer>
     </div>
   );
