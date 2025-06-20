@@ -339,8 +339,8 @@ export default function OgeeMailPage() {
     showAppToast("Text Highlighted", `Text highlighted with ${textFormatting.highlightColor}`);
   };
 
-  const getWordCount = useCallback(() => (contentRef.current?.innerText || '').trim().split(/\s+/).filter(Boolean).length, [newEmail.content]);
-  const getCharacterCount = useCallback(() => (contentRef.current?.innerText || '').length, [newEmail.content]);
+  const getWordCount = useCallback(() => (contentRef.current?.innerText || '').trim().split(/\s+/).filter(Boolean).length, []);
+  const getCharacterCount = useCallback(() => (contentRef.current?.innerText || '').length, []);
 
   const filteredEmails = emails.filter((email: Email) => {
     const lowerCaseQuery = searchQuery.toLowerCase();
@@ -554,3 +554,5 @@ export default function OgeeMailPage() {
     </div>
   );
 }
+
+    
