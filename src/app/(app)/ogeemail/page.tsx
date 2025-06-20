@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -105,9 +106,159 @@ export default function OgeeMailPage() {
       
       if (fetchedEmails.length === 0 && emails.length === 0) {
         const initialMockEmails = [
-            { subject: 'Welcome to Ogeemo Mail!', from: 'support@ogeemo.com', to: 'you@ogeemo.com', content: 'Hello! Welcome to your new, intuitive email experience.', isRead: false, isStarred: false, priority: "medium", receivedAt: new Date(Date.now() - 3600000).toISOString(), tags: ['welcome', 'important'], folder: "inbox", isArchived: false, hasAttachments: false, category: "primary" },
-            { subject: 'Your Weekly Digest: Ogeemo Updates', from: 'updates@ogeemo.com', to: 'you@ogeemo.com', content: 'Here are the latest updates from Ogeemo.', isRead: true, isStarred: true, priority: "medium", receivedAt: new Date(Date.now() - 86400000 * 2).toISOString(), tags: ['update'], folder: "inbox", isArchived: false, hasAttachments: false, category: "updates" },
-            { subject: 'Meeting Reminder: Project Alpha Sync', from: 'calendar@ogeemo.com', to: 'you@ogeemo.com', content: 'Reminder: Project Alpha sync meeting today at 2 PM.', isRead: false, isStarred: false, priority: "high", receivedAt: new Date(Date.now() - 1800000).toISOString(), tags: ['meeting', 'reminder'], folder: "inbox", isArchived: false, hasAttachments: false, category: "primary" },
+            // Inbox (5)
+            {
+                subject: 'Welcome to Ogeemo Mail!',
+                from: 'support@ogeemo.com',
+                to: 'you@ogeemo.com',
+                content: 'Hello! Welcome to your new, intuitive email experience. We are here to simplify your communications with intelligent features.',
+                isRead: false,
+                isStarred: true,
+                priority: "medium" as "medium",
+                receivedAt: new Date(Date.now() - 3600000).toISOString(),
+                tags: ['welcome', 'important'],
+                folder: "inbox",
+                isArchived: false,
+                hasAttachments: false,
+                category: "primary" as "primary"
+            },
+            {
+                subject: 'Project Zeus - Budget Approval Needed',
+                from: 'finance@yourcompany.com',
+                to: 'you@ogeemo.com',
+                content: '<p>Hi Team,</p><p>The budget for <strong>Project Zeus</strong> requires your final approval. Please review the attached document and provide your feedback by EOD tomorrow.</p><p>Thanks,</p><p>Finance Department</p>',
+                isRead: false,
+                isStarred: false,
+                priority: "high" as "high",
+                receivedAt: new Date(Date.now() - 86400000 * 1).toISOString(),
+                tags: ['project', 'finance', 'action-required'],
+                folder: "inbox",
+                isArchived: false,
+                hasAttachments: true,
+                category: "primary" as "primary"
+            },
+            {
+                subject: 'New Feature Alert: AI-Powered Summaries',
+                from: 'product@ogeemo.com',
+                to: 'you@ogeemo.com',
+                content: 'Exciting news! We\'ve just launched AI-powered email summaries. Now you can get the gist of long threads in seconds. Try it out on your next long email!',
+                isRead: true,
+                isStarred: true,
+                priority: "medium" as "medium",
+                receivedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+                tags: ['feature', 'new'],
+                folder: "inbox",
+                isArchived: false,
+                hasAttachments: false,
+                category: "updates" as "updates"
+            },
+            {
+                subject: 'Your Weekly Digest: Ogeemo Updates',
+                from: 'updates@ogeemo.com',
+                to: 'you@ogeemo.com',
+                content: 'Here are the latest updates from Ogeemo. This week, we improved performance and squashed some bugs. Stay productive!',
+                isRead: true,
+                isStarred: false,
+                priority: "low" as "low",
+                receivedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+                tags: ['update', 'digest'],
+                folder: "inbox",
+                isArchived: false,
+                hasAttachments: false,
+                category: "updates" as "updates"
+            },
+            {
+                subject: 'Meeting Reminder: Q3 Planning Session',
+                from: 'calendar@ogeemo.com',
+                to: 'you@ogeemo.com',
+                content: 'Reminder: The Q3 Planning Session is scheduled for this Friday at 10:00 AM in the main conference room.',
+                isRead: false,
+                isStarred: false,
+                priority: "high" as "high",
+                receivedAt: new Date(Date.now() - 1800000).toISOString(),
+                tags: ['meeting', 'reminder'],
+                folder: "inbox",
+                isArchived: false,
+                hasAttachments: false,
+                category: "primary" as "primary"
+            },
+
+            // Sent (5)
+            {
+                subject: 'Re: Project Alpha Sync',
+                from: 'you@ogeemo.com',
+                to: 'teammate@ogeemo.com',
+                content: '<p>Sounds good. I have added my notes to the shared document. See you at the sync.</p>',
+                isRead: true,
+                isStarred: false,
+                priority: "medium" as "medium",
+                receivedAt: new Date(Date.now() - 3000000).toISOString(),
+                tags: ['sent', 'project-alpha'],
+                folder: 'sent',
+                isArchived: false,
+                hasAttachments: false,
+                category: "primary" as "primary"
+            },
+            {
+                subject: 'Draft for Q3 Report',
+                from: 'you@ogeemo.com',
+                to: 'manager@ogeemo.com',
+                content: '<p>Hi Manager,</p><p>Here is the first draft of the Q3 report. Please let me know your thoughts.</p><p>Best,</p><p>Me</p>',
+                isRead: true,
+                isStarred: false,
+                priority: "medium" as "medium",
+                receivedAt: new Date(Date.now() - 90000000).toISOString(),
+                tags: ['sent', 'report', 'q3'],
+                folder: 'sent',
+                isArchived: false,
+                hasAttachments: true,
+                category: "primary" as "primary"
+            },
+            {
+                subject: 'Following up on our call',
+                from: 'you@ogeemo.com',
+                to: 'client@external.com',
+                content: 'Hi Client, it was great speaking with you earlier. As discussed, I\'ve attached the proposal for your review. Looking forward to hearing from you.',
+                isRead: true,
+                isStarred: true,
+                priority: "high" as "high",
+                receivedAt: new Date(Date.now() - 172800000).toISOString(),
+                tags: ['sent', 'client', 'follow-up'],
+                folder: 'sent',
+                isArchived: false,
+                hasAttachments: true,
+                category: "primary" as "primary"
+            },
+            {
+                subject: 'Team Lunch tomorrow?',
+                from: 'you@ogeemo.com',
+                to: 'team-distro@ogeemo.com',
+                content: 'Hey team, anyone interested in grabbing lunch tomorrow around noon? Let me know!',
+                isRead: true,
+                isStarred: false,
+                priority: "low" as "low",
+                receivedAt: new Date(Date.now() - 259200000).toISOString(),
+                tags: ['sent', 'social'],
+                folder: 'sent',
+                isArchived: false,
+                hasAttachments: false,
+                category: "social" as "social"
+            },
+            {
+                subject: 'Quick question about the new design',
+                from: 'you@ogeemo.com',
+                to: 'designer@ogeemo.com',
+                content: 'Hey Designer, I had a quick question about the spacing on the new landing page mockup. Do you have a moment to chat this afternoon?',
+                isRead: true,
+                isStarred: false,
+                priority: "medium" as "medium",
+                receivedAt: new Date(Date.now() - 345600000).toISOString(),
+                tags: ['sent', 'design', 'question'],
+                folder: 'sent',
+                isArchived: false,
+                hasAttachments: false,
+                category: "primary" as "primary"
+            },
         ];
         for (const email of initialMockEmails) {
             try {
