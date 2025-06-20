@@ -293,10 +293,10 @@ export default function OgeeMailPage() {
       <header className="bg-white/90 backdrop-blur-sm shadow-sm p-4 border-b border-gray-200 sticky top-0 z-20 rounded-b-xl">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-2 rounded-lg shadow-md">
-              <Mail className="h-7 w-7 text-white" />
+            <div className="bg-primary p-2 rounded-lg shadow-md">
+              <Mail className="h-7 w-7 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+            <h1 className="text-3xl font-bold font-headline text-primary">
               Ogeemo Mail
             </h1>
             {userId && (
