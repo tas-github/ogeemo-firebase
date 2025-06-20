@@ -1,0 +1,277 @@
+
+"use client";
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+    Archive, Star, Send, Trash2, Inbox, FileText, Pencil, Search, MoreVertical, CornerUpLeft, Beaker
+} from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
+import { db, auth } from '@/lib/firebase';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, getDocs } from 'firebase/firestore';
+import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { LoaderCircle } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
+
+interface Email {
+  id: string;
+  from: string;
+  fromEmail: string;
+  to?: string;
+  subject: string;
+  text: string;
+  date: string;
+  read: boolean;
+  starred: boolean;
+  folder: 'inbox' | 'sent' | 'archive' | 'spam' | 'trash';
+  labels: string[];
+}
+
+const appId = process.env.NEXT_PUBLIC_OGEEMO_APP_ID || 'default-app-id';
+const collectionName = 'sandbox-emails';
+
+export default function SandboxPage() {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [emails, setEmails] = useState<Email[]>([]);
+  const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
+  const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState({ to: '', subject: '', text: '' });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [activeFolder, setActiveFolder] = useState<'inbox' | 'sent' | 'archive' | 'trash' | 'starred'>("inbox");
+  const mockDataAddedRef = useRef(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setUserId(user.uid);
+      } else {
+        try {
+          await signInAnonymously(auth);
+        } catch (error) {
+          console.error("Error signing in anonymously:", error);
+        }
+      }
+      setIsAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const addMockData = useCallback(async (uid: string) => {
+    if (mockDataAddedRef.current) return;
+    mockDataAddedRef.current = true;
+    const emailsCollectionRef = collection(db, `artifacts/${appId}/users/${uid}/${collectionName}`);
+    
+    // Check if data already exists
+    const existingDocs = await getDocs(emailsCollectionRef);
+    if (!existingDocs.empty) {
+        return;
+    }
+
+    const mockEmails = [
+      { from: 'The Sandbox Team', fromEmail: 'team@sandbox.com', to: 'you@sandbox.com', subject: 'Welcome to your Sandbox!', text: `<p>Hi there,</p><p>Welcome to your email sandbox. We've populated your inbox with some dummy emails so you can test out the functionality.</p><p>Best,<br/>The Sandbox Team</p>`, date: new Date(Date.now() - 1000 * 60 * 5).toISOString(), read: false, starred: true, folder: 'inbox', labels: ['welcome', 'important'] },
+      { from: 'Project Lead', fromEmail: 'lead@example.com', to: 'you@sandbox.com', subject: 'Project Update', text: `<p>Hello team,</p><p>Just a quick update on our progress. We are on track to meet our Q3 goals.</p><p>Regards,<br/>Lead</p>`, date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), read: true, starred: false, folder: 'inbox', labels: ['project-x'] },
+      { from: 'HR Department', fromEmail: 'hr@example.com', to: 'you@sandbox.com', subject: 'Company Policy Changes', text: `<p>Please review the updated company policies attached to this email.</p>`, date: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(), read: false, starred: false, folder: 'inbox', labels: ['company'] },
+      { from: 'You', fromEmail: 'you@sandbox.com', to: 'test@example.com', subject: 'Test Email', text: `<p>This is a test email from the sent folder.</p>`, date: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), read: true, starred: false, folder: 'sent', labels: [] },
+    ];
+
+    for (const email of mockEmails) {
+      try {
+        await addDoc(emailsCollectionRef, email);
+      } catch (error) {
+        console.error("Error adding mock email:", error);
+      }
+    }
+  }, [appId]);
+
+  useEffect(() => {
+    if (!isAuthReady || !userId) return;
+
+    const emailsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/${collectionName}`);
+    
+    const initialLoad = async () => {
+      await addMockData(userId);
+      setLoading(false);
+    }
+    
+    initialLoad();
+
+    const q = query(emailsCollectionRef, orderBy('date', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const fetchedEmails = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Email[];
+        setEmails(fetchedEmails);
+
+        // Auto-select first email logic
+        const currentVisibleEmails = fetchedEmails.filter(email => {
+            if (activeFolder === "inbox") return email.folder === 'inbox';
+            if (activeFolder === "starred") return email.starred && email.folder !== 'trash';
+            return email.folder === activeFolder;
+        });
+
+        if (selectedEmailId) {
+            const isSelectedStillVisible = currentVisibleEmails.some(e => e.id === selectedEmailId);
+            if (!isSelectedStillVisible) {
+                setSelectedEmailId(currentVisibleEmails.length > 0 ? currentVisibleEmails[0].id : null);
+            }
+        } else if (currentVisibleEmails.length > 0) {
+            setSelectedEmailId(currentVisibleEmails[0].id);
+        } else {
+            setSelectedEmailId(null);
+        }
+        setLoading(false);
+    }, (error) => {
+      console.error("Error fetching emails:", error);
+      toast({ variant: "destructive", title: "Loading Error", description: "Failed to load emails." });
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [isAuthReady, userId, addMockData, toast, activeFolder]);
+
+
+  const handleSelectEmail = async (emailId: string) => {
+    const email = emails.find(e => e.id === emailId);
+    if (!email || !userId) return;
+    setSelectedEmailId(emailId);
+    if (!email.read) {
+      const emailRef = doc(db, `artifacts/${appId}/users/${userId}/${collectionName}`, emailId);
+      await updateDoc(emailRef, { read: true });
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!userId) return;
+    const emailsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/${collectionName}`);
+    try {
+      await addDoc(emailsCollectionRef, { from: 'You', fromEmail: 'you@sandbox.com', to: newEmail.to, subject: newEmail.subject, text: `<p>${newEmail.text.replace(/\n/g, '</p><p>')}</p>`, date: new Date().toISOString(), read: true, starred: false, folder: 'sent', labels: [] });
+      setNewEmail({ to: '', subject: '', text: '' });
+      setIsComposeOpen(false);
+      toast({ title: "Success", description: "Email sent!" });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Could not send email." });
+    }
+  };
+
+  const selectedEmail = emails.find(e => e.id === selectedEmailId) || null;
+
+  const filteredEmails = emails.filter((email) => {
+    const lowerCaseQuery = searchQuery.toLowerCase();
+    const matchesSearch = email.subject.toLowerCase().includes(lowerCaseQuery) || email.from.toLowerCase().includes(lowerCaseQuery) || email.text.toLowerCase().includes(lowerCaseQuery);
+    if (!matchesSearch) return false;
+
+    if (activeFolder === "inbox") return email.folder === 'inbox';
+    if (activeFolder === "starred") return email.starred && email.folder !== 'trash';
+    if (activeFolder === "sent") return email.folder === 'sent';
+    if (activeFolder === "archive") return email.folder === 'archive';
+    if (activeFolder === "trash") return email.folder === 'trash';
+    return false;
+  });
+
+  const menuItems = [
+    { id: "inbox", label: "Inbox", icon: Inbox, count: emails.filter(e => e.folder === 'inbox' && !e.read).length },
+    { id: "starred", label: "Starred", icon: Star, count: emails.filter(e => e.starred && e.folder !== 'trash').length },
+    { id: "sent", label: "Sent", icon: Send, count: 0 },
+    { id: "archive", label: "Archive", icon: Archive, count: 0 },
+    { id: "trash", label: "Trash", icon: Trash2, count: 0 },
+  ];
+
+  return (
+    <TooltipProvider delayDuration={0}>
+      <div className="h-full flex flex-col bg-background text-foreground overflow-hidden">
+        <div className="flex items-center p-2 border-b">
+            <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input type="search" placeholder="Search mail..." className="w-full rounded-lg bg-muted pl-8" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            </div>
+            <Button className="ml-2" onClick={() => setIsComposeOpen(true)}>
+              <Pencil className="mr-2 h-4 w-4" /> Compose
+            </Button>
+        </div>
+        <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
+          <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
+            <div className="flex h-full flex-col p-2">
+              <nav className="flex flex-col gap-1">
+                {menuItems.map((item) => (
+                  <Button key={item.id} variant={activeFolder === item.id ? "secondary" : "ghost"} className="w-full justify-start gap-3" onClick={() => setActiveFolder(item.id as any)} >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                    {item.count > 0 && <span className="ml-auto text-xs font-normal bg-primary text-primary-foreground rounded-full px-2">{item.count}</span>}
+                  </Button>
+                ))}
+              </nav>
+            </div>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={30} minSize={20}>
+            <div className="flex flex-col h-full border-r">
+              <div className="flex-1 overflow-y-auto">
+              {loading ? <div className="flex h-full items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin text-primary" /></div>
+              : filteredEmails.length > 0 ? (
+                filteredEmails.map((email) => (
+                  <div key={email.id} onClick={() => handleSelectEmail(email.id)} className={cn('cursor-pointer border-b p-3 transition-colors', selectedEmailId === email.id ? 'bg-accent' : 'hover:bg-accent/50', !email.read && 'bg-primary/5')}>
+                    <div className="flex items-start justify-between">
+                      <p className={cn('font-semibold text-sm truncate', !email.read && 'text-primary')}>{email.from}</p>
+                      <time className="text-xs text-muted-foreground whitespace-nowrap">{new Date(email.date).toLocaleDateString()}</time>
+                    </div>
+                    <p className="font-medium truncate pr-4 text-sm mt-1">{email.subject}</p>
+                    <p className="truncate text-sm text-muted-foreground mt-1">{email.text.replace(/<[^>]+>/g, '')}</p>
+                  </div>
+                ))
+              ) : <div className="flex h-full items-center justify-center p-4 text-center text-muted-foreground"><p>No emails in {activeFolder}.</p></div>}
+              </div>
+            </div>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={50} minSize={30}>
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 h-full">
+              {selectedEmail ? (
+                <div>
+                  <div className="flex items-center justify-between border-b pb-4">
+                      <div className="flex items-center gap-4">
+                          <Avatar className="h-10 w-10"><AvatarImage src={`https://i.pravatar.cc/150?u=${selectedEmail.fromEmail}`} alt={selectedEmail.from} /><AvatarFallback>{selectedEmail.from?.charAt(0).toUpperCase() || 'S'}</AvatarFallback></Avatar>
+                          <div className="flex-1 min-w-0">
+                              <p className="font-semibold">{selectedEmail.from}</p>
+                              <p className="text-sm text-muted-foreground">To: {selectedEmail.to || 'You <you@sandbox.com>'}</p>
+                          </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <time>{new Date(selectedEmail.date).toLocaleString()}</time>
+                      </div>
+                  </div>
+                  <h2 className="text-2xl font-bold my-4">{selectedEmail.subject}</h2>
+                  <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedEmail.text }} />
+                </div>
+              ) : (
+                !loading && <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground"><Inbox className="h-16 w-16" /><p className="mt-4 text-lg">No email selected</p></div>
+              )}
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+
+        <Dialog open={isComposeOpen} onOpenChange={setIsComposeOpen}>
+            <DialogContent className="sm:max-w-3xl">
+            <DialogHeader><DialogTitle>Compose New Mail</DialogTitle></DialogHeader>
+            <div className="grid gap-4 py-4">
+                <Input placeholder="To" value={newEmail.to} onChange={(e) => setNewEmail(p => ({...p, to: e.target.value}))} />
+                <Input placeholder="Subject" value={newEmail.subject} onChange={(e) => setNewEmail(p => ({...p, subject: e.target.value}))} />
+                <Textarea placeholder="Type your message here..." className="min-h-[300px] resize-none" value={newEmail.text} onChange={(e) => setNewEmail(p => ({...p, text: e.target.value}))} />
+            </div>
+            <DialogFooter>
+                <Button onClick={() => setIsComposeOpen(false)} variant="outline">Cancel</Button>
+                <Button onClick={handleSendEmail}>Send</Button>
+            </DialogFooter>
+            </DialogContent>
+        </Dialog>
+      </div>
+    </TooltipProvider>
+  );
+}
