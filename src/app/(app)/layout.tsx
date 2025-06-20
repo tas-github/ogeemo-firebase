@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Settings,
   PanelLeft,
+  Wand2,
 } from "lucide-react";
 
 import {
@@ -49,6 +50,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Link href="/dashboard">
                     <LayoutDashboard />
                     <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/action-manager")}
+                  tooltip="Action Manager"
+                >
+                  <Link href="/action-manager">
+                    <Wand2 />
+                    <span>Action Manager</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
