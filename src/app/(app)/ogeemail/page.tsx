@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 interface Email {
   id: string; 
@@ -396,7 +396,7 @@ export default function OgeeMailPage() {
 
   if (loading || !isAuthReady) {
     return (
-      <div className="flex items-center justify-center h-full bg-background">
+      <div className="flex items-center justify-center h-full bg-background p-4 sm:p-6">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-primary mx-auto mb-4"></div>
           <p className="text-lg font-medium text-muted-foreground">Loading OgeeMail...</p>
@@ -406,29 +406,22 @@ export default function OgeeMailPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-background">
-       <header className="flex h-24 items-center justify-between border-b">
-        {/* Left column for sidebar trigger and spacing */}
-        <div className="flex-1 flex justify-start pl-4 sm:pl-6">
-          <SidebarTrigger className="md:hidden" />
-        </div>
-        
-        {/* Middle column for title */}
-        <div className="flex-shrink-0 text-center px-4">
-          <h1 className="text-3xl font-bold font-headline text-primary">OgeeMail</h1>
-          <p className="text-muted-foreground">
-            Your intelligent and intuitive email client.
-          </p>
-        </div>
+    <div className="p-4 sm:p-6 flex flex-col flex-1 space-y-4 min-h-0">
+      <header className="text-center">
+        <h1 className="text-3xl font-bold font-headline text-primary">OgeeMail</h1>
+        <p className="text-muted-foreground">
+          Your intelligent and intuitive email client.
+        </p>
+      </header>
 
-        {/* Right column for search and compose */}
-        <div className="flex-1 flex justify-end items-center space-x-2 pr-4 sm:pr-6">
-            <div className="relative">
+      <Card className="flex-1 flex flex-col min-h-0">
+        <CardHeader className="p-4 border-b flex flex-row items-center justify-between gap-4">
+            <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                     type="search"
                     placeholder="Search mail..."
-                    className="pl-8 sm:w-[200px] lg:w-[300px]"
+                    className="pl-8 w-full sm:w-[300px]"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -437,95 +430,98 @@ export default function OgeeMailPage() {
                 <Pencil className="mr-2 h-4 w-4" />
                 <span>Compose</span>
             </Button>
-        </div>
-      </header>
-      <main className="flex flex-1 min-h-0">
-        <div className="w-[260px] flex-shrink-0 bg-card border-r flex flex-col">
-          <div className="p-4 border-t">
-            <h3 className="text-xl font-bold text-foreground">Folders</h3>
-          </div>
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-            {menuItems.map((item) => {
-              const IconComponent = item.icon;
-              const isActive = activeFolder === item.id;
-              return (
-                <button key={item.id} onClick={() => setActiveFolder(item.id)} className={cn('w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors', isActive ? 'bg-secondary text-secondary-foreground font-medium' : 'text-muted-foreground hover:bg-secondary/50 hover:text-secondary-foreground')}>
-                  <div className="flex items-center space-x-3"><IconComponent className="h-5 w-5" /><span>{item.label}</span></div>
-                  {item.count > 0 && (<span className={cn('px-2 py-0.5 text-xs rounded-full', isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>{item.count}</span>)}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
+        </CardHeader>
+        <CardContent className="flex flex-1 min-h-0 p-0">
+            <div className="flex flex-1 min-w-0">
+                <div className="w-[260px] flex-shrink-0 bg-card border-r flex flex-col">
+                    <div className="p-4 border-b">
+                        <h3 className="text-xl font-bold text-foreground">Folders</h3>
+                    </div>
+                    <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+                        {menuItems.map((item) => {
+                        const IconComponent = item.icon;
+                        const isActive = activeFolder === item.id;
+                        return (
+                            <button key={item.id} onClick={() => setActiveFolder(item.id)} className={cn('w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors', isActive ? 'bg-secondary text-secondary-foreground font-medium' : 'text-muted-foreground hover:bg-secondary/50 hover:text-secondary-foreground')}>
+                            <div className="flex items-center space-x-3"><IconComponent className="h-5 w-5" /><span>{item.label}</span></div>
+                            {item.count > 0 && (<span className={cn('px-2 py-0.5 text-xs rounded-full', isActive ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>{item.count}</span>)}
+                            </button>
+                        );
+                        })}
+                    </nav>
+                </div>
 
-        <div className="flex flex-1 min-w-0">
-            <div className="w-2/5 border-r flex flex-col min-w-0">
-                <div className="p-4 border-b flex items-center justify-between gap-4">
-                    <Button variant="ghost" size="icon" title="Refresh"><RefreshCw className="h-5 w-5" /></Button>
-                </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    {filteredEmails.length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground"><p>No emails found.</p></div>
-                    ) : (
-                    filteredEmails.map(email => (
-                        <div key={email.id} className={cn('p-4 border-b border-border/50 cursor-pointer transition-all duration-200', selectedEmail?.id === email.id ? 'bg-secondary border-l-4 border-primary' : 'hover:bg-secondary/50', !email.isRead ? 'font-semibold bg-primary/5' : 'text-foreground')} onClick={() => handleSelectEmail(email)}>
-                        <div className="flex justify-between items-start mb-1">
-                            <span className={cn('text-sm truncate w-2/3', !email.isRead ? 'text-foreground font-bold' : 'text-muted-foreground')}>{email.from}</span>
-                            <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">{new Date(email.receivedAt).toLocaleDateString()}</span>
+                <div className="flex flex-1 min-w-0">
+                    <div className="w-2/5 border-r flex flex-col min-w-0">
+                        <div className="p-4 border-b flex items-center justify-between gap-4">
+                            <h2 className="text-lg font-bold text-foreground">{activeFolder.charAt(0).toUpperCase() + activeFolder.slice(1)}</h2>
+                            <Button variant="ghost" size="icon" title="Refresh"><RefreshCw className="h-5 w-5" /></Button>
                         </div>
-                        <p className={cn('text-base truncate', !email.isRead ? 'text-foreground' : 'text-foreground/80')}>{email.subject}</p>
-                        <div className="flex items-center space-x-2 mt-2">
-                            {email.isStarred && (<Star className="h-4 w-4 text-yellow-500 fill-current" />)}
-                            {email.hasAttachments && (<Paperclip className="h-4 w-4 text-muted-foreground" />)}
-                            {email.tags && email.tags.map(tag => (<span key={tag} className="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded-full">{tag}</span>))}
-                        </div>
-                        </div>
-                    ))
-                    )}
-                </div>
-            </div>
-            <div className="flex-1 flex flex-col min-w-0">
-                {selectedEmail ? (
-                    <>
-                        <div className="p-4 border-b bg-card flex justify-between items-center">
-                            <div className="flex-1 min-w-0">
-                                <h2 className="text-xl font-bold text-foreground truncate">{selectedEmail.subject}</h2>
-                                <div className="text-sm text-muted-foreground flex items-center gap-2">
-                                    <Star onClick={() => toggleStarredStatus(selectedEmail.id)} className={cn("h-4 w-4 cursor-pointer", selectedEmail.isStarred ? 'text-yellow-500 fill-current' : 'text-muted-foreground')}/> 
-                                    <span>From: {selectedEmail.from}</span>
+                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                            {filteredEmails.length === 0 ? (
+                            <div className="p-8 text-center text-muted-foreground"><p>No emails found.</p></div>
+                            ) : (
+                            filteredEmails.map(email => (
+                                <div key={email.id} className={cn('p-4 border-b border-border/50 cursor-pointer transition-all duration-200', selectedEmail?.id === email.id ? 'bg-secondary border-l-4 border-primary' : 'hover:bg-secondary/50', !email.isRead ? 'font-semibold bg-primary/5' : 'text-foreground')} onClick={() => handleSelectEmail(email)}>
+                                <div className="flex justify-between items-start mb-1">
+                                    <span className={cn('text-sm truncate w-2/3', !email.isRead ? 'text-foreground font-bold' : 'text-muted-foreground')}>{email.from}</span>
+                                    <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">{new Date(email.receivedAt).toLocaleDateString()}</span>
                                 </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Button variant="ghost" size="icon" title="Reply"><CornerUpLeft className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" title="Forward"><CornerUpRight className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" title="Delete" onClick={() => deleteEmail(selectedEmail.id)}><Trash2 className="h-4 w-4" /></Button>
-                            </div>
-                        </div>
-                        <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
-                            <p className="text-sm text-muted-foreground">To: {selectedEmail.to}</p>
-                            {selectedEmail.cc && <p className="text-sm text-muted-foreground">Cc: {selectedEmail.cc}</p>}
-                            <div className="text-xs text-muted-foreground mt-1 mb-4">{new Date(selectedEmail.receivedAt).toLocaleString()}</div>
-                            <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedEmail.content }} />
-                            {selectedEmail.tags?.includes('action-required') && (
-                                <div className="mt-6 p-3 bg-destructive/10 border border-destructive/20 text-destructive-foreground rounded-lg flex items-center space-x-2">
-                                <BrainCircuit className="h-5 w-5" />
-                                <p className="font-semibold">AI Insight: This email likely requires your urgent attention.</p>
+                                <p className={cn('text-base truncate', !email.isRead ? 'text-foreground' : 'text-foreground/80')}>{email.subject}</p>
+                                <div className="flex items-center space-x-2 mt-2">
+                                    {email.isStarred && (<Star className="h-4 w-4 text-yellow-500 fill-current" />)}
+                                    {email.hasAttachments && (<Paperclip className="h-4 w-4 text-muted-foreground" />)}
+                                    {email.tags && email.tags.map(tag => (<span key={tag} className="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded-full">{tag}</span>))}
                                 </div>
+                                </div>
+                            ))
                             )}
                         </div>
-                    </>
-                ) : (
-                    <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                        <div className="text-center">
-                            <Mail className="h-16 w-16 mx-auto mb-4"/>
-                            <p>Select an email to read</p>
-                            <p className="text-sm">Nothing selected</p>
-                        </div>
                     </div>
-                )}
+                    <div className="flex-1 flex flex-col min-w-0">
+                        {selectedEmail ? (
+                            <>
+                                <div className="p-4 border-b bg-card flex justify-between items-center">
+                                    <div className="flex-1 min-w-0">
+                                        <h2 className="text-xl font-bold text-foreground truncate">{selectedEmail.subject}</h2>
+                                        <div className="text-sm text-muted-foreground flex items-center gap-2">
+                                            <Star onClick={() => toggleStarredStatus(selectedEmail.id)} className={cn("h-4 w-4 cursor-pointer", selectedEmail.isStarred ? 'text-yellow-500 fill-current' : 'text-muted-foreground')}/> 
+                                            <span>From: {selectedEmail.from}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Button variant="ghost" size="icon" title="Reply"><CornerUpLeft className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" title="Forward"><CornerUpRight className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" title="Delete" onClick={() => deleteEmail(selectedEmail.id)}><Trash2 className="h-4 w-4" /></Button>
+                                    </div>
+                                </div>
+                                <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
+                                    <p className="text-sm text-muted-foreground">To: {selectedEmail.to}</p>
+                                    {selectedEmail.cc && <p className="text-sm text-muted-foreground">Cc: {selectedEmail.cc}</p>}
+                                    <div className="text-xs text-muted-foreground mt-1 mb-4">{new Date(selectedEmail.receivedAt).toLocaleString()}</div>
+                                    <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedEmail.content }} />
+                                    {selectedEmail.tags?.includes('action-required') && (
+                                        <div className="mt-6 p-3 bg-destructive/10 border border-destructive/20 text-destructive-foreground rounded-lg flex items-center space-x-2">
+                                        <BrainCircuit className="h-5 w-5" />
+                                        <p className="font-semibold">AI Insight: This email likely requires your urgent attention.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                                <div className="text-center">
+                                    <Mail className="h-16 w-16 mx-auto mb-4"/>
+                                    <p>Select an email to read</p>
+                                    <p className="text-sm">Nothing selected</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
-        </div>
-      </main>
+        </CardContent>
+      </Card>
 
       {isComposeOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -612,3 +608,4 @@ export default function OgeeMailPage() {
     </div>
   );
 }
+
