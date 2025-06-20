@@ -47,6 +47,7 @@ export default function OgeeMailPage() {
   const [activeFolder, setActiveFolder] = useState("inbox");
   const [showCcBcc, setShowCcBcc] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const mockDataAddedRef = useRef(false);
 
   const [textFormatting, setTextFormatting] = useState({
     fontSize: 14,
@@ -104,7 +105,8 @@ export default function OgeeMailPage() {
         setSelectedEmail(null);
       }
       
-      if (fetchedEmails.length === 0 && emails.length === 0) {
+      if (fetchedEmails.length === 0 && !mockDataAddedRef.current) {
+        mockDataAddedRef.current = true;
         const initialMockEmails = [
             // Inbox (5)
             {
@@ -276,7 +278,7 @@ export default function OgeeMailPage() {
     });
 
     return () => unsubscribe();
-  }, [db, isAuthReady, userId, selectedEmail, showAppToast]);
+  }, [db, isAuthReady, userId, showAppToast]);
 
   const toggleReadStatus = async (id: string) => {
     if (!db || !userId) return;
