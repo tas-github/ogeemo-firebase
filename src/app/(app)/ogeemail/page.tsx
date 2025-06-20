@@ -7,7 +7,7 @@ import { getFirestore, collection, query, orderBy, onSnapshot, doc, addDoc, upda
 import {
     Archive, Bold, Italic, Underline, Strikethrough, Code, Quote, List, Link2, AlignLeft, AlignCenter, AlignRight,
     Highlighter, CheckCircle2, AlertTriangle, Mic, Mail, ChevronDown, Inbox, Star, Send, FileText, Trash2, RefreshCw,
-    Filter, Search, Paperclip, X, BrainCircuit
+    Filter, Search, Paperclip, X, BrainCircuit, Pencil
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
@@ -145,9 +145,9 @@ export default function OgeeMailPage() {
             folder: "inbox", isArchived: false, hasAttachments: true, category: "primary" as "primary"
           },
           {
-            subject: 'New Feature Alert: Ogeemo File Manager',
-            from: 'product@ogeemo.com',
-            to: 'you@ogeemo.com',
+            subject: "New Feature Alert: Ogeemo File Manager",
+            from: "product@ogeemo.com",
+            to: "you@ogeemo.com",
             content: "Exciting news! We've just launched the new Ogeemo File Manager. Check out how it simplifies Google Drive for you.",
             isRead: false, isStarred: true, priority: "medium" as "medium",
             receivedAt: new Date(Date.now() - 86400000).toISOString(), tags: ['feature', 'new'],
@@ -379,34 +379,15 @@ export default function OgeeMailPage() {
 
   return (
     <div className="flex flex-col h-full bg-muted/20">
-      <header className="shrink-0 bg-card/90 backdrop-blur-sm shadow-sm px-6 py-4 border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="bg-primary p-2 rounded-lg shadow-md">
-              <Mail className="h-7 w-7 text-primary-foreground" />
-            </div>
-            <h1 className="text-3xl font-bold font-headline text-primary">
-              Ogeemo Mail
-            </h1>
-            {userId && (
-              <span className="text-xs text-muted-foreground ml-4 hidden sm:block">User ID: {userId.substring(0, 8)}...</span>
-            )}
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <input type="text" placeholder="Search mail..." className="pl-10 pr-4 py-2 border border-input rounded-full focus:ring-2 focus:ring-ring focus:border-transparent transition-all duration-200 shadow-sm text-sm" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-              <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
-            </div>
-            <button onClick={() => setIsComposeOpen(true)} className="px-6 py-2 bg-primary text-primary-foreground font-semibold rounded-full shadow-lg hover:bg-primary/90 transform hover:scale-105 transition-all duration-300">
-              Compose
-            </button>
-          </div>
-        </div>
-      </header>
-
       <main className="flex flex-1 min-h-0 gap-6 p-6">
         <div className="w-[260px] flex-shrink-0 bg-card rounded-lg border flex flex-col">
-          <div className="p-4 border-b">
+          <div className="p-4">
+            <button onClick={() => setIsComposeOpen(true)} className="w-full py-3 bg-primary text-primary-foreground font-semibold rounded-lg shadow-lg hover:bg-primary/90 transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2">
+              <Pencil className="h-4 w-4" />
+              <span>Compose</span>
+            </button>
+          </div>
+          <div className="p-4 border-t">
             <h3 className="text-xl font-bold text-foreground">Folders</h3>
           </div>
           <nav className="p-4 space-y-1 overflow-y-auto">
@@ -424,8 +405,12 @@ export default function OgeeMailPage() {
         </div>
 
         <div className="flex-1 bg-card rounded-lg border flex flex-col min-w-0">
-          <div className="p-4 border-b flex items-center justify-between">
-            <h2 className="text-xl font-bold text-foreground">{activeFolder.charAt(0).toUpperCase() + activeFolder.slice(1)} ({filteredEmails.filter(e => !e.isRead).length})</h2>
+          <div className="p-4 border-b flex items-center justify-between gap-4">
+            <h2 className="text-xl font-bold text-foreground whitespace-nowrap">{activeFolder.charAt(0).toUpperCase() + activeFolder.slice(1)} ({filteredEmails.filter(e => !e.isRead).length})</h2>
+            <div className="relative flex-grow max-w-md">
+                <input type="text" placeholder="Search mail..." className="w-full pl-10 pr-4 py-2 border border-input rounded-full focus:ring-2 focus:ring-ring" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                <Search className="h-4 w-4 absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
+            </div>
             <div className="flex items-center space-x-2">
               <button className="p-2 rounded-full hover:bg-secondary transition-colors duration-200" title="Refresh"><RefreshCw className="h-5 w-5 text-muted-foreground" /></button>
               <button className="p-2 rounded-full hover:bg-secondary transition-colors duration-200" title="Filter"><Filter className="h-5 w-5 text-muted-foreground" /></button>
