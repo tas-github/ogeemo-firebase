@@ -27,6 +27,7 @@ import { UserNav } from "@/components/user-nav";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isOgeeMailPage = pathname === '/ogeemail';
 
   const isActive = (path: string) => {
     return pathname === path;
@@ -121,9 +122,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </Sidebar>
 
         <main className="flex-1 flex flex-col">
-          <header className="sticky top-0 z-10 flex h-16 items-center border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
-            <SidebarTrigger className="md:hidden" />
-          </header>
+          {!isOgeeMailPage && (
+            <header className="sticky top-0 z-10 flex h-16 items-center border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
+              <SidebarTrigger className="md:hidden" />
+            </header>
+          )}
           <div className="flex flex-col flex-1 min-h-0">{children}</div>
         </main>
       </div>
