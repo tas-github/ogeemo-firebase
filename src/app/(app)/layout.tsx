@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -121,13 +122,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </SidebarFooter>
         </Sidebar>
 
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col min-h-0">
           {!isOgeeMailPage && (
             <header className="sticky top-0 z-10 flex h-16 items-center border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
               <SidebarTrigger className="md:hidden" />
             </header>
           )}
-          <div className="flex flex-col flex-1 min-h-0">{children}</div>
+          {children}
         </main>
       </div>
     </SidebarProvider>
