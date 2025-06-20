@@ -129,7 +129,7 @@ export default function ActionManagerPage() {
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-11rem)] space-y-6">
+    <div className="flex flex-col h-[calc(100vh-7rem)] space-y-4">
       <header className="text-center">
         <h1 className="text-3xl font-bold font-headline text-orange-500">Welcome to your Ogeemo Action Manager</h1>
         <p className="text-muted-foreground">
@@ -137,7 +137,7 @@ export default function ActionManagerPage() {
         </p>
       </header>
 
-      <div className="grid md:grid-cols-3 gap-6 flex-1 min-h-0">
+      <div className="grid md:grid-cols-4 gap-6 flex-1 min-h-0">
         <div className="md:col-span-1 flex flex-col gap-6">
            <Card>
             <CardHeader>
@@ -168,7 +168,7 @@ export default function ActionManagerPage() {
            </Card>
         </div>
 
-        <div className="md:col-span-2 flex flex-col">
+        <div className="md:col-span-3 flex flex-col">
             <Card className="flex-1 flex flex-col">
                 <CardHeader>
                     <CardTitle>Tell me what you would like to do</CardTitle>
