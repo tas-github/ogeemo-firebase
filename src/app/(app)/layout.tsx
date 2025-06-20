@@ -22,7 +22,6 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { UserNav } from "@/components/user-nav";
 import { Logo } from "@/components/logo";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -112,7 +111,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <span className="sr-only">Toggle Menu</span>
             </Button>
             <div className="flex-1" />
-            <UserNav />
           </header>
           <div className="p-4 sm:p-6">{children}</div>
         </main>
