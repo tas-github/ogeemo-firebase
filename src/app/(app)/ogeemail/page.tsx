@@ -1,9 +1,6 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, query, orderBy, onSnapshot, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import {
     Archive, Bold, Italic, Underline, Strikethrough, Code, Quote, List, Link2, AlignLeft, AlignCenter, AlignRight,
     Highlighter, CheckCircle2, AlertTriangle, Mic, Mail, ChevronDown, Inbox, Star, Send, FileText, Trash2, RefreshCw,
@@ -14,6 +11,9 @@ import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { db, auth } from '@/lib/firebase';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { Input } from '@/components/ui/input';
 
 interface Email {
   id: string; 
@@ -99,16 +99,22 @@ export default function OgeeMailPage() {
         id: doc.id,
         ...doc.data() as Omit<Email, 'id'>
       }));
-      setEmails(fetchedEmails);
+      
+      const hasEmails = fetchedEmails.length > 0;
+      
+      if (hasEmails) {
+        setEmails(fetchedEmails);
+      }
+      
       setLoading(false);
 
       if (selectedEmail && !fetchedEmails.find(e => e.id === selectedEmail.id)) {
         setSelectedEmail(null);
       }
       
-      if (fetchedEmails.length === 0 && !mockDataAddedRef.current) {
+      if (!hasEmails && !mockDataAddedRef.current) {
         mockDataAddedRef.current = true;
-        const initialMockEmails = [
+        const inboxEmails = [
            {
             subject: 'Welcome to Ogeemo Mail!',
             from: 'support@ogeemo.com',
@@ -154,53 +160,57 @@ export default function OgeeMailPage() {
             receivedAt: new Date(Date.now() - 86400000).toISOString(), tags: ['feature', 'new'],
             folder: "inbox", isArchived: false, hasAttachments: false, category: "updates" as "updates"
           },
+        ];
+        const sentEmails = [
           {
-            subject: 'Your Recent Support Request #12345',
-            from: 'support@external.com',
-            to: 'you@ogeemo.com',
-            content: 'Thank you for reaching out. Your request #12345 has been received and is being processed. Expected resolution within 24 hours.',
-            isRead: false, isStarred: false, priority: "low" as "low",
-            receivedAt: new Date(Date.now() - 7200000).toISOString(), tags: ['support'],
-            folder: "inbox", isArchived: false, hasAttachments: false, category: "forums" as "forums"
-          },
-          {
-            subject: 'Project Zeus - Budget Approval Needed',
-            from: 'finance@yourcompany.com',
-            to: 'you@ogeemo.com',
-            content: 'The budget for Project Zeus requires your final approval. Please review the attached document.',
-            isRead: false, isStarred: false, priority: "high" as "high",
-            receivedAt: new Date(Date.now() - 86400000 * 3).toISOString(), tags: ['project', 'finance', 'action-required'],
-            folder: "inbox", isArchived: false, hasAttachments: true, category: "primary" as "primary"
-          },
-          {
-            subject: 'Newsletter: Latest Industry Trends',
-            from: 'newsletter@industry.com',
-            to: 'you@ogeemo.com',
-            content: "Stay updated with the latest trends in the industry. This month's edition covers AI and cloud computing.",
-            isRead: true, isStarred: false, priority: "low" as "low",
-            receivedAt: new Date(Date.now() - 86400000 * 7).toISOString(), tags: ['newsletter'],
-            folder: "inbox", isArchived: false, hasAttachments: false, category: "promotions" as "promotions"
-          },
-          {
-            subject: 'Client Feedback: Q2 Satisfaction Survey',
-            from: 'feedback@clientcorp.com',
-            to: 'you@ogeemo.com',
-            content: 'Thank you for participating in our Q2 client satisfaction survey. Your feedback is valuable.',
+            subject: "Re: Project Zeus - Budget Approval Needed",
+            from: "you@ogeemo.com",
+            to: "finance@yourcompany.com",
+            content: "Thanks for sending this over. I've reviewed the budget and it's approved. Let's proceed.",
             isRead: true, isStarred: false, priority: "medium" as "medium",
-            receivedAt: new Date(Date.now() - 86400000 * 10).toISOString(), tags: ['feedback', 'survey'],
-            folder: "inbox", isArchived: false, hasAttachments: false, category: "social" as "social"
+            receivedAt: new Date(Date.now() - 86400000).toISOString(), tags: ['project', 'finance', 'approved'],
+            folder: "sent", isArchived: false, hasAttachments: false, category: "primary" as "primary"
           },
           {
-            subject: 'Reminder: Friday Team Social',
-            from: 'hr@yourcompany.com',
-            to: 'you@ogeemo.com',
-            content: "Don't forget our team social this Friday at 4 PM in the lounge. Snacks and drinks will be provided!",
-            isRead: false, isStarred: false, priority: "low" as "low",
-            receivedAt: new Date(Date.now() - 600000).toISOString(), tags: ['social', 'reminder'],
-            folder: "inbox", isArchived: false, hasAttachments: false, category: "social" as "social"
+            subject: "Client Follow-up: Q2 Satisfaction Survey",
+            from: "you@ogeemo.com",
+            to: "feedback@clientcorp.com",
+            content: "Hi team, I just wanted to follow up on the recent survey results. I have some ideas I'd like to discuss regarding the feedback.",
+            isRead: true, isStarred: true, priority: "medium" as "medium",
+            receivedAt: new Date(Date.now() - 86400000 * 2).toISOString(), tags: ['feedback', 'client'],
+            folder: "sent", isArchived: false, hasAttachments: false, category: "primary" as "primary"
+          },
+          {
+            subject: "Team Lunch Next Week?",
+            from: "you@ogeemo.com",
+            to: "team@yourcompany.com",
+            content: "Hey everyone, would you be interested in a team lunch next week? Let me know what day works best!",
+            isRead: true, isStarred: false, priority: "low" as "low",
+            receivedAt: new Date(Date.now() - 86400000 * 3).toISOString(), tags: ['social', 'team'],
+            folder: "sent", isArchived: false, hasAttachments: false, category: "social" as "social"
+          },
+          {
+            subject: "Quick question about the new feature",
+            from: "you@ogeemo.com",
+            to: "product@ogeemo.com",
+            content: "The new File Manager is great! I had a quick question about sharing permissions. Can we schedule a brief call?",
+            isRead: true, isStarred: false, priority: "medium" as "medium",
+            receivedAt: new Date(Date.now() - 86400000 * 4).toISOString(), tags: ['feature', 'question'],
+            folder: "sent", isArchived: false, hasAttachments: false, category: "updates" as "updates"
+          },
+          {
+            subject: "Vacation Plans",
+            from: "you@ogeemo.com",
+            to: "hr@yourcompany.com",
+            content: "Hi HR, I'd like to request vacation time from July 15th to July 19th. Please let me know if this is approved. Thanks!",
+            isRead: true, isStarred: false, priority: "medium" as "medium",
+            receivedAt: new Date(Date.now() - 86400000 * 5).toISOString(), tags: ['hr', 'vacation'],
+            folder: "sent", isArchived: false, hasAttachments: false, category: "primary" as "primary"
           }
         ];
-        for (const email of initialMockEmails) {
+
+        const allMockEmails = [...inboxEmails, ...sentEmails];
+        for (const email of allMockEmails) {
             try {
                 await addDoc(emailsCollectionRef, email);
             } catch (error) {
@@ -379,20 +389,20 @@ export default function OgeeMailPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 flex flex-col flex-1 space-y-4 min-h-0">
-       <header className="text-center">
+    <div className="flex flex-col flex-1 min-h-0 bg-background">
+      <header className="text-center p-4 sm:p-6 border-b">
         <h1 className="text-3xl font-bold font-headline text-primary">OgeeMail</h1>
         <p className="text-muted-foreground">
           Your intelligent and intuitive email client.
         </p>
       </header>
-      <main className="flex flex-1 min-h-0 gap-6">
-        <div className="w-[260px] flex-shrink-0 bg-card rounded-lg border flex flex-col">
+      <main className="flex flex-1 min-h-0">
+        <div className="w-[260px] flex-shrink-0 bg-card border-r flex flex-col">
           <div className="p-4">
-            <button onClick={() => setIsComposeOpen(true)} className="w-full py-3 bg-primary text-primary-foreground font-semibold rounded-lg shadow-lg hover:bg-primary/90 transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2">
-              <Pencil className="h-4 w-4" />
+            <Button onClick={() => setIsComposeOpen(true)} className="w-full">
+              <Pencil className="mr-2 h-4 w-4" />
               <span>Compose</span>
-            </button>
+            </Button>
           </div>
           <div className="p-4 border-t">
             <h3 className="text-xl font-bold text-foreground">Folders</h3>
@@ -411,16 +421,16 @@ export default function OgeeMailPage() {
           </nav>
         </div>
 
-        <div className="flex-1 bg-card rounded-lg border flex flex-col min-w-0">
+        <div className="flex-1 bg-card flex flex-col min-w-0">
           <div className="p-4 border-b flex items-center justify-between gap-4">
             <h2 className="text-xl font-bold text-foreground whitespace-nowrap">{activeFolder.charAt(0).toUpperCase() + activeFolder.slice(1)} ({filteredEmails.filter(e => !e.isRead).length})</h2>
             <div className="relative flex-grow max-w-md">
-                <input type="text" placeholder="Search mail..." className="w-full pl-10 pr-4 py-2 border border-input rounded-full focus:ring-2 focus:ring-ring" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                <Input type="text" placeholder="Search mail..." className="w-full pl-10 pr-4 py-2" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                 <Search className="h-4 w-4 absolute left-3.5 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
             </div>
             <div className="flex items-center space-x-2">
-              <button className="p-2 rounded-full hover:bg-secondary transition-colors duration-200" title="Refresh"><RefreshCw className="h-5 w-5 text-muted-foreground" /></button>
-              <button className="p-2 rounded-full hover:bg-secondary transition-colors duration-200" title="Filter"><Filter className="h-5 w-5 text-muted-foreground" /></button>
+              <Button variant="ghost" size="icon" title="Refresh"><RefreshCw className="h-5 w-5" /></Button>
+              <Button variant="ghost" size="icon" title="Filter"><Filter className="h-5 w-5" /></Button>
             </div>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -468,9 +478,9 @@ export default function OgeeMailPage() {
               )}
             </div>
             <div className="p-4 border-t bg-muted/50 flex justify-end space-x-3 rounded-b-xl">
-                <button onClick={() => toggleReadStatus(selectedEmail.id)} className="px-5 py-2 bg-primary text-primary-foreground text-sm rounded-full shadow-md hover:bg-primary/90 transition-colors duration-200">{selectedEmail.isRead ? 'Mark as Unread' : 'Mark as Read'}</button>
-                <button onClick={() => toggleStarredStatus(selectedEmail.id)} className="px-5 py-2 bg-yellow-400 text-black text-sm rounded-full shadow-md hover:bg-yellow-500 transition-colors duration-200">{selectedEmail.isStarred ? 'Unstar' : 'Star'}</button>
-                <button onClick={() => deleteEmail(selectedEmail.id)} className="px-5 py-2 bg-destructive text-destructive-foreground text-sm rounded-full shadow-md hover:bg-destructive/90 transition-colors duration-200">Delete</button>
+                <Button onClick={() => toggleReadStatus(selectedEmail.id)}>{selectedEmail.isRead ? 'Mark as Unread' : 'Mark as Read'}</Button>
+                <Button onClick={() => toggleStarredStatus(selectedEmail.id)} variant="secondary">{selectedEmail.isStarred ? 'Unstar' : 'Star'}</Button>
+                <Button onClick={() => deleteEmail(selectedEmail.id)} variant="destructive">Delete</Button>
             </div>
           </div>
         </div>
@@ -486,50 +496,50 @@ export default function OgeeMailPage() {
             <div className="p-5 space-y-4 flex-1 overflow-y-auto custom-scrollbar">
               <div className="flex items-center space-x-3">
                   <label htmlFor="to" className="text-sm font-medium text-foreground w-16 shrink-0">To</label>
-                  <input type="email" id="to" className="flex-1 w-full px-4 py-2 border border-input rounded-lg focus:ring-ring focus:border-transparent" placeholder="Recipients" value={newEmail.to} onChange={(e) => setNewEmail(prev => ({ ...prev, to: e.target.value }))} />
-                  <button onClick={() => handleMicClick('to')} className={cn("p-2 rounded-full", activeVoiceInput === 'to' && isListening ? "bg-destructive text-destructive-foreground animate-pulse" : "hover:bg-secondary")}><Mic className="h-5 w-5" /></button>
+                  <Input type="email" id="to" placeholder="Recipients" value={newEmail.to} onChange={(e) => setNewEmail(prev => ({ ...prev, to: e.target.value }))} />
+                  <Button type="button" variant="ghost" size="icon" onClick={() => handleMicClick('to')} className={cn(activeVoiceInput === 'to' && isListening && "text-destructive animate-pulse")}><Mic className="h-5 w-5" /></Button>
                   <button type="button" className="px-3 py-2 text-xs font-medium rounded-full text-primary hover:bg-secondary" onClick={() => setShowCcBcc(!showCcBcc)}>{showCcBcc ? 'Hide' : 'Cc/Bcc'}</button>
               </div>
               {showCcBcc && (
                   <>
                     <div className="flex items-center space-x-3">
                       <label htmlFor="cc" className="text-sm font-medium text-foreground w-16 shrink-0">CC</label>
-                      <input type="email" id="cc" className="flex-1 w-full px-4 py-2 border border-input rounded-lg" placeholder="Carbon copy" value={newEmail.cc || ''} onChange={(e) => setNewEmail(prev => ({ ...prev, cc: e.target.value }))} />
-                      <button onClick={() => handleMicClick('cc')} className={cn("p-2 rounded-full", activeVoiceInput === 'cc' && isListening ? "bg-destructive text-destructive-foreground animate-pulse" : "hover:bg-secondary")}><Mic className="h-5 w-5" /></button>
+                      <Input type="email" id="cc" placeholder="Carbon copy" value={newEmail.cc || ''} onChange={(e) => setNewEmail(prev => ({ ...prev, cc: e.target.value }))} />
+                      <Button type="button" variant="ghost" size="icon" onClick={() => handleMicClick('cc')} className={cn(activeVoiceInput === 'cc' && isListening && "text-destructive animate-pulse")}><Mic className="h-5 w-5" /></Button>
                     </div>
                     <div className="flex items-center space-x-3">
                       <label htmlFor="bcc" className="text-sm font-medium text-foreground w-16 shrink-0">BCC</label>
-                      <input type="email" id="bcc" className="flex-1 w-full px-4 py-2 border border-input rounded-lg" placeholder="Blind carbon copy" value={newEmail.bcc || ''} onChange={(e) => setNewEmail(prev => ({ ...prev, bcc: e.target.value }))} />
-                      <button onClick={() => handleMicClick('bcc')} className={cn("p-2 rounded-full", activeVoiceInput === 'bcc' && isListening ? "bg-destructive text-destructive-foreground animate-pulse" : "hover:bg-secondary")}><Mic className="h-5 w-5" /></button>
+                      <Input type="email" id="bcc" placeholder="Blind carbon copy" value={newEmail.bcc || ''} onChange={(e) => setNewEmail(prev => ({ ...prev, bcc: e.target.value }))} />
+                      <Button type="button" variant="ghost" size="icon" onClick={() => handleMicClick('bcc')} className={cn(activeVoiceInput === 'bcc' && isListening && "text-destructive animate-pulse")}><Mic className="h-5 w-5" /></Button>
                     </div>
                   </>
                 )}
               <div className="flex items-center space-x-3">
                 <label htmlFor="subject" className="text-sm font-medium text-foreground w-16 shrink-0">Subject</label>
-                <input type="text" id="subject" className="flex-1 w-full px-4 py-2 border border-input rounded-lg" placeholder="Subject" value={newEmail.subject} onChange={(e) => setNewEmail(prev => ({ ...prev, subject: e.target.value }))} />
-                <button onClick={() => handleMicClick('subject')} className={cn("p-2 rounded-full", activeVoiceInput === 'subject' && isListening ? "bg-destructive text-destructive-foreground animate-pulse" : "hover:bg-secondary")}><Mic className="h-5 w-5" /></button>
+                <Input type="text" id="subject" placeholder="Subject" value={newEmail.subject} onChange={(e) => setNewEmail(prev => ({ ...prev, subject: e.target.value }))} />
+                <Button type="button" variant="ghost" size="icon" onClick={() => handleMicClick('subject')} className={cn(activeVoiceInput === 'subject' && isListening && "text-destructive animate-pulse")}><Mic className="h-5 w-5" /></Button>
               </div>
               
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <label className="text-sm font-medium text-foreground">Message</label>
-                  <button onClick={() => handleMicClick('content')} className={cn("p-2 rounded-full", activeVoiceInput === 'content' && isListening ? "bg-destructive text-destructive-foreground animate-pulse" : "hover:bg-secondary")}><Mic className="h-5 w-5" /></button>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => handleMicClick('content')} className={cn(activeVoiceInput === 'content' && isListening && "text-destructive animate-pulse")}><Mic className="h-5 w-5" /></Button>
                 </div>
                 <div className="bg-muted border rounded-lg p-2 overflow-x-auto">
                     <div className="flex items-center flex-nowrap gap-1">
-                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('bold')} title="Bold"><Bold size={16}/></button>
-                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('italic')} title="Italic"><Italic size={16}/></button>
-                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('underline')} title="Underline"><Underline size={16}/></button>
-                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('strikeThrough')} title="Strikethrough"><Strikethrough size={16}/></button>
-                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('insertUnorderedList')} title="Bullet List"><List size={16}/></button>
-                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => { const url = prompt("Enter URL:"); if (url) applyTextFormatting('createLink', url); }} title="Insert Link"><Link2 size={16}/></button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => applyTextFormatting('bold')} title="Bold"><Bold size={16}/></Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => applyTextFormatting('italic')} title="Italic"><Italic size={16}/></Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => applyTextFormatting('underline')} title="Underline"><Underline size={16}/></Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => applyTextFormatting('strikeThrough')} title="Strikethrough"><Strikethrough size={16}/></Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => applyTextFormatting('insertUnorderedList')} title="Bullet List"><List size={16}/></Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => { const url = prompt("Enter URL:"); if (url) applyTextFormatting('createLink', url); }} title="Insert Link"><Link2 size={16}/></Button>
                         <div className="w-px h-5 bg-border mx-1"></div>
-                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('justifyLeft')} title="Align Left"><AlignLeft size={16}/></button>
-                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('justifyCenter')} title="Align Center"><AlignCenter size={16}/></button>
-                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={() => applyTextFormatting('justifyRight')} title="Align Right"><AlignRight size={16}/></button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => applyTextFormatting('justifyLeft')} title="Align Left"><AlignLeft size={16}/></Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => applyTextFormatting('justifyCenter')} title="Align Center"><AlignCenter size={16}/></Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => applyTextFormatting('justifyRight')} title="Align Right"><AlignRight size={16}/></Button>
                         <div className="w-px h-5 bg-border mx-1"></div>
                         <input type="color" value={textFormatting.highlightColor} onChange={(e) => setTextFormatting(prev => ({ ...prev, highlightColor: e.target.value }))} className="w-6 h-6 border-none bg-transparent cursor-pointer" title="Highlight Color"/>
-                        <button type="button" className="p-1.5 rounded hover:bg-secondary" onClick={highlightSelectedText} title="Highlight Selection"><Highlighter size={16}/></button>
+                        <Button type="button" variant="ghost" size="icon" onClick={highlightSelectedText} title="Highlight Selection"><Highlighter size={16}/></Button>
                     </div>
                 </div>
                 <div ref={contentRef} contentEditable="true" className="w-full min-h-[300px] p-3 focus:outline-none focus:ring-2 focus:ring-ring rounded-md border bg-card" onInput={handleContentInput} dangerouslySetInnerHTML={{ __html: newEmail.content }} placeholder="Compose your message..." />
@@ -538,8 +548,8 @@ export default function OgeeMailPage() {
             <div className="p-5 border-t bg-muted/50 flex justify-between items-center rounded-b-xl">
                 <div className="text-sm text-muted-foreground">{getWordCount()} words / {getCharacterCount()} chars</div>
                 <div className="flex space-x-3">
-                    <button onClick={handleCloseCompose} className="px-6 py-2 bg-muted text-muted-foreground font-semibold rounded-full shadow-md hover:bg-muted/80">Cancel</button>
-                    <button onClick={handleSendEmail} className="px-6 py-2 bg-green-500 text-white font-semibold rounded-full shadow-lg hover:bg-green-600">Send</button>
+                    <Button onClick={handleCloseCompose} variant="outline">Cancel</Button>
+                    <Button onClick={handleSendEmail} className="bg-green-500 hover:bg-green-600">Send</Button>
                 </div>
             </div>
           </div>
@@ -552,8 +562,8 @@ export default function OgeeMailPage() {
             <h3 className="text-xl font-bold text-foreground mb-4">Discard Changes?</h3>
             <p className="text-muted-foreground mb-6">You have unsaved changes. Are you sure you want to close?</p>
             <div className="flex justify-center space-x-4">
-              <button onClick={() => setShowCloseConfirm(false)} className="px-5 py-2 rounded-full border bg-background text-foreground font-semibold hover:bg-secondary">Keep Editing</button>
-              <button onClick={confirmCloseCompose} className="px-5 py-2 rounded-full bg-destructive text-destructive-foreground font-semibold hover:bg-destructive/90">Discard</button>
+              <Button onClick={() => setShowCloseConfirm(false)} variant="outline">Keep Editing</Button>
+              <Button onClick={confirmCloseCompose} variant="destructive">Discard</Button>
             </div>
           </div>
         </div>
@@ -561,5 +571,3 @@ export default function OgeeMailPage() {
     </div>
   );
 }
-
-    
