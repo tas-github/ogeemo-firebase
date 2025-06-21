@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from 'react';
@@ -365,9 +364,9 @@ export default function ComposeEmailPage() {
             <div className="p-2 border-b flex items-center gap-1 flex-wrap">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="w-28 justify-start">
+                  <Button variant="ghost" className="justify-between">
                     Headings
-                    <ChevronDown className="ml-auto h-4 w-4" />
+                    <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
@@ -379,10 +378,12 @@ export default function ComposeEmailPage() {
               </DropdownMenu>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="w-32 justify-start">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Templates
-                    <ChevronDown className="ml-auto h-4 w-4" />
+                  <Button variant="ghost" className="justify-between">
+                    <span className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Templates
+                    </span>
+                    <ChevronDown className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
@@ -396,7 +397,7 @@ export default function ComposeEmailPage() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Separator orientation="vertical" className="h-6 mx-1" />
+              <Separator orientation="vertical" className="h-6" />
               <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}>
                 <Bold className="h-4 w-4" />
               </Button>
@@ -409,7 +410,7 @@ export default function ComposeEmailPage() {
               <Button variant="ghost" size="icon" title="Strikethrough" onMouseDown={preventDefault} onClick={() => handleFormat('strikeThrough')}>
                 <Strikethrough className="h-4 w-4" />
               </Button>
-              <Separator orientation="vertical" className="h-6 mx-1" />
+              <Separator orientation="vertical" className="h-6" />
               <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}>
                 <List className="h-4 w-4" />
               </Button>
@@ -419,7 +420,7 @@ export default function ComposeEmailPage() {
               <Button variant="ghost" size="icon" title="Blockquote" onMouseDown={preventDefault} onClick={() => handleFormat('formatBlock', 'blockquote')}>
                 <Quote className="h-4 w-4" />
               </Button>
-               <Separator orientation="vertical" className="h-6 mx-1" />
+               <Separator orientation="vertical" className="h-6" />
               <Button variant="ghost" size="icon" title="Insert Link" onMouseDown={preventDefault} onClick={handleCreateLink}>
                 <LinkIcon className="h-4 w-4" />
               </Button>
