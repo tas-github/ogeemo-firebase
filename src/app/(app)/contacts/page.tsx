@@ -442,7 +442,7 @@ export default function ContactsPage() {
       </div>
 
       <Dialog open={isContactFormOpen} onOpenChange={(open) => { if (!open) closeContactForm(); else setIsContactFormOpen(true); }}>
-          <DialogContent style={{ direction: 'ltr' }} className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
+          <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
               <div className="flex flex-col space-y-1.5 text-center p-6 pb-4 border-b">
                 <h1 className="text-3xl font-bold font-headline text-primary">
                   {contactToEdit ? `Edit ${contactToEdit.name}` : "Create New Contact"}
@@ -453,7 +453,7 @@ export default function ContactsPage() {
               </div>
               <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
-                      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 text-left">
+                      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                           <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           
