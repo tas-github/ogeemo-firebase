@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Folder,
   Plus,
@@ -65,9 +65,9 @@ const contactSchema = z.object({
 
 
 export default function ContactsPage() {
-  const [folders, setFolders] = useState<FolderData[]>(() => [...mockFolders]);
-  const [contacts, setContacts] = useState<Contact[]>(() => [...mockContacts]);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(mockFolders[0]?.id || null);
+  const [folders, setFolders] = useState<FolderData[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -77,6 +77,46 @@ export default function ContactsPage() {
     resolver: zodResolver(contactSchema),
     defaultValues: { name: "", email: "", phone: "" },
   });
+
+  // Load data from localStorage on component mount
+  useEffect(() => {
+    try {
+      const storedFolders = localStorage.getItem('contactFolders');
+      const initialFolders = storedFolders ? JSON.parse(storedFolders) : [...mockFolders];
+      setFolders(initialFolders);
+      
+      if (!selectedFolderId && initialFolders.length > 0) {
+        setSelectedFolderId(initialFolders[0].id);
+      }
+
+      const storedContacts = localStorage.getItem('contacts');
+      setContacts(storedContacts ? JSON.parse(storedContacts) : [...mockContacts]);
+    } catch (error) {
+      console.error("Failed to parse from localStorage", error);
+      // Fallback to mock data if parsing fails
+      setFolders([...mockFolders]);
+      setContacts([...mockContacts]);
+      if (mockFolders.length > 0) {
+        setSelectedFolderId(mockFolders[0].id);
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Empty array ensures this runs only once on mount. selectedFolderId is intentionally omitted.
+
+
+  // Save folders to localStorage whenever they change
+  useEffect(() => {
+    if (folders.length > 0) {
+      localStorage.setItem('contactFolders', JSON.stringify(folders));
+    }
+  }, [folders]);
+
+  // Save contacts to localStorage whenever they change
+  useEffect(() => {
+    // We check for contacts being non-empty if we don't want to save during initial hydration
+    // For this app, it's safe to save even if empty (e.g., user deletes all contacts)
+    localStorage.setItem('contacts', JSON.stringify(contacts));
+  }, [contacts]);
 
   const selectedFolder = useMemo(
     () => folders.find((f) => f.id === selectedFolderId),
@@ -129,9 +169,13 @@ export default function ContactsPage() {
 
   const handleToggleSelectAll = () => {
     if (selectedContactIds.length === displayedContacts.length) {
-      setSelectedContactIds([]);
+      // If all are selected, deselect all visible
+      const displayedIds = displayedContacts.map(c => c.id);
+      setSelectedContactIds(prev => prev.filter(id => !displayedIds.includes(id)));
     } else {
-      setSelectedContactIds(displayedContacts.map((c) => c.id));
+      // If some or none are selected, select all visible
+      const displayedIds = displayedContacts.map(c => c.id);
+      setSelectedContactIds(prev => [...new Set([...prev, ...displayedIds])]);
     }
   };
 
@@ -275,7 +319,21 @@ export default function ContactsPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-[50px]"> <Checkbox checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false} onCheckedChange={handleToggleSelectAll} aria-label="Select all" /> </TableHead>
+                                            <TableHead className="w-[50px]">
+                                              <Checkbox
+                                                checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
+                                                onCheckedChange={() => {
+                                                  if (allVisibleSelected) {
+                                                      const displayedIds = displayedContacts.map(c => c.id);
+                                                      setSelectedContactIds(prev => prev.filter(id => !displayedIds.includes(id)));
+                                                  } else {
+                                                      const displayedIds = displayedContacts.map(c => c.id);
+                                                      setSelectedContactIds(prev => [...new Set([...prev, ...displayedIds])]);
+                                                  }
+                                                }}
+                                                aria-label="Select all"
+                                              />
+                                            </TableHead>
                                             <TableHead>Name</TableHead>
                                             <TableHead>Email</TableHead>
                                             <TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead>
@@ -283,7 +341,7 @@ export default function ContactsPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {displayedContacts.map((contact) => (
-                                            <TableRow key={contact.id} data-state={selectedContactIds.includes(contact.id)}>
+                                            <TableRow key={contact.id} data-state={selectedContactIds.includes(contact.id) && 'selected'}>
                                                 <TableCell onClick={(e) => e.stopPropagation()}> <Checkbox checked={selectedContactIds.includes(contact.id)} onCheckedChange={() => handleToggleSelect(contact.id)} aria-label={`Select ${contact.name}`} /> </TableCell>
                                                 <TableCell className="font-medium">{contact.name}</TableCell>
                                                 <TableCell>{contact.email}</TableCell>
@@ -304,7 +362,7 @@ export default function ContactsPage() {
                         </>
                     ) : (
                         <div className="flex h-full items-center justify-center">
-                            <p className="text-muted-foreground">Select a folder to get started.</p>
+                            <p className="text-muted-foreground">Select or create a folder to get started.</p>
                         </div>
                     )}
                 </div>
