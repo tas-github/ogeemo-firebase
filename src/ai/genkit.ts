@@ -1,16 +1,17 @@
-import {genkit} from 'genkit';
+import {genkit, type GenkitConfig} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 
-const plugins = [];
+const genkitConfig: GenkitConfig = {
+  plugins: [],
+};
+
 if (process.env.GOOGLE_API_KEY) {
-  plugins.push(googleAI());
+  genkitConfig.plugins?.push(googleAI());
+  genkitConfig.model = 'googleai/gemini-2.0-flash';
 } else {
   console.warn(
     'WARNING: GOOGLE_API_KEY environment variable is not set. Genkit AI features will be disabled.'
   );
 }
 
-export const ai = genkit({
-  plugins,
-  model: 'googleai/gemini-2.0-flash',
-});
+export const ai = genkit(genkitConfig);
