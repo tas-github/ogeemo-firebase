@@ -179,7 +179,10 @@ export default function OgeeMailInboxPage() {
 
 
     return (
-        <div className="p-4 sm:p-6 flex flex-col h-full bg-background overflow-hidden space-y-4">
+        <div className="relative p-4 sm:p-6 flex flex-col h-full bg-background overflow-hidden space-y-4">
+            <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+                <Button>Getting started with OgeeMail</Button>
+            </div>
              <header className="text-center">
                 <h1 className="text-3xl font-bold font-headline text-primary">OgeeMail</h1>
                 <p className="text-muted-foreground">
