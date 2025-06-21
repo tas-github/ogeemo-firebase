@@ -52,6 +52,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { type Contact, type FolderData, mockContacts, mockFolders } from '@/data/contacts';
 import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
 
 const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -60,6 +61,7 @@ const contactSchema = z.object({
   cellPhone: z.string().optional(),
   homePhone: z.string().optional(),
   faxNumber: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 
@@ -78,7 +80,7 @@ export default function ContactsPage() {
   
   const form = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
-    defaultValues: { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "" },
+    defaultValues: { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", notes: "" },
   });
   
   // Data loading and saving effects
@@ -149,7 +151,7 @@ export default function ContactsPage() {
 
   const openContactForm = (contact: Contact | null) => {
     setContactToEdit(contact);
-    form.reset(contact || { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "" });
+    form.reset(contact || { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", notes: "" });
     setIsContactFormOpen(true);
   };
 
@@ -439,6 +441,24 @@ export default function ContactsPage() {
                             )} />
                             <FormField control={form.control} name="faxNumber" render={({ field }) => ( <FormItem> <FormLabel>Fax #</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           </div>
+                           <FormField
+                            control={form.control}
+                            name="notes"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Notes</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    placeholder="Reference to information regarding the client.."
+                                    className="resize-none"
+                                    rows={5}
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                       </div>
 
                       <div className="p-6 border-t flex items-center justify-end">
