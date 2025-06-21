@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { Archive, Star, Trash2, Search, MoreVertical, Reply, ReplyAll, Forward, ChevronDown, Inbox, Send, Pencil, Mic, Folder, Users, Briefcase, Book, Lightbulb, ListTodo, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -257,9 +258,11 @@ export default function OgeeMailInboxPage() {
                     <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
                         <div className="flex h-full flex-col p-2">
                           <div className="p-2">
-                             <Button className="w-full" disabled>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Compose
+                            <Button asChild className="w-full">
+                              <Link href="/ogeemail/compose">
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Compose
+                              </Link>
                             </Button>
                           </div>
                           <Separator />

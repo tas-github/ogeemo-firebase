@@ -116,7 +116,7 @@ export default function OgeeMailWelcomePage() {
   };
 
   const handleComposeClick = () => {
-    console.log("Compose button clicked. Feature coming soon!");
+    router.push('/ogeemail/compose');
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -403,5 +403,3 @@ export default function OgeeMailWelcomePage() {
     </>
   );
 }
-
-    
