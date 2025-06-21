@@ -20,6 +20,7 @@ import {
   Send,
   User,
   LoaderCircle,
+  Square,
 } from 'lucide-react';
 import {
   Card,
@@ -451,7 +452,7 @@ export default function ComposeEmailPage() {
                           size="icon"
                           className={cn(
                             "flex-shrink-0",
-                            isChatListening && "text-destructive animate-pulse"
+                            isChatListening && "text-destructive"
                           )}
                           onClick={
                             isChatListening ? stopChatListening : startChatListening
@@ -465,7 +466,7 @@ export default function ComposeEmailPage() {
                               : "Start listening"
                           }
                         >
-                          <Mic className="h-5 w-5" />
+                          {isChatListening ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                           <span className="sr-only">Use Voice</span>
                         </Button>
                         <Input
@@ -521,23 +522,34 @@ export default function ComposeEmailPage() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleEditorMicClick}
-                disabled={isEditorSupported === false}
-                className={cn("w-28", isEditorListening && "text-destructive animate-pulse")}
-                title={
-                  isEditorSupported === false
-                    ? "Voice input not supported"
-                    : isEditorListening
-                    ? "Stop composing"
-                    : "Compose with voice"
-                }
-              >
-                <Mic className="mr-2 h-4 w-4" />
-                {isEditorListening ? 'Listening...' : 'Dictate'}
-              </Button>
+              {isEditorListening ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleEditorMicClick}
+                  className="w-28 animate-pulse"
+                  title="Stop composing"
+                >
+                  <Square className="mr-2 h-4 w-4" />
+                  Stop
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleEditorMicClick}
+                  disabled={isEditorSupported === false}
+                  className="w-28"
+                  title={
+                    isEditorSupported === false
+                      ? "Voice input not supported"
+                      : "Compose with voice"
+                  }
+                >
+                  <Mic className="mr-2 h-4 w-4" />
+                  Dictate
+                </Button>
+              )}
             </div>
             <Button>
               <Mail className="mr-2 h-4 w-4" />

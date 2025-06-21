@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Archive, Star, Trash2, Search, MoreVertical, Reply, ReplyAll, Forward, ChevronDown, Inbox, Send, Pencil, Mic, Folder, Users, Briefcase, Book, Lightbulb, ListTodo, Mail } from 'lucide-react';
+import { Archive, Star, Trash2, Search, MoreVertical, Reply, ReplyAll, Forward, ChevronDown, Inbox, Send, Pencil, Mic, Folder, Users, Briefcase, Book, Lightbulb, ListTodo, Mail, Square } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -320,12 +320,12 @@ export default function OgeeMailInboxPage() {
                                                 variant="ghost"
                                                 className={cn(
                                                     "h-8 w-8 flex-shrink-0",
-                                                    isAiListening && "text-destructive animate-pulse"
+                                                    isAiListening && "text-destructive"
                                                 )}
                                                 onClick={isAiListening ? stopAiListening : startAiListening}
                                                 disabled={isSupported === false}
                                             >
-                                                <Mic className="h-4 w-4" />
+                                                {isAiListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                                                 <span className="sr-only">Use AI Assistant</span>
                                             </Button>
                                         </TooltipTrigger>
