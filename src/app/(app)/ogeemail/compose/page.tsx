@@ -13,7 +13,8 @@ import {
   Strikethrough,
   Quote,
   Link as LinkIcon,
-  ChevronDown
+  ChevronDown,
+  FileText
 } from 'lucide-react';
 import {
   Card,
@@ -33,6 +34,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+const templates = [
+  {
+    name: 'General Inquiry',
+    content: '<p>Hello,</p><p><br></p><p>I am writing to inquire about...</p><p><br></p><p>Thank you for your time.</p><p>Best regards,</p><p>[Your Name]</p>',
+  },
+  {
+    name: 'Meeting Request',
+    content: '<h3>Meeting Request: [Subject]</h3><p>Hello team,</p><p><br></p><p>I would like to schedule a meeting to discuss [Topic]. Please let me know what time works best for you in the coming days.</p><p><br></p><p>Best,</p><p>[Your Name]</p>',
+  },
+  {
+    name: 'Thank You',
+    content: '<p>Dear [Name],</p><p><br></p><p>Thank you so much for [Reason]. I really appreciate it.</p><p><br></p><p>All the best,</p><p>[Your Name]</p>',
+  },
+  {
+    name: 'Follow-up',
+    content: '<p>Hi [Name],</p><p><br></p><p>I am writing to follow up on our previous conversation about [Topic]. Do you have any updates?</p><p><br></p><p>Thanks,</p><p>[Your Name]</p>',
+  },
+];
 
 export default function ComposeEmailPage() {
   const [recipient, setRecipient] = React.useState('');
@@ -54,6 +74,22 @@ export default function ComposeEmailPage() {
     const url = window.prompt("Enter the URL:");
     if (url) {
       handleFormat('createLink', url);
+    }
+  };
+
+  const handleTemplateSelect = (content: string) => {
+    setBody(content);
+    if (editorRef.current) {
+      editorRef.current.innerHTML = content;
+
+      // Move cursor to end of content
+      const range = document.createRange();
+      const sel = window.getSelection();
+      range.selectNodeContents(editorRef.current);
+      range.collapse(false);
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+      editorRef.current.focus();
     }
   };
 
@@ -115,6 +151,25 @@ export default function ComposeEmailPage() {
                   <DropdownMenuItem onSelect={() => handleFormat('formatBlock', 'h1')} className="text-2xl font-bold">Heading 1</DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => handleFormat('formatBlock', 'h2')} className="text-xl font-bold">Heading 2</DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => handleFormat('formatBlock', 'h3')} className="text-lg font-bold">Heading 3</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="w-32 justify-start">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Templates
+                    <ChevronDown className="ml-auto h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                  {templates.map((template) => (
+                    <DropdownMenuItem
+                      key={template.name}
+                      onSelect={() => handleTemplateSelect(template.content)}
+                    >
+                      {template.name}
+                    </DropdownMenuItem>
+                  ))}
                 </DropdownMenuContent>
               </DropdownMenu>
               <Separator orientation="vertical" className="h-6 mx-1" />
