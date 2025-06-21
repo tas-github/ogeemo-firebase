@@ -292,50 +292,52 @@ export default function ContactsPage() {
                                                 <Plus className="mr-2 h-4 w-4" /> New Contact
                                                 </Button>
                                             </DialogTrigger>
-                                            <DialogContent className="sm:max-w-2xl">
-                                                <DialogHeader>
+                                            <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
+                                                <DialogHeader className="p-6 pb-4 border-b">
                                                     <DialogTitle>Create New Contact</DialogTitle>
                                                     <DialogDescription>
                                                         Add a new contact to the "{selectedFolder.name}" folder.
                                                     </DialogDescription>
                                                 </DialogHeader>
                                                 <Form {...form}>
-                                                    <form onSubmit={form.handleSubmit(handleCreateContact)} className="space-y-4 py-4">
-                                                        <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                                        <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                                        <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem> <FormLabel>Phone (Optional)</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                                        
-                                                        <FormField
-                                                          control={form.control}
-                                                          name="notes"
-                                                          render={({ field }) => (
-                                                            <FormItem>
-                                                              <FormLabel>Notes</FormLabel>
-                                                              <div className="rounded-md border">
-                                                                <div className="p-1 border-b flex items-center gap-1 flex-wrap">
-                                                                    <Button type="button" variant="ghost" size="icon" title="Bold" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
-                                                                    <Button type="button" variant="ghost" size="icon" title="Italic" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
-                                                                    <Button type="button" variant="ghost" size="icon" title="Underline" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
-                                                                    <Button type="button" variant="ghost" size="icon" title="Unordered List" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
-                                                                    <Button type="button" variant="ghost" size="icon" title="Ordered List" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
-                                                                </div>
-                                                                <FormControl>
-                                                                  <div
-                                                                    ref={notesEditorRef}
-                                                                    className="prose dark:prose-invert max-w-none min-h-[120px] p-2 focus:outline-none"
-                                                                    contentEditable
-                                                                    onInput={(e) => field.onChange(e.currentTarget.innerHTML)}
-                                                                    onBlur={field.onBlur}
-                                                                    dangerouslySetInnerHTML={{ __html: field.value ?? "" }}
-                                                                  />
-                                                                </FormControl>
-                                                              </div>
-                                                              <FormMessage />
-                                                            </FormItem>
-                                                          )}
-                                                        />
+                                                    <form onSubmit={form.handleSubmit(handleCreateContact)} className="flex-1 flex flex-col min-h-0">
+                                                        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                                                            <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                                            <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                                            <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem> <FormLabel>Phone (Optional)</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                                            
+                                                            <FormField
+                                                              control={form.control}
+                                                              name="notes"
+                                                              render={({ field }) => (
+                                                                <FormItem>
+                                                                  <FormLabel>Notes</FormLabel>
+                                                                  <div className="rounded-md border">
+                                                                    <div className="p-1 border-b flex items-center gap-1 flex-wrap">
+                                                                        <Button type="button" variant="ghost" size="icon" title="Bold" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
+                                                                        <Button type="button" variant="ghost" size="icon" title="Italic" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
+                                                                        <Button type="button" variant="ghost" size="icon" title="Underline" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
+                                                                        <Button type="button" variant="ghost" size="icon" title="Unordered List" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
+                                                                        <Button type="button" variant="ghost" size="icon" title="Ordered List" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
+                                                                    </div>
+                                                                    <FormControl>
+                                                                      <div
+                                                                        ref={notesEditorRef}
+                                                                        className="prose dark:prose-invert max-w-none min-h-[240px] p-2 focus:outline-none"
+                                                                        contentEditable
+                                                                        onInput={(e) => field.onChange(e.currentTarget.innerHTML)}
+                                                                        onBlur={field.onBlur}
+                                                                        dangerouslySetInnerHTML={{ __html: field.value ?? "" }}
+                                                                      />
+                                                                    </FormControl>
+                                                                  </div>
+                                                                  <FormMessage />
+                                                                </FormItem>
+                                                              )}
+                                                            />
+                                                        </div>
 
-                                                        <DialogFooter className="pt-4">
+                                                        <DialogFooter className="p-6 border-t">
                                                             <Button type="button" variant="ghost" onClick={() => setIsNewContactDialogOpen(false)}>Cancel</Button>
                                                             <Button type="submit">Create Contact</Button>
                                                         </DialogFooter>
