@@ -98,7 +98,6 @@ export default function ContactsPage() {
         name: newFolderName.trim(),
       };
       setFolders([...folders, newFolder]);
-      mockFolders.push(newFolder);
       setNewFolderName("");
       setIsNewFolderDialogOpen(false);
     }
@@ -115,7 +114,6 @@ export default function ContactsPage() {
     };
     const newContacts = [...contacts, newContact];
     setContacts(newContacts);
-    mockContacts.push(newContact);
     form.reset();
     setIsNewContactDialogOpen(false);
   }

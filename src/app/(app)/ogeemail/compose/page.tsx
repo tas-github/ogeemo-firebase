@@ -409,9 +409,6 @@ export default function ComposeEmailPage() {
     // Update local state for immediate feedback in picker
     setAllContacts(prev => [...prev, newContact]);
     
-    // Update "global" mock data
-    mockContacts.push(newContact);
-    
     newContactForm.reset();
     setIsNewContactDialogOpen(false);
   }
