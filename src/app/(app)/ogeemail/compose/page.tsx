@@ -24,7 +24,7 @@ export default function ComposeEmailPage() {
             <CardDescription>
               Fill in the details below to send an email.
             </CardDescription>
-          </Header>
+          </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">Compose form will be built here.</p>
           </CardContent>
