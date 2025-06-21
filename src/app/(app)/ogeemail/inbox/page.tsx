@@ -180,8 +180,33 @@ export default function OgeeMailInboxPage() {
 
     return (
         <div className="relative p-4 sm:p-6 flex flex-col h-full bg-background overflow-hidden space-y-4">
-            <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
-                <Button>Getting started with OgeeMail</Button>
+             <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button>Getting started with OgeeMail</Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-96 p-4" align="end">
+                        <div className="flex flex-col gap-1 text-sm">
+                            <h3 className="font-semibold">Getting Started with OgeeMail</h3>
+                            <p className="text-muted-foreground">The Ogeemo Team</p>
+                            <p className="text-xs text-muted-foreground">&lt;team@ogeemo.com&gt;</p>
+                            <p className="text-xs text-muted-foreground pt-1">
+                                {new Date('6/21/2025, 9:27:19 AM').toLocaleString()}
+                            </p>
+                        </div>
+                        <Separator className="my-2" />
+                        <div className="space-y-2 text-sm">
+                            <p>Hi there,</p>
+                            <p>Welcome to your new inbox! Here are a few tips to get you started:</p>
+                            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                                <li>Use the left-hand menu to navigate between folders.</li>
+                                <li>Select multiple emails using the checkboxes to perform bulk actions.</li>
+                                <li>Resize the panels to customize your view.</li>
+                            </ul>
+                            <p>Enjoy!<br/>The Ogeemo Team</p>
+                        </div>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
              <header className="text-center">
                 <h1 className="text-3xl font-bold font-headline text-primary">OgeeMail</h1>
