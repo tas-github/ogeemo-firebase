@@ -36,7 +36,7 @@ const mockEmails: Email[] = [
     id: '1',
     from: 'The Ogeemo Team',
     fromEmail: 'team@ogeemo.com',
-    subject: 'Getting Started with OgeeMail',
+    subject: 'Getting Started with Ogeemo',
     text: `<p>Hi there,</p><p>Welcome to your new inbox! Here are a few tips to get you started:</p><ul><li>Use the left-hand menu to navigate between folders.</li><li>Select multiple emails using the checkboxes to perform bulk actions.</li><li>Resize the panels to customize your view.</li></ul><p>Enjoy!<br/>The Ogeemo Team</p>`,
     date: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
     read: false,
