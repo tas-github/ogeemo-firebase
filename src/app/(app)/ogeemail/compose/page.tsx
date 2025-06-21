@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -22,6 +23,10 @@ import {
   Square,
   Paperclip,
   X,
+  Plus,
+  Image as ImageIcon,
+  Minus,
+  Code2,
 } from 'lucide-react';
 import {
   Card,
@@ -227,6 +232,13 @@ export default function ComposeEmailPage() {
       handleFormat('createLink', url);
     }
   };
+  
+  const handleInsertImage = () => {
+    const url = window.prompt("Enter the image URL:");
+    if (url) {
+      handleFormat('insertImage', url);
+    }
+  };
 
   const handleTemplateSelect = (content: string) => {
     setBody(content);
@@ -395,6 +407,31 @@ export default function ComposeEmailPage() {
                       {template.name}
                     </DropdownMenuItem>
                   ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="justify-between">
+                    <span className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Insert
+                    </span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onMouseDown={preventDefault} onSelect={handleInsertImage}>
+                    <ImageIcon className="mr-2 h-4 w-4" />
+                    <span>Image</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onMouseDown={preventDefault} onSelect={() => handleFormat('insertHorizontalRule')}>
+                    <Minus className="mr-2 h-4 w-4" />
+                    <span>Horizontal Line</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onMouseDown={preventDefault} onSelect={() => handleFormat('formatBlock', 'pre')}>
+                    <Code2 className="mr-2 h-4 w-4" />
+                    <span>Code Block</span>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <Separator orientation="vertical" className="h-6" />
