@@ -1,20 +1,13 @@
 
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Folder,
   Plus,
   MoreVertical,
   Trash2,
   Pencil,
-  Bold,
-  Italic,
-  Underline,
-  List,
-  ListOrdered,
-  Mic,
-  Square,
   Phone,
 } from 'lucide-react';
 import { useForm } from "react-hook-form";
@@ -58,7 +51,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { type Contact, type FolderData, mockContacts, mockFolders } from '@/data/contacts';
-import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { useToast } from '@/hooks/use-toast';
 
 const contactSchema = z.object({
@@ -68,7 +60,6 @@ const contactSchema = z.object({
   cellPhone: z.string().optional(),
   homePhone: z.string().optional(),
   faxNumber: z.string().optional(),
-  notes: z.string().optional(),
 });
 
 
@@ -83,64 +74,12 @@ export default function ContactsPage() {
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [contactToEdit, setContactToEdit] = useState<Contact | null>(null);
   
-  const notesEditorRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
   const form = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
-    defaultValues: { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", notes: "" },
+    defaultValues: { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "" },
   });
-
-  const [notesBeforeSpeech, setNotesBeforeSpeech] = useState('');
-
-  const { isListening, startListening, stopListening, isSupported } =
-    useSpeechToText({
-      onTranscript: (transcript) => {
-        if (notesEditorRef.current) {
-          const newContent = notesBeforeSpeech
-            ? `${notesBeforeSpeech} ${transcript}`
-            : transcript;
-          
-          notesEditorRef.current.innerHTML = newContent;
-          form.setValue('notes', newContent, { shouldValidate: true, shouldDirty: true });
-
-          const range = document.createRange();
-          const sel = window.getSelection();
-          if (sel) {
-            range.selectNodeContents(notesEditorRef.current);
-            range.collapse(false);
-            sel.removeAllRanges();
-            sel.addRange(range);
-          }
-        }
-      },
-       onFinalTranscript: () => {
-        if (isListening) {
-          stopListening();
-        }
-      }
-    });
-
-  useEffect(() => {
-    if (isSupported === false) {
-      toast({
-        variant: "destructive",
-        title: "Voice Input Not Supported",
-        description: "Your browser does not support the Web Speech API.",
-      });
-    }
-  }, [isSupported, toast]);
-
-  const handleDictateClick = () => {
-    if (isListening) {
-      stopListening();
-    } else {
-      const currentNotes = form.getValues('notes') || '';
-      setNotesBeforeSpeech(currentNotes);
-      startListening();
-      notesEditorRef.current?.focus();
-    }
-  };
   
   // Data loading and saving effects
   useEffect(() => {
@@ -208,23 +147,15 @@ export default function ContactsPage() {
     }
   };
 
-  const handleFormat = (command: string) => {
-    document.execCommand(command, false);
-    notesEditorRef.current?.focus();
-  };
-
   const openContactForm = (contact: Contact | null) => {
     setContactToEdit(contact);
-    form.reset(contact || { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", notes: "" });
+    form.reset(contact || { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "" });
     setIsContactFormOpen(true);
   };
 
   const closeContactForm = () => {
     setIsContactFormOpen(false);
     setContactToEdit(null);
-    if(isListening) {
-      stopListening();
-    }
     form.reset();
   };
   
@@ -442,7 +373,7 @@ export default function ContactsPage() {
       </div>
 
       <Dialog open={isContactFormOpen} onOpenChange={(open) => { if (!open) closeContactForm(); else setIsContactFormOpen(true); }}>
-          <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0 contact-dialog-force-ltr">
+          <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
               <div className="flex flex-col space-y-1.5 text-center p-6 pb-4 border-b">
                 <h1 className="text-3xl font-bold font-headline text-primary">
                   {contactToEdit ? `Edit ${contactToEdit.name}` : "Create New Contact"}
@@ -508,64 +439,9 @@ export default function ContactsPage() {
                             )} />
                             <FormField control={form.control} name="faxNumber" render={({ field }) => ( <FormItem> <FormLabel>Fax #</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           </div>
-                          
-                          <FormField
-                            control={form.control}
-                            name="notes"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Notes</FormLabel>
-                                <div className="rounded-md border">
-                                  <div className="p-1 border-b flex items-center gap-1 flex-wrap">
-                                      <Button type="button" variant="ghost" size="icon" title="Bold" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
-                                      <Button type="button" variant="ghost" size="icon" title="Italic" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
-                                      <Button type="button" variant="ghost" size="icon" title="Underline" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
-                                      <Button type="button" variant="ghost" size="icon" title="Unordered List" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
-                                      <Button type="button" variant="ghost" size="icon" title="Ordered List" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
-                                  </div>
-                                  <FormControl>
-                                    <div
-                                      ref={notesEditorRef}
-                                      className="prose dark:prose-invert max-w-none min-h-[240px] p-2 focus:outline-none"
-                                      contentEditable
-                                      onInput={(e) => field.onChange(e.currentTarget.innerHTML)}
-                                      onBlur={field.onBlur}
-                                      dangerouslySetInnerHTML={{ __html: field.value ?? "" }}
-                                    />
-                                  </FormControl>
-                                </div>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
                       </div>
 
-                      <div className="p-6 border-t flex items-center">
-                          <div className="mr-auto">
-                            {isListening ? (
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                onClick={handleDictateClick}
-                                className="animate-pulse"
-                                title="Stop dictating"
-                              >
-                                <Square className="mr-2 h-4 w-4" />
-                                Stop
-                              </Button>
-                            ) : (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={handleDictateClick}
-                                disabled={isSupported === false}
-                                title={isSupported === false ? "Voice input not supported" : "Dictate notes"}
-                              >
-                                <Mic className="mr-2 h-4 w-4" />
-                                Dictate Notes
-                              </Button>
-                            )}
-                          </div>
+                      <div className="p-6 border-t flex items-center justify-end">
                           <div className="flex items-center gap-2">
                               <Button type="button" variant="ghost" onClick={closeContactForm}>Cancel</Button>
                               <Button type="submit">{contactToEdit ? "Save Changes" : "Create Contact"}</Button>
