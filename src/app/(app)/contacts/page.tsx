@@ -15,6 +15,7 @@ import {
   ListOrdered,
   Mic,
   Square,
+  Phone,
 } from 'lucide-react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -458,9 +459,54 @@ export default function ContactsPage() {
                           <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="businessPhone" render={({ field }) => ( <FormItem> <FormLabel>Business #</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                            <FormField control={form.control} name="cellPhone" render={({ field }) => ( <FormItem> <FormLabel>Cell #</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                            <FormField control={form.control} name="homePhone" render={({ field }) => ( <FormItem> <FormLabel>Home #</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="businessPhone" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Business #</FormLabel>
+                                    <div className="relative">
+                                        <FormControl>
+                                            <Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} />
+                                        </FormControl>
+                                        {field.value && (
+                                            <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild>
+                                                <a href={`tel:${field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Business</span></a>
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name="cellPhone" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Cell #</FormLabel>
+                                     <div className="relative">
+                                        <FormControl>
+                                            <Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} />
+                                        </FormControl>
+                                        {field.value && (
+                                            <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild>
+                                                <a href={`tel:${field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Cell</span></a>
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name="homePhone" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Home #</FormLabel>
+                                     <div className="relative">
+                                        <FormControl>
+                                            <Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} />
+                                        </FormControl>
+                                        {field.value && (
+                                            <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild>
+                                                <a href={`tel:${field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Home</span></a>
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
                             <FormField control={form.control} name="faxNumber" render={({ field }) => ( <FormItem> <FormLabel>Fax #</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           </div>
                           
