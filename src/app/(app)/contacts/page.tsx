@@ -442,7 +442,7 @@ export default function ContactsPage() {
       </div>
 
       <Dialog open={isContactFormOpen} onOpenChange={(open) => { if (!open) closeContactForm(); else setIsContactFormOpen(true); }}>
-          <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
+          <DialogContent style={{ direction: 'ltr' }} className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
               <div className="flex flex-col space-y-1.5 text-center p-6 pb-4 border-b">
                 <h1 className="text-3xl font-bold font-headline text-primary">
                   {contactToEdit ? `Edit ${contactToEdit.name}` : "Create New Contact"}
