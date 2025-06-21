@@ -541,7 +541,7 @@ export default function ContactsPage() {
                           />
                       </div>
 
-                      <DialogFooter className="p-6 border-t flex-wrap items-center justify-between gap-2">
+                      <DialogFooter className="p-6 border-t flex flex-wrap items-center gap-2">
                           <div>
                             {isListening ? (
                               <Button
@@ -567,7 +567,7 @@ export default function ContactsPage() {
                               </Button>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 ml-auto">
                               <Button type="button" variant="ghost" onClick={closeContactForm}>Cancel</Button>
                               <Button type="submit">{contactToEdit ? "Save Changes" : "Create Contact"}</Button>
                           </div>
