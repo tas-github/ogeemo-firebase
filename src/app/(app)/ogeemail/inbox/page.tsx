@@ -175,32 +175,7 @@ export default function OgeeMailInboxPage() {
     return (
         <div className="relative p-4 sm:p-6 flex flex-col h-full bg-background overflow-hidden space-y-4">
             <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button>Getting started with Ogeemo</Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-96 p-4" align="end">
-                        <div className="flex flex-col gap-1 text-sm">
-                            <h3 className="font-semibold">Getting Started with OgeeMail</h3>
-                            <p className="text-muted-foreground">The Ogeemo Team</p>
-                            <p className="text-xs text-muted-foreground">&lt;team@ogeemo.com&gt;</p>
-                            <p className="text-xs text-muted-foreground pt-1">
-                                {new Date('6/21/2025, 9:27:19 AM').toLocaleString()}
-                            </p>
-                        </div>
-                        <Separator className="my-2" />
-                        <div className="space-y-2 text-sm">
-                            <p>Hi there,</p>
-                            <p>Welcome to your new inbox! Here are a few tips to get you started:</p>
-                            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                                <li>Use the left-hand menu to navigate between folders.</li>
-                                <li>Select multiple emails using the checkboxes to perform bulk actions.</li>
-                                <li>Resize the panels to customize your view.</li>
-                            </ul>
-                            <p>Enjoy!<br/>The Ogeemo Team</p>
-                        </div>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                 <Button>Getting started with OgeeMail</Button>
             </div>
              <header className="text-center">
                 <h1 className="text-3xl font-bold font-headline text-primary">OgeeMail</h1>
@@ -285,8 +260,7 @@ export default function OgeeMailInboxPage() {
                                                 key={email.id}
                                                 onClick={() => handleSelectEmail(email.id)}
                                                 className={cn(
-                                                    'flex items-start gap-4 cursor-pointer border-b p-3 transition-colors',
-                                                    selectedEmailId === email.id ? 'bg-accent' : 'hover:bg-accent/50',
+                                                    'flex items-start gap-4 cursor-pointer border-b p-3 transition-colors hover:bg-accent/50',
                                                     !email.read && 'bg-primary/5'
                                                 )}
                                             >
@@ -305,9 +279,40 @@ export default function OgeeMailInboxPage() {
                                                         </time>
                                                     </div>
                                                     <p className="font-medium truncate text-sm">{email.subject}</p>
-                                                    <p className="truncate text-sm text-muted-foreground">
-                                                        {email.text.replace(/<[^>]+>/g, '').substring(0, 100)}...
-                                                    </p>
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <p className="truncate text-sm text-muted-foreground">
+                                                            {email.text.replace(/<[^>]+>/g, '').substring(0, 80)}...
+                                                        </p>
+                                                        <div className="flex items-center shrink-0">
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); console.log('Reply to', email.id); }}>
+                                                                        <Reply className="h-4 w-4" />
+                                                                        <span className="sr-only">Reply</span>
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent><p>Reply</p></TooltipContent>
+                                                            </Tooltip>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); console.log('Reply All to', email.id); }}>
+                                                                        <ReplyAll className="h-4 w-4" />
+                                                                        <span className="sr-only">Reply All</span>
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent><p>Reply All</p></TooltipContent>
+                                                            </Tooltip>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); console.log('Forward', email.id); }}>
+                                                                        <Forward className="h-4 w-4" />
+                                                                        <span className="sr-only">Forward</span>
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent><p>Forward</p></TooltipContent>
+                                                            </Tooltip>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))
