@@ -97,26 +97,61 @@ export default function ComposeEmailPage() {
   const [isChatLoading, setIsChatLoading] = React.useState(false);
   const chatScrollAreaRef = React.useRef<HTMLDivElement>(null);
 
+  // Speech-to-text for Chat
   const {
-    isListening,
-    startListening,
-    stopListening,
-    isSupported,
+    isListening: isChatListening,
+    startListening: startChatListening,
+    stopListening: stopChatListening,
+    isSupported: isChatSupported,
   } = useSpeechToText({
     onTranscript: (transcript) => {
       setChatInput(transcript);
     },
   });
 
+  const [bodyBeforeSpeech, setBodyBeforeSpeech] = React.useState('');
+  // Speech-to-text for Editor
+  const {
+    isListening: isEditorListening,
+    startListening: startEditorListening,
+    stopListening: stopEditorListening,
+    isSupported: isEditorSupported,
+  } = useSpeechToText({
+    onTranscript: (transcript) => {
+      if (editorRef.current) {
+        const newContent = bodyBeforeSpeech ? `${bodyBeforeSpeech} ${transcript}` : transcript;
+        editorRef.current.innerHTML = newContent;
+        setBody(newContent);
+
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(editorRef.current);
+        range.collapse(false);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
+    },
+  });
+
+  const handleEditorMicClick = () => {
+    if (isEditorListening) {
+      stopEditorListening();
+    } else {
+      setBodyBeforeSpeech(body);
+      startEditorListening();
+      editorRef.current?.focus();
+    }
+  };
+
   React.useEffect(() => {
-    if (isSupported === false) {
+    if (isChatSupported === false || isEditorSupported === false) {
       toast({
         variant: "destructive",
         title: "Voice Input Not Supported",
         description: "Your browser does not support the Web Speech API.",
       });
     }
-  }, [isSupported, toast]);
+  }, [isChatSupported, isEditorSupported, toast]);
 
   React.useEffect(() => {
     if (chatScrollAreaRef.current) {
@@ -131,8 +166,8 @@ export default function ComposeEmailPage() {
     e.preventDefault();
     if (!chatInput.trim() || isChatLoading) return;
 
-    if (isListening) {
-      stopListening();
+    if (isChatListening) {
+      stopChatListening();
     }
 
     const userMessage: Message = {
@@ -320,6 +355,7 @@ export default function ComposeEmailPage() {
                     className="prose dark:prose-invert max-w-none focus:outline-none min-h-full"
                     contentEditable={true}
                     onInput={(e) => setBody(e.currentTarget.innerHTML)}
+                    dangerouslySetInnerHTML={{ __html: body }}
                     placeholder="Compose your message..."
                 />
             </div>
@@ -408,16 +444,16 @@ export default function ComposeEmailPage() {
                           size="icon"
                           className={cn(
                             "flex-shrink-0",
-                            isListening && "text-destructive animate-pulse"
+                            isChatListening && "text-destructive animate-pulse"
                           )}
                           onClick={
-                            isListening ? stopListening : startListening
+                            isChatListening ? stopChatListening : startChatListening
                           }
-                          disabled={!isSupported || isChatLoading}
+                          disabled={!isChatSupported || isChatLoading}
                           title={
-                            !isSupported
+                            !isChatSupported
                               ? "Voice input not supported"
-                              : isListening
+                              : isChatListening
                               ? "Stop listening"
                               : "Start listening"
                           }
@@ -478,6 +514,23 @@ export default function ComposeEmailPage() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleEditorMicClick}
+                disabled={isEditorSupported === false}
+                className={cn("w-28", isEditorListening && "text-destructive animate-pulse")}
+                title={
+                  isEditorSupported === false
+                    ? "Voice input not supported"
+                    : isEditorListening
+                    ? "Stop composing"
+                    : "Compose with voice"
+                }
+              >
+                <Mic className="mr-2 h-4 w-4" />
+                {isEditorListening ? 'Listening...' : 'Dictate'}
+              </Button>
             </div>
             <Button>
               <Mail className="mr-2 h-4 w-4" />
