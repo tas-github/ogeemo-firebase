@@ -1,8 +1,89 @@
-import { Card, CardContent } from "@/components/ui/card";
+
+"use client";
+
+import React, { useState, useMemo } from 'react';
+import {
+  Folder,
+  Plus,
+  MoreVertical,
+  Trash2,
+  Pencil,
+  File,
+  User,
+} from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+} from '@/components/ui/card';
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from '@/components/ui/resizable';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+// Data Structures
+interface Contact {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  folderId: string;
+}
+
+interface FolderData {
+  id: string;
+  name: string;
+}
+
+// Mock Data
+const mockFolders: FolderData[] = [
+  { id: '1', name: 'Personal' },
+  { id: '2', name: 'Work' },
+  { id: '3', name: 'Leads' },
+];
+
+const mockContacts: Contact[] = [
+  { id: 'c1', name: 'Alice Johnson', email: 'alice@example.com', phone: '123-456-7890', folderId: '1' },
+  { id: 'c2', name: 'Bob Williams', email: 'bob@example.com', phone: '234-567-8901', folderId: '1' },
+  { id: 'c3', name: 'Charlie Brown', email: 'charlie@work.com', phone: '345-678-9012', folderId: '2' },
+  { id: 'c4', name: 'Diana Miller', email: 'diana@work.com', phone: '456-789-0123', folderId: '2' },
+  { id: 'c5', name: 'Eve Davis', email: 'eve@work.com', phone: '567-890-1234', folderId: '2' },
+  { id: 'c6', name: 'Frank White', email: 'frank.lead@example.com', phone: '678-901-2345', folderId: '3' },
+];
 
 export default function ContactsPage() {
+  const [folders, setFolders] = useState<FolderData[]>(mockFolders);
+  const [contacts, setContacts] = useState<Contact[]>(mockContacts);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(mockFolders[0]?.id || null);
+
+  const selectedFolder = useMemo(
+    () => folders.find((f) => f.id === selectedFolderId),
+    [folders, selectedFolderId]
+  );
+
+  const displayedContacts = useMemo(
+    () => contacts.filter((c) => c.folderId === selectedFolderId),
+    [contacts, selectedFolderId]
+  );
+
   return (
-    <div className="p-4 sm:p-6 space-y-6 flex flex-col h-full">
+    <div className="p-4 sm:p-6 space-y-4 flex flex-col h-full">
       <header className="text-center">
         <h1 className="text-3xl font-bold font-headline text-primary">
           Ogeemo Contact Manager
@@ -13,8 +94,103 @@ export default function ContactsPage() {
       </header>
       <div className="flex-1 min-h-0">
         <Card className="h-full">
-          <CardContent className="p-6">
-            {/* Content will go here */}
+          <CardContent className="p-0 h-full">
+            <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg">
+              <ResizablePanel defaultSize={25} minSize={20} maxSize={40}>
+                <div className="flex h-full flex-col p-2">
+                    <div className="p-2">
+                        <Button className="w-full">
+                            <Plus className="mr-2 h-4 w-4" /> New Folder
+                        </Button>
+                    </div>
+                    <nav className="flex flex-col gap-1 p-2">
+                        {folders.map((folder) => (
+                            <Button
+                                key={folder.id}
+                                variant={selectedFolderId === folder.id ? "secondary" : "ghost"}
+                                className="w-full justify-start gap-3"
+                                onClick={() => setSelectedFolderId(folder.id)}
+                            >
+                                <Folder className="h-4 w-4" />
+                                <span>{folder.name}</span>
+                            </Button>
+                        ))}
+                    </nav>
+                </div>
+              </ResizablePanel>
+
+              <ResizableHandle withHandle />
+
+              <ResizablePanel defaultSize={75}>
+                <div className="flex flex-col h-full">
+                    {selectedFolder ? (
+                        <>
+                            <div className="flex items-center justify-between p-4 border-b">
+                                <div>
+                                    <h2 className="text-xl font-bold">{selectedFolder.name}</h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        {displayedContacts.length} contact(s)
+                                    </p>
+                                </div>
+                                <Button>
+                                    <Plus className="mr-2 h-4 w-4" /> New Contact
+                                </Button>
+                            </div>
+                             <div className="flex-1 overflow-y-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[60px]"></TableHead>
+                                            <TableHead>Name</TableHead>
+                                            <TableHead>Email</TableHead>
+                                            <TableHead>Phone</TableHead>
+                                            <TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {displayedContacts.map((contact) => (
+                                            <TableRow key={contact.id}>
+                                                <TableCell>
+                                                     <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                                                        <File className="h-4 w-4 text-muted-foreground" />
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="font-medium">{contact.name}</TableCell>
+                                                <TableCell>{contact.email}</TableCell>
+                                                <TableCell>{contact.phone}</TableCell>
+                                                <TableCell>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon">
+                                                                <MoreVertical className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem>
+                                                                <Pencil className="mr-2 h-4 w-4" />
+                                                                Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem className="text-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex h-full items-center justify-center">
+                            <p className="text-muted-foreground">Select a folder to view contacts.</p>
+                        </div>
+                    )}
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
           </CardContent>
         </Card>
       </div>
