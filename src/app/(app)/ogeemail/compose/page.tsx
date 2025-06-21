@@ -10,6 +10,10 @@ import {
   ListOrdered,
   Mail,
   Bot,
+  Strikethrough,
+  Quote,
+  Link as LinkIcon,
+  ChevronDown
 } from 'lucide-react';
 import {
   Card,
@@ -23,11 +27,37 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function ComposeEmailPage() {
   const [recipient, setRecipient] = React.useState('');
   const [subject, setSubject] = React.useState('');
   const [body, setBody] = React.useState('');
+  const editorRef = React.useRef<HTMLDivElement>(null);
+
+  const handleFormat = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+  };
+
+  const handleCreateLink = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      alert("Please select the text you want to hyperlink.");
+      return;
+    }
+    const url = window.prompt("Enter the URL:");
+    if (url) {
+      handleFormat('createLink', url);
+    }
+  };
+
+  const preventDefault = (e: React.MouseEvent) => e.preventDefault();
 
   return (
     <div className="p-4 sm:p-6 space-y-6 h-full flex flex-col">
@@ -73,25 +103,51 @@ export default function ComposeEmailPage() {
           <Separator />
           <CardContent className="flex-1 flex flex-col p-0 min-h-0">
             <div className="p-2 border-b flex items-center gap-1 flex-wrap">
-              <Button variant="ghost" size="icon" title="Bold">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="w-28 justify-start">
+                    Headings
+                    <ChevronDown className="ml-auto h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onSelect={() => handleFormat('formatBlock', 'p')}>Paragraph</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => handleFormat('formatBlock', 'h1')} className="text-2xl font-bold">Heading 1</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => handleFormat('formatBlock', 'h2')} className="text-xl font-bold">Heading 2</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => handleFormat('formatBlock', 'h3')} className="text-lg font-bold">Heading 3</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Separator orientation="vertical" className="h-6 mx-1" />
+              <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}>
                 <Bold className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" title="Italic">
+              <Button variant="ghost" size="icon" title="Italic" onMouseDown={preventDefault} onClick={() => handleFormat('italic')}>
                 <Italic className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" title="Underline">
+              <Button variant="ghost" size="icon" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}>
                 <Underline className="h-4 w-4" />
               </Button>
+              <Button variant="ghost" size="icon" title="Strikethrough" onMouseDown={preventDefault} onClick={() => handleFormat('strikeThrough')}>
+                <Strikethrough className="h-4 w-4" />
+              </Button>
               <Separator orientation="vertical" className="h-6 mx-1" />
-              <Button variant="ghost" size="icon" title="Unordered List">
+              <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}>
                 <List className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" title="Ordered List">
+              <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}>
                 <ListOrdered className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" title="Blockquote" onMouseDown={preventDefault} onClick={() => handleFormat('formatBlock', 'blockquote')}>
+                <Quote className="h-4 w-4" />
+              </Button>
+               <Separator orientation="vertical" className="h-6 mx-1" />
+              <Button variant="ghost" size="icon" title="Insert Link" onMouseDown={preventDefault} onClick={handleCreateLink}>
+                <LinkIcon className="h-4 w-4" />
               </Button>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
                 <div
+                    ref={editorRef}
                     className="prose dark:prose-invert max-w-none focus:outline-none min-h-full"
                     contentEditable={true}
                     onInput={(e) => setBody(e.currentTarget.innerHTML)}
