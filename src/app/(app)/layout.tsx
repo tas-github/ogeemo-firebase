@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -30,6 +31,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   const isActive = (path: string) => {
+    if (path.endsWith('...')) {
+      return pathname.startsWith(path.slice(0, -3));
+    }
     return pathname === path;
   };
 
@@ -69,7 +73,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={isActive("/ogeemail")}
+                  isActive={isActive("/ogeemail...")}
                   tooltip="OgeeMail"
                 >
                   <Link href="/ogeemail">
@@ -137,11 +141,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
                 <SidebarTrigger className="md:hidden" />
                 <div className="flex-1 text-center">
-                {pathname === '/ogeemail' && <h1 className="text-xl font-semibold">OgeeMail</h1>}
+                {pathname.startsWith('/ogeemail') && <h1 className="text-xl font-semibold">OgeeMail</h1>}
                 {pathname === '/sandbox' && <h1 className="text-xl font-semibold">Sandbox</h1>}
                 </div>
             </header>
-            <main className="flex-1">
+            <main className="flex-1 overflow-hidden">
                 {children}
             </main>
         </div>
@@ -150,3 +154,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
+    
