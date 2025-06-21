@@ -276,7 +276,25 @@ export default function OgeeMailInboxPage() {
                                                 onChange={(e) => setSearchQuery(e.target.value)}
                                             />
                                         </div>
-                                        <Button>Actions</Button>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button disabled={selectedEmailIds.length === 0}>Actions</Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem>
+                                                    <Reply className="mr-2 h-4 w-4" />
+                                                    <span>Reply</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem>
+                                                    <ReplyAll className="mr-2 h-4 w-4" />
+                                                    <span>Reply All</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem>
+                                                    <Forward className="mr-2 h-4 w-4" />
+                                                    <span>Forward</span>
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </div>
                                 </div>
                                 <div className="overflow-y-auto h-full">
