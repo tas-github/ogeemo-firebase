@@ -14,7 +14,8 @@ import {
   Quote,
   Link as LinkIcon,
   ChevronDown,
-  FileText
+  FileText,
+  FilePlus
 } from 'lucide-react';
 import {
   Card,
@@ -34,8 +35,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
-const templates = [
+const initialTemplates = [
   {
     name: 'General Inquiry',
     content: '<p>Hello,</p><p><br></p><p>I am writing to inquire about...</p><p><br></p><p>Thank you for your time.</p><p>Best regards,</p><p>[Your Name]</p>',
@@ -60,6 +70,10 @@ export default function ComposeEmailPage() {
   const [body, setBody] = React.useState('');
   const editorRef = React.useRef<HTMLDivElement>(null);
 
+  const [templates, setTemplates] = React.useState(initialTemplates);
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = React.useState(false);
+  const [newTemplateName, setNewTemplateName] = React.useState('');
+
   const handleFormat = (command: string, value?: string) => {
     document.execCommand(command, false, value);
     editorRef.current?.focus();
@@ -81,8 +95,6 @@ export default function ComposeEmailPage() {
     setBody(content);
     if (editorRef.current) {
       editorRef.current.innerHTML = content;
-
-      // Move cursor to end of content
       const range = document.createRange();
       const sel = window.getSelection();
       range.selectNodeContents(editorRef.current);
@@ -91,6 +103,16 @@ export default function ComposeEmailPage() {
       sel?.addRange(range);
       editorRef.current.focus();
     }
+  };
+  
+  const handleSaveTemplate = () => {
+    if (!newTemplateName.trim() || !body.trim()) {
+        alert("Template name and body cannot be empty.");
+        return;
+    }
+    setTemplates(prev => [...prev, { name: newTemplateName, content: body }]);
+    setNewTemplateName("");
+    setIsTemplateDialogOpen(false);
   };
 
   const preventDefault = (e: React.MouseEvent) => e.preventDefault();
@@ -211,10 +233,46 @@ export default function ComposeEmailPage() {
             </div>
           </CardContent>
           <CardFooter className="border-t p-3 flex justify-between items-center">
-            <Button variant="outline">
-              <Bot className="mr-2 h-4 w-4" />
-              Ogeemo Assistant
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline">
+                <Bot className="mr-2 h-4 w-4" />
+                Ogeemo Assistant
+              </Button>
+              <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    <FilePlus className="mr-2 h-4 w-4" />
+                    Save as Template
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Save as New Template</DialogTitle>
+                    <DialogDescription>
+                      Enter a name for your new email template. The current email body will be saved as the content.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="template-name" className="text-right">
+                        Name
+                      </Label>
+                      <Input
+                        id="template-name"
+                        value={newTemplateName}
+                        onChange={(e) => setNewTemplateName(e.target.value)}
+                        className="col-span-3"
+                        placeholder="e.g. 'Project Follow-up'"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setIsTemplateDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSaveTemplate}>Save Template</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
             <Button>
               <Mail className="mr-2 h-4 w-4" />
               Send
