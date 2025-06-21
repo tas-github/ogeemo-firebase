@@ -57,6 +57,16 @@ export default function OgeeMailPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!auth) {
+      toast({
+        variant: "destructive",
+        title: "Firebase Not Configured",
+        description: "Please provide your Firebase project credentials in the .env file.",
+      });
+      setIsAuthReady(true);
+      setLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUserId(user.uid);
@@ -78,7 +88,7 @@ export default function OgeeMailPage() {
   }, [toast]);
 
   const addMockData = useCallback(async (uid: string) => {
-    if (mockDataAddedRef.current) return;
+    if (mockDataAddedRef.current || !db) return;
     mockDataAddedRef.current = true;
     const emailsCollectionRef = collection(db, `artifacts/${appId}/users/${uid}/emails`);
     const mockEmails = [
@@ -166,7 +176,7 @@ export default function OgeeMailPage() {
   }, [appId]);
 
   useEffect(() => {
-    if (!isAuthReady || !userId) {
+    if (!isAuthReady || !userId || !db) {
       if(isAuthReady && !userId) setLoading(false);
       return;
     }
@@ -223,7 +233,7 @@ export default function OgeeMailPage() {
 
     setSelectedEmailId(emailId);
 
-    if (!email.read && userId) {
+    if (!email.read && userId && db) {
       const emailRef = doc(db, `artifacts/${appId}/users/${userId}/emails`, emailId);
       await updateDoc(emailRef, { read: true });
     }
@@ -231,7 +241,7 @@ export default function OgeeMailPage() {
 
   const toggleStarredStatus = async (e: React.MouseEvent, emailId: string) => {
     e.stopPropagation();
-    if (!userId) return;
+    if (!userId || !db) return;
     const emailToUpdate = emails.find(e => e.id === emailId);
     if(emailToUpdate) {
         const emailRef = doc(db, `artifacts/${appId}/users/${userId}/emails`, emailId);
@@ -243,7 +253,7 @@ export default function OgeeMailPage() {
   };
 
   const handleSendEmail = async () => {
-    if (!userId) return;
+    if (!userId || !db) return;
     if (!newEmail.to || !newEmail.subject || !newEmail.text) {
       toast({
         variant: "destructive",

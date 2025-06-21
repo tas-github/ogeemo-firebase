@@ -51,6 +51,16 @@ export default function SandboxPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!auth) {
+      toast({
+        variant: "destructive",
+        title: "Firebase Not Configured",
+        description: "Please provide your Firebase project credentials in the .env file.",
+      });
+      setIsAuthReady(true);
+      setLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         setUserId(user.uid);
@@ -64,10 +74,10 @@ export default function SandboxPage() {
       setIsAuthReady(true);
     });
     return () => unsubscribe();
-  }, []);
+  }, [toast]);
 
   const addMockData = useCallback(async (uid: string) => {
-    if (mockDataAddedRef.current) return;
+    if (mockDataAddedRef.current || !db) return;
     mockDataAddedRef.current = true;
     const emailsCollectionRef = collection(db, `artifacts/${appId}/users/${uid}/${collectionName}`);
     
@@ -94,62 +104,83 @@ export default function SandboxPage() {
   }, [appId]);
 
   useEffect(() => {
-    if (!isAuthReady || !userId) return;
+    if (!isAuthReady || !userId || !db) {
+        if(isAuthReady && !userId) setLoading(false);
+        return;
+    }
 
     const emailsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/${collectionName}`);
-    
-    const initialLoad = async () => {
-      await addMockData(userId);
-      setLoading(false);
-    }
-    
-    initialLoad();
-
     const q = query(emailsCollectionRef, orderBy('date', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const fetchedEmails = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Email[];
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      setLoading(true);
+      if (snapshot.empty && !mockDataAddedRef.current) {
+        await addMockData(userId);
+      } else {
+        const fetchedEmails = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Email[];
         setEmails(fetchedEmails);
 
-        // Auto-select first email logic
-        const currentVisibleEmails = fetchedEmails.filter(email => {
-            if (activeFolder === "inbox") return email.folder === 'inbox';
-            if (activeFolder === "starred") return email.starred && email.folder !== 'trash';
-            return email.folder === activeFolder;
-        });
-
         if (selectedEmailId) {
-            const isSelectedStillVisible = currentVisibleEmails.some(e => e.id === selectedEmailId);
-            if (!isSelectedStillVisible) {
-                setSelectedEmailId(currentVisibleEmails.length > 0 ? currentVisibleEmails[0].id : null);
-            }
-        } else if (currentVisibleEmails.length > 0) {
-            setSelectedEmailId(currentVisibleEmails[0].id);
-        } else {
+          const isSelectedEmailStillVisible = fetchedEmails.some(e => e.id === selectedEmailId);
+          if (!isSelectedEmailStillVisible) {
             setSelectedEmailId(null);
+          }
         }
-        setLoading(false);
+        
+        if (!selectedEmailId && fetchedEmails.length > 0) {
+          const firstVisibleEmail = fetchedEmails.find(e => {
+              if (activeFolder === "inbox") return e.folder === 'inbox';
+              if (activeFolder === "starred") return e.starred && e.folder !== 'trash';
+              return e.folder === activeFolder;
+          });
+          if (firstVisibleEmail) {
+            setSelectedEmailId(firstVisibleEmail.id);
+          }
+        }
+      }
+      setLoading(false);
     }, (error) => {
       console.error("Error fetching emails:", error);
-      toast({ variant: "destructive", title: "Loading Error", description: "Failed to load emails." });
+      toast({
+        variant: "destructive",
+        title: "Loading Error",
+        description: "Failed to load emails.",
+      });
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [isAuthReady, userId, addMockData, toast, activeFolder]);
+  }, [isAuthReady, userId, addMockData, toast, activeFolder, selectedEmailId]);
 
 
   const handleSelectEmail = async (emailId: string) => {
     const email = emails.find(e => e.id === emailId);
-    if (!email || !userId) return;
+    if (!email || !userId || !db) return;
     setSelectedEmailId(emailId);
     if (!email.read) {
       const emailRef = doc(db, `artifacts/${appId}/users/${userId}/${collectionName}`, emailId);
       await updateDoc(emailRef, { read: true });
     }
   };
+  
+  const toggleStarredStatus = async (e: React.MouseEvent, emailId: string) => {
+    e.stopPropagation();
+    if (!userId || !db) return;
+    const emailToUpdate = emails.find(e => e.id === emailId);
+    if(emailToUpdate) {
+        const emailRef = doc(db, `artifacts/${appId}/users/${userId}/${collectionName}`, emailId);
+        await updateDoc(emailRef, { starred: !emailToUpdate.starred });
+        toast({
+          description: `Email ${!emailToUpdate.starred ? 'starred' : 'unstarred'}.`,
+        });
+    }
+  };
 
   const handleSendEmail = async () => {
-    if (!userId) return;
+    if (!userId || !db) return;
     const emailsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/${collectionName}`);
     try {
       await addDoc(emailsCollectionRef, { from: 'You', fromEmail: 'you@sandbox.com', to: newEmail.to, subject: newEmail.subject, text: `<p>${newEmail.text.replace(/\n/g, '</p><p>')}</p>`, date: new Date().toISOString(), read: true, starred: false, folder: 'sent', labels: [] });
@@ -175,33 +206,43 @@ export default function SandboxPage() {
     if (activeFolder === "trash") return email.folder === 'trash';
     return false;
   });
+  
+  const getAvatarFallback = (from: string) => from?.charAt(0).toUpperCase() || 'S';
 
   const menuItems = [
     { id: "inbox", label: "Inbox", icon: Inbox, count: emails.filter(e => e.folder === 'inbox' && !e.read).length },
     { id: "starred", label: "Starred", icon: Star, count: emails.filter(e => e.starred && e.folder !== 'trash').length },
-    { id: "sent", label: "Sent", icon: Send, count: 0 },
-    { id: "archive", label: "Archive", icon: Archive, count: 0 },
-    { id: "trash", label: "Trash", icon: Trash2, count: 0 },
+    { id: "sent", label: "Sent", icon: Send, count: emails.filter(e => e.folder === 'sent').length },
+    { id: "archive", label: "Archive", icon: Archive, count: emails.filter(e => e.folder === 'archive').length },
+    { id: "trash", label: "Trash", icon: Trash2, count: emails.filter(e => e.folder === 'trash').length },
   ];
+
+  const handleFolderChange = (folder: typeof activeFolder) => {
+    setActiveFolder(folder);
+    setSelectedEmailId(null);
+  };
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="h-full flex flex-col bg-background text-foreground overflow-hidden">
-        <div className="flex items-center p-2 border-b">
-            <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input type="search" placeholder="Search mail..." className="w-full rounded-lg bg-muted pl-8" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-            </div>
-            <Button className="ml-2" onClick={() => setIsComposeOpen(true)}>
-              <Pencil className="mr-2 h-4 w-4" /> Compose
-            </Button>
-        </div>
+      <div className="flex h-screen w-full flex-col bg-background text-foreground overflow-hidden">
         <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
           <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
             <div className="flex h-full flex-col p-2">
-              <nav className="flex flex-col gap-1">
+              <div className="p-2">
+                <Button className="w-full" onClick={() => setIsComposeOpen(true)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Compose
+                </Button>
+              </div>
+              <Separator />
+              <nav className="flex flex-col gap-1 p-2">
                 {menuItems.map((item) => (
-                  <Button key={item.id} variant={activeFolder === item.id ? "secondary" : "ghost"} className="w-full justify-start gap-3" onClick={() => setActiveFolder(item.id as any)} >
+                  <Button
+                    key={item.id}
+                    variant={activeFolder === item.id ? "secondary" : "ghost"}
+                    className="w-full justify-start gap-3"
+                    onClick={() => handleFolderChange(item.id as any)}
+                  >
                     <item.icon className="h-4 w-4" />
                     <span>{item.label}</span>
                     {item.count > 0 && <span className="ml-auto text-xs font-normal bg-primary text-primary-foreground rounded-full px-2">{item.count}</span>}
@@ -211,18 +252,35 @@ export default function SandboxPage() {
             </div>
           </ResizablePanel>
           <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={30} minSize={20}>
-            <div className="flex flex-col h-full border-r">
+          <ResizablePanel defaultSize={35} minSize={25}>
+            <div className="flex flex-col h-full">
+               <div className="p-2 border-b">
+                <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        type="search"
+                        placeholder="Search mail..."
+                        className="w-full rounded-lg bg-muted pl-8"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+              </div>
               <div className="flex-1 overflow-y-auto">
               {loading ? <div className="flex h-full items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin text-primary" /></div>
               : filteredEmails.length > 0 ? (
                 filteredEmails.map((email) => (
-                  <div key={email.id} onClick={() => handleSelectEmail(email.id)} className={cn('cursor-pointer border-b p-3 transition-colors', selectedEmailId === email.id ? 'bg-accent' : 'hover:bg-accent/50', !email.read && 'bg-primary/5')}>
+                  <div key={email.id} onClick={() => handleSelectEmail(email.id)} className={cn('cursor-pointer border-b p-4 transition-colors', selectedEmailId === email.id ? 'bg-accent' : 'hover:bg-accent/50', !email.read && 'bg-primary/5')}>
                     <div className="flex items-start justify-between">
                       <p className={cn('font-semibold text-sm truncate', !email.read && 'text-primary')}>{email.from}</p>
                       <time className="text-xs text-muted-foreground whitespace-nowrap">{new Date(email.date).toLocaleDateString()}</time>
                     </div>
-                    <p className="font-medium truncate pr-4 text-sm mt-1">{email.subject}</p>
+                     <div className="flex items-center justify-between mt-1">
+                        <p className="font-medium truncate pr-4 text-sm">{email.subject}</p>
+                        <button onClick={(e) => toggleStarredStatus(e, email.id)}>
+                          <Star className={cn('h-4 w-4 text-muted-foreground transition-colors shrink-0 hover:text-yellow-500', email.starred && 'fill-yellow-400 text-yellow-500')} />
+                        </button>
+                    </div>
                     <p className="truncate text-sm text-muted-foreground mt-1">{email.text.replace(/<[^>]+>/g, '')}</p>
                   </div>
                 ))
@@ -231,13 +289,13 @@ export default function SandboxPage() {
             </div>
           </ResizablePanel>
           <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={50} minSize={30}>
+          <ResizablePanel defaultSize={45} minSize={30}>
             <div className="flex-1 overflow-y-auto p-4 md:p-6 h-full">
               {selectedEmail ? (
                 <div>
                   <div className="flex items-center justify-between border-b pb-4">
                       <div className="flex items-center gap-4">
-                          <Avatar className="h-10 w-10"><AvatarImage src={`https://i.pravatar.cc/150?u=${selectedEmail.fromEmail}`} alt={selectedEmail.from} /><AvatarFallback>{selectedEmail.from?.charAt(0).toUpperCase() || 'S'}</AvatarFallback></Avatar>
+                          <Avatar className="h-10 w-10"><AvatarImage src={`https://i.pravatar.cc/150?u=${selectedEmail.fromEmail}`} alt={selectedEmail.from} /><AvatarFallback>{getAvatarFallback(selectedEmail.from)}</AvatarFallback></Avatar>
                           <div className="flex-1 min-w-0">
                               <p className="font-semibold">{selectedEmail.from}</p>
                               <p className="text-sm text-muted-foreground">To: {selectedEmail.to || 'You <you@sandbox.com>'}</p>
@@ -245,13 +303,19 @@ export default function SandboxPage() {
                       </div>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <time>{new Date(selectedEmail.date).toLocaleString()}</time>
+                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><CornerUpLeft className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Reply</p></TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>More</p></TooltipContent></Tooltip>
                       </div>
                   </div>
                   <h2 className="text-2xl font-bold my-4">{selectedEmail.subject}</h2>
                   <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedEmail.text }} />
                 </div>
               ) : (
-                !loading && <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground"><Inbox className="h-16 w-16" /><p className="mt-4 text-lg">No email selected</p></div>
+                <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
+                  <Inbox className="h-16 w-16" />
+                  <p className="mt-4 text-lg">Select an email to read</p>
+                  <p className="text-sm">Nothing selected</p>
+                </div>
               )}
             </div>
           </ResizablePanel>
