@@ -13,6 +13,8 @@ import {
   Underline,
   List,
   ListOrdered,
+  Mic,
+  Square,
 } from 'lucide-react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -56,6 +58,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { type Contact, type FolderData, mockContacts, mockFolders } from '@/data/contacts';
+import { useSpeechToText } from '@/hooks/use-speech-to-text';
+import { useToast } from '@/hooks/use-toast';
 
 const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -79,6 +83,58 @@ export default function ContactsPage() {
     resolver: zodResolver(contactSchema),
     defaultValues: { name: "", email: "", phone: "", notes: "" },
   });
+
+  const { toast } = useToast();
+  const [notesBeforeSpeech, setNotesBeforeSpeech] = useState('');
+
+  const { isListening, startListening, stopListening, isSupported } =
+    useSpeechToText({
+      onTranscript: (transcript) => {
+        if (notesEditorRef.current) {
+          const newContent = notesBeforeSpeech
+            ? `${notesBeforeSpeech} ${transcript}`
+            : transcript;
+          
+          notesEditorRef.current.innerHTML = newContent;
+          form.setValue('notes', newContent, { shouldValidate: true, shouldDirty: true });
+
+          const range = document.createRange();
+          const sel = window.getSelection();
+          if (sel) {
+            range.selectNodeContents(notesEditorRef.current);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+        }
+      },
+       onFinalTranscript: () => {
+        if (isListening) {
+          stopListening();
+        }
+      }
+    });
+
+  useEffect(() => {
+    if (isSupported === false) {
+      toast({
+        variant: "destructive",
+        title: "Voice Input Not Supported",
+        description: "Your browser does not support the Web Speech API.",
+      });
+    }
+  }, [isSupported, toast]);
+
+  const handleDictateClick = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      const currentNotes = form.getValues('notes') || '';
+      setNotesBeforeSpeech(currentNotes);
+      startListening();
+      notesEditorRef.current?.focus();
+    }
+  };
   
   // Data loading and saving effects
   useEffect(() => {
@@ -191,6 +247,14 @@ export default function ContactsPage() {
     setSelectedContactIds([]);
   };
 
+  const handleCancelNewContact = () => {
+    setIsNewContactDialogOpen(false);
+    if(isListening) {
+      stopListening();
+    }
+    form.reset();
+  }
+
   return (
     <div className="p-4 sm:p-6 space-y-4 flex flex-col h-full">
       <header className="text-center">
@@ -286,7 +350,7 @@ export default function ContactsPage() {
                                                 {displayedContacts.length} contact(s)
                                             </p>
                                         </div>
-                                        <Dialog open={isNewContactDialogOpen} onOpenChange={(open) => { setIsNewContactDialogOpen(open); if (!open) form.reset(); }}>
+                                        <Dialog open={isNewContactDialogOpen} onOpenChange={(open) => { if (!open) handleCancelNewContact(); else setIsNewContactDialogOpen(true) }}>
                                             <DialogTrigger asChild>
                                                 <Button disabled={!selectedFolderId}>
                                                 <Plus className="mr-2 h-4 w-4" /> New Contact
@@ -337,9 +401,36 @@ export default function ContactsPage() {
                                                             />
                                                         </div>
 
-                                                        <DialogFooter className="p-6 border-t">
-                                                            <Button type="button" variant="ghost" onClick={() => setIsNewContactDialogOpen(false)}>Cancel</Button>
-                                                            <Button type="submit">Create Contact</Button>
+                                                        <DialogFooter className="p-6 border-t flex-wrap items-center justify-between gap-2">
+                                                            <div>
+                                                              {isListening ? (
+                                                                <Button
+                                                                  type="button"
+                                                                  variant="destructive"
+                                                                  onClick={handleDictateClick}
+                                                                  className="animate-pulse"
+                                                                  title="Stop dictating"
+                                                                >
+                                                                  <Square className="mr-2 h-4 w-4" />
+                                                                  Stop
+                                                                </Button>
+                                                              ) : (
+                                                                <Button
+                                                                  type="button"
+                                                                  variant="outline"
+                                                                  onClick={handleDictateClick}
+                                                                  disabled={isSupported === false}
+                                                                  title={isSupported === false ? "Voice input not supported" : "Dictate notes"}
+                                                                >
+                                                                  <Mic className="mr-2 h-4 w-4" />
+                                                                  Dictate Notes
+                                                                </Button>
+                                                              )}
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <Button type="button" variant="ghost" onClick={handleCancelNewContact}>Cancel</Button>
+                                                                <Button type="submit">Create Contact</Button>
+                                                            </div>
                                                         </DialogFooter>
                                                     </form>
                                                 </Form>
