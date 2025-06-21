@@ -23,13 +23,13 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger,
+  SidebarInset,
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/logo";
 import { UserNav } from "@/components/user-nav";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isOgeeMailPage = pathname === '/ogeemail' || pathname === '/sandbox';
 
   const isActive = (path: string) => {
     return pathname === path;
@@ -38,8 +38,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen bg-background text-foreground">
-        {/* The Sidebar has been temporarily removed to debug a layout issue. */}
-        {/* <Sidebar>
+        <Sidebar>
           <SidebarHeader>
             <Logo />
           </SidebarHeader>
@@ -134,9 +133,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <SidebarFooter>
             <UserNav />
           </SidebarFooter>
-        </Sidebar> */}
+        </Sidebar>
 
-        <main className="w-full flex flex-col min-h-0">
+        <SidebarInset>
           <header className="sticky top-0 z-10 flex h-16 items-center border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
             <SidebarTrigger className="md:hidden" />
              <div className="flex-1 text-center">
@@ -145,7 +144,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           {children}
-        </main>
+        </SidebarInset>
       </div>
     </SidebarProvider>
   );
