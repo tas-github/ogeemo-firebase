@@ -1,8 +1,8 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Archive, Star, Trash2, Search, MoreVertical, Reply, ReplyAll, Forward, ChevronDown, Inbox, Send, Pencil, Mic } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Archive, Star, Trash2, Search, MoreVertical, Reply, ReplyAll, Forward, ChevronDown, Inbox, Send, Pencil, Mic, Folder, Users, Briefcase, Book, Lightbulb, ListTodo, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -120,14 +120,32 @@ export default function OgeeMailInboxPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]);
     const [activeFolder, setActiveFolder] = useState<'inbox' | 'sent' | 'archive' | 'trash' | 'starred'>("inbox");
+    const [aiCommand, setAiCommand] = useState('');
     const { toast } = useToast();
 
-    const { isListening, startListening, stopListening, isSupported } =
-        useSpeechToText({
+    const { 
+        isListening: isAiListening, 
+        startListening: startAiListening, 
+        stopListening: stopAiListening, 
+        isSupported 
+    } = useSpeechToText({
         onTranscript: (transcript) => {
-            setSearchQuery(transcript);
+            setAiCommand(transcript);
         },
     });
+
+    const prevIsAiListeningRef = useRef<boolean>();
+    useEffect(() => {
+        if (prevIsAiListeningRef.current && !isAiListening && aiCommand.trim()) {
+        toast({
+            title: "AI Command",
+            description: `Processing: "${aiCommand}"`,
+        });
+        console.log(`AI Command captured: ${aiCommand}`);
+        setAiCommand('');
+        }
+        prevIsAiListeningRef.current = isAiListening;
+    }, [isAiListening, aiCommand, toast]);
 
     useEffect(() => {
         if (isSupported === false) {
@@ -263,6 +281,27 @@ export default function OgeeMailInboxPage() {
                                     <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
                                 </div>
                             )}
+                             <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="ghost"
+                                        className={cn(
+                                            "h-8 w-8 flex-shrink-0",
+                                            isAiListening && "text-destructive animate-pulse"
+                                        )}
+                                        onClick={isAiListening ? stopAiListening : startAiListening}
+                                        disabled={isSupported === false}
+                                    >
+                                        <Mic className="h-4 w-4" />
+                                        <span className="sr-only">Use AI Assistant</span>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{isSupported === false ? "Voice not supported" : (isAiListening ? "Stop listening" : "Ask AI Assistant")}</p>
+                                </TooltipContent>
+                            </Tooltip>
                             <div className="ml-auto flex items-center gap-2">
                                 <div className="relative">
                                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -274,27 +313,6 @@ export default function OgeeMailInboxPage() {
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                     />
                                 </div>
-                                <Button
-                                    type="button"
-                                    size="icon"
-                                    variant="ghost"
-                                    className={cn(
-                                        "h-8 w-8 flex-shrink-0",
-                                        isListening && "text-destructive animate-pulse"
-                                    )}
-                                    onClick={isListening ? stopListening : startListening}
-                                    disabled={isSupported === false}
-                                    title={
-                                        isSupported === false
-                                        ? "Voice input not supported"
-                                        : isListening
-                                        ? "Stop listening"
-                                        : "Search with voice"
-                                    }
-                                >
-                                    <Mic className="h-4 w-4" />
-                                    <span className="sr-only">Search with voice</span>
-                                </Button>
                             </div>
                         </div>
                         <div className="overflow-y-auto h-full">
@@ -372,3 +390,5 @@ export default function OgeeMailInboxPage() {
         </div>
     );
 }
+
+    
