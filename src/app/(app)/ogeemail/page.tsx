@@ -67,6 +67,12 @@ export default function OgeeMailWelcomePage() {
     onTranscript: (text) => {
       setTranscript(text);
     },
+    onFinalTranscript: () => {
+        // Automatically stop listening when user pauses
+        if(isSpotlightListening) {
+            stopSpotlightListening();
+        }
+    }
   });
 
   // Speech-to-text for the Chat Dialog
@@ -155,7 +161,7 @@ export default function OgeeMailWelcomePage() {
     {
       icon: Inbox,
       label: "Inbox",
-      action: () => console.log("Navigate to Inbox"),
+      action: () => router.push('/ogeemail/inbox'),
     },
     {
       icon: Star,
@@ -397,3 +403,5 @@ export default function OgeeMailWelcomePage() {
     </>
   );
 }
+
+    
