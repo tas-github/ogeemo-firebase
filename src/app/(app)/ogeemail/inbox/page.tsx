@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Archive, Star, Trash2, Search, MoreVertical, Reply, ReplyAll, Forward, ChevronDown } from 'lucide-react';
+import { Archive, Star, Trash2, Search, MoreVertical, Reply, ReplyAll, Forward, ChevronDown, Inbox, Send, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ interface Email {
   date: string;
   read: boolean;
   starred: boolean;
+  folder: 'inbox' | 'sent' | 'archive' | 'trash';
 }
 
 const mockEmails: Email[] = [
@@ -40,6 +41,7 @@ const mockEmails: Email[] = [
     date: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
     read: false,
     starred: true,
+    folder: 'inbox',
   },
   {
     id: '2',
@@ -50,6 +52,7 @@ const mockEmails: Email[] = [
     date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     read: true,
     starred: false,
+    folder: 'inbox',
   },
   {
     id: '3',
@@ -60,6 +63,7 @@ const mockEmails: Email[] = [
     date: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
     read: false,
     starred: false,
+    folder: 'inbox',
   },
   {
     id: '4',
@@ -70,6 +74,40 @@ const mockEmails: Email[] = [
     date: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
     read: true,
     starred: false,
+    folder: 'inbox',
+  },
+  {
+    id: 'sent-1',
+    from: 'You',
+    fromEmail: 'you@ogeemo.com',
+    subject: 'Re: Project Phoenix - Weekly Update',
+    text: `<p>Thanks John, looks great.</p>`,
+    date: new Date(Date.now() - 1000 * 60 * 60 * 23).toISOString(),
+    read: true,
+    starred: false,
+    folder: 'sent',
+  },
+  {
+    id: 'archive-1',
+    from: 'Old Project Newsletter',
+    fromEmail: 'newsletter@archive.com',
+    subject: 'Final project report',
+    text: `<p>This project is now archived.</p>`,
+    date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
+    read: true,
+    starred: false,
+    folder: 'archive',
+  },
+  {
+    id: 'trash-1',
+    from: 'Spam Co',
+    fromEmail: 'spam@spam.com',
+    subject: 'You have won!',
+    text: `<p>Click here to claim your prize!</p>`,
+    date: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
+    read: true,
+    starred: false,
+    folder: 'trash',
   },
 ];
 
@@ -79,6 +117,8 @@ export default function OgeeMailInboxPage() {
     const [selectedEmailId, setSelectedEmailId] = useState<string | null>('1');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]);
+    const [activeFolder, setActiveFolder] = useState<'inbox' | 'sent' | 'archive' | 'trash' | 'starred'>("inbox");
+
 
     const handleSelectEmail = (emailId: string) => {
         setSelectedEmailId(emailId);
@@ -89,8 +129,17 @@ export default function OgeeMailInboxPage() {
 
     const filteredEmails = emails.filter((email) => {
         const lowerCaseQuery = searchQuery.toLowerCase();
-        return email.subject.toLowerCase().includes(lowerCaseQuery) ||
+        const matchesSearch = email.subject.toLowerCase().includes(lowerCaseQuery) ||
                email.from.toLowerCase().includes(lowerCaseQuery);
+
+        if (!matchesSearch) return false;
+
+        if (activeFolder === "inbox") return email.folder === 'inbox';
+        if (activeFolder === "starred") return email.starred && email.folder !== 'trash';
+        if (activeFolder === "sent") return email.folder === 'sent';
+        if (activeFolder === "archive") return email.folder === 'archive';
+        if (activeFolder === "trash") return email.folder === 'trash';
+        return false;
     });
 
     const handleToggleSelect = (emailId: string) => {
@@ -108,12 +157,57 @@ export default function OgeeMailInboxPage() {
 
     const allVisibleSelected = filteredEmails.length > 0 && selectedEmailIds.length === filteredEmails.length;
     const someVisibleSelected = selectedEmailIds.length > 0 && selectedEmailIds.length < filteredEmails.length;
+    
+    const menuItems = [
+        { id: "inbox", label: "Inbox", icon: Inbox },
+        { id: "starred", label: "Starred", icon: Star },
+        { id: "sent", label: "Sent", icon: Send },
+        { id: "archive", label: "Archive", icon: Archive },
+        { id: "trash", label: "Trash", icon: Trash2 },
+    ];
+
+    const handleFolderChange = (folder: typeof activeFolder) => {
+        setActiveFolder(folder);
+        const firstEmailInFolder = emails.find(e => {
+            if (folder === "inbox") return e.folder === 'inbox';
+            if (folder === "starred") return e.starred && e.folder !== 'trash';
+            return e.folder === folder;
+        });
+        setSelectedEmailId(firstEmailInFolder ? firstEmailInFolder.id : null);
+        setSelectedEmailIds([]);
+    };
+
 
     return (
         <div className="flex flex-col h-full bg-background overflow-hidden">
             <TooltipProvider delayDuration={0}>
                 <ResizablePanelGroup direction="horizontal" className="flex-1 items-stretch">
-                    <ResizablePanel defaultSize={40} minSize={30}>
+                    <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
+                        <div className="flex h-full flex-col p-2">
+                            <div className="p-2">
+                                <Button className="w-full">
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Compose
+                                </Button>
+                            </div>
+                            <Separator className="my-2" />
+                            <nav className="flex flex-col gap-1 p-2 pt-0">
+                                {menuItems.map((item) => (
+                                <Button
+                                    key={item.id}
+                                    variant={activeFolder === item.id ? "secondary" : "ghost"}
+                                    className="w-full justify-start gap-3"
+                                    onClick={() => handleFolderChange(item.id as any)}
+                                >
+                                    <item.icon className="h-4 w-4" />
+                                    <span>{item.label}</span>
+                                </Button>
+                                ))}
+                            </nav>
+                        </div>
+                    </ResizablePanel>
+                    <ResizableHandle withHandle />
+                    <ResizablePanel defaultSize={35} minSize={30}>
                         <div className="flex flex-col h-full">
                             <div className="flex items-center gap-4 p-2 border-b">
                                 <DropdownMenu>
@@ -172,7 +266,7 @@ export default function OgeeMailInboxPage() {
                                                 onClick={(e) => e.stopPropagation()}
                                                 aria-label={`Select email from ${email.from}`}
                                             />
-                                            <div className="flex-1 grid gap-1">
+                                            <div className="flex-1 grid gap-1 min-w-0">
                                                 <div className="flex items-start justify-between">
                                                     <p className={cn('font-semibold text-sm truncate', !email.read && 'font-bold text-primary')}>{email.from}</p>
                                                     <time className="text-xs text-muted-foreground whitespace-nowrap">
@@ -188,14 +282,14 @@ export default function OgeeMailInboxPage() {
                                     ))
                                 ) : (
                                     <div className="flex h-full items-center justify-center p-4 text-center text-muted-foreground">
-                                        <p>No emails found.</p>
+                                        <p>No emails in {activeFolder}.</p>
                                     </div>
                                 )}
                             </div>
                         </div>
                     </ResizablePanel>
                     <ResizableHandle withHandle />
-                    <ResizablePanel defaultSize={60} minSize={40}>
+                    <ResizablePanel defaultSize={45} minSize={40}>
                         <div className="flex flex-col h-full">
                         {selectedEmail ? (
                             <>
@@ -222,6 +316,7 @@ export default function OgeeMailInboxPage() {
                                         <div className="grid gap-0.5">
                                             <p className="font-semibold">{selectedEmail.from}</p>
                                             <p className="text-xs text-muted-foreground">{`<${selectedEmail.fromEmail}>`}</p>
+
                                         </div>
                                         <div className="ml-auto text-xs text-muted-foreground">{new Date(selectedEmail.date).toLocaleString()}</div>
                                     </div>
@@ -241,5 +336,3 @@ export default function OgeeMailInboxPage() {
         </div>
     );
 }
-
-    
