@@ -1,7 +1,7 @@
 export default function ContactsPage() {
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <header>
+      <header className="text-center">
         <h1 className="text-3xl font-bold font-headline text-primary">
           Ogeemo Contact Manager
         </h1>
