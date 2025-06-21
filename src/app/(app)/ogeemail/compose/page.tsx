@@ -15,7 +15,11 @@ import {
   Link as LinkIcon,
   ChevronDown,
   FileText,
-  FilePlus
+  FilePlus,
+  Mic,
+  Send,
+  User,
+  LoaderCircle,
 } from 'lucide-react';
 import {
   Card,
@@ -44,6 +48,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { useSpeechToText } from '@/hooks/use-speech-to-text';
+import { useToast } from '@/hooks/use-toast';
+import { askOgeemo } from '@/ai/flows/ogeemo-chat';
+import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const initialTemplates = [
   {
@@ -64,6 +74,12 @@ const initialTemplates = [
   },
 ];
 
+type Message = {
+  id: string;
+  text: string;
+  sender: "user" | "ogeemo";
+};
+
 export default function ComposeEmailPage() {
   const [recipient, setRecipient] = React.useState('');
   const [subject, setSubject] = React.useState('');
@@ -73,6 +89,82 @@ export default function ComposeEmailPage() {
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = React.useState(false);
   const [newTemplateName, setNewTemplateName] = React.useState('');
+
+  const { toast } = useToast();
+  const [isChatOpen, setIsChatOpen] = React.useState(false);
+  const [messages, setMessages] = React.useState<Message[]>([]);
+  const [chatInput, setChatInput] = React.useState("");
+  const [isChatLoading, setIsChatLoading] = React.useState(false);
+  const chatScrollAreaRef = React.useRef<HTMLDivElement>(null);
+
+  const {
+    isListening,
+    startListening,
+    stopListening,
+    isSupported,
+  } = useSpeechToText({
+    onTranscript: (transcript) => {
+      setChatInput(transcript);
+    },
+  });
+
+  React.useEffect(() => {
+    if (isSupported === false) {
+      toast({
+        variant: "destructive",
+        title: "Voice Input Not Supported",
+        description: "Your browser does not support the Web Speech API.",
+      });
+    }
+  }, [isSupported, toast]);
+
+  React.useEffect(() => {
+    if (chatScrollAreaRef.current) {
+      chatScrollAreaRef.current.scrollTo({
+        top: chatScrollAreaRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [messages]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || isChatLoading) return;
+
+    if (isListening) {
+      stopListening();
+    }
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: chatInput,
+      sender: "user",
+    };
+    setMessages((prev) => [...prev, userMessage]);
+    setChatInput("");
+    setIsChatLoading(true);
+
+    try {
+      const response = await askOgeemo({ message: chatInput });
+      const ogeemoMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: response.reply,
+        sender: "ogeemo",
+      };
+      setMessages((prev) => [...prev, ogeemoMessage]);
+    } catch (error) {
+      console.error("Error with Ogeemo:", error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "Sorry, I encountered an error. Please try again.",
+        sender: "ogeemo",
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
 
   const handleFormat = (command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -234,10 +326,124 @@ export default function ComposeEmailPage() {
           </CardContent>
           <CardFooter className="border-t p-3 flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <Button variant="outline">
-                <Bot className="mr-2 h-4 w-4" />
-                Ogeemo Assistant
-              </Button>
+               <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    <Bot className="mr-2 h-4 w-4" />
+                    Ogeemo Assistant
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-xl flex flex-col h-[80vh] max-h-[600px]">
+                    <DialogHeader>
+                      <DialogTitle>Chat with Ogeemo</DialogTitle>
+                      <DialogDescription>
+                        Ask me anything or tell me what you would like to do.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-hidden -mx-6 px-6">
+                      <ScrollArea className="h-full pr-4" ref={chatScrollAreaRef}>
+                        <div className="space-y-4">
+                          {messages.length === 0 && (
+                            <div className="flex items-center justify-center h-full text-muted-foreground">
+                              Start the conversation...
+                            </div>
+                          )}
+                          {messages.map((message) => (
+                            <div
+                              key={message.id}
+                              className={cn(
+                                "flex items-start gap-3",
+                                message.sender === "user" ? "justify-end" : "justify-start"
+                              )}
+                            >
+                              {message.sender === "ogeemo" && (
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback>
+                                    <Bot />
+                                  </AvatarFallback>
+                                </Avatar>
+                              )}
+                              <div
+                                className={cn(
+                                  "max-w-xs md:max-w-sm rounded-lg px-4 py-2 text-sm",
+                                  message.sender === "user"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-muted"
+                                )}
+                              >
+                                {message.text}
+                              </div>
+                              {message.sender === "user" && (
+                                <Avatar className="h-8 w-8">
+                                  <AvatarFallback>
+                                    <User />
+                                  </AvatarFallback>
+                                </Avatar>
+                              )}
+                            </div>
+                          ))}
+                          {isChatLoading && (
+                            <div className="flex items-start gap-3 justify-start">
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback>
+                                  <Bot />
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="bg-muted rounded-lg px-4 py-2 text-sm flex items-center">
+                                <LoaderCircle className="h-4 w-4 animate-spin" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </div>
+                    <DialogFooter className="pt-4 border-t">
+                      <form
+                        onSubmit={handleSendMessage}
+                        className="flex w-full items-center space-x-2"
+                      >
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "flex-shrink-0",
+                            isListening && "text-destructive animate-pulse"
+                          )}
+                          onClick={
+                            isListening ? stopListening : startListening
+                          }
+                          disabled={!isSupported || isChatLoading}
+                          title={
+                            !isSupported
+                              ? "Voice input not supported"
+                              : isListening
+                              ? "Stop listening"
+                              : "Start listening"
+                          }
+                        >
+                          <Mic className="h-5 w-5" />
+                          <span className="sr-only">Use Voice</span>
+                        </Button>
+                        <Input
+                          placeholder="Enter your message here..."
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          disabled={isChatLoading}
+                          autoComplete="off"
+                        />
+                        <Button
+                          type="submit"
+                          size="icon"
+                          disabled={isChatLoading || !chatInput.trim()}
+                        >
+                          <Send className="h-5 w-5" />
+                          <span className="sr-only">Send Message</span>
+                        </Button>
+                      </form>
+                    </DialogFooter>
+                  </DialogContent>
+              </Dialog>
               <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline">
