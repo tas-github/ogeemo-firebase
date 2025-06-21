@@ -8,6 +8,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const GenerateImageInputSchema = z.object({
@@ -31,15 +32,15 @@ const generateImageFlow = ai.defineFlow(
     outputSchema: GenerateImageOutputSchema,
   },
   async ({ prompt }) => {
-    const { media } = await ai.generate({
-      model: 'googleai/gemini-2.0-flash-preview-image-generation',
+    const response = await ai.generate({
+      model: googleAI.model('gemini-2.0-flash-preview-image-generation'),
       prompt: prompt,
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
       },
     });
 
-    const imageUrl = media?.url;
+    const imageUrl = response.media?.url;
 
     if (!imageUrl) {
         console.error("Image generation failed. The model did not return an image.");
