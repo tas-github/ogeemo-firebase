@@ -141,7 +141,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center border-b bg-background/80 px-4 backdrop-blur-sm sm:px-6">
                 <SidebarTrigger className="md:hidden" />
                 <div className="flex-1 text-center">
-                {pathname.startsWith('/ogeemail') && <h1 className="text-xl font-semibold">OgeeMail</h1>}
                 {pathname === '/sandbox' && <h1 className="text-xl font-semibold">Sandbox</h1>}
                 </div>
             </header>
