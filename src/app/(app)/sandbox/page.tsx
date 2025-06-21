@@ -83,7 +83,7 @@ const mockEmails: Email[] = [
 
 export default function SandboxPage() {
   const [emails] = useState<Email[]>(mockEmails);
-  const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
+  const [selectedEmailId, setSelectedEmailId] = useState<string | null>('1');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFolder, setActiveFolder] = useState<'inbox' | 'sent' | 'archive' | 'trash' | 'starred'>("inbox");
 
@@ -118,7 +118,12 @@ export default function SandboxPage() {
 
   const handleFolderChange = (folder: typeof activeFolder) => {
     setActiveFolder(folder);
-    setSelectedEmailId(null);
+    const firstEmailInFolder = emails.find(e => {
+        if (folder === "inbox") return e.folder === 'inbox';
+        if (folder === "starred") return e.starred && e.folder !== 'trash';
+        return e.folder === folder;
+    });
+    setSelectedEmailId(firstEmailInFolder ? firstEmailInFolder.id : null);
   };
 
   return (
