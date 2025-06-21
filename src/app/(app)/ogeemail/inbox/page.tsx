@@ -19,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Checkbox } from '@/components/ui/checkbox';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { useToast } from '@/hooks/use-toast';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 
 interface Email {
@@ -210,7 +211,7 @@ export default function OgeeMailInboxPage() {
     const selectedEmail = emails.find(e => e.id === selectedEmailId);
 
     return (
-        <div className="relative p-4 sm:p-6 flex flex-col h-full bg-background overflow-hidden space-y-4">
+        <div className="p-4 sm:p-6 flex flex-col h-full bg-background overflow-hidden">
             <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -245,147 +246,176 @@ export default function OgeeMailInboxPage() {
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-             <header className="text-center">
+             <header className="text-center pb-4">
                 <h1 className="text-3xl font-bold font-headline text-primary">OgeeMail</h1>
                 <p className="text-muted-foreground">
                     This is your new OgeeMail app, built to be fast, intelligent, and integrated with the Ogeemo platform.
                 </p>
             </header>
             <div className="flex-1 min-h-0">
-                <TooltipProvider delayDuration={0}>
-                    <div className="h-full flex flex-col border rounded-lg overflow-hidden">
-                        <div className="flex items-center gap-4 p-2 border-b">
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" size="sm" className="h-8 pl-2 pr-1.5">
-                                        <Checkbox
-                                            checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
-                                            className="mr-2"
-                                            readOnly
-                                        />
-                                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent>
-                                    <DropdownMenuItem onSelect={handleSelectAllVisible}>All</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={handleSelectNone}>None</DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onSelect={handleSelectRead}>Read</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={handleSelectUnread}>Unread</DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-
-                            {selectedEmailIds.length > 0 && (
-                                <div className="flex items-center gap-1">
-                                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Archive className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Archive</p></TooltipContent></Tooltip>
-                                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
-                                </div>
-                            )}
-                             <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        type="button"
-                                        size="icon"
-                                        variant="ghost"
-                                        className={cn(
-                                            "h-8 w-8 flex-shrink-0",
-                                            isAiListening && "text-destructive animate-pulse"
-                                        )}
-                                        onClick={isAiListening ? stopAiListening : startAiListening}
-                                        disabled={isSupported === false}
-                                    >
-                                        <Mic className="h-4 w-4" />
-                                        <span className="sr-only">Use AI Assistant</span>
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{isSupported === false ? "Voice not supported" : (isAiListening ? "Stop listening" : "Ask AI Assistant")}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                            <div className="ml-auto flex items-center gap-2">
-                                <div className="relative">
-                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        type="search"
-                                        placeholder="Search mail..."
-                                        className="w-full rounded-lg bg-muted pl-8"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                    />
-                                </div>
-                            </div>
+                 <ResizablePanelGroup direction="horizontal" className="h-full max-h-full rounded-lg border">
+                    <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+                        <div className="flex h-full flex-col p-2">
+                          <div className="p-2">
+                             <Button className="w-full" disabled>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Compose
+                            </Button>
+                          </div>
+                          <Separator />
+                          <nav className="flex flex-col gap-1 p-2">
+                            {menuItems.map((item) => (
+                              <Button
+                                key={item.id}
+                                variant={activeFolder === item.id ? "secondary" : "ghost"}
+                                className="w-full justify-start gap-3"
+                                onClick={() => handleFolderChange(item.id as any)}
+                              >
+                                <item.icon className="h-4 w-4" />
+                                <span>{item.label}</span>
+                              </Button>
+                            ))}
+                          </nav>
                         </div>
-                        <div className="overflow-y-auto h-full">
-                            {filteredEmails.length > 0 ? (
-                                filteredEmails.map((email) => (
-                                    <div
-                                        key={email.id}
-                                        onClick={() => handleSelectEmail(email.id)}
-                                        className={cn(
-                                            'flex items-start gap-4 cursor-pointer border-b p-3 transition-colors hover:bg-accent/50',
-                                            !email.read && 'bg-primary/5'
-                                        )}
-                                    >
-                                        <Checkbox
-                                            checked={selectedEmailIds.includes(email.id)}
-                                            onCheckedChange={() => handleToggleSelect(email.id)}
-                                            onClick={(e) => e.stopPropagation()}
-                                            aria-label={`Select email from ${email.from}`}
-                                            className="mt-1"
-                                        />
-                                        <div className="flex-1 grid gap-1 min-w-0">
-                                            <div className="flex items-start justify-between">
-                                                <p className={cn('font-semibold text-sm truncate', !email.read && 'font-bold text-primary')}>{email.from}</p>
-                                                <time className="text-xs text-muted-foreground whitespace-nowrap">
-                                                    {new Date(email.date).toLocaleDateString()}
-                                                </time>
-                                            </div>
-                                            <p className="font-medium truncate text-sm">{email.subject}</p>
-                                            <div className="flex items-center justify-between gap-2">
-                                                <p className="truncate text-sm text-muted-foreground">
-                                                    {email.text.replace(/<[^>]+>/g, '').substring(0, 80)}...
-                                                </p>
-                                                <div className="flex items-center shrink-0">
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); console.log('Reply to', email.id); }}>
-                                                                <Reply className="h-4 w-4" />
-                                                                <span className="sr-only">Reply</span>
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent><p>Reply</p></TooltipContent>
-                                                    </Tooltip>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); console.log('Reply All to', email.id); }}>
-                                                                <ReplyAll className="h-4 w-4" />
-                                                                <span className="sr-only">Reply All</span>
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent><p>Reply All</p></TooltipContent>
-                                                    </Tooltip>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); console.log('Forward', email.id); }}>
-                                                                <Forward className="h-4 w-4" />
-                                                                <span className="sr-only">Forward</span>
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent><p>Forward</p></TooltipContent>
-                                                    </Tooltip>
-                                                </div>
-                                            </div>
+                    </ResizablePanel>
+                    <ResizableHandle withHandle />
+                    <ResizablePanel defaultSize={80}>
+                        <TooltipProvider delayDuration={0}>
+                            <div className="h-full flex flex-col">
+                                <div className="flex items-center gap-4 p-2 border-b">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" size="sm" className="h-8 pl-2 pr-1.5">
+                                                <Checkbox
+                                                    checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
+                                                    className="mr-2"
+                                                    readOnly
+                                                />
+                                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem onSelect={handleSelectAllVisible}>All</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={handleSelectNone}>None</DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem onSelect={handleSelectRead}>Read</DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={handleSelectUnread}>Unread</DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+
+                                    {selectedEmailIds.length > 0 && (
+                                        <div className="flex items-center gap-1">
+                                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Archive className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Archive</p></TooltipContent></Tooltip>
+                                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
+                                        </div>
+                                    )}
+                                     <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                type="button"
+                                                size="icon"
+                                                variant="ghost"
+                                                className={cn(
+                                                    "h-8 w-8 flex-shrink-0",
+                                                    isAiListening && "text-destructive animate-pulse"
+                                                )}
+                                                onClick={isAiListening ? stopAiListening : startAiListening}
+                                                disabled={isSupported === false}
+                                            >
+                                                <Mic className="h-4 w-4" />
+                                                <span className="sr-only">Use AI Assistant</span>
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>{isSupported === false ? "Voice not supported" : (isAiListening ? "Stop listening" : "Ask AI Assistant")}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                    <div className="ml-auto flex items-center gap-2">
+                                        <div className="relative">
+                                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                            <Input
+                                                type="search"
+                                                placeholder="Search mail..."
+                                                className="w-full rounded-lg bg-muted pl-8"
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                            />
                                         </div>
                                     </div>
-                                ))
-                            ) : (
-                                <div className="flex h-full items-center justify-center p-4 text-center text-muted-foreground">
-                                    <p>No emails in {activeFolder}.</p>
                                 </div>
-                            )}
-                        </div>
-                    </div>
-                </TooltipProvider>
+                                <div className="overflow-y-auto h-full">
+                                    {filteredEmails.length > 0 ? (
+                                        filteredEmails.map((email) => (
+                                            <div
+                                                key={email.id}
+                                                onClick={() => handleSelectEmail(email.id)}
+                                                className={cn(
+                                                    'flex items-start gap-4 cursor-pointer border-b p-3 transition-colors hover:bg-accent/50',
+                                                    !email.read && 'bg-primary/5'
+                                                )}
+                                            >
+                                                <Checkbox
+                                                    checked={selectedEmailIds.includes(email.id)}
+                                                    onCheckedChange={() => handleToggleSelect(email.id)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    aria-label={`Select email from ${email.from}`}
+                                                    className="mt-1"
+                                                />
+                                                <div className="flex-1 grid gap-1 min-w-0">
+                                                    <div className="flex items-start justify-between">
+                                                        <p className={cn('font-semibold text-sm truncate', !email.read && 'font-bold text-primary')}>{email.from}</p>
+                                                        <time className="text-xs text-muted-foreground whitespace-nowrap">
+                                                            {new Date(email.date).toLocaleDateString()}
+                                                        </time>
+                                                    </div>
+                                                    <p className="font-medium truncate text-sm">{email.subject}</p>
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <p className="truncate text-sm text-muted-foreground">
+                                                            {email.text.replace(/<[^>]+>/g, '').substring(0, 80)}...
+                                                        </p>
+                                                        <div className="flex items-center shrink-0">
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); console.log('Reply to', email.id); }}>
+                                                                        <Reply className="h-4 w-4" />
+                                                                        <span className="sr-only">Reply</span>
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent><p>Reply</p></TooltipContent>
+                                                            </Tooltip>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); console.log('Reply All to', email.id); }}>
+                                                                        <ReplyAll className="h-4 w-4" />
+                                                                        <span className="sr-only">Reply All</span>
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent><p>Reply All</p></TooltipContent>
+                                                            </Tooltip>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); console.log('Forward', email.id); }}>
+                                                                        <Forward className="h-4 w-4" />
+                                                                        <span className="sr-only">Forward</span>
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent><p>Forward</p></TooltipContent>
+                                                            </Tooltip>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="flex h-full items-center justify-center p-4 text-center text-muted-foreground">
+                                            <p>No emails in {activeFolder}.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </TooltipProvider>
+                    </ResizablePanel>
+                </ResizablePanelGroup>
             </div>
         </div>
     );
