@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Data Structures
 interface Contact {
@@ -81,6 +82,7 @@ export default function ContactsPage() {
   const [folders, setFolders] = useState<FolderData[]>(mockFolders);
   const [contacts, setContacts] = useState<Contact[]>(mockContacts);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(mockFolders[0]?.id || null);
+  const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
 
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -107,6 +109,34 @@ export default function ContactsPage() {
     }
   };
 
+  const handleToggleSelect = (contactId: string) => {
+    setSelectedContactIds((prev) =>
+      prev.includes(contactId)
+        ? prev.filter((id) => id !== contactId)
+        : [...prev, contactId]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedContactIds.length === displayedContacts.length) {
+      setSelectedContactIds([]);
+    } else {
+      setSelectedContactIds(displayedContacts.map((c) => c.id));
+    }
+  };
+
+  const allVisibleSelected = displayedContacts.length > 0 && selectedContactIds.length === displayedContacts.length;
+  const someVisibleSelected = selectedContactIds.length > 0 && selectedContactIds.length < displayedContacts.length;
+  
+  const handleDeleteSelected = () => {
+    setContacts(contacts.filter(c => !selectedContactIds.includes(c.id)));
+    setSelectedContactIds([]);
+  }
+
+  const handleFolderSelect = (folderId: string) => {
+    setSelectedFolderId(folderId);
+    setSelectedContactIds([]);
+  };
 
   return (
     <div className="p-4 sm:p-6 space-y-4 flex flex-col h-full">
@@ -171,7 +201,7 @@ export default function ContactsPage() {
                                 key={folder.id}
                                 variant={selectedFolderId === folder.id ? "secondary" : "ghost"}
                                 className="w-full justify-start gap-3"
-                                onClick={() => setSelectedFolderId(folder.id)}
+                                onClick={() => handleFolderSelect(folder.id)}
                             >
                                 <Folder className="h-4 w-4" />
                                 <span>{folder.name}</span>
@@ -187,21 +217,41 @@ export default function ContactsPage() {
                 <div className="flex flex-col h-full">
                     {selectedFolder ? (
                         <>
-                            <div className="flex items-center justify-between p-4 border-b">
-                                <div>
-                                    <h2 className="text-xl font-bold">{selectedFolder.name}</h2>
-                                    <p className="text-sm text-muted-foreground">
-                                        {displayedContacts.length} contact(s)
-                                    </p>
-                                </div>
-                                <Button>
-                                    <Plus className="mr-2 h-4 w-4" /> New Contact
-                                </Button>
+                            <div className="flex items-center justify-between p-4 border-b h-20">
+                                {selectedContactIds.length > 0 ? (
+                                    <>
+                                        <div>
+                                            <h2 className="text-xl font-bold">{selectedContactIds.length} selected</h2>
+                                        </div>
+                                        <Button variant="destructive" onClick={handleDeleteSelected}>
+                                            <Trash2 className="mr-2 h-4 w-4" /> Delete Selected
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div>
+                                            <h2 className="text-xl font-bold">{selectedFolder.name}</h2>
+                                            <p className="text-sm text-muted-foreground">
+                                                {displayedContacts.length} contact(s)
+                                            </p>
+                                        </div>
+                                        <Button>
+                                            <Plus className="mr-2 h-4 w-4" /> New Contact
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                              <div className="flex-1 overflow-y-auto">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead className="w-[50px]">
+                                                <Checkbox
+                                                    checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
+                                                    onCheckedChange={handleToggleSelectAll}
+                                                    aria-label="Select all"
+                                                />
+                                            </TableHead>
                                             <TableHead className="w-[60px]"></TableHead>
                                             <TableHead>Name</TableHead>
                                             <TableHead>Email</TableHead>
@@ -211,7 +261,14 @@ export default function ContactsPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {displayedContacts.map((contact) => (
-                                            <TableRow key={contact.id}>
+                                            <TableRow key={contact.id} data-state={selectedContactIds.includes(contact.id) && "selected"}>
+                                                <TableCell>
+                                                    <Checkbox
+                                                        checked={selectedContactIds.includes(contact.id)}
+                                                        onCheckedChange={() => handleToggleSelect(contact.id)}
+                                                        aria-label={`Select ${contact.name}`}
+                                                    />
+                                                </TableCell>
                                                 <TableCell>
                                                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
                                                         <File className="h-4 w-4 text-muted-foreground" />
