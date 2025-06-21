@@ -28,6 +28,7 @@ import {
   Minus,
   Code2,
   Sparkles,
+  BookUser,
 } from 'lucide-react';
 import {
   Card,
@@ -65,6 +66,9 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { type Contact, mockContacts } from '@/data/contacts';
+
 
 const initialTemplates = [
   {
@@ -119,6 +123,15 @@ export default function ComposeEmailPage() {
   const [imagePrompt, setImagePrompt] = React.useState('');
   const [isGeneratingImage, setIsGeneratingImage] = React.useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = React.useState<string | null>(null);
+
+  // Contact Picker State
+  const [isContactPickerOpen, setIsContactPickerOpen] = React.useState(false);
+  const [contactPickerTarget, setContactPickerTarget] = React.useState<'recipient' | 'cc' | 'bcc' | null>(null);
+  const [allContacts] = React.useState<Contact[]>(mockContacts);
+  const [filteredContacts, setFilteredContacts] = React.useState<Contact[]>(mockContacts);
+  const [contactSearch, setContactSearch] = React.useState('');
+  const [selectedDialogContacts, setSelectedDialogContacts] = React.useState<string[]>([]);
+
 
   // Speech-to-text for Chat
   const {
@@ -326,6 +339,46 @@ export default function ComposeEmailPage() {
     setGeneratedImageUrl(null);
   };
 
+  // Contact Picker Logic
+  const openContactPicker = (target: 'recipient' | 'cc' | 'bcc') => {
+      setContactPickerTarget(target);
+      const getTargetState = () => {
+          if (target === 'recipient') return recipient;
+          if (target === 'cc') return cc;
+          if (target === 'bcc') return bcc;
+          return '';
+      };
+      const currentValues = getTargetState().split(',').map(e => e.trim()).filter(Boolean);
+      setSelectedDialogContacts(currentValues);
+      setContactSearch('');
+      setFilteredContacts(allContacts);
+      setIsContactPickerOpen(true);
+  };
+
+  const handleAddContacts = () => {
+      if (!contactPickerTarget) return;
+      const emailsString = selectedDialogContacts.join(', ');
+      if (contactPickerTarget === 'recipient') setRecipient(emailsString);
+      if (contactPickerTarget === 'cc') setCc(emailsString);
+      if (contactPickerTarget === 'bcc') setBcc(emailsString);
+      setIsContactPickerOpen(false);
+  };
+
+  React.useEffect(() => {
+      setFilteredContacts(
+          allContacts.filter(
+              c => c.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
+                   c.email.toLowerCase().includes(contactSearch.toLowerCase())
+          )
+      );
+  }, [contactSearch, allContacts]);
+
+  const handleToggleDialogContact = (email: string) => {
+      setSelectedDialogContacts(prev =>
+          prev.includes(email) ? prev.filter(e => e !== email) : [...prev, email]
+      );
+  };
+
   return (
     <div className="p-4 sm:p-6 space-y-6 h-full flex flex-col">
        <input
@@ -335,6 +388,49 @@ export default function ComposeEmailPage() {
         className="hidden"
         multiple
       />
+      <Dialog open={isContactPickerOpen} onOpenChange={setIsContactPickerOpen}>
+        <DialogContent className="sm:max-w-2xl flex flex-col h-[80vh] max-h-[600px]">
+          <DialogHeader>
+              <DialogTitle>Select Contacts</DialogTitle>
+              <DialogDescription>
+                  Search for contacts and add them to your email.
+              </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4 py-4 flex-1 min-h-0">
+              <Input 
+                  placeholder="Search by name or email..."
+                  value={contactSearch}
+                  onChange={(e) => setContactSearch(e.target.value)}
+                  className="shrink-0"
+              />
+              <ScrollArea className="flex-1 border rounded-md">
+                  <div className="p-2">
+                      {filteredContacts.length > 0 ? (
+                          filteredContacts.map(contact => (
+                              <div key={contact.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent">
+                                  <Checkbox
+                                      id={`contact-${contact.id}`}
+                                      checked={selectedDialogContacts.includes(contact.email)}
+                                      onCheckedChange={() => handleToggleDialogContact(contact.email)}
+                                  />
+                                  <Label htmlFor={`contact-${contact.id}`} className="flex flex-col cursor-pointer flex-1">
+                                      <span className="font-medium">{contact.name}</span>
+                                      <span className="text-sm text-muted-foreground">{contact.email}</span>
+                                  </Label>
+                              </div>
+                          ))
+                      ) : (
+                          <p className="text-center text-muted-foreground py-10">No contacts found.</p>
+                      )}
+                  </div>
+              </ScrollArea>
+          </div>
+          <DialogFooter>
+              <Button variant="ghost" onClick={() => setIsContactPickerOpen(false)}>Cancel</Button>
+              <Button onClick={handleAddContacts}>Add Selected ({selectedDialogContacts.length})</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={isGenerateImageDialogOpen} onOpenChange={(open) => {
           setIsGenerateImageDialogOpen(open);
           if (!open) {
@@ -424,13 +520,19 @@ export default function ComposeEmailPage() {
                 <Label htmlFor="to" className="text-sm text-muted-foreground w-12 text-right">
                   To
                 </Label>
-                <Input
-                  id="to"
-                  className="border-0 shadow-none focus-visible:ring-0 flex-1"
-                  placeholder="recipient@example.com"
-                  value={recipient}
-                  onChange={(e) => setRecipient(e.target.value)}
-                />
+                <div className="flex-1 relative">
+                  <Input
+                    id="to"
+                    className="border-0 shadow-none focus-visible:ring-0 flex-1 pr-10"
+                    placeholder="recipient@example.com"
+                    value={recipient}
+                    onChange={(e) => setRecipient(e.target.value)}
+                  />
+                  <Button variant="ghost" size="icon" type="button" onClick={() => openContactPicker('recipient')} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
+                      <BookUser className="h-4 w-4" />
+                      <span className="sr-only">Select from Contacts</span>
+                  </Button>
+                </div>
                  <div className="flex gap-2">
                     <Button variant="link" size="sm" className="p-0 h-auto text-muted-foreground" onClick={() => setShowCc(!showCc)}>Cc</Button>
                     <Button variant="link" size="sm" className="p-0 h-auto text-muted-foreground" onClick={() => setShowBcc(!showBcc)}>Bcc</Button>
@@ -441,13 +543,19 @@ export default function ComposeEmailPage() {
                 <>
                     <div className="flex items-center gap-4">
                         <Label htmlFor="cc" className="text-sm text-muted-foreground w-12 text-right">Cc</Label>
-                        <Input
-                            id="cc"
-                            className="border-0 shadow-none focus-visible:ring-0 flex-1"
-                            placeholder="cc@example.com"
-                            value={cc}
-                            onChange={(e) => setCc(e.target.value)}
-                        />
+                        <div className="flex-1 relative">
+                          <Input
+                              id="cc"
+                              className="border-0 shadow-none focus-visible:ring-0 flex-1 pr-10"
+                              placeholder="cc@example.com"
+                              value={cc}
+                              onChange={(e) => setCc(e.target.value)}
+                          />
+                          <Button variant="ghost" size="icon" type="button" onClick={() => openContactPicker('cc')} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
+                              <BookUser className="h-4 w-4" />
+                              <span className="sr-only">Select from Contacts</span>
+                          </Button>
+                        </div>
                     </div>
                     <Separator />
                 </>
@@ -456,13 +564,19 @@ export default function ComposeEmailPage() {
                   <>
                       <div className="flex items-center gap-4">
                           <Label htmlFor="bcc" className="text-sm text-muted-foreground w-12 text-right">Bcc</Label>
-                          <Input
-                              id="bcc"
-                              className="border-0 shadow-none focus-visible:ring-0 flex-1"
-                              placeholder="bcc@example.com"
-                              value={bcc}
-                              onChange={(e) => setBcc(e.target.value)}
-                          />
+                          <div className="flex-1 relative">
+                            <Input
+                                id="bcc"
+                                className="border-0 shadow-none focus-visible:ring-0 flex-1 pr-10"
+                                placeholder="bcc@example.com"
+                                value={bcc}
+                                onChange={(e) => setBcc(e.target.value)}
+                            />
+                            <Button variant="ghost" size="icon" type="button" onClick={() => openContactPicker('bcc')} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
+                                <BookUser className="h-4 w-4" />
+                                <span className="sr-only">Select from Contacts</span>
+                            </Button>
+                          </div>
                       </div>
                       <Separator />
                   </>
