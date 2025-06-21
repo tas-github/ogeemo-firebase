@@ -442,7 +442,7 @@ export default function ContactsPage() {
       </div>
 
       <Dialog open={isContactFormOpen} onOpenChange={(open) => { if (!open) closeContactForm(); else setIsContactFormOpen(true); }}>
-          <DialogContent dir="ltr" className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
+          <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0 contact-dialog-force-ltr">
               <div className="flex flex-col space-y-1.5 text-center p-6 pb-4 border-b">
                 <h1 className="text-3xl font-bold font-headline text-primary">
                   {contactToEdit ? `Edit ${contactToEdit.name}` : "Create New Contact"}
@@ -452,10 +452,10 @@ export default function ContactsPage() {
                 </p>
               </div>
               <Form {...form}>
-                  <form dir="ltr" onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
                       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                          <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input dir="ltr" placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                          <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input dir="ltr" placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                          <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                          <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField control={form.control} name="businessPhone" render={({ field }) => (
@@ -463,7 +463,7 @@ export default function ContactsPage() {
                                     <FormLabel>Business #</FormLabel>
                                     <div className="relative">
                                         <FormControl>
-                                            <Input dir="ltr" placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} />
+                                            <Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} />
                                         </FormControl>
                                         {field.value && (
                                             <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild>
@@ -479,7 +479,7 @@ export default function ContactsPage() {
                                     <FormLabel>Cell #</FormLabel>
                                      <div className="relative">
                                         <FormControl>
-                                            <Input dir="ltr" placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} />
+                                            <Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} />
                                         </FormControl>
                                         {field.value && (
                                             <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild>
@@ -495,7 +495,7 @@ export default function ContactsPage() {
                                     <FormLabel>Home #</FormLabel>
                                      <div className="relative">
                                         <FormControl>
-                                            <Input dir="ltr" placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} />
+                                            <Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} />
                                         </FormControl>
                                         {field.value && (
                                             <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild>
@@ -506,7 +506,7 @@ export default function ContactsPage() {
                                     <FormMessage />
                                 </FormItem>
                             )} />
-                            <FormField control={form.control} name="faxNumber" render={({ field }) => ( <FormItem> <FormLabel>Fax #</FormLabel> <FormControl><Input dir="ltr" placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="faxNumber" render={({ field }) => ( <FormItem> <FormLabel>Fax #</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           </div>
                           
                           <FormField
@@ -526,7 +526,6 @@ export default function ContactsPage() {
                                   <FormControl>
                                     <div
                                       ref={notesEditorRef}
-                                      dir="ltr"
                                       className="prose dark:prose-invert max-w-none min-h-[240px] p-2 focus:outline-none"
                                       contentEditable
                                       onInput={(e) => field.onChange(e.currentTarget.innerHTML)}

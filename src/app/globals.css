@@ -78,3 +78,13 @@ body {
   pointer-events: none;
   display: block; /* For FF */
 }
+
+/* Force LTR direction for the contact dialog */
+.contact-dialog-force-ltr {
+  direction: ltr !important;
+}
+
+.contact-dialog-force-ltr * {
+  direction: ltr !important;
+  text-align: left !important;
+}
