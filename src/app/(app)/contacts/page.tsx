@@ -1,13 +1,18 @@
 
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Folder,
   Plus,
   MoreVertical,
   Trash2,
   Pencil,
+  Bold,
+  Italic,
+  Underline,
+  List,
+  ListOrdered,
 } from 'lucide-react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -56,6 +61,7 @@ const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }),
   phone: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 
@@ -67,10 +73,11 @@ export default function ContactsPage() {
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [isNewContactDialogOpen, setIsNewContactDialogOpen] = useState(false);
+  const notesEditorRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
-    defaultValues: { name: "", email: "", phone: "" },
+    defaultValues: { name: "", email: "", phone: "", notes: "" },
   });
   
   // Data loading and saving effects
@@ -139,6 +146,11 @@ export default function ContactsPage() {
     }
   };
 
+  const handleFormat = (command: string) => {
+    document.execCommand(command, false);
+    notesEditorRef.current?.focus();
+  };
+
   // CRUD handlers
   const handleCreateFolder = () => {
     if (newFolderName.trim()) {
@@ -160,7 +172,7 @@ export default function ContactsPage() {
       name: values.name,
       email: values.email,
       phone: values.phone || '',
-      notes: '',
+      notes: values.notes || '',
     };
     const newContacts = [...contacts, newContact];
     setContacts(newContacts);
@@ -280,7 +292,7 @@ export default function ContactsPage() {
                                                 <Plus className="mr-2 h-4 w-4" /> New Contact
                                                 </Button>
                                             </DialogTrigger>
-                                            <DialogContent className="sm:max-w-[425px]">
+                                            <DialogContent className="sm:max-w-2xl">
                                                 <DialogHeader>
                                                     <DialogTitle>Create New Contact</DialogTitle>
                                                     <DialogDescription>
@@ -292,6 +304,37 @@ export default function ContactsPage() {
                                                         <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                                         <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                                         <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem> <FormLabel>Phone (Optional)</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                                        
+                                                        <FormField
+                                                          control={form.control}
+                                                          name="notes"
+                                                          render={({ field }) => (
+                                                            <FormItem>
+                                                              <FormLabel>Notes</FormLabel>
+                                                              <div className="rounded-md border">
+                                                                <div className="p-1 border-b flex items-center gap-1 flex-wrap">
+                                                                    <Button type="button" variant="ghost" size="icon" title="Bold" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
+                                                                    <Button type="button" variant="ghost" size="icon" title="Italic" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
+                                                                    <Button type="button" variant="ghost" size="icon" title="Underline" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
+                                                                    <Button type="button" variant="ghost" size="icon" title="Unordered List" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
+                                                                    <Button type="button" variant="ghost" size="icon" title="Ordered List" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
+                                                                </div>
+                                                                <FormControl>
+                                                                  <div
+                                                                    ref={notesEditorRef}
+                                                                    className="prose dark:prose-invert max-w-none min-h-[120px] p-2 focus:outline-none"
+                                                                    contentEditable
+                                                                    onInput={(e) => field.onChange(e.currentTarget.innerHTML)}
+                                                                    onBlur={field.onBlur}
+                                                                    dangerouslySetInnerHTML={{ __html: field.value ?? "" }}
+                                                                  />
+                                                                </FormControl>
+                                                              </div>
+                                                              <FormMessage />
+                                                            </FormItem>
+                                                          )}
+                                                        />
+
                                                         <DialogFooter className="pt-4">
                                                             <Button type="button" variant="ghost" onClick={() => setIsNewContactDialogOpen(false)}>Cancel</Button>
                                                             <Button type="submit">Create Contact</Button>
