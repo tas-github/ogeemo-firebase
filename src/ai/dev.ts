@@ -3,3 +3,4 @@ config();
 
 import '@/ai/flows/summarize-database.ts';
 import '@/ai/flows/ogeemo-chat.ts';
+import '@/ai/flows/generate-image-flow.ts';

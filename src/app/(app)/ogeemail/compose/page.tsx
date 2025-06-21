@@ -27,6 +27,7 @@ import {
   Image as ImageIcon,
   Minus,
   Code2,
+  Sparkles,
 } from 'lucide-react';
 import {
   Card,
@@ -58,10 +59,12 @@ import {
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { useToast } from '@/hooks/use-toast';
 import { askOgeemo } from '@/ai/flows/ogeemo-chat';
+import { generateImage } from '@/ai/flows/generate-image-flow';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 
 const initialTemplates = [
   {
@@ -111,6 +114,11 @@ export default function ComposeEmailPage() {
   const [chatInput, setChatInput] = React.useState("");
   const [isChatLoading, setIsChatLoading] = React.useState(false);
   const chatScrollAreaRef = React.useRef<HTMLDivElement>(null);
+
+  const [isGenerateImageDialogOpen, setIsGenerateImageDialogOpen] = React.useState(false);
+  const [imagePrompt, setImagePrompt] = React.useState('');
+  const [isGeneratingImage, setIsGeneratingImage] = React.useState(false);
+  const [generatedImageUrl, setGeneratedImageUrl] = React.useState<string | null>(null);
 
   // Speech-to-text for Chat
   const {
@@ -288,6 +296,35 @@ export default function ComposeEmailPage() {
       setAttachments(prev => prev.filter(file => file.name !== fileName));
   };
 
+  const handleGenerateImage = async () => {
+    if (!imagePrompt.trim() || isGeneratingImage) return;
+
+    setIsGeneratingImage(true);
+    setGeneratedImageUrl(null);
+    try {
+      const result = await generateImage({ prompt: imagePrompt });
+      setGeneratedImageUrl(result.imageUrl);
+    } catch (error) {
+      console.error("Error generating image:", error);
+      toast({
+        variant: "destructive",
+        title: "Image Generation Failed",
+        description: "Could not generate the image. Please try again.",
+      });
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const handleInsertGeneratedImage = () => {
+    if (generatedImageUrl) {
+      handleFormat('insertImage', generatedImageUrl);
+    }
+    setIsGenerateImageDialogOpen(false);
+    // Reset state for next time
+    setImagePrompt('');
+    setGeneratedImageUrl(null);
+  };
 
   return (
     <div className="p-4 sm:p-6 space-y-6 h-full flex flex-col">
@@ -298,6 +335,79 @@ export default function ComposeEmailPage() {
         className="hidden"
         multiple
       />
+      <Dialog open={isGenerateImageDialogOpen} onOpenChange={(open) => {
+          setIsGenerateImageDialogOpen(open);
+          if (!open) {
+              // Reset state when closing
+              setImagePrompt('');
+              setGeneratedImageUrl(null);
+              setIsGeneratingImage(false);
+          }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate Image with AI</DialogTitle>
+            <DialogDescription>
+              Describe the image you want to create. Be as specific as possible.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="image-prompt">Prompt</Label>
+              <Textarea
+                id="image-prompt"
+                placeholder="e.g., 'A photorealistic cat wearing a tiny wizard hat'"
+                value={imagePrompt}
+                onChange={(e) => setImagePrompt(e.target.value)}
+                disabled={isGeneratingImage}
+              />
+            </div>
+            {isGeneratingImage && (
+              <div className="flex justify-center items-center h-48 w-full border-2 border-dashed rounded-lg">
+                <div className="flex flex-col items-center gap-2">
+                  <LoaderCircle className="h-8 w-8 animate-spin" />
+                  <p className="text-muted-foreground">Generating image...</p>
+                </div>
+              </div>
+            )}
+            {generatedImageUrl && !isGeneratingImage && (
+              <div className="relative">
+                <img
+                  src={generatedImageUrl}
+                  alt={imagePrompt}
+                  className="rounded-lg w-full h-auto object-contain max-h-96"
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:justify-between flex-wrap">
+            <Button
+              onClick={handleGenerateImage}
+              disabled={!imagePrompt.trim() || isGeneratingImage}
+            >
+              {isGeneratingImage ? (
+                <>
+                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Generate
+                </>
+              )}
+            </Button>
+            {generatedImageUrl && (
+                <Button
+                    onClick={handleInsertGeneratedImage}
+                    disabled={isGeneratingImage}
+                >
+                    Insert Image
+                </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <header className="text-center">
         <h1 className="text-3xl font-bold font-headline text-primary">
           Compose Email
@@ -420,9 +530,13 @@ export default function ComposeEmailPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
+                  <DropdownMenuItem onMouseDown={preventDefault} onSelect={() => setIsGenerateImageDialogOpen(true)}>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    <span>Generate Image</span>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onMouseDown={preventDefault} onSelect={handleInsertImage}>
                     <ImageIcon className="mr-2 h-4 w-4" />
-                    <span>Image</span>
+                    <span>Image from URL</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onMouseDown={preventDefault} onSelect={() => handleFormat('insertHorizontalRule')}>
                     <Minus className="mr-2 h-4 w-4" />
