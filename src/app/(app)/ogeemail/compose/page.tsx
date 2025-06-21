@@ -86,6 +86,10 @@ type Message = {
 
 export default function ComposeEmailPage() {
   const [recipient, setRecipient] = React.useState('');
+  const [cc, setCc] = React.useState('');
+  const [bcc, setBcc] = React.useState('');
+  const [showCc, setShowCc] = React.useState(false);
+  const [showBcc, setShowBcc] = React.useState(false);
   const [subject, setSubject] = React.useState('');
   const [body, setBody] = React.useState('');
   const editorRef = React.useRef<HTMLDivElement>(null);
@@ -296,20 +300,54 @@ export default function ComposeEmailPage() {
           <CardHeader>
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-4">
-                <Label htmlFor="to" className="text-sm text-muted-foreground">
+                <Label htmlFor="to" className="text-sm text-muted-foreground w-12 text-right">
                   To
                 </Label>
                 <Input
                   id="to"
-                  className="border-0 shadow-none focus-visible:ring-0"
+                  className="border-0 shadow-none focus-visible:ring-0 flex-1"
                   placeholder="recipient@example.com"
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value)}
                 />
+                 <div className="flex gap-2">
+                    <Button variant="link" size="sm" className="p-0 h-auto text-muted-foreground" onClick={() => setShowCc(!showCc)}>Cc</Button>
+                    <Button variant="link" size="sm" className="p-0 h-auto text-muted-foreground" onClick={() => setShowBcc(!showBcc)}>Bcc</Button>
+                </div>
               </div>
               <Separator />
+               {showCc && (
+                <>
+                    <div className="flex items-center gap-4">
+                        <Label htmlFor="cc" className="text-sm text-muted-foreground w-12 text-right">Cc</Label>
+                        <Input
+                            id="cc"
+                            className="border-0 shadow-none focus-visible:ring-0 flex-1"
+                            placeholder="cc@example.com"
+                            value={cc}
+                            onChange={(e) => setCc(e.target.value)}
+                        />
+                    </div>
+                    <Separator />
+                </>
+              )}
+              {showBcc && (
+                  <>
+                      <div className="flex items-center gap-4">
+                          <Label htmlFor="bcc" className="text-sm text-muted-foreground w-12 text-right">Bcc</Label>
+                          <Input
+                              id="bcc"
+                              className="border-0 shadow-none focus-visible:ring-0 flex-1"
+                              placeholder="bcc@example.com"
+                              value={bcc}
+                              onChange={(e) => setBcc(e.target.value)}
+                          />
+                      </div>
+                      <Separator />
+                  </>
+              )}
               <div className="flex items-center gap-4">
-                <Label htmlFor="subject" className="text-sm text-muted-foreground">
+                <Label htmlFor="subject" className="text-sm text-muted-foreground w-12 text-right">
                   Subject
                 </Label>
                 <Input
