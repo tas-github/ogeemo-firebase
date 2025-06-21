@@ -114,7 +114,7 @@ const mockEmails: Email[] = [
 
 export default function OgeeMailInboxPage() {
     const [emails, setEmails] = useState<Email[]>(mockEmails);
-    const [selectedEmailId, setSelectedEmailId] = useState<string | null>('1');
+    const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]);
     const [activeFolder, setActiveFolder] = useState<'inbox' | 'sent' | 'archive' | 'trash' | 'starred'>("inbox");
