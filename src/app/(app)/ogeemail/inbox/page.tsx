@@ -180,7 +180,7 @@ export default function OgeeMailInboxPage() {
 
     return (
         <div className="p-4 sm:p-6 flex flex-col h-full bg-background overflow-hidden space-y-4">
-             <header>
+             <header className="text-center">
                 <h1 className="text-3xl font-bold font-headline text-primary">OgeeMail</h1>
                 <p className="text-muted-foreground">
                     This is your new OgeeMail app, built to be fast, intelligent, and integrated with the Ogeemo platform.
@@ -344,5 +344,3 @@ export default function OgeeMailInboxPage() {
         </div>
     );
 }
-
-    
