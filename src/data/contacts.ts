@@ -12,13 +12,13 @@ export interface FolderData {
   name: string;
 }
 
-export const mockFolders: FolderData[] = [
+export let mockFolders: FolderData[] = [
   { id: '1', name: 'Personal' },
   { id: '2', name: 'Work' },
   { id: '3', name: 'Leads' },
 ];
 
-export const mockContacts: Contact[] = [
+export let mockContacts: Contact[] = [
   { id: 'c1', name: 'Alice Johnson', email: 'alice@example.com', phone: '123-456-7890', folderId: '1' },
   { id: 'c2', name: 'Bob Williams', email: 'bob@example.com', phone: '234-567-8901', folderId: '1' },
   { id: 'c3', name: 'Charlie Brown', email: 'charlie@work.com', phone: '345-678-9012', folderId: '2' },

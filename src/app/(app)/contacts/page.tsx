@@ -10,6 +10,9 @@ import {
   Pencil,
   File,
 } from 'lucide-react';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { Button } from '@/components/ui/button';
 import {
@@ -47,12 +50,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import {
   type Contact,
   type FolderData,
   mockContacts,
   mockFolders,
 } from '@/data/contacts';
+
+const contactSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  email: z.string().email({ message: "Please enter a valid email." }),
+  phone: z.string().optional(),
+});
 
 
 export default function ContactsPage() {
@@ -63,6 +73,13 @@ export default function ContactsPage() {
 
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+
+  const [isNewContactDialogOpen, setIsNewContactDialogOpen] = useState(false);
+  
+  const form = useForm<z.infer<typeof contactSchema>>({
+    resolver: zodResolver(contactSchema),
+    defaultValues: { name: "", email: "", phone: "" },
+  });
 
   const selectedFolder = useMemo(
     () => folders.find((f) => f.id === selectedFolderId),
@@ -81,10 +98,28 @@ export default function ContactsPage() {
         name: newFolderName.trim(),
       };
       setFolders([...folders, newFolder]);
+      mockFolders.push(newFolder);
       setNewFolderName("");
       setIsNewFolderDialogOpen(false);
     }
   };
+  
+  function handleCreateContact(values: z.infer<typeof contactSchema>) {
+    if (!selectedFolderId) return;
+    const newContact: Contact = {
+      id: `c-${Date.now()}`,
+      folderId: selectedFolderId,
+      name: values.name,
+      email: values.email,
+      phone: values.phone || '',
+    };
+    const newContacts = [...contacts, newContact];
+    setContacts(newContacts);
+    mockContacts.push(newContact);
+    form.reset();
+    setIsNewContactDialogOpen(false);
+  }
+
 
   const handleToggleSelect = (contactId: string) => {
     setSelectedContactIds((prev) =>
@@ -212,9 +247,62 @@ export default function ContactsPage() {
                                                 {displayedContacts.length} contact(s)
                                             </p>
                                         </div>
-                                        <Button>
-                                            <Plus className="mr-2 h-4 w-4" /> New Contact
-                                        </Button>
+                                        <Dialog open={isNewContactDialogOpen} onOpenChange={(open) => { setIsNewContactDialogOpen(open); if (!open) form.reset(); }}>
+                                            <DialogTrigger asChild>
+                                                <Button disabled={!selectedFolderId}>
+                                                <Plus className="mr-2 h-4 w-4" /> New Contact
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="sm:max-w-[425px]">
+                                                <DialogHeader>
+                                                    <DialogTitle>Create New Contact</DialogTitle>
+                                                    <DialogDescription>
+                                                        Add a new contact to the "{selectedFolder.name}" folder.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <Form {...form}>
+                                                    <form onSubmit={form.handleSubmit(handleCreateContact)} className="space-y-4 py-4">
+                                                        <FormField
+                                                            control={form.control}
+                                                            name="name"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Name</FormLabel>
+                                                                    <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                        <FormField
+                                                            control={form.control}
+                                                            name="email"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Email</FormLabel>
+                                                                    <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                        <FormField
+                                                            control={form.control}
+                                                            name="phone"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Phone (Optional)</FormLabel>
+                                                                    <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                        <DialogFooter className="pt-4">
+                                                            <Button type="button" variant="ghost" onClick={() => setIsNewContactDialogOpen(false)}>Cancel</Button>
+                                                            <Button type="submit">Create Contact</Button>
+                                                        </DialogFooter>
+                                                    </form>
+                                                </Form>
+                                            </DialogContent>
+                                        </Dialog>
                                     </>
                                 )}
                             </div>

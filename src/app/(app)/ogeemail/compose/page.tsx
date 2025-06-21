@@ -2,6 +2,9 @@
 "use client";
 
 import * as React from 'react';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Bold,
   Italic,
@@ -57,6 +60,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { useToast } from '@/hooks/use-toast';
 import { askOgeemo } from '@/ai/flows/ogeemo-chat';
@@ -67,7 +72,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { type Contact, mockContacts } from '@/data/contacts';
+import { type Contact, type FolderData, mockContacts, mockFolders } from '@/data/contacts';
 
 
 const initialTemplates = [
@@ -94,6 +99,13 @@ type Message = {
   text: string;
   sender: "user" | "ogeemo";
 };
+
+const newContactSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  email: z.string().email({ message: "Please enter a valid email." }),
+  phone: z.string().optional(),
+  folderId: z.string({ required_error: "Please select a folder." }),
+});
 
 export default function ComposeEmailPage() {
   const [recipient, setRecipient] = React.useState('');
@@ -127,10 +139,16 @@ export default function ComposeEmailPage() {
   // Contact Picker State
   const [isContactPickerOpen, setIsContactPickerOpen] = React.useState(false);
   const [contactPickerTarget, setContactPickerTarget] = React.useState<'recipient' | 'cc' | 'bcc' | null>(null);
-  const [allContacts] = React.useState<Contact[]>(mockContacts);
+  const [allContacts, setAllContacts] = React.useState<Contact[]>(mockContacts);
   const [filteredContacts, setFilteredContacts] = React.useState<Contact[]>(mockContacts);
   const [contactSearch, setContactSearch] = React.useState('');
   const [selectedDialogContacts, setSelectedDialogContacts] = React.useState<string[]>([]);
+  const [isNewContactDialogOpen, setIsNewContactDialogOpen] = React.useState(false);
+  
+  const newContactForm = useForm<z.infer<typeof newContactSchema>>({
+    resolver: zodResolver(newContactSchema),
+    defaultValues: { name: "", email: "", phone: "" },
+  });
 
 
   // Speech-to-text for Chat
@@ -379,6 +397,25 @@ export default function ComposeEmailPage() {
       );
   };
 
+  function handleCreateNewContact(values: z.infer<typeof newContactSchema>) {
+    const newContact: Contact = {
+      id: `c-${Date.now()}`,
+      name: values.name,
+      email: values.email,
+      phone: values.phone || '',
+      folderId: values.folderId,
+    };
+    
+    // Update local state for immediate feedback in picker
+    setAllContacts(prev => [...prev, newContact]);
+    
+    // Update "global" mock data
+    mockContacts.push(newContact);
+    
+    newContactForm.reset();
+    setIsNewContactDialogOpen(false);
+  }
+
   return (
     <div className="p-4 sm:p-6 space-y-6 h-full flex flex-col">
        <input
@@ -395,36 +432,114 @@ export default function ComposeEmailPage() {
               <DialogDescription>
                   Search for contacts and add them to your email.
               </DialogDescription>
+              <div className="flex items-center gap-2 pt-2">
+                <Input 
+                    placeholder="Search by name or email..."
+                    value={contactSearch}
+                    onChange={(e) => setContactSearch(e.target.value)}
+                    className="flex-1"
+                />
+                <Dialog open={isNewContactDialogOpen} onOpenChange={(open) => { setIsNewContactDialogOpen(open); if (!open) newContactForm.reset(); }}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      <Plus className="mr-2 h-4 w-4" /> New Contact
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Create New Contact</DialogTitle>
+                      <DialogDescription>
+                        Add a new contact to your contact manager. It will be available immediately.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <Form {...newContactForm}>
+                      <form onSubmit={newContactForm.handleSubmit(handleCreateNewContact)} className="space-y-4 py-4">
+                        <FormField
+                          control={newContactForm.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Name</FormLabel>
+                              <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={newContactForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={newContactForm.control}
+                          name="phone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Phone (Optional)</FormLabel>
+                              <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={newContactForm.control}
+                          name="folderId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Folder</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select a folder" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {mockFolders.map(folder => (
+                                    <SelectItem key={folder.id} value={folder.id}>{folder.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <DialogFooter className="pt-4">
+                            <Button type="button" variant="ghost" onClick={() => setIsNewContactDialogOpen(false)}>Cancel</Button>
+                            <Button type="submit">Create Contact</Button>
+                        </DialogFooter>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </div>
           </DialogHeader>
-          <div className="flex flex-col gap-4 py-4 flex-1 min-h-0">
-              <Input 
-                  placeholder="Search by name or email..."
-                  value={contactSearch}
-                  onChange={(e) => setContactSearch(e.target.value)}
-                  className="shrink-0"
-              />
-              <ScrollArea className="flex-1 border rounded-md">
-                  <div className="p-2">
-                      {filteredContacts.length > 0 ? (
-                          filteredContacts.map(contact => (
-                              <div key={contact.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent">
-                                  <Checkbox
-                                      id={`contact-${contact.id}`}
-                                      checked={selectedDialogContacts.includes(contact.email)}
-                                      onCheckedChange={() => handleToggleDialogContact(contact.email)}
-                                  />
-                                  <Label htmlFor={`contact-${contact.id}`} className="flex flex-col cursor-pointer flex-1">
-                                      <span className="font-medium">{contact.name}</span>
-                                      <span className="text-sm text-muted-foreground">{contact.email}</span>
-                                  </Label>
-                              </div>
-                          ))
-                      ) : (
-                          <p className="text-center text-muted-foreground py-10">No contacts found.</p>
-                      )}
-                  </div>
-              </ScrollArea>
-          </div>
+          <ScrollArea className="flex-1 -mx-6 px-6 border-y">
+              <div className="p-2">
+                  {filteredContacts.length > 0 ? (
+                      filteredContacts.map(contact => (
+                          <div key={contact.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent">
+                              <Checkbox
+                                  id={`contact-${contact.id}`}
+                                  checked={selectedDialogContacts.includes(contact.email)}
+                                  onCheckedChange={() => handleToggleDialogContact(contact.email)}
+                              />
+                              <Label htmlFor={`contact-${contact.id}`} className="flex flex-col cursor-pointer flex-1">
+                                  <span className="font-medium">{contact.name}</span>
+                                  <span className="text-sm text-muted-foreground">{contact.email}</span>
+                              </Label>
+                          </div>
+                      ))
+                  ) : (
+                      <p className="text-center text-muted-foreground py-10">No contacts found.</p>
+                  )}
+              </div>
+          </ScrollArea>
           <DialogFooter>
               <Button variant="ghost" onClick={() => setIsContactPickerOpen(false)}>Cancel</Button>
               <Button onClick={handleAddContacts}>Add Selected ({selectedDialogContacts.length})</Button>
