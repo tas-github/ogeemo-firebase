@@ -93,6 +93,18 @@ export default function SandboxPage() {
     const emailsCollectionRef = collection(db, `artifacts/${appId}/users/${uid}/emails`);
     const mockEmails = [
       {
+        from: 'Dummy Sender',
+        fromEmail: 'dummy@example.com',
+        to: 'you@ogeemo.com',
+        subject: 'This is a dummy email',
+        text: `<p>This is the body of the dummy email. It is here for demonstration purposes.</p>`,
+        date: new Date().toISOString(),
+        read: false,
+        starred: false,
+        folder: 'inbox',
+        labels: ['dummy'],
+      },
+      {
         from: 'The Ogeemo Team',
         fromEmail: 'team@ogeemo.com',
         to: 'you@ogeemo.com',
