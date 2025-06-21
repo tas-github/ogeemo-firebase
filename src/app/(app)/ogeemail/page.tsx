@@ -48,6 +48,15 @@ export default function OgeeMailWelcomePage() {
     }
   }, [isSupported, toast]);
 
+  const handleMicClick = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      setTranscript("");
+      startListening();
+    }
+  };
+
   const handleComposeClick = () => {
     console.log("Compose button clicked. Feature coming soon!");
   };
@@ -145,7 +154,7 @@ export default function OgeeMailWelcomePage() {
                   "h-20 w-20 rounded-full bg-primary/10 text-primary",
                   isListening && "animate-pulse border-destructive text-destructive"
                 )}
-                onClick={isListening ? stopListening : startListening}
+                onClick={handleMicClick}
                 disabled={isSupported === false}
                 title={
                   isSupported === false
@@ -163,8 +172,10 @@ export default function OgeeMailWelcomePage() {
               </Button>
               <p className="text-sm text-muted-foreground h-10 flex items-center justify-center text-center px-4">
                 {isListening
-                  ? transcript || "Listening..."
-                  : "Click the microphone to test voice transcription."}
+                  ? "Listening..."
+                  : transcript
+                  ? `I heard: "${transcript}"`
+                  : "Click the mic and speak. I'll stop when you pause."}
               </p>
             </CardContent>
           </Card>
