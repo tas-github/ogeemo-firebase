@@ -453,7 +453,7 @@ export default function ContactsPage() {
               </div>
               <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
-                      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 text-left">
                           <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           
@@ -540,8 +540,8 @@ export default function ContactsPage() {
                           />
                       </div>
 
-                      <div className="p-6 border-t flex items-center justify-between">
-                          <div>
+                      <div className="p-6 border-t flex items-center">
+                          <div className="mr-auto">
                             {isListening ? (
                               <Button
                                 type="button"
@@ -578,5 +578,3 @@ export default function ContactsPage() {
     </div>
   );
 }
-
-    
