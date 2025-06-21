@@ -31,7 +31,7 @@ const generateImageFlow = ai.defineFlow(
     outputSchema: GenerateImageOutputSchema,
   },
   async ({ prompt }) => {
-    const { media } = await ai.generate({
+    const response = await ai.generate({
       model: 'googleai/gemini-2.0-flash-preview-image-generation',
       prompt: prompt,
       config: {
@@ -39,10 +39,13 @@ const generateImageFlow = ai.defineFlow(
       },
     });
 
-    if (!media?.url) {
-        throw new Error('Image generation failed to return an image.');
+    const imageUrl = response.output?.media?.url;
+
+    if (!imageUrl) {
+        console.error("Image generation response was not as expected:", JSON.stringify(response, null, 2));
+        throw new Error('Image generation failed to return an image. The model may have refused to generate the image due to safety policies.');
     }
 
-    return { imageUrl: media.url };
+    return { imageUrl };
   }
 );
