@@ -440,12 +440,14 @@ export default function ContactsPage() {
 
       <Dialog open={isContactFormOpen} onOpenChange={(open) => { if (!open) closeContactForm(); else setIsContactFormOpen(true); }}>
           <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
-              <DialogHeader className="p-6 pb-4 border-b">
-                  <DialogTitle>{contactToEdit ? `Edit ${contactToEdit.name}` : "Create New Contact"}</DialogTitle>
-                  <DialogDescription>
-                    {contactToEdit ? "Update the contact's details below." : `Add a new contact to the "${selectedFolder?.name}" folder.`}
-                  </DialogDescription>
-              </DialogHeader>
+              <div className="flex flex-col space-y-1.5 text-center p-6 pb-4 border-b">
+                <h1 className="text-3xl font-bold font-headline text-primary">
+                  {contactToEdit ? `Edit ${contactToEdit.name}` : "Create New Contact"}
+                </h1>
+                <p className="text-muted-foreground">
+                  {contactToEdit ? "Update the contact's details below." : `Add a new contact to the "${selectedFolder?.name}" folder.`}
+                </p>
+              </div>
               <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
                       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
