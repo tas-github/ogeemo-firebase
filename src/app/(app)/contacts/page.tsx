@@ -1,13 +1,22 @@
 
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Folder,
   Plus,
   MoreVertical,
   Trash2,
   Pencil,
+  Bold,
+  Italic,
+  Underline,
+  Strikethrough,
+  List,
+  ListOrdered,
+  Quote,
+  Link as LinkIcon,
+  Save,
 } from 'lucide-react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,12 +59,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import {
-  type Contact,
-  type FolderData,
-  mockContacts,
-  mockFolders,
-} from '@/data/contacts';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from "@/hooks/use-toast";
+import { type Contact, type FolderData, mockContacts, mockFolders } from '@/data/contacts';
 
 const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -69,16 +75,21 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [currentNotes, setCurrentNotes] = useState('');
+
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [isNewContactDialogOpen, setIsNewContactDialogOpen] = useState(false);
 
+  const editorRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
   const form = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
     defaultValues: { name: "", email: "", phone: "" },
   });
-
-  // Load data from localStorage on component mount
+  
+  // Data loading and saving effects
   useEffect(() => {
     try {
       const storedFolders = localStorage.getItem('contactFolders');
@@ -90,10 +101,11 @@ export default function ContactsPage() {
       }
 
       const storedContacts = localStorage.getItem('contacts');
-      setContacts(storedContacts ? JSON.parse(storedContacts) : [...mockContacts]);
+      const initialContacts = storedContacts ? JSON.parse(storedContacts) : [...mockContacts];
+      setContacts(initialContacts);
+
     } catch (error) {
       console.error("Failed to parse from localStorage", error);
-      // Fallback to mock data if parsing fails
       setFolders([...mockFolders]);
       setContacts([...mockContacts]);
       if (mockFolders.length > 0) {
@@ -101,23 +113,18 @@ export default function ContactsPage() {
       }
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // Empty array ensures this runs only once on mount. selectedFolderId is intentionally omitted.
 
-
-  // Save folders to localStorage whenever they change
   useEffect(() => {
     if (folders.length > 0) {
       localStorage.setItem('contactFolders', JSON.stringify(folders));
     }
   }, [folders]);
 
-  // Save contacts to localStorage whenever they change
   useEffect(() => {
-    // We check for contacts being non-empty if we don't want to save during initial hydration
-    // For this app, it's safe to save even if empty (e.g., user deletes all contacts)
     localStorage.setItem('contacts', JSON.stringify(contacts));
   }, [contacts]);
 
+  // Derived state
   const selectedFolder = useMemo(
     () => folders.find((f) => f.id === selectedFolderId),
     [folders, selectedFolderId]
@@ -127,10 +134,48 @@ export default function ContactsPage() {
     () => contacts.filter((c) => c.folderId === selectedFolderId),
     [contacts, selectedFolderId]
   );
+  
+  const selectedContact = useMemo(
+    () => contacts.find(c => c.id === selectedContactId),
+    [contacts, selectedContactId]
+  );
 
+  // Update editor when selected contact changes
+  useEffect(() => {
+    if (selectedContact) {
+        setCurrentNotes(selectedContact.notes);
+        if (editorRef.current) {
+            editorRef.current.innerHTML = selectedContact.notes;
+        }
+    } else {
+        setCurrentNotes('');
+         if (editorRef.current) {
+            editorRef.current.innerHTML = '';
+        }
+    }
+  }, [selectedContact]);
+  
+  // Selection handlers
   const allVisibleSelected = displayedContacts.length > 0 && selectedContactIds.length === displayedContacts.length;
   const someVisibleSelected = selectedContactIds.length > 0 && selectedContactIds.length < displayedContacts.length;
   
+  const handleToggleSelect = (contactId: string) => {
+    setSelectedContactIds((prev) =>
+      prev.includes(contactId)
+        ? prev.filter((id) => id !== contactId)
+        : [...prev, contactId]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (allVisibleSelected) {
+      setSelectedContactIds([]);
+    } else {
+      setSelectedContactIds(displayedContacts.map(c => c.id));
+    }
+  };
+
+  // CRUD handlers
   const handleCreateFolder = () => {
     if (newFolderName.trim()) {
       const newFolder: FolderData = {
@@ -158,35 +203,56 @@ export default function ContactsPage() {
     form.reset();
     setIsNewContactDialogOpen(false);
   }
-
-  const handleToggleSelect = (contactId: string) => {
-    setSelectedContactIds((prev) =>
-      prev.includes(contactId)
-        ? prev.filter((id) => id !== contactId)
-        : [...prev, contactId]
-    );
-  };
-
-  const handleToggleSelectAll = () => {
-    if (selectedContactIds.length === displayedContacts.length) {
-      // If all are selected, deselect all visible
-      const displayedIds = displayedContacts.map(c => c.id);
-      setSelectedContactIds(prev => prev.filter(id => !displayedIds.includes(id)));
-    } else {
-      // If some or none are selected, select all visible
-      const displayedIds = displayedContacts.map(c => c.id);
-      setSelectedContactIds(prev => [...new Set([...prev, ...displayedIds])]);
-    }
-  };
-
+  
   const handleDeleteSelected = () => {
-    setContacts(contacts.filter(c => !selectedContactIds.includes(c.id)));
+    const contactsToKeep = contacts.filter(c => !selectedContactIds.includes(c.id));
+    setContacts(contactsToKeep);
+    // If the currently viewed contact is deleted, clear the view
+    if (selectedContactId && selectedContactIds.includes(selectedContactId)) {
+        const nextContact = displayedContacts.find(c => !selectedContactIds.includes(c.id));
+        setSelectedContactId(nextContact ? nextContact.id : null);
+    }
     setSelectedContactIds([]);
-  }
+  };
 
   const handleFolderSelect = (folderId: string) => {
     setSelectedFolderId(folderId);
+    setSelectedContactId(null); // Deselect contact when changing folder
     setSelectedContactIds([]);
+  };
+
+  const handleContactSelect = (contactId: string) => {
+    setSelectedContactId(contactId);
+  }
+  
+  // Editor handlers
+  const handleSaveNotes = () => {
+    if (!selectedContactId) return;
+    setContacts(prevContacts =>
+        prevContacts.map(contact =>
+            contact.id === selectedContactId ? { ...contact, notes: currentNotes } : contact
+        )
+    );
+    toast({ title: "Notes saved successfully!" });
+  };
+
+  const preventDefault = (e: React.MouseEvent) => e.preventDefault();
+  
+  const handleFormat = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+  };
+
+  const handleCreateLink = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) {
+      toast({ variant: "destructive", title: "Selection Required", description: "Please select text to create a link."});
+      return;
+    }
+    const url = window.prompt("Enter the URL:");
+    if (url) {
+      handleFormat('createLink', url);
+    }
   };
 
   return (
@@ -203,7 +269,7 @@ export default function ContactsPage() {
         <Card className="h-full">
           <CardContent className="p-0 h-full">
             <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg">
-              <ResizablePanel defaultSize={25} minSize={20}>
+              <ResizablePanel defaultSize={20} minSize={15}>
                 <div className="flex h-full flex-col p-2">
                     <div className="p-2">
                         <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
@@ -261,10 +327,8 @@ export default function ContactsPage() {
                     </nav>
                 </div>
               </ResizablePanel>
-
               <ResizableHandle withHandle />
-
-              <ResizablePanel defaultSize={75} minSize={30}>
+              <ResizablePanel defaultSize={35} minSize={25}>
                 <div className="flex flex-col h-full">
                     {selectedFolder ? (
                         <>
@@ -322,15 +386,7 @@ export default function ContactsPage() {
                                             <TableHead className="w-[50px]">
                                               <Checkbox
                                                 checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
-                                                onCheckedChange={() => {
-                                                  if (allVisibleSelected) {
-                                                      const displayedIds = displayedContacts.map(c => c.id);
-                                                      setSelectedContactIds(prev => prev.filter(id => !displayedIds.includes(id)));
-                                                  } else {
-                                                      const displayedIds = displayedContacts.map(c => c.id);
-                                                      setSelectedContactIds(prev => [...new Set([...prev, ...displayedIds])]);
-                                                  }
-                                                }}
+                                                onCheckedChange={handleToggleSelectAll}
                                                 aria-label="Select all"
                                               />
                                             </TableHead>
@@ -341,8 +397,18 @@ export default function ContactsPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {displayedContacts.map((contact) => (
-                                            <TableRow key={contact.id} data-state={selectedContactIds.includes(contact.id) && 'selected'}>
-                                                <TableCell onClick={(e) => e.stopPropagation()}> <Checkbox checked={selectedContactIds.includes(contact.id)} onCheckedChange={() => handleToggleSelect(contact.id)} aria-label={`Select ${contact.name}`} /> </TableCell>
+                                            <TableRow 
+                                                key={contact.id} 
+                                                data-state={selectedContactId === contact.id ? 'selected' : undefined}
+                                                onClick={() => handleContactSelect(contact.id)}
+                                            >
+                                                <TableCell onClick={(e) => e.stopPropagation()}> 
+                                                    <Checkbox 
+                                                        checked={selectedContactIds.includes(contact.id)} 
+                                                        onCheckedChange={() => handleToggleSelect(contact.id)} 
+                                                        aria-label={`Select ${contact.name}`} 
+                                                    /> 
+                                                </TableCell>
                                                 <TableCell className="font-medium">{contact.name}</TableCell>
                                                 <TableCell>{contact.email}</TableCell>
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
@@ -350,7 +416,7 @@ export default function ContactsPage() {
                                                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
                                                             <DropdownMenuItem> <Pencil className="mr-2 h-4 w-4" /> Edit </DropdownMenuItem>
-                                                            <DropdownMenuItem className="text-destructive"> <Trash2 className="mr-2 h-4 w-4" /> Delete </DropdownMenuItem>
+                                                            <DropdownMenuItem className="text-destructive" onSelect={() => { setSelectedContactIds([contact.id]); handleDeleteSelected()}}> <Trash2 className="mr-2 h-4 w-4" /> Delete </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
                                                 </TableCell>
@@ -363,6 +429,53 @@ export default function ContactsPage() {
                     ) : (
                         <div className="flex h-full items-center justify-center">
                             <p className="text-muted-foreground">Select or create a folder to get started.</p>
+                        </div>
+                    )}
+                </div>
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={45} minSize={30}>
+                <div className="flex flex-col h-full">
+                    {selectedContact ? (
+                        <>
+                            <div className="p-4 border-b h-20 flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-xl font-bold">{selectedContact.name}</h2>
+                                    <p className="text-sm text-muted-foreground">{selectedContact.email}</p>
+                                </div>
+                                <Button onClick={handleSaveNotes}>
+                                    <Save className="mr-2 h-4 w-4" /> Save Notes
+                                </Button>
+                            </div>
+                            <div className="p-2 border-b flex items-center gap-1 flex-wrap">
+                                <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" title="Italic" onMouseDown={preventDefault} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" title="Strikethrough" onMouseDown={preventDefault} onClick={() => handleFormat('strikeThrough')}><Strikethrough className="h-4 w-4" /></Button>
+                                <Separator orientation="vertical" className="h-6 mx-1" />
+                                <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" title="Blockquote" onMouseDown={preventDefault} onClick={() => handleFormat('formatBlock', 'blockquote')}><Quote className="h-4 w-4" /></Button>
+                                <Separator orientation="vertical" className="h-6 mx-1" />
+                                <Button variant="ghost" size="icon" title="Insert Link" onMouseDown={preventDefault} onClick={handleCreateLink}><LinkIcon className="h-4 w-4" /></Button>
+                            </div>
+                             <div className="flex-1 overflow-y-auto p-4">
+                                <div
+                                    ref={editorRef}
+                                    className="prose dark:prose-invert max-w-none focus:outline-none min-h-full h-full"
+                                    contentEditable={true}
+                                    onInput={(e) => setCurrentNotes(e.currentTarget.innerHTML)}
+                                    dangerouslySetInnerHTML={{ __html: currentNotes }}
+                                    placeholder="Add your notes here..."
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex h-full items-center justify-center">
+                            <div className="text-center text-muted-foreground">
+                                <p className="text-lg font-medium">No Contact Selected</p>
+                                <p>Select a contact from the list to see their details and notes.</p>
+                            </div>
                         </div>
                     )}
                 </div>
