@@ -9,7 +9,6 @@ import {
   Trash2,
   Pencil,
   File,
-  User,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -36,6 +35,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 // Data Structures
 interface Contact {
@@ -72,6 +82,9 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>(mockContacts);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(mockFolders[0]?.id || null);
 
+  const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+
   const selectedFolder = useMemo(
     () => folders.find((f) => f.id === selectedFolderId),
     [folders, selectedFolderId]
@@ -81,6 +94,19 @@ export default function ContactsPage() {
     () => contacts.filter((c) => c.folderId === selectedFolderId),
     [contacts, selectedFolderId]
   );
+
+  const handleCreateFolder = () => {
+    if (newFolderName.trim()) {
+      const newFolder: FolderData = {
+        id: `f-${Date.now()}`,
+        name: newFolderName.trim(),
+      };
+      setFolders([...folders, newFolder]);
+      setNewFolderName("");
+      setIsNewFolderDialogOpen(false);
+    }
+  };
+
 
   return (
     <div className="p-4 sm:p-6 space-y-4 flex flex-col h-full">
@@ -99,9 +125,45 @@ export default function ContactsPage() {
               <ResizablePanel defaultSize={25} minSize={20} maxSize={40}>
                 <div className="flex h-full flex-col p-2">
                     <div className="p-2">
-                        <Button className="w-full">
-                            <Plus className="mr-2 h-4 w-4" /> New Folder
-                        </Button>
+                        <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button className="w-full">
+                                    <Plus className="mr-2 h-4 w-4" /> New Folder
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                                <DialogHeader>
+                                    <DialogTitle>Create New Folder</DialogTitle>
+                                    <DialogDescription>
+                                        Enter a name for your new contact folder.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="py-4">
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="folder-name" className="text-right">
+                                            Name
+                                        </Label>
+                                        <Input
+                                            id="folder-name"
+                                            value={newFolderName}
+                                            onChange={(e) => setNewFolderName(e.target.value)}
+                                            className="col-span-3"
+                                            placeholder="e.g., 'Family'"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleCreateFolder();
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button>
+                                    <Button onClick={handleCreateFolder}>Create Folder</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                     <nav className="flex flex-col gap-1 p-2">
                         {folders.map((folder) => (
