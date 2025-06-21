@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   Inbox,
   Star,
@@ -8,6 +9,7 @@ import {
   Archive,
   Pencil,
   Mic,
+  LoaderCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,9 +21,32 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
+import { useSpeechToText } from "@/hooks/use-speech-to-text";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export default function OgeeMailWelcomePage() {
   const router = useRouter();
+  const { toast } = useToast();
+  const [transcript, setTranscript] = useState("");
+
+  const { isListening, startListening, stopListening, isSupported } =
+    useSpeechToText({
+      onTranscript: (text) => {
+        setTranscript(text);
+      },
+    });
+    
+  useEffect(() => {
+    // This check is necessary because the initial value is undefined.
+    if (isSupported === false) {
+      toast({
+        variant: "destructive",
+        title: "Voice Input Not Supported",
+        description: "Your browser does not support the Web Speech API.",
+      });
+    }
+  }, [isSupported, toast]);
 
   // We will add compose functionality later. For now, it can be a placeholder.
   const handleComposeClick = () => {
@@ -92,12 +117,28 @@ export default function OgeeMailWelcomePage() {
                     <CardDescription>Voice-Powered Communication</CardDescription>
                 </CardHeader>
                 <CardContent className="text-center flex flex-col items-center gap-4">
-                    <div className="bg-primary/10 p-4 rounded-full">
-                        <Mic className="w-8 h-8 text-primary" />
-                    </div>
+                    <Button 
+                        variant="outline" 
+                        size="icon"
+                        className={cn(
+                            "h-20 w-20 rounded-full bg-primary/10 text-primary",
+                            isListening && "animate-pulse border-destructive text-destructive"
+                        )}
+                        onClick={isListening ? stopListening : startListening}
+                        disabled={isSupported === false}
+                        title={isSupported === false ? "Voice input not supported" : (isListening ? "Stop listening" : "Start listening")}
+                    >
+                        {isSupported === undefined ? <LoaderCircle className="w-8 h-8 animate-spin" /> : <Mic className="w-8 h-8" />}
+                    </Button>
                     <p className="text-sm text-muted-foreground">
                         OgeeMail integrates voice-to-text in every appropriate field. Just click the microphone icon and start talking to draft emails, search your inbox, and more—all hands-free.
                     </p>
+                     {isSupported && (
+                        <div className="w-full p-2 border rounded-md min-h-[4rem] text-sm text-muted-foreground text-left">
+                            {isListening && !transcript && <span className="italic">Listening...</span>}
+                            {transcript ? transcript : <span className="italic">Click the mic and speak. Your words will appear here.</span>}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
