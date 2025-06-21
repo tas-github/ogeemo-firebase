@@ -49,7 +49,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -334,10 +333,10 @@ export default function ContactsPage() {
                                         />
                                     </div>
                                 </div>
-                                <DialogFooter>
+                                <div className="p-6 pt-0 flex justify-end gap-2">
                                     <Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button>
                                     <Button onClick={handleCreateFolder}>Create Folder</Button>
-                                </DialogFooter>
+                                </div>
                             </DialogContent>
                         </Dialog>
                     </div>
@@ -541,7 +540,7 @@ export default function ContactsPage() {
                           />
                       </div>
 
-                      <DialogFooter className="p-6 border-t flex flex-wrap items-center gap-2">
+                      <div className="p-6 border-t flex items-center justify-between">
                           <div>
                             {isListening ? (
                               <Button
@@ -567,16 +566,17 @@ export default function ContactsPage() {
                               </Button>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 ml-auto">
+                          <div className="flex items-center gap-2">
                               <Button type="button" variant="ghost" onClick={closeContactForm}>Cancel</Button>
                               <Button type="submit">{contactToEdit ? "Save Changes" : "Create Contact"}</Button>
                           </div>
-                      </DialogFooter>
+                      </div>
                   </form>
               </Form>
           </DialogContent>
       </Dialog>
-
     </div>
   );
 }
+
+    
