@@ -309,7 +309,7 @@ export default function ComposeEmailPage() {
       toast({
         variant: "destructive",
         title: "Image Generation Failed",
-        description: "Could not generate the image. Please try again.",
+        description: error instanceof Error ? error.message : "An unknown error occurred. Please check the console for details.",
       });
     } finally {
       setIsGeneratingImage(false);
