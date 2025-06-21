@@ -93,16 +93,16 @@ export default function SandboxPage() {
     const emailsCollectionRef = collection(db, `artifacts/${appId}/users/${uid}/emails`);
     const mockEmails = [
       {
-        from: 'Dummy Sender',
-        fromEmail: 'dummy@example.com',
+        from: 'Sandbox Dummy Mail',
+        fromEmail: 'dummy@sandbox.com',
         to: 'you@ogeemo.com',
-        subject: 'This is a dummy email',
-        text: `<p>This is the body of the dummy email. It is here for demonstration purposes.</p>`,
+        subject: 'This is a visible dummy email',
+        text: `<p>This email is generated for the sandbox environment. It should be visible in the right-hand pane upon loading.</p>`,
         date: new Date().toISOString(),
         read: false,
-        starred: false,
+        starred: true,
         folder: 'inbox',
-        labels: ['dummy'],
+        labels: ['sandbox-test'],
       },
       {
         from: 'The Ogeemo Team',
@@ -112,69 +112,9 @@ export default function SandboxPage() {
         text: `<p>Hi there,</p><p>Welcome to OgeeMail, the most intuitive and powerful email client for modern teams. We're thrilled to have you on board.</p><p>You can start by exploring the interface, composing a new email, or organizing your inbox with labels. If you have any questions, feel free to reach out to our support team.</p><p>Best,<br/>The Ogeemo Team</p>`,
         date: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
         read: false,
-        starred: true,
+        starred: false,
         folder: 'inbox',
         labels: ['welcome', 'important'],
-      },
-      {
-        from: 'John Doe',
-        fromEmail: 'john.doe@example.com',
-        to: 'you@ogeemo.com',
-        subject: 'Project Phoenix - Weekly Update',
-        text: `<p>Hello team,</p><p>Here is the weekly update for Project Phoenix:</p><ul><li>Frontend development is 80% complete.</li><li>Backend APIs are now fully integrated.</li><li>User testing is scheduled for next Wednesday.</li></ul><p>Please review the attached document for the full report. Let's sync up on Monday to discuss next steps.</p><p>Regards,<br/>John</p>`,
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-        read: true,
-        starred: false,
-        folder: 'inbox',
-        labels: ['project-phoenix'],
-      },
-      {
-        from: 'Automated Calendar',
-        fromEmail: 'calendar-noreply@ogeemo.com',
-        to: 'you@ogeemo.com',
-        subject: 'Reminder: Q3 Planning Session',
-        text: `<p>This is a reminder for your upcoming meeting:</p><p><strong>Event:</strong> Q3 Planning Session<br/><strong>Date:</strong> Tomorrow, 10:00 AM<br/><strong>Location:</strong> Conference Room 4B</p><p>Please be prepared to discuss your department's goals for the next quarter.</p>`,
-        date: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
-        read: false,
-        starred: false,
-        folder: 'inbox',
-        labels: ['meeting'],
-      },
-      {
-        from: 'Ogeemo Newsletter',
-        fromEmail: 'newsletter@ogeemo.com',
-        to: 'you@ogeemo.com',
-        subject: 'This Week in AI: The Latest Trends',
-        text: `<p>Don't miss the latest edition of our newsletter, packed with insights on AI, productivity, and the future of work. This week, we explore the impact of generative models on creative industries.</p><p><a href="#">Read more here.</a></p>`,
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-        read: true,
-        starred: false,
-        folder: 'inbox',
-        labels: ['newsletter'],
-      },
-      {
-        from: 'You',
-        fromEmail: 'you@ogeemo.com',
-        to: 'jane.doe@example.com',
-        subject: 'Re: Design Mockups',
-        text: `<p>Hi Jane,</p><p>Thanks for sending these over. The new mockups look great! I've left a few comments on the Figma file.</p><p>Let's proceed with this direction.</p><p>Best,<br/>You</p>`,
-        date: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-        read: true,
-        starred: false,
-        folder: 'sent',
-        labels: [],
-      },
-      {
-        from: 'Important Docs',
-        fromEmail: 'archive-bot@ogeemo.com',
-        to: 'you@ogeemo.com',
-        subject: 'Archived: 2023 Financial Report',
-        text: '<p>This document has been automatically archived for your records.</p>',
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
-        read: true,
-        starred: false,
-        folder: 'archive',
-        labels: [],
       },
     ];
 
@@ -304,6 +244,8 @@ export default function SandboxPage() {
     }
   };
 
+  const selectedEmail = emails.find(e => e.id === selectedEmailId) || null;
+
   const filteredEmails = emails.filter((email) => {
     const lowerCaseQuery = searchQuery.toLowerCase();
     const matchesSearch =
@@ -340,7 +282,7 @@ export default function SandboxPage() {
     <TooltipProvider delayDuration={0}>
       <div className="flex h-full w-full flex-col bg-background text-foreground overflow-hidden">
         <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
-          <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
+          <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
             <div className="flex h-full flex-col p-2">
               <div className="p-2">
                 <Button className="w-full" onClick={() => setIsComposeOpen(true)}>
@@ -371,7 +313,7 @@ export default function SandboxPage() {
           </ResizablePanel>
           <ResizableHandle withHandle />
           
-          <ResizablePanel defaultSize={75} minSize={30}>
+          <ResizablePanel defaultSize={35} minSize={25}>
             <div className="flex flex-col h-full">
               <div className="p-2 border-b">
                 <div className="relative">
@@ -426,6 +368,51 @@ export default function SandboxPage() {
                 </div>
               )}
               </div>
+            </div>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+
+          <ResizablePanel defaultSize={45} minSize={30}>
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 h-full">
+              {selectedEmail ? (
+                <div>
+                  <div className="flex items-center justify-between border-b pb-4">
+                      <div className="flex items-center gap-4">
+                          <Avatar className="h-10 w-10">
+                              <AvatarImage src={`https://i.pravatar.cc/150?u=${selectedEmail.fromEmail}`} alt={selectedEmail.from} />
+                              <AvatarFallback>{getAvatarFallback(selectedEmail.from)}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                              <p className="font-semibold">{selectedEmail.from}</p>
+                              <p className="text-sm text-muted-foreground">To: {selectedEmail.to || 'You <you@ogeemo.com>'}</p>
+                          </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <time>{new Date(selectedEmail.date).toLocaleString()}</time>
+                           <Tooltip>
+                              <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon"><CornerUpLeft className="h-4 w-4" /></Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Reply</p></TooltipContent>
+                           </Tooltip>
+                           <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>More</p></TooltipContent>
+                            </Tooltip>
+                      </div>
+                  </div>
+                  <h2 className="text-2xl font-bold my-4">{selectedEmail.subject}</h2>
+                  <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedEmail.text }} />
+                </div>
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
+                  <Inbox className="h-16 w-16" />
+                  <p className="mt-4 text-lg">Select an email to read</p>
+                  <p className="text-sm">Nothing selected</p>
+                </div>
+              )}
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
