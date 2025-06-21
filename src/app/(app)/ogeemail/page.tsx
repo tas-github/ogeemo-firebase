@@ -206,7 +206,6 @@ export default function OgeeMailWelcomePage() {
               </Button>
               <Button
                 size="lg"
-                variant="outline"
                 className="h-16 text-lg px-8"
                 onClick={() => setIsChatOpen(true)}
               >
