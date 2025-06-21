@@ -12,6 +12,7 @@ import {
   LoaderCircle,
   Bot,
   User,
+  Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -253,11 +254,12 @@ export default function OgeeMailWelcomePage() {
               </CardHeader>
               <CardContent className="flex flex-col items-center gap-4">
                 <Button
-                  variant="outline"
+                  variant={isSpotlightListening ? "destructive" : "outline"}
                   size="icon"
                   className={cn(
-                    "h-20 w-20 rounded-full bg-primary/10 text-primary",
-                    isSpotlightListening && "animate-pulse border-destructive text-destructive"
+                    "h-20 w-20 rounded-full",
+                    !isSpotlightListening && "bg-primary/10 text-primary",
+                    isSpotlightListening && "animate-pulse"
                   )}
                   onClick={handleSpotlightMicClick}
                   disabled={isSpotlightSupported === false}
@@ -271,6 +273,8 @@ export default function OgeeMailWelcomePage() {
                 >
                   {isSpotlightSupported === undefined ? (
                     <LoaderCircle className="w-8 h-8 animate-spin" />
+                  ) : isSpotlightListening ? (
+                    <Square className="w-8 h-8" />
                   ) : (
                     <Mic className="w-8 h-8" />
                   )}
@@ -364,7 +368,7 @@ export default function OgeeMailWelcomePage() {
                 size="icon"
                 className={cn(
                   "flex-shrink-0",
-                  isChatListening && "text-destructive animate-pulse"
+                  isChatListening && "text-destructive"
                 )}
                 onClick={
                   isChatListening ? stopChatListening : startChatListening
@@ -378,7 +382,7 @@ export default function OgeeMailWelcomePage() {
                     : "Start listening"
                 }
               >
-                <Mic className="h-5 w-5" />
+                {isChatListening ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                 <span className="sr-only">Use Voice</span>
               </Button>
               <Input

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -16,6 +17,7 @@ import {
   Users,
   LoaderCircle,
   ChevronDown,
+  Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -206,17 +208,17 @@ export default function ActionManagerPage() {
             </CardContent>
             <CardFooter>
                 <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="icon" 
-                      className={cn("flex-shrink-0", isListening && "text-destructive animate-pulse")}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className={cn("flex-shrink-0", isListening && "text-destructive")}
                       onClick={isListening ? stopListening : startListening}
                       disabled={!isSupported || isLoading}
                       title={!isSupported ? "Voice input not supported" : (isListening ? "Stop listening" : "Start listening")}
                     >
-                        <Mic className="h-5 w-5" />
-                        <span className="sr-only">Use Voice</span>
+                      {isListening ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                      <span className="sr-only">Use Voice</span>
                     </Button>
                     <Input
                         placeholder="Enter your message here..."
