@@ -1,26 +1,13 @@
 
 "use client";
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Folder,
   Plus,
   MoreVertical,
   Trash2,
   Pencil,
-  File,
-  Bold,
-  Italic,
-  Underline,
-  List,
-  ListOrdered,
-  Strikethrough,
-  Quote,
-  Link as LinkIcon,
-  ChevronDown,
-  Minus,
-  Code2,
-  Save,
 } from 'lucide-react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -69,11 +56,6 @@ import {
   mockContacts,
   mockFolders,
 } from '@/data/contacts';
-import { Separator } from '@/components/ui/separator';
-import { useToast } from "@/hooks/use-toast";
-import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-
 
 const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -87,17 +69,9 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>(() => [...mockContacts]);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(mockFolders[0]?.id || null);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
-  const [viewedContactId, setViewedContactId] = useState<string | null>(null);
-
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
-
   const [isNewContactDialogOpen, setIsNewContactDialogOpen] = useState(false);
-  
-  const [notes, setNotes] = useState('');
-  const editorRef = useRef<HTMLDivElement>(null);
-
-  const { toast } = useToast();
 
   const form = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
@@ -114,34 +88,9 @@ export default function ContactsPage() {
     [contacts, selectedFolderId]
   );
 
-  const viewedContact = useMemo(
-    () => contacts.find((c) => c.id === viewedContactId),
-    [contacts, viewedContactId]
-  );
-
   const allVisibleSelected = displayedContacts.length > 0 && selectedContactIds.length === displayedContacts.length;
   const someVisibleSelected = selectedContactIds.length > 0 && selectedContactIds.length < displayedContacts.length;
   
-  useEffect(() => {
-    if (viewedContact) {
-      setNotes(viewedContact.notes || '');
-      if (editorRef.current) {
-        editorRef.current.innerHTML = viewedContact.notes || '';
-      }
-    } else {
-      setNotes('');
-       if (editorRef.current) {
-        editorRef.current.innerHTML = '';
-      }
-    }
-  }, [viewedContact]);
-
-  useEffect(() => {
-    // When folder changes, clear the viewed contact
-    setViewedContactId(null);
-  }, [selectedFolderId]);
-
-
   const handleCreateFolder = () => {
     if (newFolderName.trim()) {
       const newFolder: FolderData = {
@@ -189,49 +138,11 @@ export default function ContactsPage() {
   const handleDeleteSelected = () => {
     setContacts(contacts.filter(c => !selectedContactIds.includes(c.id)));
     setSelectedContactIds([]);
-    setViewedContactId(null); // Clear detail view if deleted
   }
 
   const handleFolderSelect = (folderId: string) => {
     setSelectedFolderId(folderId);
     setSelectedContactIds([]);
-  };
-
-  const handleFormat = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
-    editorRef.current?.focus();
-  };
-
-  const handleCreateLink = () => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) {
-      toast({
-          variant: "destructive",
-          title: "Cannot Create Link",
-          description: "Please select the text you want to hyperlink.",
-      });
-      return;
-    }
-    const url = window.prompt("Enter the URL:");
-    if (url) {
-      handleFormat('createLink', url);
-    }
-  };
-
-  const preventDefault = (e: React.MouseEvent) => e.preventDefault();
-
-  const handleSaveNotes = () => {
-    if (!viewedContactId) return;
-
-    setContacts(prevContacts =>
-        prevContacts.map(c =>
-            c.id === viewedContactId ? { ...c, notes } : c
-        )
-    );
-    toast({
-      title: "Notes Saved",
-      description: `Notes for ${viewedContact?.name} have been updated.`,
-    })
   };
 
   return (
@@ -248,7 +159,7 @@ export default function ContactsPage() {
         <Card className="h-full">
           <CardContent className="p-0 h-full">
             <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg">
-              <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+              <ResizablePanel defaultSize={25} minSize={20}>
                 <div className="flex h-full flex-col p-2">
                     <div className="p-2">
                         <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
@@ -309,7 +220,7 @@ export default function ContactsPage() {
 
               <ResizableHandle withHandle />
 
-              <ResizablePanel defaultSize={30} minSize={25}>
+              <ResizablePanel defaultSize={75} minSize={30}>
                 <div className="flex flex-col h-full">
                     {selectedFolder ? (
                         <>
@@ -372,7 +283,7 @@ export default function ContactsPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {displayedContacts.map((contact) => (
-                                            <TableRow key={contact.id} data-state={selectedContactIds.includes(contact.id) && "selected"} onClick={() => setViewedContactId(contact.id)} className="cursor-pointer">
+                                            <TableRow key={contact.id} data-state={selectedContactIds.includes(contact.id)}>
                                                 <TableCell onClick={(e) => e.stopPropagation()}> <Checkbox checked={selectedContactIds.includes(contact.id)} onCheckedChange={() => handleToggleSelect(contact.id)} aria-label={`Select ${contact.name}`} /> </TableCell>
                                                 <TableCell className="font-medium">{contact.name}</TableCell>
                                                 <TableCell>{contact.email}</TableCell>
@@ -392,78 +303,8 @@ export default function ContactsPage() {
                             </div>
                         </>
                     ) : (
-                        <div className="flex h-full items-center justify-center p-4 text-center">
-                            <p className="text-muted-foreground">Select or create a folder to get started.</p>
-                        </div>
-                    )}
-                </div>
-              </ResizablePanel>
-              
-              <ResizableHandle withHandle />
-
-              <ResizablePanel defaultSize={50} minSize={30}>
-                <div className="flex flex-col h-full">
-                    {viewedContact ? (
-                        <>
-                            <div className="flex items-center gap-4 p-4 border-b">
-                                <Avatar className="h-12 w-12">
-                                    <AvatarFallback>{viewedContact.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1">
-                                    <h2 className="text-xl font-bold">{viewedContact.name}</h2>
-                                    <p className="text-sm text-muted-foreground">{viewedContact.email}</p>
-                                    {viewedContact.phone && <p className="text-sm text-muted-foreground">{viewedContact.phone}</p>}
-                                </div>
-                            </div>
-                            <div className="p-2 border-b flex items-center gap-1 flex-wrap">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="h-8">Headings<ChevronDown className="h-4 w-4 ml-2" /></Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                        <DropdownMenuItem onSelect={() => handleFormat('formatBlock', 'p')}>Paragraph</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleFormat('formatBlock', 'h3')} className="text-lg font-bold">Heading 3</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => handleFormat('formatBlock', 'h4')} className="text-base font-bold">Heading 4</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="h-8">Insert<ChevronDown className="h-4 w-4 ml-2" /></Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                        <DropdownMenuItem onMouseDown={preventDefault} onSelect={() => handleFormat('insertHorizontalRule')}><Minus className="mr-2 h-4 w-4" />Horizontal Line</DropdownMenuItem>
-                                        <DropdownMenuItem onMouseDown={preventDefault} onSelect={() => handleFormat('formatBlock', 'pre')}><Code2 className="mr-2 h-4 w-4" />Code Block</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                                <Separator orientation="vertical" className="h-6 mx-1" />
-                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Italic" onMouseDown={preventDefault} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Strikethrough" onMouseDown={preventDefault} onClick={() => handleFormat('strikeThrough')}><Strikethrough className="h-4 w-4" /></Button>
-                                <Separator orientation="vertical" className="h-6 mx-1" />
-                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Blockquote" onMouseDown={preventDefault} onClick={() => handleFormat('formatBlock', 'blockquote')}><Quote className="h-4 w-4" /></Button>
-                                <Separator orientation="vertical" className="h-6 mx-1" />
-                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Insert Link" onMouseDown={preventDefault} onClick={handleCreateLink}><LinkIcon className="h-4 w-4" /></Button>
-                            </div>
-                            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                                <div
-                                    ref={editorRef}
-                                    className="prose dark:prose-invert max-w-none focus:outline-none min-h-full"
-                                    contentEditable={true}
-                                    onInput={(e) => setNotes(e.currentTarget.innerHTML)}
-                                    dangerouslySetInnerHTML={{ __html: notes }}
-                                    placeholder="Add notes for this contact..."
-                                />
-                            </div>
-                            <div className="p-3 border-t flex justify-end">
-                                <Button onClick={handleSaveNotes}><Save className="mr-2 h-4 w-4" /> Save Notes</Button>
-                            </div>
-                        </>
-                    ) : (
                         <div className="flex h-full items-center justify-center">
-                            <p className="text-muted-foreground">Select a contact to view details.</p>
+                            <p className="text-muted-foreground">Select a folder to get started.</p>
                         </div>
                     )}
                 </div>
