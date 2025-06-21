@@ -68,11 +68,11 @@ export default function OgeeMailWelcomePage() {
       setTranscript(text);
     },
     onFinalTranscript: () => {
-        // Automatically stop listening when user pauses
-        if(isSpotlightListening) {
-            stopSpotlightListening();
-        }
-    }
+      // Automatically stop listening when user pauses
+      if (isSpotlightListening) {
+        stopSpotlightListening();
+      }
+    },
   });
 
   // Speech-to-text for the Chat Dialog
