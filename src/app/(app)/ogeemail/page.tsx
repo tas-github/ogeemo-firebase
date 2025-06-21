@@ -144,7 +144,7 @@ export default function OgeeMailWelcomePage() {
           <Card>
             <CardHeader className="text-center">
               <CardTitle>Feature Spotlight</CardTitle>
-              <CardDescription>Voice-Powered AI Assistant</CardDescription>
+              <CardDescription>Voice-Powered Ogeemo Assistant</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
               <Button
