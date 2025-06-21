@@ -212,7 +212,7 @@ export default function OgeeMailInboxPage() {
 
     return (
         <div className="p-4 sm:p-6 flex flex-col h-full bg-background overflow-hidden">
-            <div className="absolute top-4 right-4 sm:top-6 sm:right-6">
+            <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10">
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button>Getting started with OgeeMail</Button>
@@ -420,5 +420,3 @@ export default function OgeeMailInboxPage() {
         </div>
     );
 }
-
-    
