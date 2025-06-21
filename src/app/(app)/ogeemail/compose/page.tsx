@@ -21,6 +21,8 @@ import {
   User,
   LoaderCircle,
   Square,
+  Paperclip,
+  X,
 } from 'lucide-react';
 import {
   Card,
@@ -55,6 +57,7 @@ import { askOgeemo } from '@/ai/flows/ogeemo-chat';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 
 const initialTemplates = [
   {
@@ -90,6 +93,9 @@ export default function ComposeEmailPage() {
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = React.useState(false);
   const [newTemplateName, setNewTemplateName] = React.useState('');
+
+  const [attachments, setAttachments] = React.useState<File[]>([]);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const { toast } = useToast();
   const [isChatOpen, setIsChatOpen] = React.useState(false);
@@ -252,8 +258,31 @@ export default function ComposeEmailPage() {
     }
   };
 
+  const handleAttachmentClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setAttachments(prev => [...prev, ...Array.from(e.target.files!)]);
+      e.target.value = ''; // Reset file input
+    }
+  };
+  
+  const handleRemoveAttachment = (fileName: string) => {
+      setAttachments(prev => prev.filter(file => file.name !== fileName));
+  };
+
+
   return (
     <div className="p-4 sm:p-6 space-y-6 h-full flex flex-col">
+       <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        className="hidden"
+        multiple
+      />
       <header className="text-center">
         <h1 className="text-3xl font-bold font-headline text-primary">
           Compose Email
@@ -356,7 +385,30 @@ export default function ComposeEmailPage() {
               <Button variant="ghost" size="icon" title="Insert Link" onMouseDown={preventDefault} onClick={handleCreateLink}>
                 <LinkIcon className="h-4 w-4" />
               </Button>
+               <Button variant="ghost" size="icon" title="Attach File" onMouseDown={preventDefault} onClick={handleAttachmentClick}>
+                <Paperclip className="h-4 w-4" />
+              </Button>
             </div>
+
+            {attachments.length > 0 && (
+              <div className="p-2 border-b">
+                <div className="flex flex-wrap gap-2">
+                  {attachments.map((file) => (
+                    <Badge key={file.name} variant="secondary" className="flex items-center gap-2">
+                      <span>{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
+                      <button
+                        onClick={() => handleRemoveAttachment(file.name)}
+                        className="rounded-full hover:bg-muted-foreground/20 p-0.5"
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex-1 overflow-y-auto p-4">
                 <div
                     ref={editorRef}
