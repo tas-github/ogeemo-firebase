@@ -51,7 +51,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,15 +75,18 @@ export default function ContactsPage() {
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
-  const [isNewContactDialogOpen, setIsNewContactDialogOpen] = useState(false);
+  
+  const [isContactFormOpen, setIsContactFormOpen] = useState(false);
+  const [contactToEdit, setContactToEdit] = useState<Contact | null>(null);
+  
   const notesEditorRef = useRef<HTMLDivElement>(null);
-
+  const { toast } = useToast();
+  
   const form = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
     defaultValues: { name: "", email: "", phone: "", notes: "" },
   });
 
-  const { toast } = useToast();
   const [notesBeforeSpeech, setNotesBeforeSpeech] = useState('');
 
   const { isListening, startListening, stopListening, isSupported } =
@@ -207,6 +209,58 @@ export default function ContactsPage() {
     notesEditorRef.current?.focus();
   };
 
+  const openContactForm = (contact: Contact | null) => {
+    setContactToEdit(contact);
+    form.reset(contact || { name: "", email: "", phone: "", notes: "" });
+    setIsContactFormOpen(true);
+  };
+
+  const closeContactForm = () => {
+    setIsContactFormOpen(false);
+    setContactToEdit(null);
+    if(isListening) {
+      stopListening();
+    }
+    form.reset();
+  };
+  
+  function onSubmit(values: z.infer<typeof contactSchema>) {
+    if (contactToEdit) {
+      // Update existing contact
+      const updatedContacts = contacts.map(c =>
+        c.id === contactToEdit.id ? { ...contactToEdit, ...values } : c
+      );
+      setContacts(updatedContacts);
+      toast({ title: "Contact Updated", description: `Details for ${values.name} have been updated.` });
+    } else {
+      // Create new contact
+      if (!selectedFolderId) return;
+      const newContact: Contact = {
+        id: `c-${Date.now()}`,
+        folderId: selectedFolderId,
+        ...values
+      };
+      setContacts([...contacts, newContact]);
+      toast({ title: "Contact Created", description: `${values.name} has been added.` });
+    }
+    closeContactForm();
+  }
+
+  const handleDeleteContact = (contactId: string) => {
+    const contactToDelete = contacts.find(c => c.id === contactId);
+    if (contactToDelete) {
+      setContacts(contacts.filter(c => c.id !== contactId));
+      setSelectedContactIds(prev => prev.filter(id => id !== contactId));
+      toast({ title: "Contact Deleted", description: `${contactToDelete.name} has been deleted.` });
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    setContacts(contacts.filter(c => !selectedContactIds.includes(c.id)));
+    toast({ title: `${selectedContactIds.length} Contacts Deleted`, description: `The selected contacts have been removed.` });
+    setSelectedContactIds([]);
+  };
+
   // CRUD handlers
   const handleCreateFolder = () => {
     if (newFolderName.trim()) {
@@ -220,40 +274,10 @@ export default function ContactsPage() {
     }
   };
   
-  function handleCreateContact(values: z.infer<typeof contactSchema>) {
-    if (!selectedFolderId) return;
-    const newContact: Contact = {
-      id: `c-${Date.now()}`,
-      folderId: selectedFolderId,
-      name: values.name,
-      email: values.email,
-      phone: values.phone || '',
-      notes: values.notes || '',
-    };
-    const newContacts = [...contacts, newContact];
-    setContacts(newContacts);
-    form.reset();
-    setIsNewContactDialogOpen(false);
-  }
-  
-  const handleDeleteSelected = () => {
-    const contactsToKeep = contacts.filter(c => !selectedContactIds.includes(c.id));
-    setContacts(contactsToKeep);
-    setSelectedContactIds([]);
-  };
-
   const handleFolderSelect = (folderId: string) => {
     setSelectedFolderId(folderId);
     setSelectedContactIds([]);
   };
-
-  const handleCancelNewContact = () => {
-    setIsNewContactDialogOpen(false);
-    if(isListening) {
-      stopListening();
-    }
-    form.reset();
-  }
 
   return (
     <div className="p-4 sm:p-6 space-y-4 flex flex-col h-full">
@@ -350,92 +374,9 @@ export default function ContactsPage() {
                                                 {displayedContacts.length} contact(s)
                                             </p>
                                         </div>
-                                        <Dialog open={isNewContactDialogOpen} onOpenChange={(open) => { if (!open) handleCancelNewContact(); else setIsNewContactDialogOpen(true) }}>
-                                            <DialogTrigger asChild>
-                                                <Button disabled={!selectedFolderId}>
-                                                <Plus className="mr-2 h-4 w-4" /> New Contact
-                                                </Button>
-                                            </DialogTrigger>
-                                            <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
-                                                <DialogHeader className="p-6 pb-4 border-b">
-                                                    <DialogTitle>Create New Contact</DialogTitle>
-                                                    <DialogDescription>
-                                                        Add a new contact to the "{selectedFolder.name}" folder.
-                                                    </DialogDescription>
-                                                </DialogHeader>
-                                                <Form {...form}>
-                                                    <form onSubmit={form.handleSubmit(handleCreateContact)} className="flex-1 flex flex-col min-h-0">
-                                                        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                                                            <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                                            <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                                            <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem> <FormLabel>Phone (Optional)</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                                            
-                                                            <FormField
-                                                              control={form.control}
-                                                              name="notes"
-                                                              render={({ field }) => (
-                                                                <FormItem>
-                                                                  <FormLabel>Notes</FormLabel>
-                                                                  <div className="rounded-md border">
-                                                                    <div className="p-1 border-b flex items-center gap-1 flex-wrap">
-                                                                        <Button type="button" variant="ghost" size="icon" title="Bold" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
-                                                                        <Button type="button" variant="ghost" size="icon" title="Italic" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
-                                                                        <Button type="button" variant="ghost" size="icon" title="Underline" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
-                                                                        <Button type="button" variant="ghost" size="icon" title="Unordered List" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
-                                                                        <Button type="button" variant="ghost" size="icon" title="Ordered List" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
-                                                                    </div>
-                                                                    <FormControl>
-                                                                      <div
-                                                                        ref={notesEditorRef}
-                                                                        className="prose dark:prose-invert max-w-none min-h-[240px] p-2 focus:outline-none"
-                                                                        contentEditable
-                                                                        onInput={(e) => field.onChange(e.currentTarget.innerHTML)}
-                                                                        onBlur={field.onBlur}
-                                                                        dangerouslySetInnerHTML={{ __html: field.value ?? "" }}
-                                                                      />
-                                                                    </FormControl>
-                                                                  </div>
-                                                                  <FormMessage />
-                                                                </FormItem>
-                                                              )}
-                                                            />
-                                                        </div>
-
-                                                        <DialogFooter className="p-6 border-t flex-wrap items-center justify-between gap-2">
-                                                            <div>
-                                                              {isListening ? (
-                                                                <Button
-                                                                  type="button"
-                                                                  variant="destructive"
-                                                                  onClick={handleDictateClick}
-                                                                  className="animate-pulse"
-                                                                  title="Stop dictating"
-                                                                >
-                                                                  <Square className="mr-2 h-4 w-4" />
-                                                                  Stop
-                                                                </Button>
-                                                              ) : (
-                                                                <Button
-                                                                  type="button"
-                                                                  variant="outline"
-                                                                  onClick={handleDictateClick}
-                                                                  disabled={isSupported === false}
-                                                                  title={isSupported === false ? "Voice input not supported" : "Dictate notes"}
-                                                                >
-                                                                  <Mic className="mr-2 h-4 w-4" />
-                                                                  Dictate Notes
-                                                                </Button>
-                                                              )}
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <Button type="button" variant="ghost" onClick={handleCancelNewContact}>Cancel</Button>
-                                                                <Button type="submit">Create Contact</Button>
-                                                            </div>
-                                                        </DialogFooter>
-                                                    </form>
-                                                </Form>
-                                            </DialogContent>
-                                        </Dialog>
+                                        <Button disabled={!selectedFolderId} onClick={() => openContactForm(null)}>
+                                            <Plus className="mr-2 h-4 w-4" /> New Contact
+                                        </Button>
                                     </>
                                 )}
                             </div>
@@ -458,7 +399,7 @@ export default function ContactsPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {displayedContacts.map((contact) => (
-                                            <TableRow key={contact.id}>
+                                            <TableRow key={contact.id} onClick={() => openContactForm(contact)} className="cursor-pointer">
                                                 <TableCell onClick={(e) => e.stopPropagation()}> 
                                                     <Checkbox 
                                                         checked={selectedContactIds.includes(contact.id)} 
@@ -473,8 +414,8 @@ export default function ContactsPage() {
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem> <Pencil className="mr-2 h-4 w-4" /> Edit </DropdownMenuItem>
-                                                            <DropdownMenuItem className="text-destructive" onSelect={() => { setSelectedContactIds([contact.id]); handleDeleteSelected()}}> <Trash2 className="mr-2 h-4 w-4" /> Delete </DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => openContactForm(contact)}> <Pencil className="mr-2 h-4 w-4" /> Edit </DropdownMenuItem>
+                                                            <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteContact(contact.id)}> <Trash2 className="mr-2 h-4 w-4" /> Delete </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
                                                 </TableCell>
@@ -495,6 +436,89 @@ export default function ContactsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={isContactFormOpen} onOpenChange={(open) => { if (!open) closeContactForm(); else setIsContactFormOpen(true); }}>
+          <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
+              <DialogHeader className="p-6 pb-4 border-b">
+                  <DialogTitle>{contactToEdit ? `Edit ${contactToEdit.name}` : "Create New Contact"}</DialogTitle>
+                  <DialogDescription>
+                    {contactToEdit ? "Update the contact's details below." : `Add a new contact to the "${selectedFolder?.name}" folder.`}
+                  </DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
+                      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                          <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                          <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                          <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem> <FormLabel>Phone (Optional)</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                          
+                          <FormField
+                            control={form.control}
+                            name="notes"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Notes</FormLabel>
+                                <div className="rounded-md border">
+                                  <div className="p-1 border-b flex items-center gap-1 flex-wrap">
+                                      <Button type="button" variant="ghost" size="icon" title="Bold" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
+                                      <Button type="button" variant="ghost" size="icon" title="Italic" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
+                                      <Button type="button" variant="ghost" size="icon" title="Underline" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
+                                      <Button type="button" variant="ghost" size="icon" title="Unordered List" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
+                                      <Button type="button" variant="ghost" size="icon" title="Ordered List" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
+                                  </div>
+                                  <FormControl>
+                                    <div
+                                      ref={notesEditorRef}
+                                      className="prose dark:prose-invert max-w-none min-h-[240px] p-2 focus:outline-none"
+                                      contentEditable
+                                      onInput={(e) => field.onChange(e.currentTarget.innerHTML)}
+                                      onBlur={field.onBlur}
+                                      dangerouslySetInnerHTML={{ __html: field.value ?? "" }}
+                                    />
+                                  </FormControl>
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                      </div>
+
+                      <DialogFooter className="p-6 border-t flex-wrap items-center justify-between gap-2">
+                          <div>
+                            {isListening ? (
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                onClick={handleDictateClick}
+                                className="animate-pulse"
+                                title="Stop dictating"
+                              >
+                                <Square className="mr-2 h-4 w-4" />
+                                Stop
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleDictateClick}
+                                disabled={isSupported === false}
+                                title={isSupported === false ? "Voice input not supported" : "Dictate notes"}
+                              >
+                                <Mic className="mr-2 h-4 w-4" />
+                                Dictate Notes
+                              </Button>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                              <Button type="button" variant="ghost" onClick={closeContactForm}>Cancel</Button>
+                              <Button type="submit">{contactToEdit ? "Save Changes" : "Create Contact"}</Button>
+                          </div>
+                      </DialogFooter>
+                  </form>
+              </Form>
+          </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
