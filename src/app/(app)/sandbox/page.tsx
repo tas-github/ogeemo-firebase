@@ -12,8 +12,7 @@ import { Button } from '@/components/ui/button';
 import { onAuthStateChanged, signInAnonymously } from 'firebase/auth';
 import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import {
   Dialog,
@@ -97,7 +96,7 @@ export default function SandboxPage() {
         fromEmail: 'dummy@sandbox.com',
         to: 'you@ogeemo.com',
         subject: 'This is a visible dummy email',
-        text: `<p>This email is generated for the sandbox environment. It should be visible in the right-hand pane upon loading.</p>`,
+        text: `<p>This email should appear in the list.</p>`,
         date: new Date().toISOString(),
         read: false,
         starred: true,
@@ -111,7 +110,7 @@ export default function SandboxPage() {
         subject: 'Welcome to your new Inbox!',
         text: `<p>Hi there,</p><p>Welcome to OgeeMail, the most intuitive and powerful email client for modern teams. We're thrilled to have you on board.</p><p>You can start by exploring the interface, composing a new email, or organizing your inbox with labels. If you have any questions, feel free to reach out to our support team.</p><p>Best,<br/>The Ogeemo Team</p>`,
         date: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-        read: false,
+        read: true,
         starred: false,
         folder: 'inbox',
         labels: ['welcome', 'important'],
@@ -146,13 +145,6 @@ export default function SandboxPage() {
           ...doc.data(),
         })) as Email[];
         setEmails(fetchedEmails);
-
-        if (selectedEmailId) {
-          const isSelectedEmailStillVisible = fetchedEmails.some(e => e.id === selectedEmailId);
-          if (!isSelectedEmailStillVisible) {
-            setSelectedEmailId(null);
-          }
-        }
         
         if (!selectedEmailId && fetchedEmails.length > 0) {
           const firstVisibleEmail = fetchedEmails.find(e => {
@@ -244,8 +236,6 @@ export default function SandboxPage() {
     }
   };
 
-  const selectedEmail = emails.find(e => e.id === selectedEmailId) || null;
-
   const filteredEmails = emails.filter((email) => {
     const lowerCaseQuery = searchQuery.toLowerCase();
     const matchesSearch =
@@ -262,8 +252,6 @@ export default function SandboxPage() {
     if (activeFolder === "trash") return email.folder === 'trash';
     return false;
   });
-
-  const getAvatarFallback = (from: string) => from?.charAt(0).toUpperCase() || 'U';
 
   const menuItems = [
     { id: "inbox", label: "Inbox", icon: Inbox, count: emails.filter(e => e.folder === 'inbox' && !e.read).length },
@@ -282,7 +270,7 @@ export default function SandboxPage() {
     <TooltipProvider delayDuration={0}>
       <div className="flex h-full w-full flex-col bg-background text-foreground overflow-hidden">
         <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
-          <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
+          <ResizablePanel defaultSize={25} minSize={20} maxSize={30}>
             <div className="flex h-full flex-col p-2">
               <div className="p-2">
                 <Button className="w-full" onClick={() => setIsComposeOpen(true)}>
@@ -313,7 +301,7 @@ export default function SandboxPage() {
           </ResizablePanel>
           <ResizableHandle withHandle />
           
-          <ResizablePanel defaultSize={35} minSize={25}>
+          <ResizablePanel defaultSize={75} minSize={30}>
             <div className="flex flex-col h-full">
               <div className="p-2 border-b">
                 <div className="relative">
@@ -370,51 +358,6 @@ export default function SandboxPage() {
               </div>
             </div>
           </ResizablePanel>
-          <ResizableHandle withHandle />
-
-          <ResizablePanel defaultSize={45} minSize={30}>
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 h-full">
-              {selectedEmail ? (
-                <div>
-                  <div className="flex items-center justify-between border-b pb-4">
-                      <div className="flex items-center gap-4">
-                          <Avatar className="h-10 w-10">
-                              <AvatarImage src={`https://i.pravatar.cc/150?u=${selectedEmail.fromEmail}`} alt={selectedEmail.from} />
-                              <AvatarFallback>{getAvatarFallback(selectedEmail.from)}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                              <p className="font-semibold">{selectedEmail.from}</p>
-                              <p className="text-sm text-muted-foreground">To: {selectedEmail.to || 'You <you@ogeemo.com>'}</p>
-                          </div>
-                      </div>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <time>{new Date(selectedEmail.date).toLocaleString()}</time>
-                           <Tooltip>
-                              <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon"><CornerUpLeft className="h-4 w-4" /></Button>
-                              </TooltipTrigger>
-                              <TooltipContent><p>Reply</p></TooltipContent>
-                           </Tooltip>
-                           <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
-                                </TooltipTrigger>
-                                <TooltipContent><p>More</p></TooltipContent>
-                            </Tooltip>
-                      </div>
-                  </div>
-                  <h2 className="text-2xl font-bold my-4">{selectedEmail.subject}</h2>
-                  <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedEmail.text }} />
-                </div>
-              ) : (
-                <div className="flex h-full flex-col items-center justify-center text-center text-muted-foreground">
-                  <Inbox className="h-16 w-16" />
-                  <p className="mt-4 text-lg">Select an email to read</p>
-                  <p className="text-sm">Nothing selected</p>
-                </div>
-              )}
-            </div>
-          </ResizablePanel>
         </ResizablePanelGroup>
 
         {/* Compose Dialog */}
@@ -443,3 +386,4 @@ export default function SandboxPage() {
     </TooltipProvider>
   );
 }
+
