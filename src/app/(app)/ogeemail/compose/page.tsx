@@ -425,6 +425,79 @@ export default function ComposeEmailPage() {
         className="hidden"
         multiple
       />
+      <Dialog open={isNewContactDialogOpen} onOpenChange={(open) => { setIsNewContactDialogOpen(open); if (!open) newContactForm.reset(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Contact</DialogTitle>
+            <DialogDescription>
+              Add a new contact to your contact manager. It will be available immediately.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...newContactForm}>
+            <form onSubmit={newContactForm.handleSubmit(handleCreateNewContact)} className="space-y-4 py-4">
+              <FormField
+                control={newContactForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={newContactForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={newContactForm.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone (Optional)</FormLabel>
+                    <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={newContactForm.control}
+                name="folderId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Folder</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a folder" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {mockFolders.map(folder => (
+                          <SelectItem key={folder.id} value={folder.id}>{folder.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter className="pt-4">
+                  <Button type="button" variant="ghost" onClick={() => setIsNewContactDialogOpen(false)}>Cancel</Button>
+                  <Button type="submit">Create Contact</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
       <Dialog open={isContactPickerOpen} onOpenChange={setIsContactPickerOpen}>
         <DialogContent className="sm:max-w-2xl flex flex-col h-[80vh] max-h-[600px]">
           <DialogHeader>
@@ -439,84 +512,9 @@ export default function ComposeEmailPage() {
                     onChange={(e) => setContactSearch(e.target.value)}
                     className="flex-1"
                 />
-                <Dialog open={isNewContactDialogOpen} onOpenChange={(open) => { setIsNewContactDialogOpen(open); if (!open) newContactForm.reset(); }}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline">
-                      <Plus className="mr-2 h-4 w-4" /> New Contact
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Create New Contact</DialogTitle>
-                      <DialogDescription>
-                        Add a new contact to your contact manager. It will be available immediately.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <Form {...newContactForm}>
-                      <form onSubmit={newContactForm.handleSubmit(handleCreateNewContact)} className="space-y-4 py-4">
-                        <FormField
-                          control={newContactForm.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Name</FormLabel>
-                              <FormControl><Input placeholder="John Doe" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={newContactForm.control}
-                          name="email"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Email</FormLabel>
-                              <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={newContactForm.control}
-                          name="phone"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Phone (Optional)</FormLabel>
-                              <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={newContactForm.control}
-                          name="folderId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Folder</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select a folder" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {mockFolders.map(folder => (
-                                    <SelectItem key={folder.id} value={folder.id}>{folder.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <DialogFooter className="pt-4">
-                            <Button type="button" variant="ghost" onClick={() => setIsNewContactDialogOpen(false)}>Cancel</Button>
-                            <Button type="submit">Create Contact</Button>
-                        </DialogFooter>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
+                <Button variant="outline" onClick={() => setIsNewContactDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" /> New Contact
+                </Button>
               </div>
           </DialogHeader>
           <ScrollArea className="flex-1 -mx-6 px-6 border-y">
@@ -648,7 +646,10 @@ export default function ComposeEmailPage() {
                       <span className="sr-only">Select from Contacts</span>
                   </Button>
                 </div>
-                 <div className="flex gap-2">
+                 <div className="flex gap-2 items-center">
+                    <Button variant="link" size="sm" className="p-0 h-auto text-primary" onClick={() => setIsNewContactDialogOpen(true)}>
+                        + New Contact
+                    </Button>
                     <Button variant="link" size="sm" className="p-0 h-auto text-muted-foreground" onClick={() => setShowCc(!showCc)}>Cc</Button>
                     <Button variant="link" size="sm" className="p-0 h-auto text-muted-foreground" onClick={() => setShowBcc(!showBcc)}>Bcc</Button>
                 </div>
