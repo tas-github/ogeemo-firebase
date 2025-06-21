@@ -64,7 +64,10 @@ import { useToast } from '@/hooks/use-toast';
 const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }),
-  phone: z.string().optional(),
+  businessPhone: z.string().optional(),
+  cellPhone: z.string().optional(),
+  homePhone: z.string().optional(),
+  faxNumber: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -85,7 +88,7 @@ export default function ContactsPage() {
   
   const form = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
-    defaultValues: { name: "", email: "", phone: "", notes: "" },
+    defaultValues: { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", notes: "" },
   });
 
   const [notesBeforeSpeech, setNotesBeforeSpeech] = useState('');
@@ -212,7 +215,7 @@ export default function ContactsPage() {
 
   const openContactForm = (contact: Contact | null) => {
     setContactToEdit(contact);
-    form.reset(contact || { name: "", email: "", phone: "", notes: "" });
+    form.reset(contact || { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", notes: "" });
     setIsContactFormOpen(true);
   };
 
@@ -410,7 +413,7 @@ export default function ContactsPage() {
                                                 </TableCell>
                                                 <TableCell className="font-medium">{contact.name}</TableCell>
                                                 <TableCell>{contact.email}</TableCell>
-                                                <TableCell>{contact.phone}</TableCell>
+                                                <TableCell>{contact.cellPhone || contact.businessPhone || contact.homePhone || contact.faxNumber}</TableCell>
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -453,7 +456,13 @@ export default function ContactsPage() {
                       <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                           <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                          <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem> <FormLabel>Phone (Optional)</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField control={form.control} name="businessPhone" render={({ field }) => ( <FormItem> <FormLabel>Business #</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="cellPhone" render={({ field }) => ( <FormItem> <FormLabel>Cell #</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="homePhone" render={({ field }) => ( <FormItem> <FormLabel>Home #</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="faxNumber" render={({ field }) => ( <FormItem> <FormLabel>Fax #</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                          </div>
                           
                           <FormField
                             control={form.control}
