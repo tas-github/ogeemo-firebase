@@ -35,19 +35,19 @@ const mockEmails: Email[] = [
         starred: true,
         folder: 'inbox',
       },
-      {
-        id: '2',
+       {
+        id: 'd1',
         from: 'Dummy Email',
         fromEmail: 'dummy@example.com',
         subject: 'This is a test email',
-        text: `<p>This email was generated for testing purposes.</p>`,
+        text: 'This email was generated for testing purposes.',
         date: new Date().toISOString(),
         read: false,
         starred: false,
         folder: 'inbox',
       },
       {
-        id: '3',
+        id: '2',
         from: 'John Doe',
         fromEmail: 'john.doe@example.com',
         subject: 'Project Phoenix - Weekly Update',
@@ -58,7 +58,7 @@ const mockEmails: Email[] = [
         folder: 'inbox',
       },
       {
-        id: '4',
+        id: '3',
         from: 'You',
         fromEmail: 'you@ogeemo.com',
         subject: 'Re: Design Mockups',
@@ -69,7 +69,7 @@ const mockEmails: Email[] = [
         folder: 'sent',
       },
       {
-        id: '5',
+        id: '4',
         from: 'Important Docs',
         fromEmail: 'archive-bot@ogeemo.com',
         subject: 'Archived: 2023 Financial Report',
