@@ -378,7 +378,7 @@ export default function ContactsPage() {
                                                 <TableCell>{contact.email}</TableCell>
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
                                                     <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild> <Button variant="ghost" size="icon"> <MoreVertical className="h-4 w-4" /> </Button> </DropdownMenuTrigger>
+                                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
                                                             <DropdownMenuItem> <Pencil className="mr-2 h-4 w-4" /> Edit </DropdownMenuItem>
                                                             <DropdownMenuItem className="text-destructive"> <Trash2 className="mr-2 h-4 w-4" /> Delete </DropdownMenuItem>
