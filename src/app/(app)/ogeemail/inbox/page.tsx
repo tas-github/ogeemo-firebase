@@ -265,15 +265,18 @@ export default function OgeeMailInboxPage() {
                                         </div>
                                     )}
 
-                                    <div className="relative ml-auto w-full max-w-xs">
-                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            type="search"
-                                            placeholder="Search mail..."
-                                            className="w-full rounded-lg bg-muted pl-8"
-                                            value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
-                                        />
+                                    <div className="ml-auto flex items-center gap-2">
+                                        <div className="relative">
+                                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                            <Input
+                                                type="search"
+                                                placeholder="Search mail..."
+                                                className="w-full rounded-lg bg-muted pl-8"
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                            />
+                                        </div>
+                                        <Button>Actions</Button>
                                     </div>
                                 </div>
                                 <div className="overflow-y-auto h-full">
