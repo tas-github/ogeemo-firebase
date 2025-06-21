@@ -244,6 +244,13 @@ export default function ComposeEmailPage() {
 
   const preventDefault = (e: React.MouseEvent) => e.preventDefault();
 
+  const handleChatOpenChange = (open: boolean) => {
+    setIsChatOpen(open);
+    if (!open && isChatListening) {
+      stopChatListening();
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 space-y-6 h-full flex flex-col">
       <header className="text-center">
@@ -362,7 +369,7 @@ export default function ComposeEmailPage() {
           </CardContent>
           <CardFooter className="border-t p-3 flex justify-between items-center">
             <div className="flex items-center gap-2">
-               <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
+               <Dialog open={isChatOpen} onOpenChange={handleChatOpenChange}>
                 <DialogTrigger asChild>
                   <Button variant="outline">
                     <Bot className="mr-2 h-4 w-4" />
