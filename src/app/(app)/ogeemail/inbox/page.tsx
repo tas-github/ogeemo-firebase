@@ -125,8 +125,6 @@ export default function OgeeMailInboxPage() {
         setEmails(prevEmails => prevEmails.map(e => e.id === emailId ? { ...e, read: true } : e));
     };
 
-    const selectedEmail = emails.find((email) => email.id === selectedEmailId);
-
     const filteredEmails = emails.filter((email) => {
         const lowerCaseQuery = searchQuery.toLowerCase();
         const matchesSearch = email.subject.toLowerCase().includes(lowerCaseQuery) ||
@@ -168,12 +166,7 @@ export default function OgeeMailInboxPage() {
 
     const handleFolderChange = (folder: typeof activeFolder) => {
         setActiveFolder(folder);
-        const firstEmailInFolder = emails.find(e => {
-            if (folder === "inbox") return e.folder === 'inbox';
-            if (folder === "starred") return e.starred && e.folder !== 'trash';
-            return e.folder === folder;
-        });
-        setSelectedEmailId(firstEmailInFolder ? firstEmailInFolder.id : null);
+        setSelectedEmailId(null);
         setSelectedEmailIds([]);
     };
 
@@ -217,7 +210,7 @@ export default function OgeeMailInboxPage() {
             <div className="flex-1 min-h-0">
                 <TooltipProvider delayDuration={0}>
                     <ResizablePanelGroup direction="horizontal" className="h-full items-stretch border rounded-lg overflow-hidden">
-                        <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
+                        <ResizablePanel defaultSize={25} minSize={20} maxSize={30}>
                             <div className="flex h-full flex-col p-2">
                                 <div className="p-2">
                                     <Button className="w-full">
@@ -242,7 +235,7 @@ export default function OgeeMailInboxPage() {
                             </div>
                         </ResizablePanel>
                         <ResizableHandle withHandle />
-                        <ResizablePanel defaultSize={35} minSize={30}>
+                        <ResizablePanel defaultSize={75} minSize={70}>
                             <div className="flex flex-col h-full">
                                 <div className="flex items-center gap-4 p-2 border-b">
                                     <DropdownMenu>
@@ -321,49 +314,6 @@ export default function OgeeMailInboxPage() {
                                         </div>
                                     )}
                                 </div>
-                            </div>
-                        </ResizablePanel>
-                        <ResizableHandle withHandle />
-                        <ResizablePanel defaultSize={45} minSize={40}>
-                            <div className="flex flex-col h-full">
-                            {selectedEmail ? (
-                                <>
-                                    <div className="flex items-center p-2 border-b">
-                                        <div className="flex items-center gap-1">
-                                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Archive className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Archive</p></TooltipContent></Tooltip>
-                                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
-                                        </div>
-                                        <Separator orientation="vertical" className="mx-1 h-6" />
-                                        <div className="flex items-center gap-1 ml-auto">
-                                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Reply className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Reply</p></TooltipContent></Tooltip>
-                                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><ReplyAll className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Reply All</p></TooltipContent></Tooltip>
-                                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Forward className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Forward</p></TooltipContent></Tooltip>
-                                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>More</p></TooltipContent></Tooltip>
-                                        </div>
-                                    </div>
-                                    <div className="p-4 flex-1 overflow-y-auto">
-                                        <div className="flex items-start justify-between">
-                                            <h2 className="text-xl font-bold mb-2">{selectedEmail.subject}</h2>
-                                            <button><Star className={cn('h-5 w-5 text-muted-foreground transition-colors hover:text-yellow-500', selectedEmail.starred && 'fill-yellow-400 text-yellow-500')} /></button>
-                                        </div>
-                                        <div className="flex items-center gap-4">
-                                            <Avatar className="h-10 w-10"><AvatarFallback>{selectedEmail.from.charAt(0)}</AvatarFallback></Avatar>
-                                            <div className="grid gap-0.5">
-                                                <p className="font-semibold">{selectedEmail.from}</p>
-                                                <p className="text-xs text-muted-foreground">{`<${selectedEmail.fromEmail}>`}</p>
-
-                                            </div>
-                                            <div className="ml-auto text-xs text-muted-foreground">{new Date(selectedEmail.date).toLocaleString()}</div>
-                                        </div>
-                                        <Separator className="my-4" />
-                                        <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedEmail.text }} />
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="flex h-full items-center justify-center p-4 text-center text-muted-foreground">
-                                    <p>Select an email to read</p>
-                                </div>
-                            )}
                             </div>
                         </ResizablePanel>
                     </ResizablePanelGroup>
