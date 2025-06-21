@@ -14,7 +14,7 @@ export default function ComposeEmailPage() {
           Compose Email
         </h1>
         <p className="text-muted-foreground">
-          Draft your next message with the help of AI.
+          Draft your next message with the help of Ogeemo.
         </p>
       </header>
       <div className="flex-1">
