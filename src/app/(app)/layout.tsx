@@ -11,6 +11,7 @@ import {
   Settings,
   Wand2,
   Beaker,
+  Contact,
 } from "lucide-react";
 
 import {
@@ -79,6 +80,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Link href="/ogeemail">
                     <Mail />
                     <span>OgeeMail</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/contacts")}
+                  tooltip="Contacts"
+                >
+                  <Link href="/contacts">
+                    <Contact />
+                    <span>Contacts</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -153,5 +166,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
-    
