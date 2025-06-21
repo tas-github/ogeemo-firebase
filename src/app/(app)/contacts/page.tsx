@@ -9,6 +9,7 @@ import {
   Trash2,
   Pencil,
   Phone,
+  Users,
 } from 'lucide-react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -90,8 +91,8 @@ export default function ContactsPage() {
       const initialFolders = storedFolders ? JSON.parse(storedFolders) : [...mockFolders];
       setFolders(initialFolders);
       
-      if (!selectedFolderId && initialFolders.length > 0) {
-        setSelectedFolderId(initialFolders[0].id);
+      if (!selectedFolderId) {
+        setSelectedFolderId('all');
       }
 
       const storedContacts = localStorage.getItem('contacts');
@@ -102,9 +103,7 @@ export default function ContactsPage() {
       console.error("Failed to parse from localStorage", error);
       setFolders([...mockFolders]);
       setContacts([...mockContacts]);
-      if (mockFolders.length > 0) {
-        setSelectedFolderId(mockFolders[0].id);
-      }
+      setSelectedFolderId('all');
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -125,7 +124,12 @@ export default function ContactsPage() {
   );
 
   const displayedContacts = useMemo(
-    () => contacts.filter((c) => c.folderId === selectedFolderId),
+    () => {
+        if (selectedFolderId === 'all') {
+            return contacts;
+        }
+        return contacts.filter((c) => c.folderId === selectedFolderId);
+    },
     [contacts, selectedFolderId]
   );
   
@@ -165,13 +169,13 @@ export default function ContactsPage() {
     if (contactToEdit) {
       // Update existing contact
       const updatedContacts = contacts.map(c =>
-        c.id === contactToEdit.id ? { ...contactToEdit, ...values } : c
+        c.id === contactToEdit.id ? { ...c, ...values } : c
       );
       setContacts(updatedContacts);
       toast({ title: "Contact Updated", description: `Details for ${values.name} have been updated.` });
     } else {
       // Create new contact
-      if (!selectedFolderId) return;
+      if (!selectedFolderId || selectedFolderId === 'all') return;
       const newContact: Contact = {
         id: `c-${Date.now()}`,
         folderId: selectedFolderId,
@@ -274,6 +278,15 @@ export default function ContactsPage() {
                         </Dialog>
                     </div>
                     <nav className="flex flex-col gap-1 p-2">
+                        <Button
+                            key="all-contacts"
+                            variant={selectedFolderId === 'all' ? "secondary" : "ghost"}
+                            className="w-full justify-start gap-3"
+                            onClick={() => handleFolderSelect('all')}
+                        >
+                            <Users className="h-4 w-4" />
+                            <span>All Contacts</span>
+                        </Button>
                         {folders.map((folder) => (
                             <Button
                                 key={folder.id}
@@ -291,7 +304,7 @@ export default function ContactsPage() {
               <ResizableHandle withHandle />
               <ResizablePanel defaultSize={75}>
                 <div className="flex flex-col h-full">
-                    {selectedFolder ? (
+                    {selectedFolderId ? (
                         <>
                             <div className="flex items-center justify-between p-4 border-b h-20">
                                 {selectedContactIds.length > 0 ? (
@@ -306,12 +319,12 @@ export default function ContactsPage() {
                                 ) : (
                                     <>
                                         <div>
-                                            <h2 className="text-xl font-bold">{selectedFolder.name}</h2>
+                                            <h2 className="text-xl font-bold">{selectedFolderId === 'all' ? 'All Contacts' : selectedFolder?.name}</h2>
                                             <p className="text-sm text-muted-foreground">
                                                 {displayedContacts.length} contact(s)
                                             </p>
                                         </div>
-                                        <Button disabled={!selectedFolderId} onClick={() => openContactForm(null)}>
+                                        <Button disabled={!selectedFolderId || selectedFolderId === 'all'} onClick={() => openContactForm(null)}>
                                             <Plus className="mr-2 h-4 w-4" /> New Contact
                                         </Button>
                                     </>
