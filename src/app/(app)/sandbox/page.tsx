@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-    Archive, Star, Send, Trash2, Inbox, FileText, Pencil, Search, MoreVertical, CornerUpLeft
+    Archive, Star, Send, Trash2, Inbox, FileText, Pencil, Search
 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { db, auth } from '@/lib/firebase';
@@ -92,28 +92,76 @@ export default function SandboxPage() {
     const emailsCollectionRef = collection(db, `artifacts/${appId}/users/${uid}/emails`);
     const mockEmails = [
       {
-        from: 'Sandbox Dummy Mail',
-        fromEmail: 'dummy@sandbox.com',
-        to: 'you@ogeemo.com',
-        subject: 'This is a visible dummy email',
-        text: `<p>This email should appear in the list.</p>`,
-        date: new Date().toISOString(),
-        read: false,
-        starred: true,
-        folder: 'inbox',
-        labels: ['sandbox-test'],
-      },
-      {
         from: 'The Ogeemo Team',
         fromEmail: 'team@ogeemo.com',
         to: 'you@ogeemo.com',
         subject: 'Welcome to your new Inbox!',
         text: `<p>Hi there,</p><p>Welcome to OgeeMail, the most intuitive and powerful email client for modern teams. We're thrilled to have you on board.</p><p>You can start by exploring the interface, composing a new email, or organizing your inbox with labels. If you have any questions, feel free to reach out to our support team.</p><p>Best,<br/>The Ogeemo Team</p>`,
         date: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+        read: false,
+        starred: true,
+        folder: 'inbox',
+        labels: ['welcome', 'important'],
+      },
+      {
+        from: 'John Doe',
+        fromEmail: 'john.doe@example.com',
+        to: 'you@ogeemo.com',
+        subject: 'Project Phoenix - Weekly Update',
+        text: `<p>Hello team,</p><p>Here is the weekly update for Project Phoenix:</p><ul><li>Frontend development is 80% complete.</li><li>Backend APIs are now fully integrated.</li><li>User testing is scheduled for next Wednesday.</li></ul><p>Please review the attached document for the full report. Let's sync up on Monday to discuss next steps.</p><p>Regards,<br/>John</p>`,
+        date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
         read: true,
         starred: false,
         folder: 'inbox',
-        labels: ['welcome', 'important'],
+        labels: ['project-phoenix'],
+      },
+      {
+        from: 'Automated Calendar',
+        fromEmail: 'calendar-noreply@ogeemo.com',
+        to: 'you@ogeemo.com',
+        subject: 'Reminder: Q3 Planning Session',
+        text: `<p>This is a reminder for your upcoming meeting:</p><p><strong>Event:</strong> Q3 Planning Session<br/><strong>Date:</strong> Tomorrow, 10:00 AM<br/><strong>Location:</strong> Conference Room 4B</p><p>Please be prepared to discuss your department's goals for the next quarter.</p>`,
+        date: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
+        read: false,
+        starred: false,
+        folder: 'inbox',
+        labels: ['meeting'],
+      },
+      {
+        from: 'Ogeemo Newsletter',
+        fromEmail: 'newsletter@ogeemo.com',
+        to: 'you@ogeemo.com',
+        subject: 'This Week in AI: The Latest Trends',
+        text: `<p>Don't miss the latest edition of our newsletter, packed with insights on AI, productivity, and the future of work. This week, we explore the impact of generative models on creative industries.</p><p><a href="#">Read more here.</a></p>`,
+        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
+        read: true,
+        starred: false,
+        folder: 'inbox',
+        labels: ['newsletter'],
+      },
+      {
+        from: 'You',
+        fromEmail: 'you@ogeemo.com',
+        to: 'jane.doe@example.com',
+        subject: 'Re: Design Mockups',
+        text: `<p>Hi Jane,</p><p>Thanks for sending these over. The new mockups look great! I've left a few comments on the Figma file.</p><p>Let's proceed with this direction.</p><p>Best,<br/>You</p>`,
+        date: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
+        read: true,
+        starred: false,
+        folder: 'sent',
+        labels: [],
+      },
+      {
+        from: 'Important Docs',
+        fromEmail: 'archive-bot@ogeemo.com',
+        to: 'you@ogeemo.com',
+        subject: 'Archived: 2023 Financial Report',
+        text: '<p>This document has been automatically archived for your records.</p>',
+        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
+        read: true,
+        starred: false,
+        folder: 'archive',
+        labels: [],
       },
     ];
 
@@ -301,7 +349,7 @@ export default function SandboxPage() {
           </ResizablePanel>
           <ResizableHandle withHandle />
           
-          <ResizablePanel defaultSize={75} minSize={30}>
+          <ResizablePanel defaultSize={75} minSize={70}>
             <div className="flex flex-col h-full">
               <div className="p-2 border-b">
                 <div className="relative">
@@ -386,4 +434,3 @@ export default function SandboxPage() {
     </TooltipProvider>
   );
 }
-
