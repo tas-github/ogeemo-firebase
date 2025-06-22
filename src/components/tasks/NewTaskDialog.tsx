@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 
@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { mockContacts, type Contact } from "@/data/contacts";
 
 interface NewTaskDialogProps {
   isOpen: boolean;
@@ -42,6 +43,14 @@ interface NewTaskDialogProps {
 export function NewTaskDialog({ isOpen, onOpenChange }: NewTaskDialogProps) {
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [dueDate, setDueDate] = useState<Date | undefined>();
+  const [contacts, setContacts] = useState<Contact[]>([]);
+
+  useEffect(() => {
+    // In a real app, you might fetch this data.
+    // For now, we'll just use the mock data.
+    setContacts(mockContacts);
+  }, []);
+
 
   const handleCreateTask = () => {
     // In a real app, you'd gather form data and create the task.
@@ -161,9 +170,11 @@ export function NewTaskDialog({ isOpen, onOpenChange }: NewTaskDialogProps) {
                   <SelectValue placeholder="Assign to a team member" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="user1">User One</SelectItem>
-                  <SelectItem value="user2">User Two</SelectItem>
-                  <SelectItem value="user3">User Three</SelectItem>
+                  {contacts.map((contact) => (
+                    <SelectItem key={contact.id} value={contact.id}>
+                      {contact.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
