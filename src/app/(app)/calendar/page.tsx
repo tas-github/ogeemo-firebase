@@ -54,6 +54,22 @@ type Event = {
 const today = new Date();
 const mockEvents: Event[] = [
   {
+    id: '1',
+    title: 'Daily Standup',
+    description: 'Quick sync with the team on daily progress.',
+    start: setHours(today, 9),
+    end: setHours(today, 9, 15),
+    attendees: ['You', 'Alice', 'Bob'],
+  },
+  {
+    id: '2',
+    title: 'Design Review',
+    description: 'Review the new landing page mockups.',
+    start: setHours(today, 14),
+    end: setHours(today, 15),
+    attendees: ['You', 'Jane Smith', 'Design Team'],
+  },
+  {
     id: '3',
     title: 'Client Call',
     description: 'Discuss Q3 goals with Acme Corp.',
