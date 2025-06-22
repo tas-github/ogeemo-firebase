@@ -50,13 +50,6 @@ type Event = {
   attendees: string[];
 };
 
-type HourTask = {
-  id: string;
-  title: string;
-  start: Date;
-  end: Date;
-};
-
 const today = new Date();
 const mockEvents: Event[] = [
   {
@@ -108,13 +101,6 @@ const mockEvents: Event[] = [
     attendees: ['You', 'Charlie Brown'],
   },
 ];
-
-const mockHourTasksData: Omit<HourTask, 'start' | 'end'> & { startMinutes: number; durationMinutes: number }[] = [
-    { id: 'ht1', title: 'Review PR #123', startMinutes: 5, durationMinutes: 15 },
-    { id: 'ht2', title: 'Quick stand-up prep', startMinutes: 30, durationMinutes: 10 },
-    { id: 'ht3', title: 'Answer urgent email', startMinutes: 50, durationMinutes: 5 },
-];
-
 
 const DraggableTimelineEvent = ({ event, style, className }: { event: Event; style: React.CSSProperties; className: string }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
@@ -217,202 +203,6 @@ const TimelineDayColumn = ({
   );
 };
 
-
-const DraggableHourTask = ({ task }: { task: HourTask }) => {
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: 'hourTask',
-    item: { id: task.id },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  }));
-
-  return (
-    <div
-      ref={drag}
-      style={{ opacity: isDragging ? 0.4 : 1 }}
-      className="w-full cursor-move rounded-md bg-accent p-2 border border-accent-foreground/50 text-accent-foreground shadow"
-    >
-      <p className="font-semibold text-sm truncate">{task.title}</p>
-    </div>
-  );
-};
-
-const TimeSlot = ({
-  slotTime,
-  tasks,
-  onTaskDrop
-}: {
-  slotTime: Date;
-  tasks: HourTask[];
-  onTaskDrop: (taskId: string, newStartTime: Date) => void;
-}) => {
-  const [{ isOver }, drop] = useDrop(() => ({
-    accept: 'hourTask',
-    drop: (item: { id: string }) => {
-      onTaskDrop(item.id, slotTime);
-    },
-    collect: (monitor) => ({
-      isOver: monitor.isOver(),
-    }),
-  }));
-
-  return (
-    <div className="flex items-start gap-4 p-2 border-b">
-        <div className="w-28 text-right shrink-0">
-            <p className="font-mono text-lg font-bold">{format(slotTime, 'p')}</p>
-            <p className="font-mono text-sm text-muted-foreground">
-                - {format(addMinutes(slotTime, 5), 'p')}
-            </p>
-        </div>
-        <div 
-            ref={drop} 
-            className={cn(
-                "flex-1 min-h-[4.5rem] rounded-lg bg-muted/30 p-2 transition-colors",
-                isOver && "bg-primary/20"
-            )}
-        >
-          {tasks.length > 0 ? (
-            <div className="space-y-2">
-              {tasks.map(task => <DraggableHourTask key={task.id} task={task} />)}
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground/50 text-sm">
-                Drop task here
-            </div>
-          )}
-        </div>
-    </div>
-  )
-}
-
-
-function HourDetailView({ 
-    isOpen, 
-    onOpenChange, 
-    hourStart,
-    onNewTaskClick,
-}: { 
-    isOpen: boolean; 
-    onOpenChange: (open: boolean) => void; 
-    hourStart: Date; 
-    onNewTaskClick: () => void;
-}) {
-    const [tasks, setTasks] = React.useState<HourTask[]>(() => {
-        return mockHourTasksData.map(t => ({
-            id: `${hourStart.getTime()}-${t.id}`,
-            title: t.title,
-            start: addMinutes(hourStart, t.startMinutes),
-            end: addMinutes(hourStart, t.startMinutes + t.durationMinutes),
-        }));
-    });
-    
-    const [unassignedTasks, setUnassignedTasks] = React.useState<HourTask[]>([]);
-
-    const onTaskDrop = React.useCallback((taskId: string, newSlotTime: Date) => {
-        const moveTask = (taskToMove: HourTask) => {
-            const duration = taskToMove.end.getTime() - taskToMove.start.getTime();
-            const newStart = startOfMinute(newSlotTime);
-            const newEnd = new Date(newStart.getTime() + duration);
-            
-            setTasks(prev => prev.map(t =>
-                t.id === taskId ? { ...t, start: newStart, end: newEnd } : t
-            ));
-        }
-
-        const taskToUpdate = tasks.find(t => t.id === taskId);
-        if (taskToUpdate) {
-            moveTask(taskToUpdate);
-        } else {
-            const unassignedTask = unassignedTasks.find(t => t.id === taskId);
-            if(unassignedTask) {
-                setUnassignedTasks(prev => prev.filter(t => t.id !== taskId));
-                setTasks(prev => [...prev, unassignedTask]);
-                moveTask(unassignedTask);
-            }
-        }
-    }, [tasks, unassignedTasks]);
-    
-    const handleNewTask = () => {
-        const newTask: HourTask = {
-            id: `task-${Date.now()}`,
-            title: "New Task - Edit Me",
-            start: new Date(0), // Sentinel for unassigned
-            end: new Date(0),
-        };
-        setUnassignedTasks(prev => [...prev, newTask]);
-    };
-    
-    const timeSlots = React.useMemo(() => {
-        return Array.from({ length: 12 }, (_, i) => addMinutes(hourStart, i * 5));
-    }, [hourStart]);
-
-
-    const [, unassignedDrop] = useDrop(() => ({
-        accept: 'hourTask',
-        drop: (item: { id: string }) => {
-            const task = tasks.find(t => t.id === item.id);
-            if (task) {
-                setTasks(prev => prev.filter(t => t.id !== item.id));
-                setUnassignedTasks(prev => [...prev, task]);
-            }
-        }
-    }));
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
-                <DialogHeader className="p-4 pb-2 border-b flex-row items-center justify-between">
-                    <div>
-                        <DialogTitle className="text-2xl">Timebox for {format(hourStart, 'h a, EEEE, MMMM do')}</DialogTitle>
-                        <DialogDescription>
-                            Plan your hour by adding tasks and dragging them into 5-minute slots.
-                        </DialogDescription>
-                    </div>
-                    <Button onClick={onNewTaskClick}><Plus className="mr-2 h-4 w-4" /> New Task</Button>
-                </DialogHeader>
-                <div className="flex-1 grid grid-cols-4 overflow-hidden">
-                    <div ref={unassignedDrop} className="col-span-1 border-r bg-muted/20 flex flex-col">
-                        <h3 className="p-4 font-bold text-lg border-b shrink-0">Unassigned Tasks</h3>
-                        <ScrollArea className="flex-1">
-                            <div className="p-4 space-y-2">
-                                {unassignedTasks.map(task => <DraggableHourTask key={task.id} task={task} />)}
-                                {unassignedTasks.length === 0 && (
-                                    <div className="text-center text-sm text-muted-foreground py-10">
-                                        <p>No unassigned tasks. Drop tasks here to unschedule them.</p>
-                                    </div>
-                                )}
-                            </div>
-                        </ScrollArea>
-                    </div>
-
-                    <div className="col-span-3 flex-1 overflow-hidden">
-                        <ScrollArea className="h-full">
-                            <div className="p-2">
-                                {timeSlots.map(slotTime => {
-                                    const slotTasks = tasks.filter(t => {
-                                        const taskStart = t.start;
-                                        return taskStart >= slotTime && taskStart < addMinutes(slotTime, 5);
-                                    });
-
-                                    return (
-                                        <TimeSlot 
-                                            key={slotTime.toISOString()}
-                                            slotTime={slotTime}
-                                            tasks={slotTasks}
-                                            onTaskDrop={onTaskDrop}
-                                        />
-                                    )
-                                })}
-                            </div>
-                        </ScrollArea>
-                    </div>
-                </div>
-            </DialogContent>
-        </Dialog>
-    );
-}
-
 const MonthView = ({ date, events }: { date: Date; events: Event[] }) => {
   const monthStart = startOfMonth(date);
   const monthEnd = endOfMonth(date);
@@ -478,8 +268,7 @@ function CalendarPageContent() {
   const [viewStartHour, setViewStartHour] = React.useState(9);
   const [viewEndHour, setViewEndHour] = React.useState(17);
   
-  const [isHourDetailOpen, setIsHourDetailOpen] = React.useState(false);
-  const [selectedHourForDetail, setSelectedHourForDetail] = React.useState<Date | null>(null);
+  const [newTaskDefaultDate, setNewTaskDefaultDate] = React.useState<Date | undefined>();
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = React.useState(false);
   const [isMonthViewOpen, setIsMonthViewOpen] = React.useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
@@ -548,9 +337,9 @@ function CalendarPageContent() {
 
   const handleHourClick = (hour: number) => {
     if (!date) return;
-    const selected = set(date, { hours: hour, minutes: 0, seconds: 0, milliseconds: 0});
-    setSelectedHourForDetail(selected);
-    setIsHourDetailOpen(true);
+    const selectedDateTime = set(date, { hours: hour, minutes: 0, seconds: 0, milliseconds: 0 });
+    setNewTaskDefaultDate(selectedDateTime);
+    setIsNewTaskDialogOpen(true);
   };
   
   const handlePrev = () => {
@@ -582,7 +371,7 @@ function CalendarPageContent() {
 
     return (
       <ScrollArea className="h-full w-full">
-        <div className="flex pt-4" style={{ minWidth: 80 + 150 * days.length }}>
+        <div className="flex" style={{ minWidth: 80 + 150 * days.length }}>
           <div className="sticky left-0 z-20 w-24 shrink-0 bg-background">
             {!hideDayHeader && <div className="h-16 border-b border-r">&nbsp;</div>}
             {hours.map(hour => (
@@ -784,20 +573,16 @@ function CalendarPageContent() {
             </div>
           </div>
           
-          <div className="flex-1 mt-4 overflow-hidden">
+          <div className="flex-1 mt-4 overflow-hidden pt-4">
               {renderViewContent()}
           </div>
         </div>
 
-        {selectedHourForDetail && (
-            <HourDetailView
-                isOpen={isHourDetailOpen}
-                onOpenChange={setIsHourDetailOpen}
-                hourStart={selectedHourForDetail}
-                onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
-            />
-        )}
-        <NewTaskDialog isOpen={isNewTaskDialogOpen} onOpenChange={setIsNewTaskDialogOpen} />
+        <NewTaskDialog 
+          isOpen={isNewTaskDialogOpen} 
+          onOpenChange={setIsNewTaskDialogOpen}
+          defaultStartDate={newTaskDefaultDate}
+        />
       </div>
   )
 }
@@ -810,3 +595,5 @@ export default function CalendarPage() {
     </DndProvider>
   )
 }
+
+    

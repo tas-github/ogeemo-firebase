@@ -37,13 +37,22 @@ import { mockContacts, type Contact } from "@/data/contacts";
 interface NewTaskDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  // onTaskCreate?: (task: any) => void; // For future use
+  defaultStartDate?: Date;
 }
 
-export function NewTaskDialog({ isOpen, onOpenChange }: NewTaskDialogProps) {
-  const [startDate, setStartDate] = useState<Date | undefined>();
+export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTaskDialogProps) {
+  const [startDate, setStartDate] = useState<Date | undefined>(defaultStartDate);
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [contacts, setContacts] = useState<Contact[]>([]);
+
+  useEffect(() => {
+    // When the dialog opens or the default date changes, reset the state
+    if (isOpen) {
+      setStartDate(defaultStartDate);
+      setDueDate(undefined); // Reset due date to avoid confusion
+    }
+  }, [isOpen, defaultStartDate]);
+
 
   useEffect(() => {
     // In a real app, you might fetch this data.
@@ -212,3 +221,5 @@ export function NewTaskDialog({ isOpen, onOpenChange }: NewTaskDialogProps) {
     </Dialog>
   );
 }
+
+    
