@@ -11,6 +11,8 @@ import {
   Phone,
   Users,
   LoaderCircle,
+  Mic,
+  Square,
 } from 'lucide-react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -57,6 +59,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { type Contact, type FolderData, mockContacts, mockFolders } from '@/data/contacts';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
+import { useSpeechToText } from '@/hooks/use-speech-to-text';
+import { cn } from '@/lib/utils';
 
 const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -82,8 +86,19 @@ export default function ContactsPage() {
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [contactToEdit, setContactToEdit] = useState<Contact | null>(null);
   const [isSelectFolderDialogOpen, setIsSelectFolderDialogOpen] = useState(false);
+  const [notesBeforeSpeech, setNotesBeforeSpeech] = useState('');
   
   const { toast } = useToast();
+
+  const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
+    onTranscript: (transcript) => {
+        const newText = notesBeforeSpeech ? `${notesBeforeSpeech} ${transcript}`.trim() : transcript;
+        form.setValue('notes', newText, {
+            shouldDirty: true,
+            shouldValidate: true,
+        });
+    },
+  });
   
   const form = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
@@ -109,6 +124,16 @@ export default function ContactsPage() {
       setIsLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (isSupported === false) {
+      toast({
+        variant: "destructive",
+        title: "Voice Input Not Supported",
+        description: "Your browser does not support the Web Speech API.",
+      });
+    }
+  }, [isSupported, toast]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -237,6 +262,17 @@ export default function ContactsPage() {
   const handleFolderSelect = (folderId: string) => {
     setSelectedFolderId(folderId);
     setSelectedContactIds([]);
+  };
+
+  const handleDictateNotes = () => {
+    if (isListening) {
+        stopListening();
+    } else {
+        const currentNotes = form.getValues('notes') || '';
+        setNotesBeforeSpeech(currentNotes);
+        form.setFocus('notes');
+        startListening();
+    }
   };
 
   if (isLoading) {
@@ -567,14 +603,32 @@ export default function ContactsPage() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Notes</FormLabel>
-                                <FormControl>
-                                  <Textarea
-                                    placeholder="Reference to information regarding the client.."
-                                    className="resize-none"
-                                    rows={5}
-                                    {...field}
-                                  />
-                                </FormControl>
+                                <div className="relative">
+                                  <FormControl>
+                                    <Textarea
+                                      placeholder="Reference to information regarding the client.."
+                                      className="resize-none pr-10"
+                                      rows={5}
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                   <Button
+                                      type="button"
+                                      variant={isListening ? 'destructive' : 'ghost'}
+                                      size="icon"
+                                      className="absolute bottom-2 right-2 h-8 w-8"
+                                      onClick={handleDictateNotes}
+                                      disabled={isSupported === false}
+                                      title={isSupported === false ? "Voice not supported" : (isListening ? "Stop dictation" : "Dictate notes")}
+                                  >
+                                      {isListening ? (
+                                          <Square className="h-4 w-4 animate-pulse" />
+                                      ) : (
+                                          <Mic className="h-4 w-4" />
+                                      )}
+                                      <span className="sr-only">{isListening ? "Stop dictation" : "Dictate notes"}</span>
+                                  </Button>
+                                </div>
                                 <FormMessage />
                               </FormItem>
                             )}
