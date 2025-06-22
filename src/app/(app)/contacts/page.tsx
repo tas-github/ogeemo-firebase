@@ -10,6 +10,7 @@ import {
   Pencil,
   Phone,
   Users,
+  LoaderCircle,
 } from 'lucide-react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -69,6 +70,7 @@ const contactSchema = z.object({
 export default function ContactsPage() {
   const [folders, setFolders] = useState<FolderData[]>(mockFolders);
   const [contacts, setContacts] = useState<Contact[]>(mockContacts);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedFolderId, setSelectedFolderId] = useState<string>('all');
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
@@ -97,28 +99,32 @@ export default function ContactsPage() {
         setContacts(JSON.parse(storedContacts));
       }
     } catch (error) {
-      console.error("Failed to parse from localStorage", error);
+      console.error("Failed to parse from localStorage, using mock data.", error);
       // State is already initialized with mock data, so we can just log the error.
+    } finally {
+        setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // This effect runs only on the client, after the component has mounted.
-    // So it's safe to write to localStorage here.
-    try {
-        localStorage.setItem('contactFolders', JSON.stringify(folders));
-    } catch (error) {
-        console.error("Failed to save folders to localStorage", error);
+    if (!isLoading) {
+      try {
+          localStorage.setItem('contactFolders', JSON.stringify(folders));
+      } catch (error) {
+          console.error("Failed to save folders to localStorage", error);
+      }
     }
-  }, [folders]);
+  }, [folders, isLoading]);
 
   useEffect(() => {
-    try {
-        localStorage.setItem('contacts', JSON.stringify(contacts));
-    } catch (error) {
-        console.error("Failed to save contacts to localStorage", error);
+    if (!isLoading) {
+      try {
+          localStorage.setItem('contacts', JSON.stringify(contacts));
+      } catch (error) {
+          console.error("Failed to save contacts to localStorage", error);
+      }
     }
-  }, [contacts]);
+  }, [contacts, isLoading]);
 
   // Derived state
   const selectedFolder = useMemo(
@@ -222,6 +228,17 @@ export default function ContactsPage() {
     setSelectedFolderId(folderId);
     setSelectedContactIds([]);
   };
+
+  if (isLoading) {
+    return (
+        <div className="flex h-full w-full items-center justify-center p-4">
+            <div className="flex flex-col items-center gap-4">
+                <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+                <p className="text-muted-foreground">Loading Contacts...</p>
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className="p-4 sm:p-6 space-y-4 flex flex-col h-full">
@@ -490,3 +507,5 @@ export default function ContactsPage() {
     </div>
   );
 }
+
+    
