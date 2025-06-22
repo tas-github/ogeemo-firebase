@@ -5,4 +5,5 @@ export type Event = {
   start: Date;
   end: Date;
   attendees: string[];
+  status: 'todo' | 'inProgress' | 'done';
 };

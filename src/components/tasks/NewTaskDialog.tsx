@@ -212,6 +212,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
             start: startDateTime,
             end: endDateTime,
             attendees: assignee ? ['You', assignee.name] : ['You'],
+            status: 'todo',
         };
         onTaskCreate?.(newEvent);
         toast({
