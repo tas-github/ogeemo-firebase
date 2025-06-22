@@ -40,7 +40,7 @@ function TaskItem({
   description,
 }: {
   title: string;
-  description: string;
+  description:string;
 }) {
   return (
     <Card>
@@ -62,10 +62,10 @@ export default function TasksPage() {
       <header className="flex items-center justify-between pb-4 border-b shrink-0">
         <div>
           <h1 className="text-3xl font-bold font-headline text-primary">
-            Task Manager
+            Project Manager
           </h1>
           <p className="text-muted-foreground">
-            Organize your to-do lists and manage your workflow.
+            Oversee your projects from start to finish.
           </p>
         </div>
         <Dialog open={isNewTaskOpen} onOpenChange={setIsNewTaskOpen}>
