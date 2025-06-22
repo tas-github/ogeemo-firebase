@@ -1,13 +1,13 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Edit } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { NewProjectDialog } from "@/components/tasks/NewProjectDialog";
+import { EditProjectDialog } from "@/components/tasks/EditProjectDialog";
 import { type Event } from "@/types/calendar";
 import { type Project } from "@/data/projects";
 import { initialEvents } from "@/data/events";
@@ -43,6 +43,7 @@ function TaskItem({
 export default function TasksPage() {
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
+  const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
   const [allTasks, setAllTasks] = useState<Event[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -136,6 +137,18 @@ export default function TasksPage() {
     });
   };
   
+  const handleProjectSave = (updatedProject: Project, newTasks: Event[]) => {
+    setProjects(prevProjects => prevProjects.map(p => p.id === updatedProject.id ? updatedProject : p));
+    
+    const otherProjectTasks = allTasks.filter(t => t.projectId !== updatedProject.id);
+    setAllTasks([...otherProjectTasks, ...newTasks]);
+
+    toast({
+      title: "Project Saved",
+      description: `Changes to "${updatedProject.name}" have been saved.`,
+    });
+  };
+
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   return (
@@ -167,6 +180,10 @@ export default function TasksPage() {
             <Button onClick={() => setIsNewProjectOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Project
+            </Button>
+            <Button variant="outline" onClick={() => setIsEditProjectOpen(true)} disabled={!selectedProjectId}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Project
             </Button>
             <Button onClick={() => setIsNewTaskOpen(true)} disabled={!selectedProjectId}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -226,6 +243,13 @@ export default function TasksPage() {
       </main>
       <NewTaskDialog isOpen={isNewTaskOpen} onOpenChange={setIsNewTaskOpen} onTaskCreate={handleCreateTask} projectId={selectedProjectId} />
       <NewProjectDialog isOpen={isNewProjectOpen} onOpenChange={setIsNewProjectOpen} onProjectCreate={handleCreateProject} />
+      <EditProjectDialog
+        isOpen={isEditProjectOpen}
+        onOpenChange={setIsEditProjectOpen}
+        project={selectedProject}
+        tasks={tasksForSelectedProject}
+        onProjectSave={handleProjectSave}
+      />
     </div>
   );
 }
