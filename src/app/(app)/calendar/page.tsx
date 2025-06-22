@@ -4,6 +4,8 @@
 import * as React from "react"
 import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek } from "date-fns"
 import { Users, Settings } from "lucide-react"
+import { DndProvider, useDrag } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -104,7 +106,59 @@ const mockEvents: Event[] = [
 ];
 
 
-export default function CalendarPage() {
+const DraggableDayEventCard = ({ event }: { event: Event }) => {
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: 'event-card',
+    item: { id: event.id },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  }));
+
+  return (
+    <div ref={drag} style={{ opacity: isDragging ? 0.5 : 1 }}>
+        <Card className="cursor-move">
+            <CardHeader className="p-4">
+                <CardTitle className="text-base font-semibold">{event.title}</CardTitle>
+                <CardDescription className="text-xs">{event.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Users className="h-3 w-3" />
+                    <span>{event.attendees.join(', ')}</span>
+                </div>
+            </CardContent>
+            <CardFooter className="p-4 pt-0 text-xs text-muted-foreground flex justify-between">
+                <span>Ends at {format(event.end, 'p')}</span>
+            </CardFooter>
+        </Card>
+    </div>
+  );
+};
+
+
+const DraggableTimelineEvent = ({ event, style, className }: { event: Event; style: React.CSSProperties; className: string }) => {
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: 'event',
+    item: { id: event.id },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  }));
+
+  return (
+    <div
+      ref={drag}
+      style={{ ...style, opacity: isDragging ? 0.5 : 1 }}
+      className={cn(className, "cursor-move")}
+    >
+      <p className="font-bold text-xs truncate">{event.title}</p>
+      <p className="text-xs opacity-80 truncate">{format(event.start, 'p')} - {format(event.end, 'p')}</p>
+    </div>
+  );
+};
+
+function CalendarPageContent() {
   const [date, setDate] = React.useState<Date | undefined>(new Date())
   const [view, setView] = React.useState<CalendarView>("day");
   const [events] = React.useState<Event[]>(mockEvents);
@@ -185,14 +239,12 @@ export default function CalendarPage() {
                       if (endMinutes < 0 || startMinutes > (hours.length * 60)) return null;
 
                       return (
-                          <div
+                          <DraggableTimelineEvent
                               key={event.id}
-                              className="absolute left-1 right-1 rounded-lg bg-primary/20 p-2 border border-primary/50 overflow-hidden text-primary"
+                              event={event}
                               style={{ top: `${top}px`, height: `${height}px` }}
-                          >
-                              <p className="font-bold text-xs truncate">{event.title}</p>
-                              <p className="text-xs opacity-80 truncate">{format(event.start, 'p')} - {format(event.end, 'p')}</p>
-                          </div>
+                              className="absolute left-1 right-1 rounded-lg bg-primary/20 p-2 border border-primary/50 overflow-hidden text-primary"
+                          />
                       );
                     })
                   }
@@ -221,21 +273,7 @@ export default function CalendarPage() {
                                 {format(event.start, 'p')}
                            </div>
                            <div className="flex-1">
-                                <Card>
-                                    <CardHeader className="p-4">
-                                        <CardTitle className="text-base font-semibold">{event.title}</CardTitle>
-                                        <CardDescription className="text-xs">{event.description}</CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="p-4 pt-0">
-                                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                            <Users className="h-3 w-3" />
-                                            <span>{event.attendees.join(', ')}</span>
-                                        </div>
-                                    </CardContent>
-                                    <CardFooter className="p-4 pt-0 text-xs text-muted-foreground flex justify-between">
-                                      <span>Ends at {format(event.end, 'p')}</span>
-                                    </CardFooter>
-                                </Card>
+                                <DraggableDayEventCard event={event} />
                             </div>
                         </div>
                     ))}
@@ -288,14 +326,12 @@ export default function CalendarPage() {
                         if (endMinutes < 0 || startMinutes > (hours.length * 60)) return null;
 
                         return (
-                            <div
+                            <DraggableTimelineEvent
                                 key={event.id}
-                                className="absolute left-16 right-2 rounded-lg bg-primary/20 p-2 border border-primary/50 overflow-hidden text-primary"
+                                event={event}
                                 style={{ top: `${top}px`, height: `${height}px` }}
-                            >
-                                <p className="font-bold text-xs truncate">{event.title}</p>
-                                <p className="text-xs opacity-80 truncate">{format(event.start, 'p')} - {format(event.end, 'p')}</p>
-                            </div>
+                                className="absolute left-16 right-2 rounded-lg bg-primary/20 p-2 border border-primary/50 overflow-hidden text-primary"
+                            />
                         );
                     })}
                 </div>
@@ -312,129 +348,138 @@ export default function CalendarPage() {
 
 
   return (
-    <div className="p-4 sm:p-6 flex flex-col h-full">
-      <header className="text-center mb-6">
-        <h1 className="text-3xl font-bold font-headline text-primary">
-          Calendar
-        </h1>
-        <p className="text-muted-foreground">
-          Manage your schedule, events and appointments.
-        </p>
-      </header>
-      <div className="flex-1 min-h-0">
-        <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
-          <ResizablePanel defaultSize={35} minSize={25} maxSize={40}>
-            <div className="flex h-full items-center justify-center p-6">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                className="rounded-md border"
-              />
-            </div>
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={65}>
-            <div className="flex flex-col h-full p-6">
-                <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
-                  <h2 className="text-xl font-semibold font-headline">
-                      Schedule for {date ? format(date, "PPP") : "..."}
-                  </h2>
-                  <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setDate(new Date())}
-                        className="h-8 px-3"
-                    >
-                        Today
-                    </Button>
-                    <div className="flex items-center gap-1 rounded-md bg-muted p-1">
-                        {viewOptions.map((option) => (
-                        <Button
-                            key={option.id}
-                            variant={view === option.id ? "secondary" : "ghost"}
-                            size="sm"
-                            onClick={() => setView(option.id)}
-                            className="h-8 px-3"
-                        >
-                            {option.label}
-                        </Button>
-                        ))}
+      <div className="p-4 sm:p-6 flex flex-col h-full">
+        <header className="text-center mb-6">
+          <h1 className="text-3xl font-bold font-headline text-primary">
+            Calendar
+          </h1>
+          <p className="text-muted-foreground">
+            Manage your schedule, events and appointments.
+          </p>
+        </header>
+        <div className="flex-1 min-h-0">
+          <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
+            <ResizablePanel defaultSize={35} minSize={25} maxSize={40}>
+              <div className="flex h-full items-center justify-center p-6">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                  className="rounded-md border"
+                />
+              </div>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={65}>
+              <div className="flex flex-col h-full p-6">
+                  <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+                    <h2 className="text-xl font-semibold font-headline">
+                        Schedule for {date ? format(date, "PPP") : "..."}
+                    </h2>
+                    <div className="flex items-center gap-2">
+                      <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDate(new Date())}
+                          className="h-8 px-3"
+                      >
+                          Today
+                      </Button>
+                      <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                          {viewOptions.map((option) => (
+                          <Button
+                              key={option.id}
+                              variant={view === option.id ? "secondary" : "ghost"}
+                              size="sm"
+                              onClick={() => setView(option.id)}
+                              className="h-8 px-3"
+                          >
+                              {option.label}
+                          </Button>
+                          ))}
+                      </div>
+                       <Dialog>
+                          <DialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" title="Calendar Settings">
+                                  <Settings className="h-4 w-4" />
+                                  <span className="sr-only">Settings</span>
+                              </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-md">
+                              <DialogHeader>
+                                  <DialogTitle>Calendar Settings</DialogTitle>
+                                  <DialogDescription>
+                                      Customize your calendar hourly view.
+                                  </DialogDescription>
+                              </DialogHeader>
+                              <div className="grid gap-4 py-4">
+                                  <div className="grid grid-cols-2 items-end gap-4">
+                                      <div>
+                                          <Label htmlFor="start-time">Day Start Time</Label>
+                                          <Select
+                                              value={String(viewStartHour)}
+                                              onValueChange={(value) => setViewStartHour(Number(value))}
+                                          >
+                                              <SelectTrigger id="start-time" className="mt-2">
+                                                  <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                  {timeOptions.map((option) => (
+                                                      <SelectItem
+                                                          key={`start-${option.value}`}
+                                                          value={String(option.value)}
+                                                          disabled={option.value >= viewEndHour}
+                                                      >
+                                                          {option.label}
+                                                      </SelectItem>
+                                                  ))}
+                                              </SelectContent>
+                                          </Select>
+                                      </div>
+                                      <div>
+                                          <Label htmlFor="end-time">Day End Time</Label>
+                                          <Select
+                                              value={String(viewEndHour)}
+                                              onValueChange={(value) => setViewEndHour(Number(value))}
+                                          >
+                                              <SelectTrigger id="end-time" className="mt-2">
+                                                  <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                  {timeOptions.map((option) => (
+                                                      <SelectItem
+                                                          key={`end-${option.value}`}
+                                                          value={String(option.value)}
+                                                          disabled={option.value <= viewStartHour}
+                                                      >
+                                                          {option.label}
+                                                      </SelectItem>
+                                                  ))}
+                                              </SelectContent>
+                                          </Select>
+                                      </div>
+                                  </div>
+                              </div>
+                          </DialogContent>
+                      </Dialog>
                     </div>
-                     <Dialog>
-                        <DialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Calendar Settings">
-                                <Settings className="h-4 w-4" />
-                                <span className="sr-only">Settings</span>
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-md">
-                            <DialogHeader>
-                                <DialogTitle>Calendar Settings</DialogTitle>
-                                <DialogDescription>
-                                    Customize your calendar hourly view.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-2 items-end gap-4">
-                                    <div>
-                                        <Label htmlFor="start-time">Day Start Time</Label>
-                                        <Select
-                                            value={String(viewStartHour)}
-                                            onValueChange={(value) => setViewStartHour(Number(value))}
-                                        >
-                                            <SelectTrigger id="start-time" className="mt-2">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {timeOptions.map((option) => (
-                                                    <SelectItem
-                                                        key={`start-${option.value}`}
-                                                        value={String(option.value)}
-                                                        disabled={option.value >= viewEndHour}
-                                                    >
-                                                        {option.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div>
-                                        <Label htmlFor="end-time">Day End Time</Label>
-                                        <Select
-                                            value={String(viewEndHour)}
-                                            onValueChange={(value) => setViewEndHour(Number(value))}
-                                        >
-                                            <SelectTrigger id="end-time" className="mt-2">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {timeOptions.map((option) => (
-                                                    <SelectItem
-                                                        key={`end-${option.value}`}
-                                                        value={String(option.value)}
-                                                        disabled={option.value <= viewStartHour}
-                                                    >
-                                                        {option.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
                   </div>
-                </div>
-                <div className="flex-1 mt-4 border-t pt-4 overflow-hidden">
-                    {renderViewContent()}
-                </div>
-            </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
+                  <div className="flex-1 mt-4 border-t pt-4 overflow-hidden">
+                      {renderViewContent()}
+                  </div>
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </div>
       </div>
-    </div>
+  )
+}
+
+
+export default function CalendarPage() {
+  return (
+    <DndProvider backend={HTML5Backend}>
+      <CalendarPageContent />
+    </DndProvider>
   )
 }
