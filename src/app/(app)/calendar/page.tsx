@@ -23,6 +23,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -473,6 +474,7 @@ function CalendarPageContent() {
   const [date, setDate] = React.useState<Date | undefined>(new Date())
   const [view, setView] = React.useState<CalendarView>("day");
   const [events, setEvents] = React.useState<Event[]>(mockEvents);
+  
   const [viewStartHour, setViewStartHour] = React.useState(9);
   const [viewEndHour, setViewEndHour] = React.useState(17);
   
@@ -480,6 +482,8 @@ function CalendarPageContent() {
   const [selectedHourForDetail, setSelectedHourForDetail] = React.useState<Date | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = React.useState(false);
   const [isMonthViewOpen, setIsMonthViewOpen] = React.useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+  const [tempViewHours, setTempViewHours] = React.useState({ start: viewStartHour, end: viewEndHour });
 
   const viewTitle = React.useMemo(() => {
     if (!date) return "Select a date";
@@ -697,7 +701,13 @@ function CalendarPageContent() {
                 <span className="sr-only">Next period</span>
                 <ChevronRight className="h-4 w-4" />
               </Button>
-                <Dialog>
+                <Dialog open={isSettingsOpen} onOpenChange={(open) => {
+                    if (open) {
+                      setTempViewHours({ start: viewStartHour, end: viewEndHour });
+                    }
+                    setIsSettingsOpen(open);
+                  }}
+                >
                   <DialogTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8" title="Calendar Settings">
                           <Settings className="h-4 w-4" />
@@ -716,8 +726,8 @@ function CalendarPageContent() {
                               <div>
                                   <Label htmlFor="start-time">Day Start Time</Label>
                                   <Select
-                                      value={String(viewStartHour)}
-                                      onValueChange={(value) => setViewStartHour(Number(value))}
+                                      value={String(tempViewHours.start)}
+                                      onValueChange={(value) => setTempViewHours(prev => ({ ...prev, start: Number(value) }))}
                                   >
                                       <SelectTrigger id="start-time" className="mt-2">
                                           <SelectValue />
@@ -727,7 +737,7 @@ function CalendarPageContent() {
                                               <SelectItem
                                                   key={`start-${option.value}`}
                                                   value={String(option.value)}
-                                                  disabled={option.value >= viewEndHour}
+                                                  disabled={option.value >= tempViewHours.end}
                                               >
                                                   {option.label}
                                               </SelectItem>
@@ -738,8 +748,8 @@ function CalendarPageContent() {
                               <div>
                                   <Label htmlFor="end-time">Day End Time</Label>
                                   <Select
-                                      value={String(viewEndHour)}
-                                      onValueChange={(value) => setViewEndHour(Number(value))}
+                                      value={String(tempViewHours.end)}
+                                      onValueChange={(value) => setTempViewHours(prev => ({ ...prev, end: Number(value) }))}
                                   >
                                       <SelectTrigger id="end-time" className="mt-2">
                                           <SelectValue />
@@ -749,7 +759,7 @@ function CalendarPageContent() {
                                               <SelectItem
                                                   key={`end-${option.value}`}
                                                   value={String(option.value)}
-                                                  disabled={option.value <= viewStartHour}
+                                                  disabled={option.value <= tempViewHours.start}
                                               >
                                                   {option.label}
                                               </SelectItem>
@@ -759,6 +769,16 @@ function CalendarPageContent() {
                               </div>
                           </div>
                       </div>
+                      <DialogFooter>
+                          <Button variant="ghost" onClick={() => setIsSettingsOpen(false)}>Cancel</Button>
+                          <Button onClick={() => {
+                              setViewStartHour(tempViewHours.start);
+                              setViewEndHour(tempViewHours.end);
+                              setIsSettingsOpen(false);
+                          }}>
+                              Save Changes
+                          </Button>
+                      </DialogFooter>
                   </DialogContent>
               </Dialog>
             </div>
@@ -790,3 +810,5 @@ export default function CalendarPage() {
     </DndProvider>
   )
 }
+
+    
