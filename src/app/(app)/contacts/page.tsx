@@ -67,8 +67,8 @@ const contactSchema = z.object({
 
 
 export default function ContactsPage() {
-  const [folders, setFolders] = useState<FolderData[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [folders, setFolders] = useState<FolderData[]>(mockFolders);
+  const [contacts, setContacts] = useState<Contact[]>(mockContacts);
   const [selectedFolderId, setSelectedFolderId] = useState<string>('all');
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
@@ -88,28 +88,36 @@ export default function ContactsPage() {
   useEffect(() => {
     try {
       const storedFolders = localStorage.getItem('contactFolders');
-      const initialFolders = storedFolders ? JSON.parse(storedFolders) : [...mockFolders];
-      setFolders(initialFolders);
+      if (storedFolders) {
+        setFolders(JSON.parse(storedFolders));
+      }
       
       const storedContacts = localStorage.getItem('contacts');
-      const initialContacts = storedContacts ? JSON.parse(storedContacts) : [...mockContacts];
-      setContacts(initialContacts);
-
+      if (storedContacts) {
+        setContacts(JSON.parse(storedContacts));
+      }
     } catch (error) {
       console.error("Failed to parse from localStorage", error);
-      setFolders([...mockFolders]);
-      setContacts([...mockContacts]);
+      // State is already initialized with mock data, so we can just log the error.
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
-    if (folders.length > 0) {
-      localStorage.setItem('contactFolders', JSON.stringify(folders));
+    // This effect runs only on the client, after the component has mounted.
+    // So it's safe to write to localStorage here.
+    try {
+        localStorage.setItem('contactFolders', JSON.stringify(folders));
+    } catch (error) {
+        console.error("Failed to save folders to localStorage", error);
     }
   }, [folders]);
 
   useEffect(() => {
-    localStorage.setItem('contacts', JSON.stringify(contacts));
+    try {
+        localStorage.setItem('contacts', JSON.stringify(contacts));
+    } catch (error) {
+        console.error("Failed to save contacts to localStorage", error);
+    }
   }, [contacts]);
 
   // Derived state
