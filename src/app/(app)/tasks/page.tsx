@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { ProjectInfoCard } from "@/components/tasks/ProjectInfoCard";
 
 
 function TaskItem({
@@ -121,10 +122,11 @@ export default function TasksPage() {
     setAllTasks(prev => [newEvent, ...prev]);
   };
 
-  const handleCreateProject = (projectName: string) => {
+  const handleCreateProject = (projectName: string, projectDescription: string) => {
     const newProject: Project = {
       id: `proj-${Date.now()}`,
       name: projectName,
+      description: projectDescription,
     };
     setProjects(prev => [...prev, newProject]);
     setSelectedProjectId(newProject.id);
@@ -134,7 +136,7 @@ export default function TasksPage() {
     });
   };
   
-  const selectedProjectName = projects.find(p => p.id === selectedProjectId)?.name || "Project";
+  const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   return (
     <div className="p-4 sm:p-6 flex flex-col h-full">
@@ -142,7 +144,7 @@ export default function TasksPage() {
         <div>
           <div className="flex items-center gap-4">
             <h1 className="text-3xl font-bold font-headline text-primary">
-              {selectedProjectName}
+              Project Manager
             </h1>
             <Select value={selectedProjectId ?? ''} onValueChange={setSelectedProjectId}>
               <SelectTrigger className="w-[250px]">
@@ -173,6 +175,10 @@ export default function TasksPage() {
         </div>
       </header>
       <main className="flex-1 grid md:grid-cols-3 gap-6 py-6 min-h-0">
+        {selectedProject && (
+          <ProjectInfoCard project={selectedProject} tasks={tasksForSelectedProject} />
+        )}
+
         <Card className="flex flex-col">
           <CardHeader className="shrink-0">
             <CardTitle>To Do</CardTitle>
