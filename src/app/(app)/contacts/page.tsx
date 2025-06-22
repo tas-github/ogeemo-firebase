@@ -296,7 +296,7 @@ export default function ContactsPage() {
           Manage your contacts and client relationships
         </p>
       </header>
-      <div className="flex-1 min-h-0 px-4 sm:px-6 pb-4 sm:pb-6">
+      <div className="flex-1 min-h-0 pb-4 sm:pb-6">
         <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
           <ResizablePanel defaultSize={25} minSize={20}>
             <div className="flex h-full flex-col p-2">
@@ -481,12 +481,12 @@ export default function ContactsPage() {
           <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
               <div className="flex flex-col space-y-1.5 text-center p-6 pb-4 border-b">
                 <h1 className="text-3xl font-bold font-headline text-primary">
-                  {contactToEdit ? contactToEdit.name : "Create New Contact"}
+                  {contactToEdit ? contactToEdit.name : "New Contact"}
                 </h1>
                 <p className="text-muted-foreground">
                   {contactToEdit 
                     ? `Folder: ${folders.find(f => f.id === contactToEdit.folderId)?.name || 'Unassigned'}` 
-                    : `Add a new contact to the "${selectedFolder?.name}" folder.`}
+                    : `Folder: ${selectedFolder?.name}`}
                 </p>
               </div>
               <Form {...form}>
@@ -644,5 +644,7 @@ export default function ContactsPage() {
     </div>
   );
 }
+
+    
 
     
