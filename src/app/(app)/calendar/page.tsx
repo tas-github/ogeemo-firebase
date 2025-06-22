@@ -371,7 +371,7 @@ function CalendarPageContent() {
 
     return (
       <ScrollArea className="h-full w-full">
-        <div className="flex" style={{ minWidth: 80 + 150 * days.length }}>
+        <div className="flex pt-4" style={{ minWidth: 80 + 150 * days.length }}>
           <div className="sticky left-0 z-20 w-24 shrink-0 bg-background">
             {!hideDayHeader && <div className="h-16 border-b border-r">&nbsp;</div>}
             {hours.map(hour => (
@@ -573,7 +573,7 @@ function CalendarPageContent() {
             </div>
           </div>
           
-          <div className="flex-1 mt-4 overflow-hidden pt-4">
+          <div className="flex-1 mt-4 overflow-hidden">
               {renderViewContent()}
           </div>
         </div>
@@ -595,5 +595,7 @@ export default function CalendarPage() {
     </DndProvider>
   )
 }
+
+    
 
     
