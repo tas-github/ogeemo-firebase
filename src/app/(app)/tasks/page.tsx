@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -153,7 +154,7 @@ export default function TasksPage() {
 
   return (
     <div className="p-4 sm:p-6 flex flex-col h-full">
-      <header className="pb-4 border-b shrink-0">
+      <header className="text-center pb-4 border-b shrink-0">
         <h1 className="text-3xl font-bold font-headline text-primary">
           Project Manager
         </h1>
