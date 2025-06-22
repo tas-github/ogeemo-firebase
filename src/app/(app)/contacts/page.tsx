@@ -69,7 +69,7 @@ const contactSchema = z.object({
 export default function ContactsPage() {
   const [folders, setFolders] = useState<FolderData[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<string>('all');
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -91,10 +91,6 @@ export default function ContactsPage() {
       const initialFolders = storedFolders ? JSON.parse(storedFolders) : [...mockFolders];
       setFolders(initialFolders);
       
-      if (!selectedFolderId) {
-        setSelectedFolderId('all');
-      }
-
       const storedContacts = localStorage.getItem('contacts');
       const initialContacts = storedContacts ? JSON.parse(storedContacts) : [...mockContacts];
       setContacts(initialContacts);
@@ -103,7 +99,6 @@ export default function ContactsPage() {
       console.error("Failed to parse from localStorage", error);
       setFolders([...mockFolders]);
       setContacts([...mockContacts]);
-      setSelectedFolderId('all');
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
