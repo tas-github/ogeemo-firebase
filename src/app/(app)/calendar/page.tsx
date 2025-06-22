@@ -784,7 +784,7 @@ function CalendarPageContent() {
             </div>
           </div>
           
-          <div className="flex-1 mt-4 overflow-hidden">
+          <div className="flex-1 mt-4 overflow-hidden pt-4">
               {renderViewContent()}
           </div>
         </div>
@@ -810,5 +810,3 @@ export default function CalendarPage() {
     </DndProvider>
   )
 }
-
-    
