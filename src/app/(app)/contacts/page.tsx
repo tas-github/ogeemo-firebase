@@ -500,11 +500,11 @@ export default function ContactsPage() {
 
       <Dialog open={isContactFormOpen} onOpenChange={(open) => { if (!open) closeContactForm(); else setIsContactFormOpen(true); }}>
           <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
-              <div className="flex flex-col space-y-1.5 text-center p-6 pb-4 border-b">
-                <h1 className="text-3xl font-bold font-headline text-primary">
+              <div className="flex flex-col space-y-1.5 text-center p-4 pb-2 border-b">
+                <h1 className="text-2xl font-bold font-headline text-primary">
                   {contactToEdit ? contactToEdit.name : "New Contact"}
                 </h1>
-                <p className="text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   {contactToEdit 
                     ? `Folder: ${folders.find(f => f.id === contactToEdit.folderId)?.name || 'Unassigned'}` 
                     : `Folder: ${selectedFolder?.name}`}
@@ -512,7 +512,7 @@ export default function ContactsPage() {
               </div>
               <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
-                      <div className="flex-1 overflow-y-auto px-6 py-2 space-y-2">
+                      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-1">
                           <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           
@@ -581,9 +581,9 @@ export default function ContactsPage() {
                                     <RadioGroup
                                     onValueChange={field.onChange}
                                     value={field.value}
-                                    className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                                    className="grid grid-cols-1 md:grid-cols-3 gap-2"
                                     >
-                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-3 has-[:disabled]:opacity-50">
+                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-2 has-[:disabled]:opacity-50">
                                         <FormControl>
                                         <RadioGroupItem value="businessPhone" disabled={!form.getValues().businessPhone} />
                                         </FormControl>
@@ -591,7 +591,7 @@ export default function ContactsPage() {
                                         Business
                                         </FormLabel>
                                     </FormItem>
-                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-3 has-[:disabled]:opacity-50">
+                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-2 has-[:disabled]:opacity-50">
                                         <FormControl>
                                         <RadioGroupItem value="cellPhone" disabled={!form.getValues().cellPhone} />
                                         </FormControl>
@@ -599,7 +599,7 @@ export default function ContactsPage() {
                                         Cell
                                         </FormLabel>
                                     </FormItem>
-                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-3 has-[:disabled]:opacity-50">
+                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-2 has-[:disabled]:opacity-50">
                                         <FormControl>
                                         <RadioGroupItem value="homePhone" disabled={!form.getValues().homePhone} />
                                         </FormControl>
@@ -652,7 +652,7 @@ export default function ContactsPage() {
                           />
                       </div>
 
-                      <div className="p-6 border-t flex items-center justify-end">
+                      <div className="p-4 border-t flex items-center justify-end">
                           <div className="flex items-center gap-2">
                               <Button type="button" variant="ghost" onClick={closeContactForm}>Cancel</Button>
                               <Button type="submit">{contactToEdit ? "Save Changes" : "Create Contact"}</Button>
@@ -665,3 +665,5 @@ export default function ContactsPage() {
     </div>
   );
 }
+
+    
