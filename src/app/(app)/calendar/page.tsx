@@ -36,22 +36,6 @@ type Event = {
 
 const today = new Date();
 const mockEvents: Event[] = [
-  {
-    id: '1',
-    title: 'Project Standup',
-    description: 'Weekly sync for Project Phoenix.',
-    start: setHours(today, 9),
-    end: setHours(today, 9, 30),
-    attendees: ['You', 'John Doe'],
-  },
-  {
-    id: '2',
-    title: 'Design Review',
-    description: 'Review new mockups for the dashboard.',
-    start: setHours(today, 14),
-    end: setHours(today, 15),
-    attendees: ['You', 'Jane Smith', 'John Doe'],
-  },
    {
     id: '2b',
     title: 'Quick Sync',
