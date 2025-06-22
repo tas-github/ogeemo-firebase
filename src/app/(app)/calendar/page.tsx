@@ -611,9 +611,8 @@ function CalendarPageContent() {
             
             <Dialog open={isMonthViewOpen} onOpenChange={setIsMonthViewOpen}>
                 <DialogTrigger asChild>
-                    <h2 className="text-xl font-semibold font-headline cursor-pointer hover:underline flex items-center gap-2">
+                    <h2 className="text-xl font-semibold font-headline cursor-pointer hover:underline">
                         <span>{date ? format(date, "PPP") : "Select a date"}</span>
-                        <CalendarIcon className="h-5 w-5 text-muted-foreground" />
                     </h2>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-auto w-auto p-0">
