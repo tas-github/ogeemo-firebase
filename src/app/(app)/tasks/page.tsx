@@ -76,6 +76,9 @@ export default function TasksPage() {
           <p className="text-muted-foreground">
             Oversee your projects from start to finish.
           </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            All projects are multiple tasks. Tasks entered here get entered into your calendar automatically.
+          </p>
         </div>
         <Button onClick={() => setIsNewTaskOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
