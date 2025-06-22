@@ -2,9 +2,9 @@
 "use client"
 
 import * as React from "react"
-import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek } from "date-fns"
+import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set } from "date-fns"
 import { Users, Settings } from "lucide-react"
-import { DndProvider, useDrag } from 'react-dnd';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
 import { cn } from "@/lib/utils"
@@ -109,7 +109,7 @@ const mockEvents: Event[] = [
 const DraggableTimelineEvent = ({ event, style, className }: { event: Event; style: React.CSSProperties; className: string }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'event',
-    item: { id: event.id },
+    item: event,
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
@@ -127,10 +127,87 @@ const DraggableTimelineEvent = ({ event, style, className }: { event: Event; sty
   );
 };
 
+const TimelineDayColumn = ({
+  day,
+  dayEvents,
+  viewStartHour,
+  viewEndHour,
+  onEventDrop
+}: {
+  day: Date;
+  dayEvents: Event[];
+  viewStartHour: number;
+  viewEndHour: number;
+  onEventDrop: (eventId: string, newStart: Date) => void;
+}) => {
+  const PIXELS_PER_MINUTE = 2;
+  const hours = Array.from({ length: viewEndHour - viewStartHour + 1 }, (_, i) => i + viewStartHour);
+  const CONTAINER_HEIGHT = hours.length * 60 * PIXELS_PER_MINUTE;
+  const dropRef = React.useRef<HTMLDivElement>(null);
+
+  const [, drop] = useDrop(() => ({
+    accept: 'event',
+    drop: (item: Event, monitor) => {
+      if (!dropRef.current) return;
+      const dropTargetRect = dropRef.current.getBoundingClientRect();
+      const clientOffset = monitor.getClientOffset();
+      if (!clientOffset) return;
+      
+      const dropY = clientOffset.y - dropTargetRect.top;
+      
+      let minutesFromStart = Math.round(dropY / PIXELS_PER_MINUTE);
+      minutesFromStart = Math.max(0, Math.round(minutesFromStart / 15) * 15);
+
+      const newHour = viewStartHour + Math.floor(minutesFromStart / 60);
+      const newMinute = minutesFromStart % 60;
+      
+      const newStartDate = set(day, { hours: newHour, minutes: newMinute, seconds: 0, milliseconds: 0 });
+      
+      onEventDrop(item.id, newStartDate);
+    },
+  }));
+
+  drop(dropRef);
+
+  return (
+    <div className="border-r last:border-r-0">
+      <div className="sticky top-0 z-10 h-16 border-b bg-background text-center">
+        <p className="text-sm font-semibold">{format(day, 'EEE')}</p>
+        <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
+      </div>
+      <div ref={dropRef} className="relative" style={{ height: `${CONTAINER_HEIGHT}px` }}>
+        {hours.map(hour => (
+          <div key={`line-${hour}-${day.toISOString()}`} className="h-[120px] border-b"></div>
+        ))}
+        {dayEvents.map(event => {
+          const startMinutes = (event.start.getHours() - viewStartHour) * 60 + event.start.getMinutes();
+          const endMinutes = (event.end.getHours() - viewStartHour) * 60 + event.end.getMinutes();
+          const durationMinutes = Math.max(15, endMinutes - startMinutes);
+          const top = startMinutes * PIXELS_PER_MINUTE;
+          const height = durationMinutes * PIXELS_PER_MINUTE;
+          
+          const totalMinutesInView = (viewEndHour - viewStartHour + 1) * 60;
+          if (endMinutes < 0 || startMinutes > totalMinutesInView) return null;
+
+          return (
+            <DraggableTimelineEvent
+              key={event.id}
+              event={event}
+              style={{ top: `${top}px`, height: `${height}px` }}
+              className="absolute left-1 right-1 rounded-lg bg-primary/20 p-2 border border-primary/50 overflow-hidden text-primary"
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+
 function CalendarPageContent() {
   const [date, setDate] = React.useState<Date | undefined>(new Date())
   const [view, setView] = React.useState<CalendarView>("day");
-  const [events] = React.useState<Event[]>(mockEvents);
+  const [events, setEvents] = React.useState<Event[]>(mockEvents);
   const [viewStartHour, setViewStartHour] = React.useState(9);
   const [viewEndHour, setViewEndHour] = React.useState(17);
 
@@ -147,13 +224,24 @@ function CalendarPageContent() {
     }));
   }, []);
 
-  const PIXELS_PER_MINUTE = 2;
+  const handleEventDrop = React.useCallback((eventId: string, newStart: Date) => {
+    setEvents(prevEvents => {
+      const eventToUpdate = prevEvents.find(e => e.id === eventId);
+      if (!eventToUpdate) return prevEvents;
+
+      const duration = eventToUpdate.end.getTime() - eventToUpdate.start.getTime();
+      const newEnd = new Date(newStart.getTime() + duration);
+
+      return prevEvents.map(e => 
+        e.id === eventId ? { ...e, start: newStart, end: newEnd } : e
+      );
+    });
+  }, []);
+  
   const hours = Array.from({ length: viewEndHour - viewStartHour + 1 }, (_, i) => i + viewStartHour);
-  const CONTAINER_HEIGHT = hours.length * 60 * PIXELS_PER_MINUTE;
 
   const renderDayTimelineView = () => {
     if (!date) return null;
-
     const dayEvents = events.filter(event => isSameDay(event.start, date));
 
     return (
@@ -173,39 +261,13 @@ function CalendarPageContent() {
 
           {/* Day Column */}
           <div className="grid flex-1" style={{ gridTemplateColumns: `minmax(150px, 1fr)` }}>
-            <div className="border-r-0">
-              <div className="sticky top-0 z-10 h-16 border-b bg-background text-center">
-                 <p className="text-sm font-semibold">{format(date, 'EEE')}</p>
-                 <p className={cn("text-2xl font-bold", isSameDay(date, new Date()) && "text-primary")}>{format(date, 'd')}</p>
-              </div>
-              <div className="relative" style={{ height: `${CONTAINER_HEIGHT}px` }}>
-                {/* Hour lines */}
-                {hours.map(hour => (
-                  <div key={`line-${hour}-${date.toISOString()}`} className="h-[120px] border-b"></div>
-                ))}
-                {/* Events */}
-                {dayEvents
-                  .map(event => {
-                    const startMinutes = (event.start.getHours() - viewStartHour) * 60 + event.start.getMinutes();
-                    const endMinutes = (event.end.getHours() - viewStartHour) * 60 + event.end.getMinutes();
-                    const durationMinutes = Math.max(15, endMinutes - startMinutes);
-                    const top = startMinutes * PIXELS_PER_MINUTE;
-                    const height = durationMinutes * PIXELS_PER_MINUTE;
-                    
-                    if (endMinutes < 0 || startMinutes > (hours.length * 60)) return null;
-
-                    return (
-                        <DraggableTimelineEvent
-                            key={event.id}
-                            event={event}
-                            style={{ top: `${top}px`, height: `${height}px` }}
-                            className="absolute left-1 right-1 rounded-lg bg-primary/20 p-2 border border-primary/50 overflow-hidden text-primary"
-                        />
-                    );
-                  })
-                }
-              </div>
-            </div>
+             <TimelineDayColumn
+                day={date}
+                dayEvents={dayEvents}
+                viewStartHour={viewStartHour}
+                viewEndHour={viewEndHour}
+                onEventDrop={handleEventDrop}
+             />
           </div>
         </div>
       </ScrollArea>
@@ -218,11 +280,6 @@ function CalendarPageContent() {
     const weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 1; // Monday
     const startDate = numDays === 7 ? startOfWeek(date, { weekStartsOn }) : date;
     const dayRange = eachDayOfInterval({ start: startDate, end: addDays(startDate, numDays - 1) });
-
-    const eventsInRange = events.filter(event => {
-      const eventDate = event.start;
-      return eventDate >= dayRange[0] && eventDate < addDays(dayRange[dayRange.length - 1], 1);
-    });
 
     return (
       <ScrollArea className="h-full w-full">
@@ -239,40 +296,19 @@ function CalendarPageContent() {
           </div>
 
           <div className="grid flex-1" style={{ gridTemplateColumns: `repeat(${numDays}, minmax(150px, 1fr))` }}>
-            {dayRange.map((day, dayIndex) => (
-              <div key={day.toISOString()} className={cn("border-r", dayIndex === dayRange.length - 1 && "border-r-0")}>
-                <div className="sticky top-0 z-10 h-16 border-b bg-background text-center">
-                  <p className="text-sm font-semibold">{format(day, 'EEE')}</p>
-                  <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
-                </div>
-                <div className="relative" style={{ height: `${CONTAINER_HEIGHT}px` }}>
-                  {hours.map(hour => (
-                    <div key={`line-${hour}-${day.toISOString()}`} className="h-[120px] border-b"></div>
-                  ))}
-                  {eventsInRange
-                    .filter(event => isSameDay(event.start, day))
-                    .map(event => {
-                      const startMinutes = (event.start.getHours() - viewStartHour) * 60 + event.start.getMinutes();
-                      const endMinutes = (event.end.getHours() - viewStartHour) * 60 + event.end.getMinutes();
-                      const durationMinutes = Math.max(15, endMinutes - startMinutes);
-                      const top = startMinutes * PIXELS_PER_MINUTE;
-                      const height = durationMinutes * PIXELS_PER_MINUTE;
-                      
-                      if (endMinutes < 0 || startMinutes > (hours.length * 60)) return null;
-
-                      return (
-                          <DraggableTimelineEvent
-                              key={event.id}
-                              event={event}
-                              style={{ top: `${top}px`, height: `${height}px` }}
-                              className="absolute left-1 right-1 rounded-lg bg-primary/20 p-2 border border-primary/50 overflow-hidden text-primary"
-                          />
-                      );
-                    })
-                  }
-                </div>
-              </div>
-            ))}
+            {dayRange.map((day) => {
+               const dayEvents = events.filter(event => isSameDay(event.start, day));
+               return (
+                  <TimelineDayColumn
+                    key={day.toISOString()}
+                    day={day}
+                    dayEvents={dayEvents}
+                    viewStartHour={viewStartHour}
+                    viewEndHour={viewEndHour}
+                    onEventDrop={handleEventDrop}
+                  />
+               )
+            })}
           </div>
         </div>
       </ScrollArea>
@@ -430,3 +466,5 @@ export default function CalendarPage() {
     </DndProvider>
   )
 }
+
+    
