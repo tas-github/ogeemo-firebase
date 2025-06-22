@@ -40,7 +40,9 @@ interface NewTaskDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   defaultStartDate?: Date;
+  eventToEdit?: Event | null;
   onTaskCreate?: (newEvent: Event) => void;
+  onTaskUpdate?: (updatedEvent: Event) => void;
 }
 
 const hourOptions = Array.from({ length: 24 }, (_, i) => {
@@ -60,7 +62,7 @@ const minuteOptions = Array.from({ length: 12 }, (_, i) => {
 });
 
 
-export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, onTaskCreate }: NewTaskDialogProps) {
+export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToEdit, onTaskCreate, onTaskUpdate }: NewTaskDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<string | undefined>();
@@ -77,6 +79,8 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, onTaskCr
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const { toast } = useToast();
+  
+  const isEditMode = !!eventToEdit;
 
   const resetForm = () => {
     setTitle("");
@@ -99,23 +103,50 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, onTaskCr
   };
 
   useEffect(() => {
-    if (isOpen) {
-      resetForm();
-    }
-  }, [isOpen, defaultStartDate]);
-
-
-  useEffect(() => {
     // In a real app, you might fetch this data.
     setContacts(mockContacts);
   }, []);
 
-  const handleCreateTask = () => {
+  useEffect(() => {
+    if (isOpen) {
+      if (isEditMode && eventToEdit) {
+          setTitle(eventToEdit.title);
+          setDescription(eventToEdit.description);
+          setPriority(undefined);
+          setUrgency(undefined);
+
+          const start = eventToEdit.start;
+          const end = eventToEdit.end;
+          setStartDate(start);
+          setStartHour(String(start.getHours()));
+          setStartMinute(String(start.getMinutes()));
+          setDueDate(end);
+          setDueHour(String(end.getHours()));
+          setDueMinute(String(end.getMinutes()));
+          
+          if (eventToEdit.attendees.length > 1) {
+              const assigneeName = eventToEdit.attendees[1];
+              const contact = mockContacts.find(c => c.name === assigneeName);
+              if (contact) {
+                  setAssigneeId(contact.id);
+              } else {
+                  setAssigneeId(undefined);
+              }
+          } else {
+              setAssigneeId(undefined);
+          }
+      } else {
+        resetForm();
+      }
+    }
+  }, [isOpen, eventToEdit, defaultStartDate]);
+
+  const handleSaveTask = () => {
     if (!title) {
         toast({
             variant: "destructive",
             title: "Missing Information",
-            description: "A task title is required to create a task.",
+            description: "A task title is required.",
         });
         return;
     }
@@ -157,21 +188,29 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, onTaskCr
     }
     
     const assignee = contacts.find(c => c.id === assigneeId);
+    
+    if (isEditMode && eventToEdit) {
+        const updatedEvent: Event = {
+            ...eventToEdit,
+            title,
+            description,
+            start: startDateTime,
+            end: endDateTime,
+            attendees: assignee ? ['You', assignee.name] : ['You'],
+        };
+        onTaskUpdate?.(updatedEvent);
+    } else {
+        const newEvent: Event = {
+            id: `event-${Date.now()}`,
+            title,
+            description,
+            start: startDateTime,
+            end: endDateTime,
+            attendees: assignee ? ['You', assignee.name] : ['You'],
+        };
+        onTaskCreate?.(newEvent);
+    }
 
-    const newEvent: Event = {
-        id: `event-${Date.now()}`,
-        title,
-        description,
-        start: startDateTime,
-        end: endDateTime,
-        attendees: assignee ? ['You', assignee.name] : ['You'],
-    };
-
-    onTaskCreate?.(newEvent);
-    toast({
-        title: "Task Created",
-        description: `"${title}" has been successfully created.`,
-    });
     onOpenChange(false);
   };
 
@@ -179,9 +218,9 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, onTaskCr
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
         <DialogHeader className="p-6 pb-4 border-b">
-          <DialogTitle>Create a New Task</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit Task" : "Create a New Task"}</DialogTitle>
           <DialogDescription>
-            Fill out the details below to add a new task to your board.
+            {isEditMode ? "Update the details for your task." : "Fill out the details below to add a new task to your board."}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="flex-1">
@@ -375,7 +414,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, onTaskCr
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleCreateTask}>Create Task</Button>
+          <Button onClick={handleSaveTask}>{isEditMode ? "Save Changes" : "Create Task"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
