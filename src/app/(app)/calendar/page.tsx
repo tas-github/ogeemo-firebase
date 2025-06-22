@@ -141,13 +141,15 @@ const TimelineDayColumn = ({
   dayEvents,
   viewStartHour,
   viewEndHour,
-  onEventDrop
+  onEventDrop,
+  hideHeader = false,
 }: {
   day: Date;
   dayEvents: Event[];
   viewStartHour: number;
   viewEndHour: number;
   onEventDrop: (eventId: string, newStart: Date) => void;
+  hideHeader?: boolean;
 }) => {
   const PIXELS_PER_MINUTE = 2;
   const hours = Array.from({ length: viewEndHour - viewStartHour + 1 }, (_, i) => i + viewStartHour);
@@ -179,11 +181,13 @@ const TimelineDayColumn = ({
   drop(dropRef);
 
   return (
-    <div className="border-r last:border-r-0">
-      <div className="sticky top-0 z-10 h-16 border-b bg-background text-center">
-        <p className="text-sm font-semibold">{format(day, 'EEE')}</p>
-        <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
-      </div>
+    <div className={cn("border-r last:border-r-0", hideHeader && "border-t")}>
+      {!hideHeader && (
+        <div className="sticky top-0 z-10 h-16 border-b bg-background text-center">
+          <p className="text-sm font-semibold">{format(day, 'EEE')}</p>
+          <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
+        </div>
+      )}
       <div ref={dropRef} className="relative" style={{ height: `${CONTAINER_HEIGHT}px` }}>
         {hours.map(hour => (
           <div key={`line-${hour}-${day.toISOString()}`} className="h-[120px] border-b"></div>
@@ -477,6 +481,38 @@ function CalendarPageContent() {
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = React.useState(false);
   const [isMonthViewOpen, setIsMonthViewOpen] = React.useState(false);
 
+  const viewTitle = React.useMemo(() => {
+    if (!date) return "Select a date";
+    
+    const formatRange = (start: Date, end: Date) => {
+        if (start.getFullYear() !== end.getFullYear()) {
+            return `${format(start, 'MMMM d, yyyy')} – ${format(end, 'MMMM d, yyyy')}`;
+        }
+        if (!isSameMonth(start, end)) {
+             return `${format(start, 'MMMM d')} – ${format(end, 'MMMM d, yyyy')}`;
+        }
+        return `${format(start, 'MMMM d')} – ${format(end, 'd, yyyy')}`;
+    }
+
+    switch (view) {
+      case 'day':
+        return format(date, 'EEEE, MMMM d, yyyy');
+      case '5days': {
+        const end = addDays(date, 4);
+        return formatRange(date, end);
+      }
+      case 'week': {
+        const weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 1; // Monday
+        const start = startOfWeek(date, { weekStartsOn });
+        const end = endOfWeek(date, { weekStartsOn });
+        return formatRange(start, end);
+      }
+      case 'month':
+        return format(date, 'MMMM yyyy');
+      default:
+        return format(date, 'PPP');
+    }
+  }, [date, view]);
 
   const viewOptions: { id: CalendarView; label: string }[] = [
     { id: "day", label: "Day" },
@@ -537,12 +573,14 @@ function CalendarPageContent() {
 
   const renderTimelineView = (days: Date[]) => {
     if (days.length === 0) return null;
+    
+    const hideDayHeader = days.length === 1;
 
     return (
       <ScrollArea className="h-full w-full">
         <div className="flex" style={{ minWidth: 80 + 150 * days.length }}>
           <div className="sticky left-0 z-20 w-24 shrink-0 bg-background">
-            <div className="h-16 border-b border-r">&nbsp;</div>
+            {!hideDayHeader && <div className="h-16 border-b border-r">&nbsp;</div>}
             {hours.map(hour => (
               <div key={`time-gutter-${hour}`} className="relative h-[120px] border-r text-right">
                 <button 
@@ -567,6 +605,7 @@ function CalendarPageContent() {
                     viewStartHour={viewStartHour}
                     viewEndHour={viewEndHour}
                     onEventDrop={handleEventDrop}
+                    hideHeader={hideDayHeader}
                   />
                )
             })}
@@ -612,7 +651,7 @@ function CalendarPageContent() {
             <Dialog open={isMonthViewOpen} onOpenChange={setIsMonthViewOpen}>
                 <DialogTrigger asChild>
                     <h2 className="text-xl font-semibold font-headline cursor-pointer hover:underline">
-                        <span>{date ? format(date, "PPP") : "Select a date"}</span>
+                        <span>{viewTitle}</span>
                     </h2>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-auto w-auto p-0">
