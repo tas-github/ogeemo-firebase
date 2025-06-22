@@ -274,6 +274,21 @@ function CalendarPageContent() {
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
   const [tempViewHours, setTempViewHours] = React.useState({ start: viewStartHour, end: viewEndHour });
 
+  React.useEffect(() => {
+    try {
+      const savedStartHour = localStorage.getItem('calendarViewStartHour');
+      const savedEndHour = localStorage.getItem('calendarViewEndHour');
+      if (savedStartHour) {
+        setViewStartHour(Number(savedStartHour));
+      }
+      if (savedEndHour) {
+        setViewEndHour(Number(savedEndHour));
+      }
+    } catch (error) {
+      console.error("Could not read calendar settings from localStorage", error);
+    }
+  }, []);
+
   const viewTitle = React.useMemo(() => {
     if (!date) return "Select a date";
     
@@ -372,36 +387,40 @@ function CalendarPageContent() {
     return (
       <ScrollArea className="h-full w-full">
         <div className="flex" style={{ minWidth: 80 + 150 * days.length }}>
-          <div className="sticky left-0 z-20 w-24 shrink-0 bg-background pt-4">
+          <div className="sticky left-0 z-20 w-24 shrink-0 bg-background">
             {!hideDayHeader && <div className="h-16 border-b border-r">&nbsp;</div>}
-            {hours.map(hour => (
-              <div key={`time-gutter-${hour}`} className="relative h-[120px] border-r text-right">
-                <button 
-                  onClick={() => handleHourClick(hour)}
-                  className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-background px-1 text-xs text-muted-foreground transition-colors hover:font-bold hover:text-primary"
-                >
-                  <span>{format(setHours(new Date(), hour), 'ha')}</span>
-                  <Edit className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
+            <div className="pt-4">
+              {hours.map(hour => (
+                <div key={`time-gutter-${hour}`} className="relative h-[120px] border-r text-right">
+                  <button 
+                    onClick={() => handleHourClick(hour)}
+                    className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-background px-1 text-xs text-muted-foreground transition-colors hover:font-bold hover:text-primary"
+                  >
+                    <span>{format(setHours(new Date(), hour), 'ha')}</span>
+                    <Edit className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="grid flex-1 pt-4" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(150px, 1fr))` }}>
-            {days.map((day) => {
-               const dayEvents = events.filter(event => isSameDay(event.start, day));
-               return (
-                  <TimelineDayColumn
-                    key={day.toISOString()}
-                    day={day}
-                    dayEvents={dayEvents}
-                    viewStartHour={viewStartHour}
-                    viewEndHour={viewEndHour}
-                    onEventDrop={handleEventDrop}
-                    hideHeader={hideDayHeader}
-                  />
-               )
-            })}
+          <div className="grid flex-1" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(150px, 1fr))` }}>
+            <div className="col-span-full pt-4">
+              {days.map((day) => {
+                 const dayEvents = events.filter(event => isSameDay(event.start, day));
+                 return (
+                    <TimelineDayColumn
+                      key={day.toISOString()}
+                      day={day}
+                      dayEvents={dayEvents}
+                      viewStartHour={viewStartHour}
+                      viewEndHour={viewEndHour}
+                      onEventDrop={handleEventDrop}
+                      hideHeader={hideDayHeader}
+                    />
+                 )
+              })}
+            </div>
           </div>
         </div>
       </ScrollArea>
@@ -563,6 +582,12 @@ function CalendarPageContent() {
                           <Button onClick={() => {
                               setViewStartHour(tempViewHours.start);
                               setViewEndHour(tempViewHours.end);
+                              try {
+                                localStorage.setItem('calendarViewStartHour', String(tempViewHours.start));
+                                localStorage.setItem('calendarViewEndHour', String(tempViewHours.end));
+                              } catch (error) {
+                                console.error("Could not write calendar settings to localStorage", error);
+                              }
                               setIsSettingsOpen(false);
                           }}>
                               Save Changes
