@@ -2,8 +2,8 @@
 "use client"
 
 import * as React from "react"
-import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set, addMinutes, startOfMinute, startOfMonth, endOfMonth, isToday, isSameMonth } from "date-fns"
-import { Users, Settings, Plus, Calendar as CalendarIcon, Edit } from "lucide-react"
+import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set, addMinutes, startOfMinute, startOfMonth, endOfMonth, isToday, isSameMonth, addMonths, addWeeks } from "date-fns"
+import { Users, Settings, Plus, Calendar as CalendarIcon, Edit, ChevronLeft, ChevronRight } from "lucide-react"
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
@@ -513,6 +513,24 @@ function CalendarPageContent() {
     setIsHourDetailOpen(true);
   };
   
+  const handlePrev = () => {
+    if (!date) return;
+    const newDate = view === 'month' ? addMonths(date, -1)
+                  : view === 'week' ? addWeeks(date, -1)
+                  : view === '5days' ? addDays(date, -5)
+                  : addDays(date, -1);
+    setDate(newDate);
+  };
+  
+  const handleNext = () => {
+    if (!date) return;
+    const newDate = view === 'month' ? addMonths(date, 1)
+                  : view === 'week' ? addWeeks(date, 1)
+                  : view === '5days' ? addDays(date, 5)
+                  : addDays(date, 1);
+    setDate(newDate);
+  };
+
   const hours = React.useMemo(() => {
     return Array.from({ length: viewEndHour - viewStartHour + 1 }, (_, i) => i + viewStartHour);
   }, [viewStartHour, viewEndHour]);
@@ -523,7 +541,7 @@ function CalendarPageContent() {
     return (
       <ScrollArea className="h-full w-full">
         <div className="flex" style={{ minWidth: 80 + 150 * days.length }}>
-          <div className="sticky left-0 z-20 w-20 shrink-0 bg-background">
+          <div className="sticky left-0 z-20 w-24 shrink-0 bg-background">
             <div className="h-16 border-b border-r">&nbsp;</div>
             {hours.map(hour => (
               <div key={`time-gutter-${hour}`} className="relative h-[120px] border-r text-right">
@@ -612,6 +630,14 @@ function CalendarPageContent() {
             </Dialog>
 
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}>
+                <span className="sr-only">Previous period</span>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}>
+                <span className="sr-only">Next period</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
               <Button
                   variant="outline"
                   size="sm"
