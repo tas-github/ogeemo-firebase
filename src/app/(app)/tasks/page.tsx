@@ -181,7 +181,7 @@ export default function TasksPage() {
                 <Plus className="mr-2 h-4 w-4" />
                 Add Project
             </Button>
-            <Button variant="outline" onClick={() => setIsEditProjectOpen(true)} disabled={!selectedProjectId}>
+            <Button onClick={() => setIsEditProjectOpen(true)} disabled={!selectedProjectId} className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Edit className="mr-2 h-4 w-4" />
               Edit Project
             </Button>
