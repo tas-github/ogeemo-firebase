@@ -193,7 +193,7 @@ export default function TasksPage() {
       </div>
 
       <main className="flex-1 grid md:grid-cols-3 gap-6 pb-6 min-h-0">
-        {selectedProject && (
+        {selectedProject && selectedProject.id !== 'proj-1' && (
           <ProjectInfoCard project={selectedProject} tasks={tasksForSelectedProject} />
         )}
 
