@@ -423,7 +423,7 @@ export default function ComposeEmailPage() {
         multiple
       />
       <Dialog open={isNewContactDialogOpen} onOpenChange={(open) => { setIsNewContactDialogOpen(open); if (!open) newContactForm.reset(); }}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Create New Contact</DialogTitle>
             <DialogDescription>
@@ -550,7 +550,7 @@ export default function ComposeEmailPage() {
               setIsGeneratingImage(false);
           }
       }}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Generate Image with AI</DialogTitle>
             <DialogDescription>
@@ -964,7 +964,7 @@ export default function ComposeEmailPage() {
                     Save as Template
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="sm:max-w-lg">
                   <DialogHeader>
                     <DialogTitle>Save as New Template</DialogTitle>
                     <DialogDescription>

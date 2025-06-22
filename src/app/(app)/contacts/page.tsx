@@ -458,7 +458,7 @@ export default function ContactsPage() {
       </div>
       
       <Dialog open={isSelectFolderDialogOpen} onOpenChange={setIsSelectFolderDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Folder Required</DialogTitle>
             <DialogDescription>
