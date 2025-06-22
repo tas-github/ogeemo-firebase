@@ -100,24 +100,30 @@ export default function CalendarPage() {
         }
         return (
             <ScrollArea className="h-full w-full">
-                <div className="space-y-4 pr-4">
+                <div className="space-y-6 pr-4">
                     {dailyEvents.map(event => (
-                        <Card key={event.id}>
-                            <CardHeader>
-                                <CardTitle className="text-lg">{event.title}</CardTitle>
-                                <CardDescription>{event.description}</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-2 text-sm">
-                                <div className="flex items-center gap-2 text-muted-foreground">
-                                    <Clock className="h-4 w-4" />
-                                    <span>{format(event.start, 'p')} - {format(event.end, 'p')}</span>
-                                </div>
-                                 <div className="flex items-center gap-2 text-muted-foreground">
-                                    <Users className="h-4 w-4" />
-                                    <span>{event.attendees.join(', ')}</span>
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <div key={event.id} className="flex items-start gap-4">
+                           <div className="w-20 text-right text-sm font-medium text-muted-foreground shrink-0 pt-1">
+                                {format(event.start, 'p')}
+                           </div>
+                           <div className="flex-1">
+                                <Card>
+                                    <CardHeader className="p-4">
+                                        <CardTitle className="text-base font-semibold">{event.title}</CardTitle>
+                                        <CardDescription className="text-xs">{event.description}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="p-4 pt-0">
+                                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                            <Users className="h-3 w-3" />
+                                            <span>{event.attendees.join(', ')}</span>
+                                        </div>
+                                    </CardContent>
+                                    <CardFooter className="p-4 pt-0 text-xs text-muted-foreground flex justify-between">
+                                      <span>Ends at {format(event.end, 'p')}</span>
+                                    </CardFooter>
+                                </Card>
+                            </div>
+                        </div>
                     ))}
                 </div>
             </ScrollArea>
@@ -175,11 +181,11 @@ export default function CalendarPage() {
             </ScrollArea>
         );
       case "5days":
-        return <p className="text-muted-foreground p-4">5-day view coming soon.</p>;
+        return <p className="text-muted-foreground p-4 text-center">5-day view coming soon.</p>;
       case "week":
-        return <p className="text-muted-foreground p-4">Week view coming soon.</p>;
+        return <p className="text-muted-foreground p-4 text-center">Week view coming soon.</p>;
       case "month":
-        return <p className="text-muted-foreground p-4">Month view coming soon.</p>;
+        return <p className="text-muted-foreground p-4 text-center">Month view coming soon.</p>;
       default:
         return null;
     }
