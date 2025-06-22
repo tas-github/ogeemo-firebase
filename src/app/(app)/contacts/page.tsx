@@ -88,28 +88,23 @@ export default function ContactsPage() {
     defaultValues: { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", notes: "" },
   });
   
-  // Data loading effect
   useEffect(() => {
-    // This effect runs only on the client, after the initial render
+    setIsLoading(true);
     try {
       const storedFolders = localStorage.getItem('contactFolders');
       const storedContacts = localStorage.getItem('contacts');
       
-      // Use stored data if available, otherwise fall back to mock data
       setFolders(storedFolders ? JSON.parse(storedFolders) : mockFolders);
       setContacts(storedContacts ? JSON.parse(storedContacts) : mockContacts);
     } catch (error) {
       console.error("Failed to parse from localStorage, using mock data.", error);
-      // Fallback to mock data in case of parsing errors
       setFolders(mockFolders);
       setContacts(mockContacts);
     } finally {
-      // Set loading to false once data is loaded
       setIsLoading(false);
     }
   }, []);
 
-  // Data saving effects
   useEffect(() => {
     if (!isLoading) {
       try {
@@ -130,7 +125,6 @@ export default function ContactsPage() {
     }
   }, [contacts, isLoading]);
 
-  // Derived state
   const selectedFolder = useMemo(
     () => folders.find((f) => f.id === selectedFolderId),
     [folders, selectedFolderId]
@@ -146,7 +140,6 @@ export default function ContactsPage() {
     [contacts, selectedFolderId]
   );
   
-  // Selection handlers
   const allVisibleSelected = displayedContacts.length > 0 && selectedContactIds.length === displayedContacts.length;
   const someVisibleSelected = selectedContactIds.length > 0 && selectedContactIds.length < displayedContacts.length;
   
@@ -188,16 +181,13 @@ export default function ContactsPage() {
   
   function onSubmit(values: z.infer<typeof contactSchema>) {
     if (contactToEdit) {
-      // Update existing contact
       const updatedContacts = contacts.map(c =>
         c.id === contactToEdit.id ? { ...c, ...values } : c
       );
       setContacts(updatedContacts);
       toast({ title: "Contact Updated", description: `Details for ${values.name} have been updated.` });
     } else {
-      // Create new contact
       if (!selectedFolderId || selectedFolderId === 'all') {
-        // This check is now handled by the new dialog, but good to keep as a safeguard
         toast({ variant: "destructive", title: "Cannot Add Contact", description: "Please select a specific folder before adding a new contact." });
         return;
       };
@@ -227,7 +217,6 @@ export default function ContactsPage() {
     setSelectedContactIds([]);
   };
 
-  // CRUD handlers
   const handleCreateFolder = () => {
     if (newFolderName.trim()) {
       const newFolder: FolderData = {
@@ -340,7 +329,6 @@ export default function ContactsPage() {
               <ResizableHandle withHandle />
               <ResizablePanel defaultSize={75}>
                 <div className="flex flex-col h-full">
-                    
                         <>
                             <div className="flex items-center justify-between p-4 border-b h-20">
                                 {selectedContactIds.length > 0 ? (
@@ -380,11 +368,14 @@ export default function ContactsPage() {
                                             <TableHead>Name</TableHead>
                                             <TableHead>Email</TableHead>
                                             <TableHead>Phone</TableHead>
+                                            {selectedFolderId === 'all' && <TableHead>Folder</TableHead>}
                                             <TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {displayedContacts.map((contact) => (
+                                        {displayedContacts.map((contact) => {
+                                          const folderName = folders.find(f => f.id === contact.folderId)?.name || 'Unassigned';
+                                          return (
                                             <TableRow key={contact.id} onClick={() => openContactForm(contact)} className="cursor-pointer">
                                                 <TableCell onClick={(e) => e.stopPropagation()}> 
                                                     <Checkbox 
@@ -396,6 +387,7 @@ export default function ContactsPage() {
                                                 <TableCell className="font-medium">{contact.name}</TableCell>
                                                 <TableCell>{contact.email}</TableCell>
                                                 <TableCell>{contact.cellPhone || contact.businessPhone || contact.homePhone || contact.faxNumber}</TableCell>
+                                                {selectedFolderId === 'all' && <TableCell>{folderName}</TableCell>}
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -406,12 +398,12 @@ export default function ContactsPage() {
                                                     </DropdownMenu>
                                                 </TableCell>
                                             </TableRow>
-                                        ))}
+                                          );
+                                        })}
                                     </TableBody>
                                 </Table>
                             </div>
                         </>
-                    
                 </div>
               </ResizablePanel>
             </ResizablePanelGroup>
