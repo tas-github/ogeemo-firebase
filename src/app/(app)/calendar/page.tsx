@@ -312,15 +312,16 @@ function HourDetailView({
                     <ScrollArea className="h-full flex-1">
                         <div className="flex">
                             <div className="w-24 shrink-0 border-r bg-muted/50">
-                                {fiveMinuteIntervals.map(minute => (
-                                    <div key={minute} className="relative text-right" style={{ height: `${5 * PIXELS_PER_MINUTE_DETAIL}px` }}>
-                                        {minute > 0 && (
+                                {fiveMinuteIntervals.map(minute => {
+                                    const timeForSlot = addMinutes(hourStart, minute);
+                                    return (
+                                        <div key={minute} className="relative text-right" style={{ height: `${5 * PIXELS_PER_MINUTE_DETAIL}px` }}>
                                             <span className="absolute -top-2.5 right-2 text-xs text-muted-foreground pr-1">
-                                                {minute} minutes
+                                                {format(timeForSlot, 'p')}
                                             </span>
-                                        )}
-                                    </div>
-                                ))}
+                                        </div>
+                                    )
+                                })}
                             </div>
                             <div ref={dropRef} className="relative flex-1" style={{ height: `${CONTAINER_HEIGHT}px` }}>
                                 {fiveMinuteIntervals.map(minute => (
