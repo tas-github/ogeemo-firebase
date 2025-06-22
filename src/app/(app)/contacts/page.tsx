@@ -44,6 +44,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -78,6 +79,7 @@ export default function ContactsPage() {
   
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [contactToEdit, setContactToEdit] = useState<Contact | null>(null);
+  const [isSelectFolderDialogOpen, setIsSelectFolderDialogOpen] = useState(false);
   
   const { toast } = useToast();
   
@@ -88,18 +90,22 @@ export default function ContactsPage() {
   
   // Data loading effect
   useEffect(() => {
+    // This effect runs only on the client, after the initial render
     try {
       const storedFolders = localStorage.getItem('contactFolders');
       const storedContacts = localStorage.getItem('contacts');
-
+      
+      // Use stored data if available, otherwise fall back to mock data
       setFolders(storedFolders ? JSON.parse(storedFolders) : mockFolders);
       setContacts(storedContacts ? JSON.parse(storedContacts) : mockContacts);
     } catch (error) {
       console.error("Failed to parse from localStorage, using mock data.", error);
+      // Fallback to mock data in case of parsing errors
       setFolders(mockFolders);
       setContacts(mockContacts);
     } finally {
-        setIsLoading(false);
+      // Set loading to false once data is loaded
+      setIsLoading(false);
     }
   }, []);
 
@@ -165,6 +171,14 @@ export default function ContactsPage() {
     form.reset(contact || { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", notes: "" });
     setIsContactFormOpen(true);
   };
+  
+  const handleNewContactClick = () => {
+    if (selectedFolderId === 'all') {
+      setIsSelectFolderDialogOpen(true);
+    } else {
+      openContactForm(null);
+    }
+  };
 
   const closeContactForm = () => {
     setIsContactFormOpen(false);
@@ -183,6 +197,7 @@ export default function ContactsPage() {
     } else {
       // Create new contact
       if (!selectedFolderId || selectedFolderId === 'all') {
+        // This check is now handled by the new dialog, but good to keep as a safeguard
         toast({ variant: "destructive", title: "Cannot Add Contact", description: "Please select a specific folder before adding a new contact." });
         return;
       };
@@ -325,7 +340,7 @@ export default function ContactsPage() {
               <ResizableHandle withHandle />
               <ResizablePanel defaultSize={75}>
                 <div className="flex flex-col h-full">
-                    {selectedFolderId ? (
+                    
                         <>
                             <div className="flex items-center justify-between p-4 border-b h-20">
                                 {selectedContactIds.length > 0 ? (
@@ -345,7 +360,7 @@ export default function ContactsPage() {
                                                 {displayedContacts.length} contact(s)
                                             </p>
                                         </div>
-                                        <Button disabled={selectedFolderId === 'all'} onClick={() => openContactForm(null)}>
+                                        <Button onClick={handleNewContactClick}>
                                             <Plus className="mr-2 h-4 w-4" /> New Contact
                                         </Button>
                                     </>
@@ -396,17 +411,37 @@ export default function ContactsPage() {
                                 </Table>
                             </div>
                         </>
-                    ) : (
-                        <div className="flex h-full items-center justify-center">
-                            <p className="text-muted-foreground">Select or create a folder to get started.</p>
-                        </div>
-                    )}
+                    
                 </div>
               </ResizablePanel>
             </ResizablePanelGroup>
           </CardContent>
         </Card>
       </div>
+      
+      <Dialog open={isSelectFolderDialogOpen} onOpenChange={setIsSelectFolderDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Folder Required</DialogTitle>
+            <DialogDescription>
+              To create a new contact, you must first select an existing folder or create a new one.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => {
+                setIsSelectFolderDialogOpen(false);
+            }}>
+              Select Folder
+            </Button>
+            <Button onClick={() => {
+                setIsSelectFolderDialogOpen(false);
+                setIsNewFolderDialogOpen(true);
+            }}>
+              Create New Folder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isContactFormOpen} onOpenChange={(open) => { if (!open) closeContactForm(); else setIsContactFormOpen(true); }}>
           <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
