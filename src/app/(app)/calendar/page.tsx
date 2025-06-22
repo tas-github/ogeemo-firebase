@@ -39,61 +39,10 @@ import {
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { type Event } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
+import { initialEvents } from "@/data/events";
 
 
 type CalendarView = "day" | "5days" | "week" | "month";
-
-const today = new Date();
-const mockEvents: Event[] = [
-  {
-    id: '1',
-    title: 'Daily Standup',
-    description: 'Quick sync with the development team to discuss progress and blockers.',
-    start: setHours(today, 9),
-    end: setHours(today, 9, 15),
-    attendees: ['You', 'John Doe', 'Jane Smith'],
-  },
-    {
-    id: '2',
-    title: 'Design Review',
-    description: 'Review the new landing page mockups.',
-    start: setHours(today, 14),
-    end: setHours(today, 15),
-    attendees: ['You', 'Jane Smith', 'Design Team'],
-  },
-  {
-    id: '3',
-    title: 'Client Call',
-    description: 'Discuss Q3 goals with Acme Corp.',
-    start: setHours(addDays(today, 1), 11),
-    end: setHours(addDays(today, 1), 11, 45),
-    attendees: ['You', 'Frank White'],
-  },
-  {
-    id: '4',
-    title: 'Frontend Team Sync',
-    description: 'Discuss component library progress.',
-    start: setHours(addDays(today, 2), 10),
-    end: setHours(addDays(today, 2), 11),
-    attendees: ['You', 'William Kim', 'Sofia Davis'],
-  },
-  {
-    id: '5',
-    title: '1:1 with Manager',
-    description: 'Performance review.',
-    start: setHours(addDays(today, 3), 16),
-    end: setHours(addDays(today, 3), 16, 30),
-    attendees: ['You', 'Alice Johnson'],
-  },
-  {
-    id: '6',
-    title: 'Finalize Marketing Plan',
-    description: 'Finalize the marketing plan for the upcoming launch.',
-    start: setHours(addDays(today, 4), 13),
-    end: setHours(addDays(today, 4), 15),
-    attendees: ['You', 'Charlie Brown'],
-  },
-];
 
 const DraggableTimelineEvent = ({ event, style, className, onClick }: { event: Event; style: React.CSSProperties; className: string, onClick: () => void }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
@@ -261,7 +210,7 @@ const MonthView = ({ date, events, onEventClick }: { date: Date; events: Event[]
 function CalendarPageContent() {
   const [date, setDate] = React.useState<Date | undefined>(new Date())
   const [view, setView] = React.useState<CalendarView>("day");
-  const [events, setEvents] = React.useState<Event[]>(mockEvents);
+  const [events, setEvents] = React.useState<Event[]>([]);
   
   const [viewStartHour, setViewStartHour] = React.useState(9);
   const [viewEndHour, setViewEndHour] = React.useState(17);
@@ -275,6 +224,36 @@ function CalendarPageContent() {
   const [eventToEdit, setEventToEdit] = React.useState<Event | null>(null);
 
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    try {
+      const storedEvents = localStorage.getItem('calendarEvents');
+      if (storedEvents) {
+        const parsedEvents = JSON.parse(storedEvents).map((e: any) => ({
+          ...e,
+          start: new Date(e.start),
+          end: new Date(e.end),
+        }));
+        setEvents(parsedEvents);
+      } else {
+        setEvents(initialEvents);
+        localStorage.setItem('calendarEvents', JSON.stringify(initialEvents));
+      }
+    } catch (error) {
+      console.error("Could not read calendar events from localStorage", error);
+      setEvents(initialEvents);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (events.length > 0) {
+      try {
+        localStorage.setItem('calendarEvents', JSON.stringify(events));
+      } catch (error) {
+        console.error("Could not write calendar events to localStorage", error);
+      }
+    }
+  }, [events]);
 
   React.useEffect(() => {
     try {
@@ -295,18 +274,10 @@ function CalendarPageContent() {
 
   const handleTaskCreate = (newEvent: Event) => {
     setEvents(prevEvents => [...prevEvents, newEvent]);
-    toast({
-        title: "Task Created",
-        description: `"${newEvent.title}" has been successfully created.`,
-    });
   };
 
   const handleTaskUpdate = (updatedEvent: Event) => {
     setEvents(prevEvents => prevEvents.map(e => e.id === updatedEvent.id ? updatedEvent : e));
-    toast({
-        title: "Task Updated",
-        description: `"${updatedEvent.title}" has been successfully updated.`,
-    });
   };
 
   const handleEventClick = (event: Event) => {

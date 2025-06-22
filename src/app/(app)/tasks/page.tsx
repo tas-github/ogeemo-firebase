@@ -1,37 +1,14 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { type Event } from "@/types/calendar";
-
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-}
-
-const initialTasks: { todo: Task[], inProgress: Task[], done: Task[] } = {
-  todo: [
-    { id: "task-1", title: "Design new dashboard layout", description: "Create mockups in Figma for the v2 dashboard." },
-    { id: "task-2", title: "API for user authentication", description: "Develop endpoints for registration and login." },
-    { id: "task-3", title: "Write API documentation", description: "Use Swagger/OpenAPI for clear documentation." },
-    { id: "task-4", title: "Plan Q3 marketing campaign", description: "Outline goals, target audience, and channels." },
-  ],
-  inProgress: [
-    { id: "task-5", title: "Implement sidebar navigation", description: "Using ShadCN UI and Next.js App Router." },
-    { id: "task-6", title: "Fix login bug #123", description: "Users reporting issues with Google OAuth." },
-  ],
-  done: [
-    { id: "task-7", title: "Setup Next.js project", description: "Configured Tailwind, TypeScript, and ESLint." },
-    { id: "task-8", title: "Initial deployment to Firebase", description: "Live environment is up and running." },
-    { id: "task-9", title: "Create foundational UI components", description: "Buttons, Cards, and Inputs are complete." },
-  ],
-};
+import { initialEvents } from "@/data/events";
 
 function TaskItem({
   title,
@@ -52,18 +29,46 @@ function TaskItem({
 
 export default function TasksPage() {
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
-  const [tasks, setTasks] = useState(initialTasks);
+  const [allTasks, setAllTasks] = useState<Event[]>([]);
+
+  useEffect(() => {
+    try {
+      const storedEvents = localStorage.getItem('calendarEvents');
+      if (storedEvents) {
+        const parsedEvents = JSON.parse(storedEvents).map((e: any) => ({
+          ...e,
+          start: new Date(e.start),
+          end: new Date(e.end),
+        }));
+        setAllTasks(parsedEvents);
+      } else {
+        setAllTasks(initialEvents);
+        localStorage.setItem('calendarEvents', JSON.stringify(initialEvents));
+      }
+    } catch (error) {
+      console.error("Could not read calendar events from localStorage", error);
+      setAllTasks(initialEvents);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (allTasks.length > 0) {
+      try {
+        localStorage.setItem('calendarEvents', JSON.stringify(allTasks));
+      } catch (error) {
+        console.error("Could not write calendar events to localStorage", error);
+      }
+    }
+  }, [allTasks]);
+  
+  const tasksByStatus = {
+    todo: allTasks.filter(task => task.status === 'todo'),
+    inProgress: allTasks.filter(task => task.status === 'inProgress'),
+    done: allTasks.filter(task => task.status === 'done'),
+  };
 
   const handleCreateTask = (newEvent: Event) => {
-    const newTask: Task = {
-      id: newEvent.id,
-      title: newEvent.title,
-      description: newEvent.description,
-    };
-    setTasks(prev => ({
-      ...prev,
-      todo: [newTask, ...prev.todo],
-    }));
+    setAllTasks(prev => [newEvent, ...prev]);
   };
 
   return (
@@ -92,7 +97,7 @@ export default function TasksPage() {
             <CardTitle>To Do</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 space-y-4 overflow-y-auto custom-scrollbar p-4 pt-0">
-            {tasks.todo.map(task => (
+            {tasksByStatus.todo.map(task => (
               <TaskItem
                 key={task.id}
                 title={task.title}
@@ -108,7 +113,7 @@ export default function TasksPage() {
             <CardTitle>In Progress</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 space-y-4 overflow-y-auto custom-scrollbar p-4 pt-0">
-            {tasks.inProgress.map(task => (
+            {tasksByStatus.inProgress.map(task => (
                <TaskItem
                 key={task.id}
                 title={task.title}
@@ -124,7 +129,7 @@ export default function TasksPage() {
             <CardTitle>Done</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 space-y-4 overflow-y-auto custom-scrollbar p-4 pt-0">
-            {tasks.done.map(task => (
+            {tasksByStatus.done.map(task => (
               <TaskItem
                 key={task.id}
                 title={task.title}
