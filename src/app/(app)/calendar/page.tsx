@@ -30,7 +30,7 @@ export default function CalendarPage() {
           Calendar
         </h1>
         <p className="text-muted-foreground">
-          Manage your schedule and appointments.
+          Manage your schedule, events and appointments.
         </p>
       </header>
       <div className="flex-1 min-h-0">
