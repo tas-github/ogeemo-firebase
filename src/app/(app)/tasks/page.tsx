@@ -7,8 +7,20 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
+import { NewProjectDialog } from "@/components/tasks/NewProjectDialog";
 import { type Event } from "@/types/calendar";
+import { type Project } from "@/data/projects";
 import { initialEvents } from "@/data/events";
+import { initialProjects } from "@/data/projects";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+
 
 function TaskItem({
   title,
@@ -29,7 +41,43 @@ function TaskItem({
 
 export default function TasksPage() {
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
+  const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
   const [allTasks, setAllTasks] = useState<Event[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    try {
+      const storedProjects = localStorage.getItem('projects');
+      if (storedProjects) {
+        setProjects(JSON.parse(storedProjects));
+      } else {
+        setProjects(initialProjects);
+        localStorage.setItem('projects', JSON.stringify(initialProjects));
+      }
+    } catch (error) {
+      console.error("Could not read projects from localStorage", error);
+      setProjects(initialProjects);
+    }
+  }, []);
+  
+  useEffect(() => {
+    if (projects.length > 0 && !selectedProjectId) {
+      setSelectedProjectId(projects[0].id);
+    }
+  }, [projects, selectedProjectId]);
+  
+  useEffect(() => {
+    if (projects.length > 0) {
+      try {
+        localStorage.setItem('projects', JSON.stringify(projects));
+      } catch (error) {
+        console.error("Could not write projects to localStorage", error);
+      }
+    }
+  }, [projects]);
+
 
   useEffect(() => {
     try {
@@ -61,37 +109,70 @@ export default function TasksPage() {
     }
   }, [allTasks]);
   
+  const tasksForSelectedProject = allTasks.filter(task => task.projectId === selectedProjectId);
+  
   const tasksByStatus = {
-    todo: allTasks.filter(task => task.status === 'todo'),
-    inProgress: allTasks.filter(task => task.status === 'inProgress'),
-    done: allTasks.filter(task => task.status === 'done'),
+    todo: tasksForSelectedProject.filter(task => task.status === 'todo'),
+    inProgress: tasksForSelectedProject.filter(task => task.status === 'inProgress'),
+    done: tasksForSelectedProject.filter(task => task.status === 'done'),
   };
 
   const handleCreateTask = (newEvent: Event) => {
     setAllTasks(prev => [newEvent, ...prev]);
   };
 
+  const handleCreateProject = (projectName: string) => {
+    const newProject: Project = {
+      id: `proj-${Date.now()}`,
+      name: projectName,
+    };
+    setProjects(prev => [...prev, newProject]);
+    setSelectedProjectId(newProject.id);
+    toast({
+      title: "Project Created",
+      description: `"${projectName}" has been created.`,
+    });
+  };
+  
+  const selectedProjectName = projects.find(p => p.id === selectedProjectId)?.name || "Project";
+
   return (
     <div className="p-4 sm:p-6 flex flex-col h-full">
-      <header className="flex items-center justify-between pb-4 border-b shrink-0">
+      <header className="flex items-center justify-between pb-4 border-b shrink-0 flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold font-headline text-primary">
-            Project Manager
-          </h1>
-          <p className="text-muted-foreground">
-            Oversee your projects from start to finish.
-          </p>
+          <div className="flex items-center gap-4">
+            <h1 className="text-3xl font-bold font-headline text-primary">
+              {selectedProjectName}
+            </h1>
+            <Select value={selectedProjectId ?? ''} onValueChange={setSelectedProjectId}>
+              <SelectTrigger className="w-[250px]">
+                <SelectValue placeholder="Select a project" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <p className="text-sm text-muted-foreground mt-2">
             All projects are multiple tasks. Tasks entered here get entered into your calendar automatically.
           </p>
         </div>
-        <Button onClick={() => setIsNewTaskOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Task
-        </Button>
+        <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setIsNewProjectOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Project
+            </Button>
+            <Button onClick={() => setIsNewTaskOpen(true)} disabled={!selectedProjectId}>
+                <Plus className="mr-2 h-4 w-4" />
+                New Task
+            </Button>
+        </div>
       </header>
       <main className="flex-1 grid md:grid-cols-3 gap-6 py-6 min-h-0">
-        {/* To Do Column */}
         <Card className="flex flex-col">
           <CardHeader className="shrink-0">
             <CardTitle>To Do</CardTitle>
@@ -107,7 +188,6 @@ export default function TasksPage() {
           </CardContent>
         </Card>
 
-        {/* In Progress Column */}
         <Card className="flex flex-col">
           <CardHeader className="shrink-0">
             <CardTitle>In Progress</CardTitle>
@@ -123,7 +203,6 @@ export default function TasksPage() {
           </CardContent>
         </Card>
 
-        {/* Done Column */}
         <Card className="flex flex-col">
           <CardHeader className="shrink-0">
             <CardTitle>Done</CardTitle>
@@ -139,7 +218,8 @@ export default function TasksPage() {
           </CardContent>
         </Card>
       </main>
-      <NewTaskDialog isOpen={isNewTaskOpen} onOpenChange={setIsNewTaskOpen} onTaskCreate={handleCreateTask} />
+      <NewTaskDialog isOpen={isNewTaskOpen} onOpenChange={setIsNewTaskOpen} onTaskCreate={handleCreateTask} projectId={selectedProjectId} />
+      <NewProjectDialog isOpen={isNewProjectOpen} onOpenChange={setIsNewProjectOpen} onProjectCreate={handleCreateProject} />
     </div>
   );
 }

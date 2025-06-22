@@ -1,3 +1,4 @@
+
 import { setHours, addDays, addHours } from "date-fns";
 import type { Event } from "@/types/calendar";
 
@@ -12,6 +13,7 @@ export const initialEvents: Event[] = [
     end: setHours(today, 9, 15),
     attendees: ['You', 'John Doe', 'Jane Smith'],
     status: 'todo',
+    projectId: 'proj-2',
   },
     {
     id: '2',
@@ -21,6 +23,7 @@ export const initialEvents: Event[] = [
     end: setHours(today, 15),
     attendees: ['You', 'Jane Smith', 'Design Team'],
     status: 'inProgress',
+    projectId: 'proj-2',
   },
   {
     id: '3',
@@ -30,6 +33,7 @@ export const initialEvents: Event[] = [
     end: setHours(addDays(today, 1), 11, 45),
     attendees: ['You', 'Frank White'],
     status: 'todo',
+    projectId: 'proj-1',
   },
   {
     id: '4',
@@ -39,6 +43,7 @@ export const initialEvents: Event[] = [
     end: setHours(addDays(today, 2), 11),
     attendees: ['You', 'William Kim', 'Sofia Davis'],
     status: 'inProgress',
+    projectId: 'proj-2',
   },
   {
     id: '5',
@@ -48,6 +53,7 @@ export const initialEvents: Event[] = [
     end: setHours(addDays(today, 3), 16, 30),
     attendees: ['You', 'Alice Johnson'],
     status: 'done',
+    projectId: 'proj-1',
   },
   {
     id: '6',
@@ -57,14 +63,15 @@ export const initialEvents: Event[] = [
     end: setHours(addDays(today, 4), 15),
     attendees: ['You', 'Charlie Brown'],
     status: 'todo',
+    projectId: 'proj-1',
   },
-  { id: "task-1", title: "Design new dashboard layout", description: "Create mockups in Figma for the v2 dashboard.", start: addDays(new Date(), 5), end: addHours(addDays(new Date(), 5), 1), attendees: [], status: 'todo' },
-  { id: "task-2", title: "API for user authentication", description: "Develop endpoints for registration and login.", start: addDays(new Date(), 6), end: addHours(addDays(new Date(), 6), 2), attendees: [], status: 'todo' },
-  { id: "task-3", title: "Write API documentation", description: "Use Swagger/OpenAPI for clear documentation.", start: addDays(new Date(), 7), end: addHours(addDays(new Date(), 7), 3), attendees: [], status: 'todo' },
-  { id: "task-4", title: "Plan Q3 marketing campaign", description: "Outline goals, target audience, and channels.", start: addDays(new Date(), 8), end: addHours(addDays(new Date(), 8), 1), attendees: [], status: 'todo' },
-  { id: "task-5", title: "Implement sidebar navigation", description: "Using ShadCN UI and Next.js App Router.", start: addDays(new Date(), 9), end: addHours(addDays(new Date(), 9), 2), attendees: [], status: 'inProgress' },
-  { id: "task-6", title: "Fix login bug #123", description: "Users reporting issues with Google OAuth.", start: addDays(new Date(), 10), end: addHours(addDays(new Date(), 10), 3), attendees: [], status: 'inProgress' },
-  { id: "task-7", title: "Setup Next.js project", description: "Configured Tailwind, TypeScript, and ESLint.", start: addDays(new Date(), -1), end: addHours(addDays(new Date(), -1), 1), attendees: [], status: 'done' },
-  { id: "task-8", title: "Initial deployment to Firebase", description: "Live environment is up and running.", start: addDays(new Date(), -2), end: addHours(addDays(new Date(), -2), 2), attendees: [], status: 'done' },
-  { id: "task-9", title: "Create foundational UI components", description: "Buttons, Cards, and Inputs are complete.", start: addDays(new Date(), -3), end: addHours(addDays(new Date(), -3), 3), attendees: [], status: 'done' },
+  { id: "task-1", title: "Design new dashboard layout", description: "Create mockups in Figma for the v2 dashboard.", start: addDays(new Date(), 5), end: addHours(addDays(new Date(), 5), 1), attendees: [], status: 'todo', projectId: 'proj-2' },
+  { id: "task-2", title: "API for user authentication", description: "Develop endpoints for registration and login.", start: addDays(new Date(), 6), end: addHours(addDays(new Date(), 6), 2), attendees: [], status: 'todo', projectId: 'proj-2' },
+  { id: "task-3", title: "Write API documentation", description: "Use Swagger/OpenAPI for clear documentation.", start: addDays(new Date(), 7), end: addHours(addDays(new Date(), 7), 3), attendees: [], status: 'todo', projectId: 'proj-2' },
+  { id: "task-4", title: "Plan Q3 marketing campaign", description: "Outline goals, target audience, and channels.", start: addDays(new Date(), 8), end: addHours(addDays(new Date(), 8), 1), attendees: [], status: 'todo', projectId: 'proj-1' },
+  { id: "task-5", title: "Implement sidebar navigation", description: "Using ShadCN UI and Next.js App Router.", start: addDays(new Date(), 9), end: addHours(addDays(new Date(), 9), 2), attendees: [], status: 'inProgress', projectId: 'proj-2' },
+  { id: "task-6", title: "Fix login bug #123", description: "Users reporting issues with Google OAuth.", start: addDays(new Date(), 10), end: addHours(addDays(new Date(), 10), 3), attendees: [], status: 'inProgress', projectId: 'proj-2' },
+  { id: "task-7", title: "Setup Next.js project", description: "Configured Tailwind, TypeScript, and ESLint.", start: addDays(new Date(), -1), end: addHours(addDays(new Date(), -1), 1), attendees: [], status: 'done', projectId: 'proj-2' },
+  { id: "task-8", title: "Initial deployment to Firebase", description: "Live environment is up and running.", start: addDays(new Date(), -2), end: addHours(addDays(new Date(), -2), 2), attendees: [], status: 'done', projectId: 'proj-2' },
+  { id: "task-9", title: "Create foundational UI components", description: "Buttons, Cards, and Inputs are complete.", start: addDays(new Date(), -3), end: addHours(addDays(new Date(), -3), 3), attendees: [], status: 'done', projectId: 'proj-2' },
 ];
