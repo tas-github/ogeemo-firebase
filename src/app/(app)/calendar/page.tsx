@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { format, addDays, setHours, isSameDay } from "date-fns"
+import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek } from "date-fns"
 import { Users, Settings } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -117,6 +117,80 @@ export default function CalendarPage() {
     }));
   }, []);
 
+  const PIXELS_PER_MINUTE = 2;
+  const hours = Array.from({ length: viewEndHour - viewStartHour + 1 }, (_, i) => i + viewStartHour);
+  const CONTAINER_HEIGHT = hours.length * 60 * PIXELS_PER_MINUTE;
+
+  const renderMultiDayView = (numDays: 5 | 7) => {
+    if (!date) return null;
+
+    const weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 1; // Monday
+    const startDate = numDays === 7 ? startOfWeek(date, { weekStartsOn }) : date;
+    const dayRange = eachDayOfInterval({ start: startDate, end: addDays(startDate, numDays - 1) });
+
+    const eventsInRange = events.filter(event => {
+      const eventDate = event.start;
+      return eventDate >= dayRange[0] && eventDate < addDays(dayRange[dayRange.length - 1], 1);
+    });
+
+    return (
+      <ScrollArea className="h-full w-full">
+        <div className="flex" style={{ minWidth: 64 + 150 * numDays }}>
+          <div className="sticky left-0 z-20 w-16 shrink-0 bg-background">
+            <div className="h-16 border-b border-r">&nbsp;</div>
+            {hours.map(hour => (
+              <div key={`time-gutter-${hour}`} className="relative h-[120px] border-r text-right">
+                <span className="absolute -top-2 right-2 text-xs text-muted-foreground">
+                  {format(setHours(new Date(), hour), 'ha')}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid flex-1" style={{ gridTemplateColumns: `repeat(${numDays}, minmax(150px, 1fr))` }}>
+            {dayRange.map((day, dayIndex) => (
+              <div key={day.toISOString()} className={cn("border-r", dayIndex === dayRange.length - 1 && "border-r-0")}>
+                <div className="sticky top-0 z-10 h-16 border-b bg-background text-center">
+                  <p className="text-sm font-semibold">{format(day, 'EEE')}</p>
+                  <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
+                </div>
+                <div className="relative" style={{ height: `${CONTAINER_HEIGHT}px` }}>
+                  {hours.map(hour => (
+                    <div key={`line-${hour}-${day.toISOString()}`} className="h-[120px] border-b"></div>
+                  ))}
+                  {eventsInRange
+                    .filter(event => isSameDay(event.start, day))
+                    .map(event => {
+                      const startMinutes = (event.start.getHours() - viewStartHour) * 60 + event.start.getMinutes();
+                      const endMinutes = (event.end.getHours() - viewStartHour) * 60 + event.end.getMinutes();
+                      const durationMinutes = Math.max(15, endMinutes - startMinutes);
+                      const top = startMinutes * PIXELS_PER_MINUTE;
+                      const height = durationMinutes * PIXELS_PER_MINUTE;
+                      
+                      if (endMinutes < 0 || startMinutes > (hours.length * 60)) return null;
+
+                      return (
+                          <div
+                              key={event.id}
+                              className="absolute left-1 right-1 rounded-lg bg-primary/20 p-2 border border-primary/50 overflow-hidden text-primary"
+                              style={{ top: `${top}px`, height: `${height}px` }}
+                          >
+                              <p className="font-bold text-xs truncate">{event.title}</p>
+                              <p className="text-xs opacity-80 truncate">{format(event.start, 'p')} - {format(event.end, 'p')}</p>
+                          </div>
+                      );
+                    })
+                  }
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </ScrollArea>
+    );
+  };
+
+
   const renderViewContent = () => {
     switch (view) {
       case "day":
@@ -154,10 +228,6 @@ export default function CalendarPage() {
             </ScrollArea>
         );
       case "hour":
-        const hours = Array.from({ length: viewEndHour - viewStartHour + 1 }, (_, i) => i + viewStartHour);
-        const PIXELS_PER_MINUTE = 2;
-        const CONTAINER_HEIGHT = (viewEndHour - viewStartHour + 1) * 60 * PIXELS_PER_MINUTE;
-
         const visibleEvents = dailyEvents.filter(event => {
           const startHour = event.start.getHours();
           const endHour = event.end.getHours();
@@ -179,7 +249,7 @@ export default function CalendarPage() {
                         </div>
                     ))}
                     {/* Render half-hour lines */}
-                    {hours.map(hour => (
+                    {hours.slice(0, -1).map(hour => (
                          <div key={`half-${hour}`} className="absolute w-full" style={{ top: `${((hour - viewStartHour) * 60 + 30) * PIXELS_PER_MINUTE}px`}}>
                             <div className="flex items-center">
                                 <div className="w-16"></div>
@@ -200,7 +270,7 @@ export default function CalendarPage() {
                         const top = clampedStartMinutes * PIXELS_PER_MINUTE;
                         const height = durationMinutes * PIXELS_PER_MINUTE;
                         
-                        if (top > CONTAINER_HEIGHT || (top + height) < 0) return null;
+                        if (endMinutes < 0 || startMinutes > (hours.length * 60)) return null;
 
                         return (
                             <div
@@ -217,9 +287,9 @@ export default function CalendarPage() {
             </ScrollArea>
         );
       case "5days":
-        return <div className="flex justify-center items-start pt-10"><p className="text-muted-foreground">5-day view coming soon.</p></div>;
+        return renderMultiDayView(5);
       case "week":
-        return <div className="flex justify-center items-start pt-10"><p className="text-muted-foreground">Week view coming soon.</p></div>;
+        return renderMultiDayView(7);
       case "month":
         return <div className="flex justify-center items-start pt-10"><p className="text-muted-foreground">Month view coming soon.</p></div>;
       default:
