@@ -7,6 +7,31 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
+import { type Event } from "@/types/calendar";
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+}
+
+const initialTasks: { todo: Task[], inProgress: Task[], done: Task[] } = {
+  todo: [
+    { id: "task-1", title: "Design new dashboard layout", description: "Create mockups in Figma for the v2 dashboard." },
+    { id: "task-2", title: "API for user authentication", description: "Develop endpoints for registration and login." },
+    { id: "task-3", title: "Write API documentation", description: "Use Swagger/OpenAPI for clear documentation." },
+    { id: "task-4", title: "Plan Q3 marketing campaign", description: "Outline goals, target audience, and channels." },
+  ],
+  inProgress: [
+    { id: "task-5", title: "Implement sidebar navigation", description: "Using ShadCN UI and Next.js App Router." },
+    { id: "task-6", title: "Fix login bug #123", description: "Users reporting issues with Google OAuth." },
+  ],
+  done: [
+    { id: "task-7", title: "Setup Next.js project", description: "Configured Tailwind, TypeScript, and ESLint." },
+    { id: "task-8", title: "Initial deployment to Firebase", description: "Live environment is up and running." },
+    { id: "task-9", title: "Create foundational UI components", description: "Buttons, Cards, and Inputs are complete." },
+  ],
+};
 
 function TaskItem({
   title,
@@ -27,6 +52,19 @@ function TaskItem({
 
 export default function TasksPage() {
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
+  const [tasks, setTasks] = useState(initialTasks);
+
+  const handleCreateTask = (newEvent: Event) => {
+    const newTask: Task = {
+      id: newEvent.id,
+      title: newEvent.title,
+      description: newEvent.description,
+    };
+    setTasks(prev => ({
+      ...prev,
+      todo: [newTask, ...prev.todo],
+    }));
+  };
 
   return (
     <div className="p-4 sm:p-6 flex flex-col h-full">
@@ -51,22 +89,13 @@ export default function TasksPage() {
             <CardTitle>To Do</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 space-y-4 overflow-y-auto custom-scrollbar p-4 pt-0">
-            <TaskItem
-              title="Design new dashboard layout"
-              description="Create mockups in Figma for the v2 dashboard."
-            />
-            <TaskItem
-              title="API for user authentication"
-              description="Develop endpoints for registration and login."
-            />
-            <TaskItem
-              title="Write API documentation"
-              description="Use Swagger/OpenAPI for clear documentation."
-            />
-            <TaskItem
-              title="Plan Q3 marketing campaign"
-              description="Outline goals, target audience, and channels."
-            />
+            {tasks.todo.map(task => (
+              <TaskItem
+                key={task.id}
+                title={task.title}
+                description={task.description}
+              />
+            ))}
           </CardContent>
         </Card>
 
@@ -76,14 +105,13 @@ export default function TasksPage() {
             <CardTitle>In Progress</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 space-y-4 overflow-y-auto custom-scrollbar p-4 pt-0">
-            <TaskItem
-              title="Implement sidebar navigation"
-              description="Using ShadCN UI and Next.js App Router."
-            />
-            <TaskItem
-              title="Fix login bug #123"
-              description="Users reporting issues with Google OAuth."
-            />
+            {tasks.inProgress.map(task => (
+               <TaskItem
+                key={task.id}
+                title={task.title}
+                description={task.description}
+              />
+            ))}
           </CardContent>
         </Card>
 
@@ -93,22 +121,17 @@ export default function TasksPage() {
             <CardTitle>Done</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 space-y-4 overflow-y-auto custom-scrollbar p-4 pt-0">
-            <TaskItem
-              title="Setup Next.js project"
-              description="Configured Tailwind, TypeScript, and ESLint."
-            />
-            <TaskItem
-              title="Initial deployment to Firebase"
-              description="Live environment is up and running."
-            />
-            <TaskItem
-              title="Create foundational UI components"
-              description="Buttons, Cards, and Inputs are complete."
-            />
+            {tasks.done.map(task => (
+              <TaskItem
+                key={task.id}
+                title={task.title}
+                description={task.description}
+              />
+            ))}
           </CardContent>
         </Card>
       </main>
-      <NewTaskDialog isOpen={isNewTaskOpen} onOpenChange={setIsNewTaskOpen} />
+      <NewTaskDialog isOpen={isNewTaskOpen} onOpenChange={setIsNewTaskOpen} onTaskCreate={handleCreateTask} />
     </div>
   );
 }

@@ -40,7 +40,7 @@ interface NewTaskDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   defaultStartDate?: Date;
-  onTaskCreate: (newEvent: Event) => void;
+  onTaskCreate?: (newEvent: Event) => void;
 }
 
 const hourOptions = Array.from({ length: 24 }, (_, i) => {
@@ -111,32 +111,49 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, onTaskCr
   }, []);
 
   const handleCreateTask = () => {
-    if (!title || !startDate || !startHour || !startMinute || !dueDate || !dueHour || !dueMinute || !assigneeId) {
+    if (!title) {
         toast({
             variant: "destructive",
             title: "Missing Information",
-            description: "Please fill out all required fields to create a task.",
+            description: "A task title is required to create a task.",
         });
         return;
     }
 
-    const startDateTime = set(startDate, {
-        hours: parseInt(startHour, 10),
-        minutes: parseInt(startMinute, 10),
-    });
+    const now = new Date();
+    
+    const finalStartDate = startDate || now;
+    const finalStartHour = startHour ? parseInt(startHour, 10) : now.getHours();
+    const finalStartMinute = startMinute ? parseInt(startMinute, 10) : Math.floor(now.getMinutes() / 5) * 5;
 
-    const endDateTime = set(dueDate, {
-        hours: parseInt(dueHour, 10),
-        minutes: parseInt(dueMinute, 10),
+    const startDateTime = set(finalStartDate, {
+        hours: finalStartHour,
+        minutes: finalStartMinute,
+        seconds: 0,
+        milliseconds: 0,
     });
     
-    if (endDateTime <= startDateTime) {
-      toast({
-          variant: "destructive",
-          title: "Invalid Date",
-          description: "The due date and time must be after the start date and time.",
-      });
-      return;
+    let endDateTime;
+
+    if (dueDate && dueHour && dueMinute) {
+        endDateTime = set(dueDate, {
+            hours: parseInt(dueHour, 10),
+            minutes: parseInt(dueMinute, 10),
+            seconds: 0,
+            milliseconds: 0,
+        });
+        
+        if (endDateTime <= startDateTime) {
+          toast({
+              variant: "destructive",
+              title: "Invalid Date",
+              description: "The due date and time must be after the start date and time.",
+          });
+          return;
+        }
+    } else {
+        // Default end time to 30 minutes after start time
+        endDateTime = new Date(startDateTime.getTime() + 30 * 60 * 1000);
     }
     
     const assignee = contacts.find(c => c.id === assigneeId);
@@ -150,10 +167,10 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, onTaskCr
         attendees: assignee ? ['You', assignee.name] : ['You'],
     };
 
-    onTaskCreate(newEvent);
+    onTaskCreate?.(newEvent);
     toast({
         title: "Task Created",
-        description: `"${title}" has been added to your calendar.`,
+        description: `"${title}" has been successfully created.`,
     });
     onOpenChange(false);
   };
