@@ -45,12 +45,10 @@ const hourOptions = Array.from({ length: 24 }, (_, i) => ({
     label: format(setHours(new Date(), i), 'ha'),
 }));
 
-const minuteOptions = [
-    { value: 0, label: "00" },
-    { value: 15, label: "15" },
-    { value: 30, label: "30" },
-    { value: 45, label: "45" },
-];
+const minuteOptions = Array.from({ length: 12 }, (_, i) => ({
+    value: i * 5,
+    label: String(i * 5).padStart(2, '0'),
+}));
 
 export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTaskDialogProps) {
   const [startDate, setStartDate] = useState<Date | undefined>();
@@ -69,7 +67,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTas
       setStartDate(defaultStartDate);
       if (defaultStartDate) {
         setStartHour(defaultStartDate.getHours());
-        setStartMinute(Math.round(defaultStartDate.getMinutes() / 15) * 15);
+        setStartMinute(Math.round(defaultStartDate.getMinutes() / 5) * 5);
       } else {
         setStartHour(undefined);
         setStartMinute(undefined);
