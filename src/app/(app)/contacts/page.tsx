@@ -87,6 +87,7 @@ export default function ContactsPage() {
   const [contactToEdit, setContactToEdit] = useState<Contact | null>(null);
   const [isSelectFolderDialogOpen, setIsSelectFolderDialogOpen] = useState(false);
   const [notesBeforeSpeech, setNotesBeforeSpeech] = useState('');
+  const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -387,9 +388,12 @@ export default function ContactsPage() {
                                             {displayedContacts.length} contact(s)
                                         </p>
                                     </div>
-                                    <Button onClick={handleNewContactClick}>
-                                        <Plus className="mr-2 h-4 w-4" /> New Contact
-                                    </Button>
+                                    <div className="flex items-center gap-2">
+                                        <Button variant="outline" onClick={() => setIsTestDialogOpen(true)}>Test Box</Button>
+                                        <Button onClick={handleNewContactClick}>
+                                            <Plus className="mr-2 h-4 w-4" /> New Contact
+                                        </Button>
+                                    </div>
                                 </>
                             )}
                         </div>
@@ -473,6 +477,23 @@ export default function ContactsPage() {
             }}>
               Create New Folder
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isTestDialogOpen} onOpenChange={setIsTestDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
+          <DialogHeader className="p-6 pb-4 border-b">
+            <DialogTitle>Test Dialog Box</DialogTitle>
+            <DialogDescription>
+              This is a test to troubleshoot dialog sizing.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-6 flex-1 bg-muted/50 flex items-center justify-center">
+            <p className="text-2xl text-muted-foreground">Content Area</p>
+          </div>
+          <DialogFooter className="p-6 pt-4 border-t">
+            <Button onClick={() => setIsTestDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -644,7 +665,3 @@ export default function ContactsPage() {
     </div>
   );
 }
-
-    
-
-    
