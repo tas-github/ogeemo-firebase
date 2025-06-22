@@ -52,7 +52,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { type Contact, type FolderData, mockContacts, mockFolders } from '@/data/contacts';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -64,6 +65,7 @@ const contactSchema = z.object({
   cellPhone: z.string().optional(),
   homePhone: z.string().optional(),
   faxNumber: z.string().optional(),
+  primaryPhoneType: z.enum(['businessPhone', 'cellPhone', 'homePhone']).optional(),
   notes: z.string().optional(),
 });
 
@@ -85,22 +87,25 @@ export default function ContactsPage() {
   
   const form = useForm<z.infer<typeof contactSchema>>({
     resolver: zodResolver(contactSchema),
-    defaultValues: { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", notes: "" },
+    defaultValues: { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: undefined, notes: "" },
   });
   
   useEffect(() => {
-    setIsLoading(true);
+    // This effect runs only once on the client after initial render
+    let loadedFolders = mockFolders;
+    let loadedContacts = mockContacts;
     try {
       const storedFolders = localStorage.getItem('contactFolders');
       const storedContacts = localStorage.getItem('contacts');
       
-      setFolders(storedFolders ? JSON.parse(storedFolders) : mockFolders);
-      setContacts(storedContacts ? JSON.parse(storedContacts) : mockContacts);
+      if (storedFolders) loadedFolders = JSON.parse(storedFolders);
+      if (storedContacts) loadedContacts = JSON.parse(storedContacts);
     } catch (error) {
       console.error("Failed to parse from localStorage, using mock data.", error);
-      setFolders(mockFolders);
-      setContacts(mockContacts);
+      // Data is already set to mock data
     } finally {
+      setFolders(loadedFolders);
+      setContacts(loadedContacts);
       setIsLoading(false);
     }
   }, []);
@@ -161,7 +166,7 @@ export default function ContactsPage() {
 
   const openContactForm = (contact: Contact | null) => {
     setContactToEdit(contact);
-    form.reset(contact || { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", notes: "" });
+    form.reset(contact || { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: undefined, notes: "" });
     setIsContactFormOpen(true);
   };
   
@@ -375,6 +380,11 @@ export default function ContactsPage() {
                                     <TableBody>
                                         {displayedContacts.map((contact) => {
                                           const folderName = folders.find(f => f.id === contact.folderId)?.name || 'Unassigned';
+                                          const primaryPhoneNumber =
+                                            contact.primaryPhoneType && contact[contact.primaryPhoneType]
+                                                ? contact[contact.primaryPhoneType]
+                                                : contact.cellPhone || contact.businessPhone || contact.homePhone || contact.faxNumber;
+
                                           return (
                                             <TableRow key={contact.id} onClick={() => openContactForm(contact)} className="cursor-pointer">
                                                 <TableCell onClick={(e) => e.stopPropagation()}> 
@@ -386,7 +396,7 @@ export default function ContactsPage() {
                                                 </TableCell>
                                                 <TableCell className="font-medium">{contact.name}</TableCell>
                                                 <TableCell>{contact.email}</TableCell>
-                                                <TableCell>{contact.cellPhone || contact.businessPhone || contact.homePhone || contact.faxNumber}</TableCell>
+                                                <TableCell>{primaryPhoneNumber}</TableCell>
                                                 {selectedFolderId === 'all' && <TableCell>{folderName}</TableCell>}
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
                                                     <DropdownMenu>
@@ -504,6 +514,53 @@ export default function ContactsPage() {
                             )} />
                             <FormField control={form.control} name="faxNumber" render={({ field }) => ( <FormItem> <FormLabel>Fax #</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           </div>
+
+                           <FormField
+                            control={form.control}
+                            name="primaryPhoneType"
+                            render={({ field }) => (
+                                <FormItem className="space-y-3">
+                                <FormLabel>Primary Phone Number</FormLabel>
+                                <FormDescription>
+                                    Select the best number to use for this contact.
+                                </FormDescription>
+                                <FormControl>
+                                    <RadioGroup
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                    className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                                    >
+                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-4 has-[:disabled]:opacity-50">
+                                        <FormControl>
+                                        <RadioGroupItem value="businessPhone" disabled={!form.getValues().businessPhone} />
+                                        </FormControl>
+                                        <FormLabel className="font-normal w-full cursor-pointer">
+                                        Business
+                                        </FormLabel>
+                                    </FormItem>
+                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-4 has-[:disabled]:opacity-50">
+                                        <FormControl>
+                                        <RadioGroupItem value="cellPhone" disabled={!form.getValues().cellPhone} />
+                                        </FormControl>
+                                        <FormLabel className="font-normal w-full cursor-pointer">
+                                        Cell
+                                        </FormLabel>
+                                    </FormItem>
+                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-4 has-[:disabled]:opacity-50">
+                                        <FormControl>
+                                        <RadioGroupItem value="homePhone" disabled={!form.getValues().homePhone} />
+                                        </FormControl>
+                                        <FormLabel className="font-normal w-full cursor-pointer">
+                                        Home
+                                        </FormLabel>
+                                    </FormItem>
+                                    </RadioGroup>
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+
                            <FormField
                             control={form.control}
                             name="notes"
