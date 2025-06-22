@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
+import { format, setHours } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -40,29 +40,55 @@ interface NewTaskDialogProps {
   defaultStartDate?: Date;
 }
 
+const hourOptions = Array.from({ length: 24 }, (_, i) => ({
+    value: i,
+    label: format(setHours(new Date(), i), 'ha'),
+}));
+
+const minuteOptions = [
+    { value: 0, label: "00" },
+    { value: 15, label: "15" },
+    { value: 30, label: "30" },
+    { value: 45, label: "45" },
+];
+
 export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTaskDialogProps) {
-  const [startDate, setStartDate] = useState<Date | undefined>(defaultStartDate);
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [startHour, setStartHour] = useState<number | undefined>();
+  const [startMinute, setStartMinute] = useState<number | undefined>();
+  
   const [dueDate, setDueDate] = useState<Date | undefined>();
+  const [dueHour, setDueHour] = useState<number | undefined>();
+  const [dueMinute, setDueMinute] = useState<number | undefined>();
+
   const [contacts, setContacts] = useState<Contact[]>([]);
 
   useEffect(() => {
     // When the dialog opens or the default date changes, reset the state
     if (isOpen) {
       setStartDate(defaultStartDate);
-      setDueDate(undefined); // Reset due date to avoid confusion
+      if (defaultStartDate) {
+        setStartHour(defaultStartDate.getHours());
+        setStartMinute(Math.round(defaultStartDate.getMinutes() / 15) * 15);
+      } else {
+        setStartHour(undefined);
+        setStartMinute(undefined);
+      }
+
+      setDueDate(undefined);
+      setDueHour(undefined);
+      setDueMinute(undefined);
     }
   }, [isOpen, defaultStartDate]);
 
 
   useEffect(() => {
     // In a real app, you might fetch this data.
-    // For now, we'll just use the mock data.
     setContacts(mockContacts);
   }, []);
 
   const handleCreateTask = () => {
     // In a real app, you'd gather form data and create the task.
-    // For now, we just close the dialog.
     console.log("Task created (mock)");
     onOpenChange(false);
   };
@@ -136,62 +162,123 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTas
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label>Start Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !startDate && "text-muted-foreground"
-                      )}
+                <Label>Start Date & Time</Label>
+                <div className="flex items-center gap-2">
+                    <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                        variant={"outline"}
+                        className={cn(
+                            "flex-1 justify-start text-left font-normal",
+                            !startDate && "text-muted-foreground"
+                        )}
+                        >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {startDate ? (
+                            format(startDate, "PPP")
+                        ) : (
+                            <span>Pick a date</span>
+                        )}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                        <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={setStartDate}
+                        initialFocus
+                        />
+                    </PopoverContent>
+                    </Popover>
+                    <Select
+                        value={startHour !== undefined ? String(startHour) : ""}
+                        onValueChange={(v) => setStartHour(Number(v))}
+                        disabled={!startDate}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? (
-                        format(startDate, "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={setStartDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                        <SelectTrigger className="w-[110px]">
+                            <SelectValue placeholder="Hour" />
+                        </SelectTrigger>
+                        <SelectContent>
+                        {hourOptions.map((option) => (
+                            <SelectItem key={`start-hr-${option.value}`} value={String(option.value)}>{option.label}</SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                    <Select
+                        value={startMinute !== undefined ? String(startMinute) : ""}
+                        onValueChange={(v) => setStartMinute(Number(v))}
+                        disabled={!startDate}
+                    >
+                        <SelectTrigger className="w-[90px]">
+                            <SelectValue placeholder="Min" />
+                        </SelectTrigger>
+                        <SelectContent>
+                        {minuteOptions.map((option) => (
+                            <SelectItem key={`start-min-${option.value}`} value={String(option.value)}>{option.label}</SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Due Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !dueDate && "text-muted-foreground"
-                      )}
+                <Label>Due Date & Time</Label>
+                 <div className="flex items-center gap-2">
+                    <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                        variant={"outline"}
+                        className={cn(
+                            "flex-1 justify-start text-left font-normal",
+                            !dueDate && "text-muted-foreground"
+                        )}
+                        >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dueDate ? (
+                            format(dueDate, "PPP")
+                        ) : (
+                            <span>Pick a date</span>
+                        )}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                        <Calendar
+                        mode="single"
+                        selected={dueDate}
+                        onSelect={setDueDate}
+                        disabled={(date) => startDate ? date < startDate : false}
+                        initialFocus
+                        />
+                    </PopoverContent>
+                    </Popover>
+                    <Select
+                        value={dueHour !== undefined ? String(dueHour) : ""}
+                        onValueChange={(v) => setDueHour(Number(v))}
+                        disabled={!dueDate}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dueDate ? (
-                        format(dueDate, "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={dueDate}
-                      onSelect={setDueDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                        <SelectTrigger className="w-[110px]">
+                            <SelectValue placeholder="Hour" />
+                        </SelectTrigger>
+                        <SelectContent>
+                        {hourOptions.map((option) => (
+                            <SelectItem key={`due-hr-${option.value}`} value={String(option.value)}>{option.label}</SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                    <Select
+                        value={dueMinute !== undefined ? String(dueMinute) : ""}
+                        onValueChange={(v) => setDueMinute(Number(v))}
+                        disabled={!dueDate}
+                    >
+                        <SelectTrigger className="w-[90px]">
+                            <SelectValue placeholder="Min" />
+                        </SelectTrigger>
+                        <SelectContent>
+                        {minuteOptions.map((option) => (
+                            <SelectItem key={`due-min-${option.value}`} value={String(option.value)}>{option.label}</SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                </div>
               </div>
             </div>
             <div className="space-y-2">
@@ -221,5 +308,3 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTas
     </Dialog>
   );
 }
-
-    
