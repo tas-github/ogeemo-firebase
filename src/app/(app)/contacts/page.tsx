@@ -68,8 +68,8 @@ const contactSchema = z.object({
 
 
 export default function ContactsPage() {
-  const [folders, setFolders] = useState<FolderData[]>(mockFolders);
-  const [contacts, setContacts] = useState<Contact[]>(mockContacts);
+  const [folders, setFolders] = useState<FolderData[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFolderId, setSelectedFolderId] = useState<string>('all');
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
@@ -86,26 +86,24 @@ export default function ContactsPage() {
     defaultValues: { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", notes: "" },
   });
   
-  // Data loading and saving effects
+  // Data loading effect
   useEffect(() => {
     try {
       const storedFolders = localStorage.getItem('contactFolders');
-      if (storedFolders) {
-        setFolders(JSON.parse(storedFolders));
-      }
+      setFolders(storedFolders ? JSON.parse(storedFolders) : mockFolders);
       
       const storedContacts = localStorage.getItem('contacts');
-      if (storedContacts) {
-        setContacts(JSON.parse(storedContacts));
-      }
+      setContacts(storedContacts ? JSON.parse(storedContacts) : mockContacts);
     } catch (error) {
       console.error("Failed to parse from localStorage, using mock data.", error);
-      // State is already initialized with mock data, so we can just log the error.
+      setFolders(mockFolders);
+      setContacts(mockContacts);
     } finally {
         setIsLoading(false);
     }
   }, []);
 
+  // Data saving effects
   useEffect(() => {
     if (!isLoading) {
       try {
@@ -507,5 +505,3 @@ export default function ContactsPage() {
     </div>
   );
 }
-
-    
