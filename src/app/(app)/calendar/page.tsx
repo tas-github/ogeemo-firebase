@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set, addMinutes, startOfMinute } from "date-fns"
+import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set, addMinutes, startOfMinute, startOfMonth, endOfMonth, isToday, isSameMonth } from "date-fns"
 import { Users, Settings, Plus, Calendar as CalendarIcon } from "lucide-react"
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -38,7 +38,7 @@ import {
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 
 
-type CalendarView = "day" | "5days" | "week";
+type CalendarView = "day" | "5days" | "week" | "month";
 
 type Event = {
   id: string;
@@ -408,6 +408,63 @@ function HourDetailView({
     );
 }
 
+const MonthView = ({ date, events }: { date: Date; events: Event[] }) => {
+  const monthStart = startOfMonth(date);
+  const monthEnd = endOfMonth(date);
+  const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const days = eachDayOfInterval({ start: startDate, end: endDate });
+
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  return (
+    <div className="flex flex-col h-full">
+      <header className="grid grid-cols-7 flex-none text-center font-semibold text-sm text-muted-foreground border-t border-l border-r">
+        {weekDays.map(day => (
+          <div key={day} className="py-2 border-b border-r last:border-r-0">
+            {day}
+          </div>
+        ))}
+      </header>
+      <ScrollArea className="flex-1">
+        <div className="grid grid-cols-7 auto-rows-[minmax(120px,_1fr)] border-l">
+          {days.map((day) => {
+            const dayEvents = events.filter(event => isSameDay(event.start, day));
+            return (
+              <div
+                key={day.toString()}
+                className={cn(
+                  "border-b border-r p-2 flex flex-col",
+                  !isSameMonth(day, date) && "bg-muted/20",
+                )}
+              >
+                <p className={cn(
+                  "font-medium text-sm self-start",
+                  isToday(day) && "bg-primary text-primary-foreground rounded-full h-6 w-6 flex items-center justify-center",
+                  !isSameMonth(day, date) && "text-muted-foreground"
+                )}>
+                  {format(day, 'd')}
+                </p>
+                <div className="mt-1 space-y-1 overflow-hidden">
+                  {dayEvents.map(event => (
+                    <div
+                      key={event.id}
+                      className="text-xs p-1 rounded bg-primary/20 text-primary truncate"
+                      title={event.title}
+                    >
+                      {event.title}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+};
+
 function CalendarPageContent() {
   const [date, setDate] = React.useState<Date | undefined>(new Date())
   const [view, setView] = React.useState<CalendarView>("day");
@@ -425,6 +482,7 @@ function CalendarPageContent() {
     { id: "day", label: "Day" },
     { id: "5days", label: "5 Days" },
     { id: "week", label: "Week" },
+    { id: "month", label: "Month" },
   ];
 
   const timeOptions = React.useMemo(() => {
@@ -511,6 +569,8 @@ function CalendarPageContent() {
         const weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 1; // Monday
         const weekRange = eachDayOfInterval({ start: startOfWeek(date, { weekStartsOn }), end: endOfWeek(date, { weekStartsOn }) });
         return renderTimelineView(weekRange);
+      case "month":
+        return <MonthView date={date} events={events} />;
       default:
         return null;
     }
@@ -665,5 +725,7 @@ export default function CalendarPage() {
     </DndProvider>
   )
 }
+
+    
 
     
