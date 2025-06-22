@@ -90,9 +90,9 @@ export default function ContactsPage() {
   useEffect(() => {
     try {
       const storedFolders = localStorage.getItem('contactFolders');
-      setFolders(storedFolders ? JSON.parse(storedFolders) : mockFolders);
-      
       const storedContacts = localStorage.getItem('contacts');
+
+      setFolders(storedFolders ? JSON.parse(storedFolders) : mockFolders);
       setContacts(storedContacts ? JSON.parse(storedContacts) : mockContacts);
     } catch (error) {
       console.error("Failed to parse from localStorage, using mock data.", error);
@@ -182,7 +182,10 @@ export default function ContactsPage() {
       toast({ title: "Contact Updated", description: `Details for ${values.name} have been updated.` });
     } else {
       // Create new contact
-      if (!selectedFolderId || selectedFolderId === 'all') return;
+      if (!selectedFolderId || selectedFolderId === 'all') {
+        toast({ variant: "destructive", title: "Cannot Add Contact", description: "Please select a specific folder before adding a new contact." });
+        return;
+      };
       const newContact: Contact = {
         id: `c-${Date.now()}`,
         folderId: selectedFolderId,
@@ -342,7 +345,7 @@ export default function ContactsPage() {
                                                 {displayedContacts.length} contact(s)
                                             </p>
                                         </div>
-                                        <Button disabled={!selectedFolderId || selectedFolderId === 'all'} onClick={() => openContactForm(null)}>
+                                        <Button disabled={selectedFolderId === 'all'} onClick={() => openContactForm(null)}>
                                             <Plus className="mr-2 h-4 w-4" /> New Contact
                                         </Button>
                                     </>
