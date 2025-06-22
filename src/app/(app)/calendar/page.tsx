@@ -629,14 +629,6 @@ function CalendarPageContent() {
             </Dialog>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}>
-                <span className="sr-only">Previous period</span>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}>
-                <span className="sr-only">Next period</span>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
               <Button
                   variant="outline"
                   size="sm"
@@ -658,6 +650,14 @@ function CalendarPageContent() {
                   </Button>
                   ))}
               </div>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}>
+                <span className="sr-only">Previous period</span>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}>
+                <span className="sr-only">Next period</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
                 <Dialog>
                   <DialogTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8" title="Calendar Settings">
