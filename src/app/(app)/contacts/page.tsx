@@ -287,8 +287,8 @@ export default function ContactsPage() {
   }
 
   return (
-    <div className="space-y-4 flex flex-col h-full py-4 sm:py-6">
-      <header className="text-center">
+    <div className="flex flex-col h-full">
+      <header className="text-center py-4 sm:py-6 px-4 sm:px-6">
         <h1 className="text-3xl font-bold font-headline text-primary">
           Ogeemo Contact Manager
         </h1>
@@ -296,165 +296,161 @@ export default function ContactsPage() {
           Manage your contacts and client relationships
         </p>
       </header>
-      <div className="flex-1 min-h-0">
-        <Card className="h-full">
-          <CardContent className="p-0 h-full">
-            <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg">
-              <ResizablePanel defaultSize={25} minSize={20}>
-                <div className="flex h-full flex-col p-2">
-                    <div className="p-2">
-                        <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button className="w-full">
-                                    <Plus className="mr-2 h-4 w-4" /> New Folder
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-[425px]">
-                                <DialogHeader>
-                                    <DialogTitle>Create New Folder</DialogTitle>
-                                    <DialogDescription>
-                                        Enter a name for your new contact folder.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <div className="py-4">
-                                    <div className="grid grid-cols-4 items-center gap-4">
-                                        <Label htmlFor="folder-name" className="text-right">
-                                            Name
-                                        </Label>
-                                        <Input
-                                            id="folder-name"
-                                            value={newFolderName}
-                                            onChange={(e) => setNewFolderName(e.target.value)}
-                                            className="col-span-3"
-                                            placeholder="e.g., 'Family'"
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    e.preventDefault();
-                                                    handleCreateFolder();
-                                                }
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="p-6 pt-0 flex justify-end gap-2">
-                                    <Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button>
-                                    <Button onClick={handleCreateFolder}>Create Folder</Button>
-                                </div>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
-                    <nav className="flex flex-col gap-1 p-2">
-                        <Button
-                            key="all-contacts"
-                            variant={selectedFolderId === 'all' ? "secondary" : "ghost"}
-                            className="w-full justify-start gap-3"
-                            onClick={() => handleFolderSelect('all')}
-                        >
-                            <Users className="h-4 w-4" />
-                            <span>All Contacts</span>
-                        </Button>
-                        {folders.map((folder) => (
-                            <Button
-                                key={folder.id}
-                                variant={selectedFolderId === folder.id ? "secondary" : "ghost"}
-                                className="w-full justify-start gap-3"
-                                onClick={() => handleFolderSelect(folder.id)}
-                            >
-                                <Folder className="h-4 w-4" />
-                                <span>{folder.name}</span>
+      <div className="flex-1 min-h-0 px-4 sm:px-6 pb-4 sm:pb-6">
+        <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
+          <ResizablePanel defaultSize={25} minSize={20}>
+            <div className="flex h-full flex-col p-2">
+                <div className="p-2">
+                    <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button className="w-full">
+                                <Plus className="mr-2 h-4 w-4" /> New Folder
                             </Button>
-                        ))}
-                    </nav>
-                </div>
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-              <ResizablePanel defaultSize={75}>
-                <div className="flex flex-col h-full">
-                        <>
-                            <div className="flex items-center justify-between p-4 border-b h-20">
-                                {selectedContactIds.length > 0 ? (
-                                    <>
-                                        <div>
-                                            <h2 className="text-xl font-bold">{selectedContactIds.length} selected</h2>
-                                        </div>
-                                        <Button variant="destructive" onClick={handleDeleteSelected}>
-                                            <Trash2 className="mr-2 h-4 w-4" /> Delete Selected
-                                        </Button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div>
-                                            <h2 className="text-xl font-bold">{selectedFolderId === 'all' ? 'All Contacts' : selectedFolder?.name}</h2>
-                                            <p className="text-sm text-muted-foreground">
-                                                {displayedContacts.length} contact(s)
-                                            </p>
-                                        </div>
-                                        <Button onClick={handleNewContactClick}>
-                                            <Plus className="mr-2 h-4 w-4" /> New Contact
-                                        </Button>
-                                    </>
-                                )}
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>Create New Folder</DialogTitle>
+                                <DialogDescription>
+                                    Enter a name for your new contact folder.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="folder-name" className="text-right">
+                                        Name
+                                    </Label>
+                                    <Input
+                                        id="folder-name"
+                                        value={newFolderName}
+                                        onChange={(e) => setNewFolderName(e.target.value)}
+                                        className="col-span-3"
+                                        placeholder="e.g., 'Family'"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleCreateFolder();
+                                            }
+                                        }}
+                                    />
+                                </div>
                             </div>
-                             <div className="flex-1 overflow-y-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-[50px]">
-                                              <Checkbox
-                                                checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
-                                                onCheckedChange={handleToggleSelectAll}
-                                                aria-label="Select all"
-                                              />
-                                            </TableHead>
-                                            <TableHead>Name</TableHead>
-                                            <TableHead>Email</TableHead>
-                                            <TableHead>Phone</TableHead>
-                                            {selectedFolderId === 'all' && <TableHead>Folder</TableHead>}
-                                            <TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {displayedContacts.map((contact) => {
-                                          const folderName = folders.find(f => f.id === contact.folderId)?.name || 'Unassigned';
-                                          const primaryPhoneNumber =
-                                            contact.primaryPhoneType && contact[contact.primaryPhoneType]
-                                                ? contact[contact.primaryPhoneType]
-                                                : contact.cellPhone || contact.businessPhone || contact.homePhone || contact.faxNumber;
+                            <div className="p-6 pt-0 flex justify-end gap-2">
+                                <Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button>
+                                <Button onClick={handleCreateFolder}>Create Folder</Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+                <nav className="flex flex-col gap-1 p-2">
+                    <Button
+                        key="all-contacts"
+                        variant={selectedFolderId === 'all' ? "secondary" : "ghost"}
+                        className="w-full justify-start gap-3"
+                        onClick={() => handleFolderSelect('all')}
+                    >
+                        <Users className="h-4 w-4" />
+                        <span>All Contacts</span>
+                    </Button>
+                    {folders.map((folder) => (
+                        <Button
+                            key={folder.id}
+                            variant={selectedFolderId === folder.id ? "secondary" : "ghost"}
+                            className="w-full justify-start gap-3"
+                            onClick={() => handleFolderSelect(folder.id)}
+                        >
+                            <Folder className="h-4 w-4" />
+                            <span>{folder.name}</span>
+                        </Button>
+                    ))}
+                </nav>
+            </div>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={75}>
+            <div className="flex flex-col h-full">
+                    <>
+                        <div className="flex items-center justify-between p-4 border-b h-20">
+                            {selectedContactIds.length > 0 ? (
+                                <>
+                                    <div>
+                                        <h2 className="text-xl font-bold">{selectedContactIds.length} selected</h2>
+                                    </div>
+                                    <Button variant="destructive" onClick={handleDeleteSelected}>
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Selected
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <div>
+                                        <h2 className="text-xl font-bold">{selectedFolderId === 'all' ? 'All Contacts' : selectedFolder?.name}</h2>
+                                        <p className="text-sm text-muted-foreground">
+                                            {displayedContacts.length} contact(s)
+                                        </p>
+                                    </div>
+                                    <Button onClick={handleNewContactClick}>
+                                        <Plus className="mr-2 h-4 w-4" /> New Contact
+                                    </Button>
+                                </>
+                            )}
+                        </div>
+                         <div className="flex-1 overflow-y-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[50px]">
+                                          <Checkbox
+                                            checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
+                                            onCheckedChange={handleToggleSelectAll}
+                                            aria-label="Select all"
+                                          />
+                                        </TableHead>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Email</TableHead>
+                                        <TableHead>Phone</TableHead>
+                                        {selectedFolderId === 'all' && <TableHead>Folder</TableHead>}
+                                        <TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {displayedContacts.map((contact) => {
+                                      const folderName = folders.find(f => f.id === contact.folderId)?.name || 'Unassigned';
+                                      const primaryPhoneNumber =
+                                        contact.primaryPhoneType && contact[contact.primaryPhoneType]
+                                            ? contact[contact.primaryPhoneType]
+                                            : contact.cellPhone || contact.businessPhone || contact.homePhone || contact.faxNumber;
 
-                                          return (
-                                            <TableRow key={contact.id} onClick={() => openContactForm(contact)} className="cursor-pointer">
-                                                <TableCell onClick={(e) => e.stopPropagation()}> 
-                                                    <Checkbox 
-                                                        checked={selectedContactIds.includes(contact.id)} 
-                                                        onCheckedChange={() => handleToggleSelect(contact.id)} 
-                                                        aria-label={`Select ${contact.name}`} 
-                                                    /> 
-                                                </TableCell>
-                                                <TableCell className="font-medium">{contact.name}</TableCell>
-                                                <TableCell>{contact.email}</TableCell>
-                                                <TableCell>{primaryPhoneNumber}</TableCell>
-                                                {selectedFolderId === 'all' && <TableCell>{folderName}</TableCell>}
-                                                <TableCell onClick={(e) => e.stopPropagation()}>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onSelect={() => openContactForm(contact)}> <Pencil className="mr-2 h-4 w-4" /> Edit </DropdownMenuItem>
-                                                            <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteContact(contact.id)}> <Trash2 className="mr-2 h-4 w-4" /> Delete </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </TableRow>
-                                          );
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </>
-                </div>
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          </CardContent>
-        </Card>
+                                      return (
+                                        <TableRow key={contact.id} onClick={() => openContactForm(contact)} className="cursor-pointer">
+                                            <TableCell onClick={(e) => e.stopPropagation()}> 
+                                                <Checkbox 
+                                                    checked={selectedContactIds.includes(contact.id)} 
+                                                    onCheckedChange={() => handleToggleSelect(contact.id)} 
+                                                    aria-label={`Select ${contact.name}`} 
+                                                /> 
+                                            </TableCell>
+                                            <TableCell className="font-medium">{contact.name}</TableCell>
+                                            <TableCell>{contact.email}</TableCell>
+                                            <TableCell>{primaryPhoneNumber}</TableCell>
+                                            {selectedFolderId === 'all' && <TableCell>{folderName}</TableCell>}
+                                            <TableCell onClick={(e) => e.stopPropagation()}>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onSelect={() => openContactForm(contact)}> <Pencil className="mr-2 h-4 w-4" /> Edit </DropdownMenuItem>
+                                                        <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteContact(contact.id)}> <Trash2 className="mr-2 h-4 w-4" /> Delete </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+                                        </TableRow>
+                                      );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </>
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
       
       <Dialog open={isSelectFolderDialogOpen} onOpenChange={setIsSelectFolderDialogOpen}>
@@ -648,3 +644,5 @@ export default function ContactsPage() {
     </div>
   );
 }
+
+    
