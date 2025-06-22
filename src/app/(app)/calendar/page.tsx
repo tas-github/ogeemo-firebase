@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set, addMinutes, startOfMinute } from "date-fns"
-import { Users, Settings, Plus } from "lucide-react"
+import { Users, Settings, Plus, Calendar as CalendarIcon } from "lucide-react"
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
@@ -418,6 +418,7 @@ function CalendarPageContent() {
   const [isHourDetailOpen, setIsHourDetailOpen] = React.useState(false);
   const [selectedHourForDetail, setSelectedHourForDetail] = React.useState<Date | null>(null);
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = React.useState(false);
+  const [isMonthViewOpen, setIsMonthViewOpen] = React.useState(false);
 
 
   const viewOptions: { id: CalendarView; label: string }[] = [
@@ -527,108 +528,114 @@ function CalendarPageContent() {
           </p>
         </header>
         <div className="flex-1 min-h-0 flex flex-col">
-          <div className="flex flex-col lg:flex-row items-start gap-6 pb-4 border-b">
-            <div>
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                className="rounded-md border"
-              />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
-                <h2 className="text-xl font-semibold font-headline">
-                    Schedule for {date ? format(date, "PPP") : "..."}
-                </h2>
-                <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b">
+            
+            <Dialog open={isMonthViewOpen} onOpenChange={setIsMonthViewOpen}>
+                <DialogTrigger asChild>
+                    <h2 className="text-xl font-semibold font-headline cursor-pointer hover:underline flex items-center gap-2">
+                        <span>{date ? format(date, "PPP") : "Select a date"}</span>
+                        <CalendarIcon className="h-5 w-5 text-muted-foreground" />
+                    </h2>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-auto w-auto p-0">
+                    <Calendar
+                        mode="single"
+                        selected={date}
+                        onSelect={(newDate) => {
+                            if (newDate) setDate(newDate);
+                            setIsMonthViewOpen(false);
+                        }}
+                        initialFocus
+                    />
+                </DialogContent>
+            </Dialog>
+
+            <div className="flex items-center gap-2">
+              <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDate(new Date())}
+                  className="h-8 px-3"
+              >
+                  Today
+              </Button>
+              <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                  {viewOptions.map((option) => (
                   <Button
-                      variant="outline"
+                      key={option.id}
+                      variant={view === option.id ? "secondary" : "ghost"}
                       size="sm"
-                      onClick={() => setDate(new Date())}
+                      onClick={() => setView(option.id)}
                       className="h-8 px-3"
                   >
-                      Today
+                      {option.label}
                   </Button>
-                  <div className="flex items-center gap-1 rounded-md bg-muted p-1">
-                      {viewOptions.map((option) => (
-                      <Button
-                          key={option.id}
-                          variant={view === option.id ? "secondary" : "ghost"}
-                          size="sm"
-                          onClick={() => setView(option.id)}
-                          className="h-8 px-3"
-                      >
-                          {option.label}
+                  ))}
+              </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" title="Calendar Settings">
+                          <Settings className="h-4 w-4" />
+                          <span className="sr-only">Settings</span>
                       </Button>
-                      ))}
-                  </div>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Calendar Settings">
-                              <Settings className="h-4 w-4" />
-                              <span className="sr-only">Settings</span>
-                          </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
-                          <DialogHeader>
-                              <DialogTitle>Calendar Settings</DialogTitle>
-                              <DialogDescription>
-                                  Customize your calendar hourly view.
-                              </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                              <div className="grid grid-cols-2 items-end gap-4">
-                                  <div>
-                                      <Label htmlFor="start-time">Day Start Time</Label>
-                                      <Select
-                                          value={String(viewStartHour)}
-                                          onValueChange={(value) => setViewStartHour(Number(value))}
-                                      >
-                                          <SelectTrigger id="start-time" className="mt-2">
-                                              <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                              {timeOptions.map((option) => (
-                                                  <SelectItem
-                                                      key={`start-${option.value}`}
-                                                      value={String(option.value)}
-                                                      disabled={option.value >= viewEndHour}
-                                                  >
-                                                      {option.label}
-                                                  </SelectItem>
-                                              ))}
-                                          </SelectContent>
-                                      </Select>
-                                  </div>
-                                  <div>
-                                      <Label htmlFor="end-time">Day End Time</Label>
-                                      <Select
-                                          value={String(viewEndHour)}
-                                          onValueChange={(value) => setViewEndHour(Number(value))}
-                                      >
-                                          <SelectTrigger id="end-time" className="mt-2">
-                                              <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                              {timeOptions.map((option) => (
-                                                  <SelectItem
-                                                      key={`end-${option.value}`}
-                                                      value={String(option.value)}
-                                                      disabled={option.value <= viewStartHour}
-                                                  >
-                                                      {option.label}
-                                                  </SelectItem>
-                                              ))}
-                                          </SelectContent>
-                                      </Select>
-                                  </div>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                          <DialogTitle>Calendar Settings</DialogTitle>
+                          <DialogDescription>
+                              Customize your calendar hourly view.
+                          </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                          <div className="grid grid-cols-2 items-end gap-4">
+                              <div>
+                                  <Label htmlFor="start-time">Day Start Time</Label>
+                                  <Select
+                                      value={String(viewStartHour)}
+                                      onValueChange={(value) => setViewStartHour(Number(value))}
+                                  >
+                                      <SelectTrigger id="start-time" className="mt-2">
+                                          <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                          {timeOptions.map((option) => (
+                                              <SelectItem
+                                                  key={`start-${option.value}`}
+                                                  value={String(option.value)}
+                                                  disabled={option.value >= viewEndHour}
+                                              >
+                                                  {option.label}
+                                              </SelectItem>
+                                          ))}
+                                      </SelectContent>
+                                  </Select>
+                              </div>
+                              <div>
+                                  <Label htmlFor="end-time">Day End Time</Label>
+                                  <Select
+                                      value={String(viewEndHour)}
+                                      onValueChange={(value) => setViewEndHour(Number(value))}
+                                  >
+                                      <SelectTrigger id="end-time" className="mt-2">
+                                          <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                          {timeOptions.map((option) => (
+                                              <SelectItem
+                                                  key={`end-${option.value}`}
+                                                  value={String(option.value)}
+                                                  disabled={option.value <= viewStartHour}
+                                              >
+                                                  {option.label}
+                                              </SelectItem>
+                                          ))}
+                                      </SelectContent>
+                                  </Select>
                               </div>
                           </div>
-                      </DialogContent>
-                  </Dialog>
-                </div>
-              </div>
+                      </div>
+                  </DialogContent>
+              </Dialog>
             </div>
           </div>
           
@@ -658,3 +665,5 @@ export default function CalendarPage() {
     </DndProvider>
   )
 }
+
+    
