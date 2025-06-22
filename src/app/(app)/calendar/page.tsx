@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { format, addDays, setHours, isSameDay } from "date-fns"
-import { Clock, Users } from "lucide-react"
+import { Clock, Users, Video } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -32,6 +33,7 @@ type Event = {
   start: Date;
   end: Date;
   attendees: string[];
+  meetingLink?: string;
 };
 
 const today = new Date();
@@ -43,6 +45,7 @@ const mockEvents: Event[] = [
     start: setHours(today, 14, 15),
     end: setHours(today, 14, 45),
     attendees: ['You', 'Jane Smith'],
+    meetingLink: 'https://meet.google.com/xyz-abc-def',
   },
   {
     id: '3',
@@ -124,6 +127,15 @@ export default function CalendarPage() {
                                     <span>{event.attendees.join(', ')}</span>
                                 </div>
                             </CardContent>
+                            {event.meetingLink && (
+                                <CardFooter>
+                                    <Button asChild className="w-full">
+                                        <a href={event.meetingLink} target="_blank" rel="noopener noreferrer">
+                                            <Video className="mr-2 h-4 w-4" /> Join Meeting
+                                        </a>
+                                    </Button>
+                                </CardFooter>
+                            )}
                         </Card>
                     ))}
                 </div>
