@@ -12,6 +12,18 @@ import {
   Wand2,
   Beaker,
   Contact,
+  ListTodo,
+  Calendar,
+  Folder,
+  Lightbulb,
+  FlaskConical,
+  Calculator,
+  Briefcase,
+  Clock,
+  DatabaseBackup,
+  AreaChart,
+  BarChart3,
+  Bell,
 } from "lucide-react";
 
 import {
@@ -92,6 +104,119 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Link href="/contacts">
                     <Contact />
                     <span>Contacts</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/tasks")} tooltip="Tasks">
+                  <Link href="/tasks">
+                    <ListTodo />
+                    <span>Tasks</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/calendar")} tooltip="Calendar">
+                  <Link href="/calendar">
+                    <Calendar />
+                    <span>Calendar</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/files")} tooltip="Files">
+                  <Link href="/files">
+                    <Folder />
+                    <span>Files</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/ideas")} tooltip="Ideas">
+                  <Link href="/ideas">
+                    <Lightbulb />
+                    <span>Ideas</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/research")} tooltip="Research">
+                  <Link href="/research">
+                    <FlaskConical />
+                    <span>Research</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/accounting")} tooltip="Accounting">
+                  <Link href="/accounting">
+                    <Calculator />
+                    <span>Accounting</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/google")} tooltip="Google">
+                  <Link href="/google">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M18 14a6 6 0 0 1-6 6h-1a6 6 0 1 1 5-10l-2 2h3" />
+                    </svg>
+                    <span>Google</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/projects")} tooltip="Projects">
+                  <Link href="/projects">
+                    <Briefcase />
+                    <span>Projects</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/time")} tooltip="Time">
+                  <Link href="/time">
+                    <Clock />
+                    <span>Time</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/backup")} tooltip="Backup">
+                  <Link href="/backup">
+                    <DatabaseBackup />
+                    <span>Backup</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/new-dashboard")} tooltip="Dashboard">
+                  <Link href="/new-dashboard">
+                    <AreaChart />
+                    <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/reports")} tooltip="Reports">
+                  <Link href="/reports">
+                    <BarChart3 />
+                    <span>Reports</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/alerts")} tooltip="Alerts">
+                  <Link href="/alerts">
+                    <Bell />
+                    <span>Alerts</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
