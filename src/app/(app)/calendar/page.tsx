@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/select"
 
 
-type CalendarView = "hour" | "day" | "5days" | "week" | "month";
+type CalendarView = "hour" | "day" | "5days" | "week";
 
 type Event = {
   id: string;
@@ -53,7 +53,7 @@ type Event = {
 
 const today = new Date();
 const mockEvents: Event[] = [
-  {
+    {
     id: '1',
     title: 'Daily Standup',
     description: 'Quick sync with the team on daily progress.',
@@ -116,7 +116,6 @@ export default function CalendarPage() {
     { id: "day", label: "Day" },
     { id: "5days", label: "5 Days" },
     { id: "week", label: "Week" },
-    { id: "month", label: "Month" },
   ];
 
   const dailyEvents = React.useMemo(() => {
@@ -306,8 +305,6 @@ export default function CalendarPage() {
         return renderMultiDayView(5);
       case "week":
         return renderMultiDayView(7);
-      case "month":
-        return <div className="flex justify-center items-start pt-10"><p className="text-muted-foreground">Month view coming soon.</p></div>;
       default:
         return null;
     }
