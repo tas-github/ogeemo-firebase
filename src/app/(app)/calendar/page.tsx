@@ -164,7 +164,7 @@ function CalendarPageContent() {
             <div className="h-16 border-b border-r">&nbsp;</div>
             {hours.map(hour => (
               <div key={`time-gutter-${hour}`} className="relative h-[120px] border-r text-right">
-                <span className="absolute -top-2 right-2 text-xs text-muted-foreground">
+                <span className="absolute top-0 right-2 -translate-y-1/2 bg-background px-1 text-xs text-muted-foreground">
                   {format(setHours(new Date(), hour), 'ha')}
                 </span>
               </div>
@@ -231,7 +231,7 @@ function CalendarPageContent() {
             <div className="h-16 border-b border-r">&nbsp;</div>
             {hours.map(hour => (
               <div key={`time-gutter-${hour}`} className="relative h-[120px] border-r text-right">
-                <span className="absolute -top-2 right-2 text-xs text-muted-foreground">
+                <span className="absolute top-0 right-2 -translate-y-1/2 bg-background px-1 text-xs text-muted-foreground">
                   {format(setHours(new Date(), hour), 'ha')}
                 </span>
               </div>
