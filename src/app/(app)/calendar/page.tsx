@@ -106,37 +106,6 @@ const mockEvents: Event[] = [
 ];
 
 
-const DraggableDayEventCard = ({ event }: { event: Event }) => {
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: 'event-card',
-    item: { id: event.id },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  }));
-
-  return (
-    <div ref={drag} style={{ opacity: isDragging ? 0.5 : 1 }}>
-        <Card className="cursor-move">
-            <CardHeader className="p-4">
-                <CardTitle className="text-base font-semibold">{event.title}</CardTitle>
-                <CardDescription className="text-xs">{event.description}</CardDescription>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Users className="h-3 w-3" />
-                    <span>{event.attendees.join(', ')}</span>
-                </div>
-            </CardContent>
-            <CardFooter className="p-4 pt-0 text-xs text-muted-foreground flex justify-between">
-                <span>Ends at {format(event.end, 'p')}</span>
-            </CardFooter>
-        </Card>
-    </div>
-  );
-};
-
-
 const DraggableTimelineEvent = ({ event, style, className }: { event: Event; style: React.CSSProperties; className: string }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'event',
@@ -171,13 +140,6 @@ function CalendarPageContent() {
     { id: "week", label: "Week" },
   ];
 
-  const dailyEvents = React.useMemo(() => {
-    if (!date) return [];
-    return events
-      .filter((event) => isSameDay(event.start, date))
-      .sort((a, b) => a.start.getTime() - b.start.getTime());
-  }, [events, date]);
-
   const timeOptions = React.useMemo(() => {
     return Array.from({ length: 24 }, (_, i) => ({
       value: i,
@@ -188,6 +150,67 @@ function CalendarPageContent() {
   const PIXELS_PER_MINUTE = 2;
   const hours = Array.from({ length: viewEndHour - viewStartHour + 1 }, (_, i) => i + viewStartHour);
   const CONTAINER_HEIGHT = hours.length * 60 * PIXELS_PER_MINUTE;
+
+  const renderDayTimelineView = () => {
+    if (!date) return null;
+
+    const dayEvents = events.filter(event => isSameDay(event.start, date));
+
+    return (
+      <ScrollArea className="h-full w-full">
+        <div className="flex" style={{ minWidth: 64 + 150 }}>
+          {/* Time Gutter */}
+          <div className="sticky left-0 z-20 w-16 shrink-0 bg-background">
+            <div className="h-16 border-b border-r">&nbsp;</div>
+            {hours.map(hour => (
+              <div key={`time-gutter-${hour}`} className="relative h-[120px] border-r text-right">
+                <span className="absolute -top-2 right-2 text-xs text-muted-foreground">
+                  {format(setHours(new Date(), hour), 'ha')}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Day Column */}
+          <div className="grid flex-1" style={{ gridTemplateColumns: `minmax(150px, 1fr)` }}>
+            <div className="border-r-0">
+              <div className="sticky top-0 z-10 h-16 border-b bg-background text-center">
+                 <p className="text-sm font-semibold">{format(date, 'EEE')}</p>
+                 <p className={cn("text-2xl font-bold", isSameDay(date, new Date()) && "text-primary")}>{format(date, 'd')}</p>
+              </div>
+              <div className="relative" style={{ height: `${CONTAINER_HEIGHT}px` }}>
+                {/* Hour lines */}
+                {hours.map(hour => (
+                  <div key={`line-${hour}-${date.toISOString()}`} className="h-[120px] border-b"></div>
+                ))}
+                {/* Events */}
+                {dayEvents
+                  .map(event => {
+                    const startMinutes = (event.start.getHours() - viewStartHour) * 60 + event.start.getMinutes();
+                    const endMinutes = (event.end.getHours() - viewStartHour) * 60 + event.end.getMinutes();
+                    const durationMinutes = Math.max(15, endMinutes - startMinutes);
+                    const top = startMinutes * PIXELS_PER_MINUTE;
+                    const height = durationMinutes * PIXELS_PER_MINUTE;
+                    
+                    if (endMinutes < 0 || startMinutes > (hours.length * 60)) return null;
+
+                    return (
+                        <DraggableTimelineEvent
+                            key={event.id}
+                            event={event}
+                            style={{ top: `${top}px`, height: `${height}px` }}
+                            className="absolute left-1 right-1 rounded-lg bg-primary/20 p-2 border border-primary/50 overflow-hidden text-primary"
+                        />
+                    );
+                  })
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      </ScrollArea>
+    );
+  };
 
   const renderMultiDayView = (numDays: 5 | 7) => {
     if (!date) return null;
@@ -260,25 +283,7 @@ function CalendarPageContent() {
   const renderViewContent = () => {
     switch (view) {
       case "day":
-        if (dailyEvents.length === 0) {
-            return <div className="flex justify-center items-start pt-10"><p className="text-muted-foreground">No events for this day.</p></div>;
-        }
-        return (
-            <ScrollArea className="h-full w-full">
-                <div className="space-y-6 pr-4">
-                    {dailyEvents.map(event => (
-                        <div key={event.id} className="flex items-start gap-4">
-                           <div className="w-20 text-right text-sm font-medium text-muted-foreground shrink-0 pt-1">
-                                {format(event.start, 'p')}
-                           </div>
-                           <div className="flex-1">
-                                <DraggableDayEventCard event={event} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </ScrollArea>
-        );
+        return renderDayTimelineView();
       case "5days":
         return renderMultiDayView(5);
       case "week":
