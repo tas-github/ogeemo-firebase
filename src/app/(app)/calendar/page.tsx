@@ -52,6 +52,14 @@ const mockEvents: Event[] = [
     end: setHours(today, 15),
     attendees: ['You', 'Jane Smith', 'John Doe'],
   },
+   {
+    id: '2b',
+    title: 'Quick Sync',
+    description: 'Quick sync on feature X.',
+    start: setHours(today, 14, 15),
+    end: setHours(today, 14, 45),
+    attendees: ['You', 'Jane Smith'],
+  },
   {
     id: '3',
     title: 'Client Call',
@@ -138,7 +146,57 @@ export default function CalendarPage() {
             </ScrollArea>
         );
       case "hour":
-        return <p className="text-muted-foreground">Hour view coming soon.</p>;
+        const hours = Array.from({ length: 24 }, (_, i) => i);
+        const PIXELS_PER_MINUTE = 1.5;
+        const CONTAINER_HEIGHT = 24 * 60 * PIXELS_PER_MINUTE;
+
+        return (
+            <ScrollArea className="h-full w-full">
+                <div className="relative" style={{ height: `${CONTAINER_HEIGHT}px` }}>
+                    {/* Render hour lines */}
+                    {hours.map(hour => (
+                        <div key={hour} className="absolute w-full" style={{ top: `${hour * 60 * PIXELS_PER_MINUTE}px`}}>
+                            <div className="flex items-center">
+                                <div className="text-xs text-muted-foreground pr-2 w-16 text-right">
+                                    {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
+                                </div>
+                                <div className="flex-1 border-t"></div>
+                            </div>
+                        </div>
+                    ))}
+                    {/* Render half-hour lines */}
+                    {hours.map(hour => (
+                         <div key={`half-${hour}`} className="absolute w-full" style={{ top: `${(hour * 60 + 30) * PIXELS_PER_MINUTE}px`}}>
+                            <div className="flex items-center">
+                                <div className="w-16"></div>
+                                <div className="flex-1 border-t border-dashed"></div>
+                            </div>
+                        </div>
+                    ))}
+
+                    {/* Render events */}
+                    {dailyEvents.map(event => {
+                        const startMinutes = event.start.getHours() * 60 + event.start.getMinutes();
+                        const endMinutes = event.end.getHours() * 60 + event.end.getMinutes();
+                        const durationMinutes = Math.max(15, endMinutes - startMinutes);
+
+                        const top = startMinutes * PIXELS_PER_MINUTE;
+                        const height = durationMinutes * PIXELS_PER_MINUTE;
+
+                        return (
+                            <div
+                                key={event.id}
+                                className="absolute left-16 right-2 rounded-lg bg-primary/20 p-2 border border-primary/50 overflow-hidden text-primary"
+                                style={{ top: `${top}px`, height: `${height}px` }}
+                            >
+                                <p className="font-bold text-xs truncate">{event.title}</p>
+                                <p className="text-xs opacity-80 truncate">{format(event.start, 'p')} - {format(event.end, 'p')}</p>
+                            </div>
+                        );
+                    })}
+                </div>
+            </ScrollArea>
+        );
       case "5days":
         return <p className="text-muted-foreground">5-day view coming soon.</p>;
       case "week":
