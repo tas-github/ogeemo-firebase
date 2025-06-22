@@ -2,7 +2,9 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Calendar as CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -25,6 +27,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 function TaskItem({
   title,
@@ -45,6 +54,8 @@ function TaskItem({
 
 export default function TasksPage() {
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [dueDate, setDueDate] = useState<Date | undefined>();
 
   return (
     <div className="p-4 sm:p-6 flex flex-col h-full">
@@ -75,7 +86,10 @@ export default function TasksPage() {
               <div className="p-6 space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="task-title">Task Title</Label>
-                  <Input id="task-title" placeholder="e.g., Deploy the new feature" />
+                  <Input
+                    id="task-title"
+                    placeholder="e.g., Deploy the new feature"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="task-description">Description</Label>
@@ -85,7 +99,7 @@ export default function TasksPage() {
                     rows={8}
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="task-status">Status</Label>
                     <Select defaultValue="todo">
@@ -112,27 +126,74 @@ export default function TasksPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                   <div className="space-y-2">
+                    <Label>Start Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !startDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={setStartDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Due Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !dueDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={dueDate}
+                          onSelect={setDueDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="task-assignee">Assignee</Label>
-                   <Select>
-                      <SelectTrigger id="task-assignee">
-                        <SelectValue placeholder="Assign to a team member" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="user1">User One</SelectItem>
-                        <SelectItem value="user2">User Two</SelectItem>
-                        <SelectItem value="user3">User Three</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <Select>
+                    <SelectTrigger id="task-assignee">
+                      <SelectValue placeholder="Assign to a team member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="user1">User One</SelectItem>
+                      <SelectItem value="user2">User Two</SelectItem>
+                      <SelectItem value="user3">User Three</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </ScrollArea>
             <DialogFooter className="p-6 pt-4 border-t">
-              <Button
-                variant="ghost"
-                onClick={() => setIsNewTaskOpen(false)}
-              >
+              <Button variant="ghost" onClick={() => setIsNewTaskOpen(false)}>
                 Cancel
               </Button>
               <Button onClick={() => setIsNewTaskOpen(false)}>
