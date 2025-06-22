@@ -44,6 +44,7 @@ interface NewTaskDialogProps {
   eventToEdit?: Event | null;
   onTaskCreate?: (newEvent: Event) => void;
   onTaskUpdate?: (updatedEvent: Event) => void;
+  projectId: string | null;
 }
 
 const hourOptions = Array.from({ length: 24 }, (_, i) => {
@@ -63,7 +64,7 @@ const minuteOptions = Array.from({ length: 12 }, (_, i) => {
 });
 
 
-export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToEdit, onTaskCreate, onTaskUpdate }: NewTaskDialogProps) {
+export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToEdit, onTaskCreate, onTaskUpdate, projectId }: NewTaskDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<string | undefined>();
@@ -152,6 +153,15 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
         return;
     }
 
+    if (!isEditMode && !projectId) {
+      toast({
+        variant: "destructive",
+        title: "No Project Selected",
+        description: "Please select a project before creating a task.",
+      });
+      return;
+    }
+
     const now = new Date();
     
     const finalStartDate = startDate || now;
@@ -184,7 +194,6 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
           return;
         }
     } else {
-        // Default end time to 30 minutes after start time
         endDateTime = new Date(startDateTime.getTime() + 30 * 60 * 1000);
     }
     
@@ -213,6 +222,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
             end: endDateTime,
             attendees: assignee ? ['You', assignee.name] : ['You'],
             status: 'todo',
+            projectId: projectId!,
         };
         onTaskCreate?.(newEvent);
         toast({
