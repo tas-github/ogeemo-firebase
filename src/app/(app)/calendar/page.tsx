@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { format, addDays, setHours, isSameDay } from "date-fns"
-import { Clock, Users, Video } from "lucide-react"
+import { Clock, Users } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -215,18 +215,28 @@ export default function CalendarPage() {
                   <h2 className="text-xl font-semibold font-headline">
                       Schedule for {date ? format(date, "PPP") : "..."}
                   </h2>
-                  <div className="flex items-center gap-1 rounded-md bg-muted p-1">
-                      {viewOptions.map((option) => (
+                  <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDate(new Date())}
+                        className="h-8 px-3"
+                    >
+                        Today
+                    </Button>
+                    <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                        {viewOptions.map((option) => (
                         <Button
-                          key={option.id}
-                          variant={view === option.id ? "secondary" : "ghost"}
-                          size="sm"
-                          onClick={() => setView(option.id)}
-                          className="h-8 px-3"
+                            key={option.id}
+                            variant={view === option.id ? "secondary" : "ghost"}
+                            size="sm"
+                            onClick={() => setView(option.id)}
+                            className="h-8 px-3"
                         >
-                          {option.label}
+                            {option.label}
                         </Button>
-                      ))}
+                        ))}
+                    </div>
                   </div>
                 </div>
                 <div className="flex-1 mt-4 border-t pt-4 overflow-hidden">
