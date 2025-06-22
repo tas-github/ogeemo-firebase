@@ -154,7 +154,7 @@ const TimelineDayColumn = ({
       const dropY = clientOffset.y - dropTargetRect.top;
       
       let minutesFromStart = Math.round(dropY / PIXELS_PER_MINUTE);
-      minutesFromStart = Math.max(0, Math.round(minutesFromStart / 15) * 15);
+      minutesFromStart = Math.max(0, Math.round(minutesFromStart / 5) * 5);
 
       const newHour = viewStartHour + Math.floor(minutesFromStart / 60);
       const newMinute = minutesFromStart % 60;
@@ -371,8 +371,8 @@ function CalendarPageContent() {
 
     return (
       <ScrollArea className="h-full w-full">
-        <div className="flex pt-4" style={{ minWidth: 80 + 150 * days.length }}>
-          <div className="sticky left-0 z-20 w-24 shrink-0 bg-background">
+        <div className="flex" style={{ minWidth: 80 + 150 * days.length }}>
+          <div className="sticky left-0 z-20 w-24 shrink-0 bg-background pt-4">
             {!hideDayHeader && <div className="h-16 border-b border-r">&nbsp;</div>}
             {hours.map(hour => (
               <div key={`time-gutter-${hour}`} className="relative h-[120px] border-r text-right">
@@ -387,7 +387,7 @@ function CalendarPageContent() {
             ))}
           </div>
 
-          <div className="grid flex-1" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(150px, 1fr))` }}>
+          <div className="grid flex-1 pt-4" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(150px, 1fr))` }}>
             {days.map((day) => {
                const dayEvents = events.filter(event => isSameDay(event.start, day));
                return (
@@ -595,7 +595,3 @@ export default function CalendarPage() {
     </DndProvider>
   )
 }
-
-    
-
-    
