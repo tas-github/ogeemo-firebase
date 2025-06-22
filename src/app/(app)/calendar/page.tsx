@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/select"
 
 
-type CalendarView = "hour" | "day" | "5days" | "week";
+type CalendarView = "day" | "5days" | "week";
 
 type Event = {
   id: string;
@@ -55,6 +55,14 @@ type Event = {
 
 const today = new Date();
 const mockEvents: Event[] = [
+  {
+    id: '1',
+    title: 'Daily Standup',
+    description: 'Quick sync with the development team to discuss progress and blockers.',
+    start: setHours(today, 9),
+    end: setHours(today, 9, 15),
+    attendees: ['You', 'John Doe', 'Jane Smith'],
+  },
     {
     id: '2',
     title: 'Design Review',
@@ -158,7 +166,6 @@ function CalendarPageContent() {
   const [viewEndHour, setViewEndHour] = React.useState(17);
 
   const viewOptions: { id: CalendarView; label: string }[] = [
-    { id: "hour", label: "Hour" },
     { id: "day", label: "Day" },
     { id: "5days", label: "5 Days" },
     { id: "week", label: "Week" },
@@ -269,63 +276,6 @@ function CalendarPageContent() {
                             </div>
                         </div>
                     ))}
-                </div>
-            </ScrollArea>
-        );
-      case "hour":
-        const visibleEvents = dailyEvents.filter(event => {
-          const startHour = event.start.getHours();
-          const endHour = event.end.getHours();
-          return endHour >= viewStartHour && startHour <= viewEndHour;
-        });
-
-        return (
-            <ScrollArea className="h-full w-full">
-                <div className="relative" style={{ height: `${CONTAINER_HEIGHT}px` }}>
-                    {/* Render hour lines */}
-                    {hours.map(hour => (
-                        <div key={hour} className="absolute w-full" style={{ top: `${(hour - viewStartHour) * 60 * PIXELS_PER_MINUTE}px`}}>
-                            <div className="flex items-center">
-                                <div className="text-xs text-muted-foreground pr-2 w-16 text-right">
-                                    {format(setHours(new Date(), hour), 'ha')}
-                                </div>
-                                <div className="flex-1 border-t"></div>
-                            </div>
-                        </div>
-                    ))}
-                    {/* Render half-hour lines */}
-                    {hours.slice(0, -1).map(hour => (
-                         <div key={`half-${hour}`} className="absolute w-full" style={{ top: `${((hour - viewStartHour) * 60 + 30) * PIXELS_PER_MINUTE}px`}}>
-                            <div className="flex items-center">
-                                <div className="w-16"></div>
-                                <div className="flex-1 border-t border-dashed"></div>
-                            </div>
-                        </div>
-                    ))}
-
-                    {/* Render events */}
-                    {visibleEvents.map(event => {
-                        const startMinutes = (event.start.getHours() - viewStartHour) * 60 + event.start.getMinutes();
-                        const endMinutes = (event.end.getHours() - viewStartHour) * 60 + event.end.getMinutes();
-                        
-                        const clampedStartMinutes = Math.max(0, startMinutes);
-                        const clampedEndMinutes = Math.min((viewEndHour - viewStartHour + 1) * 60, endMinutes);
-
-                        const durationMinutes = Math.max(15, clampedEndMinutes - clampedStartMinutes);
-                        const top = clampedStartMinutes * PIXELS_PER_MINUTE;
-                        const height = durationMinutes * PIXELS_PER_MINUTE;
-                        
-                        if (endMinutes < 0 || startMinutes > (hours.length * 60)) return null;
-
-                        return (
-                            <DraggableTimelineEvent
-                                key={event.id}
-                                event={event}
-                                style={{ top: `${top}px`, height: `${height}px` }}
-                                className="absolute left-16 right-2 rounded-lg bg-primary/20 p-2 border border-primary/50 overflow-hidden text-primary"
-                            />
-                        );
-                    })}
                 </div>
             </ScrollArea>
         );
@@ -475,5 +425,3 @@ export default function CalendarPage() {
     </DndProvider>
   )
 }
-
-    
