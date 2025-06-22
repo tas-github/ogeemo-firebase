@@ -287,7 +287,7 @@ export default function ContactsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 flex flex-col h-full">
+    <div className="space-y-4 flex flex-col h-full py-4 sm:py-6">
       <header className="text-center">
         <h1 className="text-3xl font-bold font-headline text-primary">
           Ogeemo Contact Manager
