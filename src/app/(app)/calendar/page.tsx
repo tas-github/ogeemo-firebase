@@ -301,7 +301,7 @@ function HourDetailView({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md h-[80vh] flex flex-col p-0">
+            <DialogContent className="sm:max-w-2xl h-[85vh] flex flex-col p-0">
                 <DialogHeader className="p-4 pb-2 border-b">
                     <DialogTitle>Timebox for {format(hourStart, 'h a')}</DialogTitle>
                     <DialogDescription>
@@ -309,7 +309,7 @@ function HourDetailView({
                     </DialogDescription>
                 </DialogHeader>
                 <div className="flex-1 flex overflow-hidden">
-                    <ScrollArea className="h-full">
+                    <ScrollArea className="h-full flex-1">
                         <div className="flex">
                             <div className="w-16 shrink-0 border-r bg-muted/50">
                                 {fiveMinuteIntervals.map(minute => (
@@ -598,5 +598,3 @@ export default function CalendarPage() {
     </DndProvider>
   )
 }
-
-    
