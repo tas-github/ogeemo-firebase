@@ -153,31 +153,30 @@ export default function TasksPage() {
 
   return (
     <div className="p-4 sm:p-6 flex flex-col h-full">
-      <header className="flex items-center justify-between pb-4 border-b shrink-0 flex-wrap gap-4">
-        <div>
-          <div className="flex items-center gap-4">
-            <h1 className="text-3xl font-bold font-headline text-primary">
-              Project Manager
-            </h1>
-            <Select value={selectedProjectId ?? ''} onValueChange={setSelectedProjectId}>
-              <SelectTrigger className="w-[250px] bg-primary text-primary-foreground hover:bg-primary/90 border-primary [&>svg]:opacity-100">
-                <SelectValue placeholder="Select a project" />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            All projects are multiple tasks. Tasks entered here get entered into your calendar automatically.
-          </p>
-        </div>
+      <header className="pb-4 border-b shrink-0">
+        <h1 className="text-3xl font-bold font-headline text-primary">
+          Project Manager
+        </h1>
+        <p className="text-sm text-muted-foreground mt-2">
+          All projects are multiple tasks. Tasks entered here get entered into your calendar automatically.
+        </p>
+      </header>
+
+      <div className="flex items-center justify-between py-4 flex-wrap gap-4">
+        <Select value={selectedProjectId ?? ''} onValueChange={setSelectedProjectId}>
+          <SelectTrigger className="w-[250px] bg-primary text-primary-foreground hover:bg-primary/90 border-primary [&>svg]:opacity-100">
+            <SelectValue placeholder="Select a project" />
+          </SelectTrigger>
+          <SelectContent>
+            {projects.map((project) => (
+              <SelectItem key={project.id} value={project.id}>
+                {project.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <div className="flex items-center gap-2">
-            <Button onClick={() => setIsNewProjectOpen(true)}>
+            <Button onClick={() => setIsNewProjectOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Project
             </Button>
@@ -190,8 +189,9 @@ export default function TasksPage() {
                 New Task
             </Button>
         </div>
-      </header>
-      <main className="flex-1 grid md:grid-cols-3 gap-6 py-6 min-h-0">
+      </div>
+
+      <main className="flex-1 grid md:grid-cols-3 gap-6 pb-6 min-h-0">
         {selectedProject && (
           <ProjectInfoCard project={selectedProject} tasks={tasksForSelectedProject} />
         )}
