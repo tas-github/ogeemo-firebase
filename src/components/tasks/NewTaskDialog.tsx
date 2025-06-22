@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { format, setHours, set } from "date-fns";
+import { format, set } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -115,20 +115,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTas
                 rows={8}
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="task-status">Status</Label>
-                <Select defaultValue="todo">
-                  <SelectTrigger id="task-status">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todo">To Do</SelectItem>
-                    <SelectItem value="inprogress">In Progress</SelectItem>
-                    <SelectItem value="done">Done</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="task-priority">Priority</Label>
                 <Select>
@@ -191,13 +178,15 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTas
                         onValueChange={setStartTime}
                         disabled={!startDate}
                     >
-                        <SelectTrigger className="w-[140px]">
-                            <SelectValue placeholder="Time" />
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Pick a time" />
                         </SelectTrigger>
                         <SelectContent>
-                        {timeOptions.map((option) => (
-                            <SelectItem key={`start-time-${option.value}`} value={option.value}>{option.label}</SelectItem>
-                        ))}
+                          <ScrollArea className="h-64">
+                            {timeOptions.map((option) => (
+                                <SelectItem key={`start-time-${option.value}`} value={option.value}>{option.label}</SelectItem>
+                            ))}
+                          </ScrollArea>
                         </SelectContent>
                     </Select>
                 </div>
@@ -237,13 +226,15 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTas
                         onValueChange={setDueTime}
                         disabled={!dueDate}
                     >
-                        <SelectTrigger className="w-[140px]">
-                            <SelectValue placeholder="Time" />
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Pick a time" />
                         </SelectTrigger>
                         <SelectContent>
-                        {timeOptions.map((option) => (
-                            <SelectItem key={`due-time-${option.value}`} value={option.value}>{option.label}</SelectItem>
-                        ))}
+                           <ScrollArea className="h-64">
+                            {timeOptions.map((option) => (
+                                <SelectItem key={`due-time-${option.value}`} value={option.value}>{option.label}</SelectItem>
+                            ))}
+                          </ScrollArea>
                         </SelectContent>
                     </Select>
                 </div>
