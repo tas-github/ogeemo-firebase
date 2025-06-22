@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set, addMinutes, startOfMinute, startOfMonth, endOfMonth, isToday, isSameMonth } from "date-fns"
-import { Users, Settings, Plus, Calendar as CalendarIcon } from "lucide-react"
+import { Users, Settings, Plus, Calendar as CalendarIcon, Edit } from "lucide-react"
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
@@ -522,16 +522,17 @@ function CalendarPageContent() {
 
     return (
       <ScrollArea className="h-full w-full">
-        <div className="flex" style={{ minWidth: 64 + 150 * days.length }}>
-          <div className="sticky left-0 z-20 w-16 shrink-0 bg-background">
+        <div className="flex" style={{ minWidth: 80 + 150 * days.length }}>
+          <div className="sticky left-0 z-20 w-20 shrink-0 bg-background">
             <div className="h-16 border-b border-r">&nbsp;</div>
             {hours.map(hour => (
               <div key={`time-gutter-${hour}`} className="relative h-[120px] border-r text-right">
                 <button 
                   onClick={() => handleHourClick(hour)}
-                  className="absolute top-0 right-2 -translate-y-1/2 bg-background px-1 text-xs text-muted-foreground transition-colors hover:font-bold hover:text-primary"
+                  className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-background px-1 text-xs text-muted-foreground transition-colors hover:font-bold hover:text-primary"
                 >
-                  {format(setHours(new Date(), hour), 'ha')}
+                  <span>{format(setHours(new Date(), hour), 'ha')}</span>
+                  <Edit className="h-3 w-3" />
                 </button>
               </div>
             ))}
@@ -725,7 +726,3 @@ export default function CalendarPage() {
     </DndProvider>
   )
 }
-
-    
-
-    
