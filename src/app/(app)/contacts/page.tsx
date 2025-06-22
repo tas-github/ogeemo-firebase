@@ -512,7 +512,7 @@ export default function ContactsPage() {
               </div>
               <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
-                      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                      <div className="flex-1 overflow-y-auto px-6 py-2 space-y-2">
                           <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                           
@@ -572,7 +572,7 @@ export default function ContactsPage() {
                             control={form.control}
                             name="primaryPhoneType"
                             render={({ field }) => (
-                                <FormItem className="space-y-3">
+                                <FormItem className="space-y-2">
                                 <FormLabel>Primary Phone Number</FormLabel>
                                 <FormDescription>
                                     Select the best number to use for this contact.
@@ -583,7 +583,7 @@ export default function ContactsPage() {
                                     value={field.value}
                                     className="grid grid-cols-1 md:grid-cols-3 gap-4"
                                     >
-                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-4 has-[:disabled]:opacity-50">
+                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-3 has-[:disabled]:opacity-50">
                                         <FormControl>
                                         <RadioGroupItem value="businessPhone" disabled={!form.getValues().businessPhone} />
                                         </FormControl>
@@ -591,7 +591,7 @@ export default function ContactsPage() {
                                         Business
                                         </FormLabel>
                                     </FormItem>
-                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-4 has-[:disabled]:opacity-50">
+                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-3 has-[:disabled]:opacity-50">
                                         <FormControl>
                                         <RadioGroupItem value="cellPhone" disabled={!form.getValues().cellPhone} />
                                         </FormControl>
@@ -599,7 +599,7 @@ export default function ContactsPage() {
                                         Cell
                                         </FormLabel>
                                     </FormItem>
-                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-4 has-[:disabled]:opacity-50">
+                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-3 has-[:disabled]:opacity-50">
                                         <FormControl>
                                         <RadioGroupItem value="homePhone" disabled={!form.getValues().homePhone} />
                                         </FormControl>
@@ -625,7 +625,7 @@ export default function ContactsPage() {
                                     <Textarea
                                       placeholder="Reference to information regarding the client.."
                                       className="resize-none pr-10"
-                                      rows={5}
+                                      rows={3}
                                       {...field}
                                     />
                                   </FormControl>
