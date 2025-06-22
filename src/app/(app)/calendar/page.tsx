@@ -4,7 +4,7 @@
 import * as React from "react"
 import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set, addMinutes } from "date-fns"
 import { Users, Settings } from "lucide-react"
-import { DndProvider, useDrag, useDrop, DragPreviewImage } from 'react-dnd';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
 import { cn } from "@/lib/utils"
@@ -324,8 +324,15 @@ function HourDetailView({
                                 })}
                             </div>
                             <div ref={dropRef} className="relative flex-1" style={{ height: `${CONTAINER_HEIGHT}px` }}>
-                                {fiveMinuteIntervals.map(minute => (
-                                   <div key={`line-${minute}`} className="border-b" style={{ height: `${5 * PIXELS_PER_MINUTE_DETAIL}px` }}></div>
+                                {fiveMinuteIntervals.map((minute, index) => (
+                                   <div 
+                                    key={`line-${minute}`} 
+                                    className={cn(
+                                        "border-b", 
+                                        index % 2 === 0 && "bg-muted/20"
+                                    )} 
+                                    style={{ height: `${5 * PIXELS_PER_MINUTE_DETAIL}px` }}
+                                    ></div>
                                 ))}
                                 {tasks.map(task => {
                                     const startMinutes = task.start.getMinutes();
@@ -396,7 +403,9 @@ function CalendarPageContent() {
     setIsHourDetailOpen(true);
   };
   
-  const hours = Array.from({ length: viewEndHour - viewStartHour + 1 }, (_, i) => i + viewStartHour);
+  const hours = React.useMemo(() => {
+    return Array.from({ length: viewEndHour - viewStartHour + 1 }, (_, i) => i + viewStartHour);
+  }, [viewStartHour, viewEndHour]);
 
   const renderTimelineView = (days: Date[]) => {
     if (days.length === 0) return null;
