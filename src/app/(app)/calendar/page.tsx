@@ -37,18 +37,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
+import { type Event } from "@/types/calendar";
+import { useToast } from "@/hooks/use-toast";
 
 
 type CalendarView = "day" | "5days" | "week" | "month";
-
-type Event = {
-  id: string;
-  title: string;
-  description: string;
-  start: Date;
-  end: Date;
-  attendees: string[];
-};
 
 const today = new Date();
 const mockEvents: Event[] = [
@@ -273,6 +266,8 @@ function CalendarPageContent() {
   const [isMonthViewOpen, setIsMonthViewOpen] = React.useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
   const [tempViewHours, setTempViewHours] = React.useState({ start: viewStartHour, end: viewEndHour });
+  
+  const { toast } = useToast();
 
   React.useEffect(() => {
     try {
@@ -280,14 +275,20 @@ function CalendarPageContent() {
       const savedEndHour = localStorage.getItem('calendarViewEndHour');
       if (savedStartHour) {
         setViewStartHour(Number(savedStartHour));
+        setTempViewHours(prev => ({ ...prev, start: Number(savedStartHour) }));
       }
       if (savedEndHour) {
         setViewEndHour(Number(savedEndHour));
+        setTempViewHours(prev => ({ ...prev, end: Number(savedEndHour) }));
       }
     } catch (error) {
       console.error("Could not read calendar settings from localStorage", error);
     }
   }, []);
+
+  const handleTaskCreate = (newEvent: Event) => {
+    setEvents(prevEvents => [...prevEvents, newEvent]);
+  };
 
   const viewTitle = React.useMemo(() => {
     if (!date) return "Select a date";
@@ -403,14 +404,14 @@ function CalendarPageContent() {
               ))}
             </div>
           </div>
-
+          
           <div className="grid flex-1" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(150px, 1fr))` }}>
-            <div className="col-span-full pt-4">
-              {days.map((day) => {
-                 const dayEvents = events.filter(event => isSameDay(event.start, day));
-                 return (
+            {days.map((day, index) => {
+              const dayEvents = events.filter(event => isSameDay(event.start, day));
+              return (
+                <div key={day.toISOString()} className={cn(index === 0 && 'col-start-1 -ml-24 pl-24' )}>
+                  <div className="pt-4">
                     <TimelineDayColumn
-                      key={day.toISOString()}
                       day={day}
                       dayEvents={dayEvents}
                       viewStartHour={viewStartHour}
@@ -418,9 +419,10 @@ function CalendarPageContent() {
                       onEventDrop={handleEventDrop}
                       hideHeader={hideDayHeader}
                     />
-                 )
-              })}
-            </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       </ScrollArea>
@@ -607,6 +609,7 @@ function CalendarPageContent() {
           isOpen={isNewTaskDialogOpen} 
           onOpenChange={setIsNewTaskDialogOpen}
           defaultStartDate={newTaskDefaultDate}
+          onTaskCreate={handleTaskCreate}
         />
       </div>
   )

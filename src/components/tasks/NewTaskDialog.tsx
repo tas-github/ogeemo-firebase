@@ -33,11 +33,14 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { mockContacts, type Contact } from "@/data/contacts";
+import { type Event } from "@/types/calendar";
+import { useToast } from "@/hooks/use-toast";
 
 interface NewTaskDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   defaultStartDate?: Date;
+  onTaskCreate: (newEvent: Event) => void;
 }
 
 const hourOptions = Array.from({ length: 24 }, (_, i) => {
@@ -57,7 +60,13 @@ const minuteOptions = Array.from({ length: 12 }, (_, i) => {
 });
 
 
-export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTaskDialogProps) {
+export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, onTaskCreate }: NewTaskDialogProps) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState<string | undefined>();
+  const [urgency, setUrgency] = useState<string | undefined>();
+  const [assigneeId, setAssigneeId] = useState<string | undefined>();
+
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [startHour, setStartHour] = useState<string | undefined>();
   const [startMinute, setStartMinute] = useState<string | undefined>();
@@ -67,23 +76,31 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTas
   const [dueMinute, setDueMinute] = useState<string | undefined>();
 
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const { toast } = useToast();
+
+  const resetForm = () => {
+    setTitle("");
+    setDescription("");
+    setPriority(undefined);
+    setUrgency(undefined);
+    setAssigneeId(undefined);
+    setStartDate(defaultStartDate);
+    if (defaultStartDate) {
+      setStartHour(String(defaultStartDate.getHours()));
+      const roundedMinute = Math.round(defaultStartDate.getMinutes() / 5) * 5;
+      setStartMinute(String(roundedMinute));
+    } else {
+      setStartHour(undefined);
+      setStartMinute(undefined);
+    }
+    setDueDate(undefined);
+    setDueHour(undefined);
+    setDueMinute(undefined);
+  };
 
   useEffect(() => {
-    // When the dialog opens or the default date changes, reset the state
     if (isOpen) {
-      setStartDate(defaultStartDate);
-      if (defaultStartDate) {
-        setStartHour(String(defaultStartDate.getHours()));
-        const roundedMinute = Math.round(defaultStartDate.getMinutes() / 5) * 5;
-        setStartMinute(String(roundedMinute));
-      } else {
-        setStartHour(undefined);
-        setStartMinute(undefined);
-      }
-
-      setDueDate(undefined);
-      setDueHour(undefined);
-      setDueMinute(undefined);
+      resetForm();
     }
   }, [isOpen, defaultStartDate]);
 
@@ -94,8 +111,50 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTas
   }, []);
 
   const handleCreateTask = () => {
-    // In a real app, you'd gather form data and create the task.
-    console.log("Task created (mock)");
+    if (!title || !startDate || !startHour || !startMinute || !dueDate || !dueHour || !dueMinute || !assigneeId) {
+        toast({
+            variant: "destructive",
+            title: "Missing Information",
+            description: "Please fill out all required fields to create a task.",
+        });
+        return;
+    }
+
+    const startDateTime = set(startDate, {
+        hours: parseInt(startHour, 10),
+        minutes: parseInt(startMinute, 10),
+    });
+
+    const endDateTime = set(dueDate, {
+        hours: parseInt(dueHour, 10),
+        minutes: parseInt(dueMinute, 10),
+    });
+    
+    if (endDateTime <= startDateTime) {
+      toast({
+          variant: "destructive",
+          title: "Invalid Date",
+          description: "The due date and time must be after the start date and time.",
+      });
+      return;
+    }
+    
+    const assignee = contacts.find(c => c.id === assigneeId);
+
+    const newEvent: Event = {
+        id: `event-${Date.now()}`,
+        title,
+        description,
+        start: startDateTime,
+        end: endDateTime,
+        attendees: assignee ? ['You', assignee.name] : ['You'],
+    };
+
+    onTaskCreate(newEvent);
+    toast({
+        title: "Task Created",
+        description: `"${title}" has been added to your calendar.`,
+    });
     onOpenChange(false);
   };
 
@@ -115,6 +174,8 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTas
               <Input
                 id="task-title"
                 placeholder="e.g., Deploy the new feature"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -123,12 +184,14 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTas
                 id="task-description"
                 placeholder="Provide a detailed description of the task..."
                 rows={8}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="task-priority">Priority</Label>
-                <Select>
+                <Select value={priority} onValueChange={setPriority}>
                   <SelectTrigger id="task-priority">
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
@@ -141,7 +204,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTas
               </div>
               <div className="space-y-2">
                 <Label htmlFor="task-urgency">Urgency</Label>
-                <Select>
+                <Select value={urgency} onValueChange={setUrgency}>
                   <SelectTrigger id="task-urgency">
                     <SelectValue placeholder="Select urgency" />
                   </SelectTrigger>
@@ -276,7 +339,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTas
             </div>
             <div className="space-y-2">
               <Label htmlFor="task-assignee">Assignee</Label>
-              <Select>
+              <Select value={assigneeId} onValueChange={setAssigneeId}>
                 <SelectTrigger id="task-assignee">
                   <SelectValue placeholder="Assign to a team member" />
                 </SelectTrigger>
