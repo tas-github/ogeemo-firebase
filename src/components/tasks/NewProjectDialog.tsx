@@ -13,16 +13,18 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
 interface NewProjectDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onProjectCreate: (projectName: string) => void;
+  onProjectCreate: (projectName: string, projectDescription: string) => void;
 }
 
 export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreate }: NewProjectDialogProps) {
   const [projectName, setProjectName] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
   const { toast } = useToast();
 
   const handleCreateProject = () => {
@@ -34,8 +36,9 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreate }: NewP
       });
       return;
     }
-    onProjectCreate(projectName.trim());
+    onProjectCreate(projectName.trim(), projectDescription.trim());
     setProjectName("");
+    setProjectDescription("");
     onOpenChange(false);
   };
 
@@ -45,23 +48,28 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreate }: NewP
         <DialogHeader>
           <DialogTitle>Create a New Project</DialogTitle>
           <DialogDescription>
-            Give your new project a name. You can add tasks to it after it's created.
+            Give your new project a name and an optional description.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4 space-y-2">
-          <Label htmlFor="project-name">Project Name</Label>
-          <Input
-            id="project-name"
-            placeholder="e.g., Q4 Marketing Campaign"
-            value={projectName}
-            onChange={(e) => setProjectName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleCreateProject();
-              }
-            }}
-          />
+        <div className="py-4 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="project-name">Project Name</Label>
+            <Input
+              id="project-name"
+              placeholder="e.g., Q4 Marketing Campaign"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="project-description">Project Description</Label>
+            <Textarea
+              id="project-description"
+              placeholder="Describe the project's goals and scope."
+              value={projectDescription}
+              onChange={(e) => setProjectDescription(e.target.value)}
+            />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
