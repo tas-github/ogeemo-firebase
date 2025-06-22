@@ -96,7 +96,7 @@ export default function CalendarPage() {
     switch (view) {
       case "day":
         if (dailyEvents.length === 0) {
-            return <p className="text-muted-foreground">No events for this day.</p>;
+            return <p className="text-muted-foreground p-4 text-center">No events for this day.</p>;
         }
         return (
             <ScrollArea className="h-full w-full">
@@ -175,11 +175,11 @@ export default function CalendarPage() {
             </ScrollArea>
         );
       case "5days":
-        return <p className="text-muted-foreground">5-day view coming soon.</p>;
+        return <p className="text-muted-foreground p-4">5-day view coming soon.</p>;
       case "week":
-        return <p className="text-muted-foreground">Week view coming soon.</p>;
+        return <p className="text-muted-foreground p-4">Week view coming soon.</p>;
       case "month":
-        return <p className="text-muted-foreground">Month view coming soon.</p>;
+        return <p className="text-muted-foreground p-4">Month view coming soon.</p>;
       default:
         return null;
     }
@@ -229,7 +229,7 @@ export default function CalendarPage() {
                       ))}
                   </div>
                 </div>
-                <div className="flex-1 flex items-center justify-center mt-4 border-t pt-4">
+                <div className="flex-1 mt-4 border-t pt-4 overflow-hidden">
                     {renderViewContent()}
                 </div>
             </div>
