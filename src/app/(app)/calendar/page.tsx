@@ -95,7 +95,7 @@ const mockEvents: Event[] = [
   },
 ];
 
-const DraggableTimelineEvent = ({ event, style, className }: { event: Event; style: React.CSSProperties; className: string }) => {
+const DraggableTimelineEvent = ({ event, style, className, onClick }: { event: Event; style: React.CSSProperties; className: string, onClick: () => void }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'event',
     item: event,
@@ -109,6 +109,7 @@ const DraggableTimelineEvent = ({ event, style, className }: { event: Event; sty
       ref={drag}
       style={{ ...style, opacity: isDragging ? 0.5 : 1 }}
       className={cn(className, "cursor-move")}
+      onClick={onClick}
     >
       <p className="font-bold text-xs truncate">{event.title}</p>
       <p className="text-xs opacity-80 truncate">{format(event.start, 'p')} - {format(event.end, 'p')}</p>
@@ -122,6 +123,7 @@ const TimelineDayColumn = ({
   viewStartHour,
   viewEndHour,
   onEventDrop,
+  onEventClick,
   hideHeader = false,
 }: {
   day: Date;
@@ -129,6 +131,7 @@ const TimelineDayColumn = ({
   viewStartHour: number;
   viewEndHour: number;
   onEventDrop: (eventId: string, newStart: Date) => void;
+  onEventClick: (event: Event) => void;
   hideHeader?: boolean;
 }) => {
   const PIXELS_PER_MINUTE = 2;
@@ -188,6 +191,7 @@ const TimelineDayColumn = ({
               event={event}
               style={{ top: `${top}px`, height: `${height}px` }}
               className="absolute left-1 right-1 rounded-lg bg-primary/20 p-2 border border-primary/50 overflow-hidden text-primary"
+              onClick={() => onEventClick(event)}
             />
           );
         })}
@@ -196,7 +200,7 @@ const TimelineDayColumn = ({
   );
 };
 
-const MonthView = ({ date, events }: { date: Date; events: Event[] }) => {
+const MonthView = ({ date, events, onEventClick }: { date: Date; events: Event[], onEventClick: (event: Event) => void; }) => {
   const monthStart = startOfMonth(date);
   const monthEnd = endOfMonth(date);
   const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -237,8 +241,9 @@ const MonthView = ({ date, events }: { date: Date; events: Event[] }) => {
                   {dayEvents.map(event => (
                     <div
                       key={event.id}
-                      className="text-xs p-1 rounded bg-primary/20 text-primary truncate"
+                      className="text-xs p-1 rounded bg-primary/20 text-primary truncate cursor-pointer"
                       title={event.title}
+                      onClick={() => onEventClick(event)}
                     >
                       {event.title}
                     </div>
@@ -267,6 +272,8 @@ function CalendarPageContent() {
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
   const [tempViewHours, setTempViewHours] = React.useState({ start: viewStartHour, end: viewEndHour });
   
+  const [eventToEdit, setEventToEdit] = React.useState<Event | null>(null);
+
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -288,6 +295,23 @@ function CalendarPageContent() {
 
   const handleTaskCreate = (newEvent: Event) => {
     setEvents(prevEvents => [...prevEvents, newEvent]);
+    toast({
+        title: "Task Created",
+        description: `"${newEvent.title}" has been successfully created.`,
+    });
+  };
+
+  const handleTaskUpdate = (updatedEvent: Event) => {
+    setEvents(prevEvents => prevEvents.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+    toast({
+        title: "Task Updated",
+        description: `"${updatedEvent.title}" has been successfully updated.`,
+    });
+  };
+
+  const handleEventClick = (event: Event) => {
+    setEventToEdit(event);
+    setIsNewTaskDialogOpen(true);
   };
 
   const viewTitle = React.useMemo(() => {
@@ -355,6 +379,7 @@ function CalendarPageContent() {
     if (!date) return;
     const selectedDateTime = set(date, { hours: hour, minutes: 0, seconds: 0, milliseconds: 0 });
     setNewTaskDefaultDate(selectedDateTime);
+    setEventToEdit(null);
     setIsNewTaskDialogOpen(true);
   };
   
@@ -417,6 +442,7 @@ function CalendarPageContent() {
                       viewStartHour={viewStartHour}
                       viewEndHour={viewEndHour}
                       onEventDrop={handleEventDrop}
+                      onEventClick={handleEventClick}
                       hideHeader={hideDayHeader}
                     />
                   </div>
@@ -442,7 +468,7 @@ function CalendarPageContent() {
         const weekRange = eachDayOfInterval({ start: startOfWeek(date, { weekStartsOn }), end: endOfWeek(date, { weekStartsOn }) });
         return renderTimelineView(weekRange);
       case "month":
-        return <MonthView date={date} events={events} />;
+        return <MonthView date={date} events={events} onEventClick={handleEventClick} />;
       default:
         return null;
     }
@@ -607,9 +633,16 @@ function CalendarPageContent() {
 
         <NewTaskDialog 
           isOpen={isNewTaskDialogOpen} 
-          onOpenChange={setIsNewTaskDialogOpen}
+          onOpenChange={(open) => {
+            setIsNewTaskDialogOpen(open);
+            if (!open) {
+                setEventToEdit(null);
+            }
+          }}
           defaultStartDate={newTaskDefaultDate}
+          eventToEdit={eventToEdit}
           onTaskCreate={handleTaskCreate}
+          onTaskUpdate={handleTaskUpdate}
         />
       </div>
   )
