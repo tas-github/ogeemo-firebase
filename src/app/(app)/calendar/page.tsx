@@ -56,14 +56,6 @@ type Event = {
 const today = new Date();
 const mockEvents: Event[] = [
     {
-    id: '1',
-    title: 'Daily Standup',
-    description: 'Quick sync with the team on daily progress.',
-    start: setHours(today, 9),
-    end: setHours(today, 9, 15),
-    attendees: ['You', 'Alice', 'Bob'],
-  },
-  {
     id: '2',
     title: 'Design Review',
     description: 'Review the new landing page mockups.',
@@ -162,7 +154,7 @@ function CalendarPageContent() {
   const [date, setDate] = React.useState<Date | undefined>(new Date())
   const [view, setView] = React.useState<CalendarView>("day");
   const [events] = React.useState<Event[]>(mockEvents);
-  const [viewStartHour, setViewStartHour] = React.useState(8);
+  const [viewStartHour, setViewStartHour] = React.useState(9);
   const [viewEndHour, setViewEndHour] = React.useState(17);
 
   const viewOptions: { id: CalendarView; label: string }[] = [
@@ -483,3 +475,5 @@ export default function CalendarPage() {
     </DndProvider>
   )
 }
+
+    
