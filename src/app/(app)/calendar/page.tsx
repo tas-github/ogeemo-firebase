@@ -2,9 +2,9 @@
 "use client"
 
 import * as React from "react"
-import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set } from "date-fns"
+import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set, addMinutes } from "date-fns"
 import { Users, Settings } from "lucide-react"
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { DndProvider, useDrag, useDrop, DragPreviewImage } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
 import { cn } from "@/lib/utils"
@@ -51,6 +51,13 @@ type Event = {
   start: Date;
   end: Date;
   attendees: string[];
+};
+
+type HourTask = {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
 };
 
 const today = new Date();
@@ -103,6 +110,12 @@ const mockEvents: Event[] = [
     end: setHours(addDays(today, 4), 15),
     attendees: ['You', 'Charlie Brown'],
   },
+];
+
+const mockHourTasksData: Omit<HourTask, 'start' | 'end'> & { startMinutes: number; durationMinutes: number }[] = [
+    { id: 'ht1', title: 'Review PR #123', startMinutes: 5, durationMinutes: 15 },
+    { id: 'ht2', title: 'Quick stand-up prep', startMinutes: 30, durationMinutes: 10 },
+    { id: 'ht3', title: 'Answer urgent email', startMinutes: 50, durationMinutes: 5 },
 ];
 
 
@@ -204,12 +217,149 @@ const TimelineDayColumn = ({
 };
 
 
+const DraggableHourTask = ({ task, style }: { task: HourTask; style: React.CSSProperties }) => {
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: 'hourTask',
+    item: task,
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  }));
+
+  return (
+    <div
+      ref={drag}
+      style={{ ...style, opacity: isDragging ? 0.5 : 1 }}
+      className="absolute left-1 right-1 cursor-move rounded-md bg-accent p-1 border border-accent-foreground/50 overflow-hidden text-accent-foreground"
+    >
+      <p className="font-semibold text-xs truncate">{task.title}</p>
+      <p className="text-xs opacity-80 truncate">{format(task.start, 'p')} - {format(task.end, 'p')}</p>
+    </div>
+  );
+};
+
+
+function HourDetailView({ 
+    isOpen, 
+    onOpenChange, 
+    hourStart 
+}: { 
+    isOpen: boolean; 
+    onOpenChange: (open: boolean) => void; 
+    hourStart: Date; 
+}) {
+    const [tasks, setTasks] = React.useState<HourTask[]>(() => {
+        return mockHourTasksData.map(t => ({
+            id: `${hourStart.getTime()}-${t.id}`,
+            title: t.title,
+            start: addMinutes(hourStart, t.startMinutes),
+            end: addMinutes(hourStart, t.startMinutes + t.durationMinutes),
+        }));
+    });
+
+    const onTaskDrop = React.useCallback((taskId: string, newStart: Date) => {
+        setTasks(prevTasks => {
+            const taskToUpdate = prevTasks.find(t => t.id === taskId);
+            if (!taskToUpdate) return prevTasks;
+            
+            const duration = taskToUpdate.end.getTime() - taskToUpdate.start.getTime();
+            const newEnd = new Date(newStart.getTime() + duration);
+            
+            return prevTasks.map(t =>
+                t.id === taskId ? { ...t, start: newStart, end: newEnd } : t
+            );
+        });
+    }, []);
+
+    const fiveMinuteIntervals = Array.from({ length: 12 }, (_, i) => i * 5);
+    const PIXELS_PER_MINUTE_DETAIL = 4;
+    const CONTAINER_HEIGHT = 60 * PIXELS_PER_MINUTE_DETAIL;
+    const dropRef = React.useRef<HTMLDivElement>(null);
+
+    const [, drop] = useDrop(() => ({
+        accept: 'hourTask',
+        drop: (item: HourTask, monitor) => {
+            if (!dropRef.current) return;
+            const dropTargetRect = dropRef.current.getBoundingClientRect();
+            const clientOffset = monitor.getClientOffset();
+            const scrollOffset = dropRef.current.scrollTop;
+
+            if (!clientOffset) return;
+            
+            const dropY = clientOffset.y - dropTargetRect.top + scrollOffset;
+            
+            let minutesFromStart = Math.round(dropY / PIXELS_PER_MINUTE_DETAIL);
+            minutesFromStart = Math.max(0, Math.round(minutesFromStart / 5) * 5);
+            
+            const newStartDate = set(hourStart, { minutes: minutesFromStart, seconds: 0, milliseconds: 0 });
+            
+            onTaskDrop(item.id, newStartDate);
+        },
+    }));
+
+    drop(dropRef);
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md h-[80vh] flex flex-col p-0">
+                <DialogHeader className="p-4 pb-2 border-b">
+                    <DialogTitle>Timebox for {format(hourStart, 'h a')}</DialogTitle>
+                    <DialogDescription>
+                        Plan your hour in 5-minute increments. Drag tasks to reschedule.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="flex-1 flex overflow-hidden">
+                    <ScrollArea className="h-full">
+                        <div className="flex">
+                            <div className="w-16 shrink-0 border-r bg-muted/50">
+                                {fiveMinuteIntervals.map(minute => (
+                                    <div key={minute} className="relative text-right" style={{ height: `${5 * PIXELS_PER_MINUTE_DETAIL}px` }}>
+                                        {minute % 15 === 0 && (
+                                            <span className="absolute -top-2 right-2 text-xs text-muted-foreground pr-1">
+                                                :{format(addMinutes(hourStart, minute), 'mm')}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                            <div ref={dropRef} className="relative flex-1" style={{ height: `${CONTAINER_HEIGHT}px` }}>
+                                {fiveMinuteIntervals.map(minute => (
+                                   <div key={`line-${minute}`} className="border-b" style={{ height: `${5 * PIXELS_PER_MINUTE_DETAIL}px` }}></div>
+                                ))}
+                                {tasks.map(task => {
+                                    const startMinutes = task.start.getMinutes();
+                                    const endMinutes = task.end.getMinutes();
+                                    const durationMinutes = Math.max(5, (endMinutes === 0 ? 60 : endMinutes) - startMinutes);
+                                    
+                                    const top = startMinutes * PIXELS_PER_MINUTE_DETAIL;
+                                    const height = durationMinutes * PIXELS_PER_MINUTE_DETAIL;
+
+                                    return (
+                                        <DraggableHourTask
+                                            key={task.id}
+                                            task={task}
+                                            style={{ top: `${top}px`, height: `${height}px` }}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </ScrollArea>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 function CalendarPageContent() {
   const [date, setDate] = React.useState<Date | undefined>(new Date())
   const [view, setView] = React.useState<CalendarView>("day");
   const [events, setEvents] = React.useState<Event[]>(mockEvents);
   const [viewStartHour, setViewStartHour] = React.useState(9);
   const [viewEndHour, setViewEndHour] = React.useState(17);
+  
+  const [isHourDetailOpen, setIsHourDetailOpen] = React.useState(false);
+  const [selectedHourForDetail, setSelectedHourForDetail] = React.useState<Date | null>(null);
 
   const viewOptions: { id: CalendarView; label: string }[] = [
     { id: "day", label: "Day" },
@@ -220,7 +370,7 @@ function CalendarPageContent() {
   const timeOptions = React.useMemo(() => {
     return Array.from({ length: 24 }, (_, i) => ({
       value: i,
-      label: format(setHours(new Date(), i), 'ha'), // e.g., "12AM", "1AM", "1PM"
+      label: format(setHours(new Date(), i), 'ha'),
     }));
   }, []);
 
@@ -237,66 +387,38 @@ function CalendarPageContent() {
       );
     });
   }, []);
+
+  const handleHourClick = (hour: number) => {
+    if (!date) return;
+    const selected = set(date, { hours: hour, minutes: 0, seconds: 0, milliseconds: 0});
+    setSelectedHourForDetail(selected);
+    setIsHourDetailOpen(true);
+  };
   
   const hours = Array.from({ length: viewEndHour - viewStartHour + 1 }, (_, i) => i + viewStartHour);
 
-  const renderDayTimelineView = () => {
-    if (!date) return null;
-    const dayEvents = events.filter(event => isSameDay(event.start, date));
+  const renderTimelineView = (days: Date[]) => {
+    if (days.length === 0) return null;
 
     return (
       <ScrollArea className="h-full w-full">
-        <div className="flex" style={{ minWidth: 64 + 150 }}>
-          {/* Time Gutter */}
+        <div className="flex" style={{ minWidth: 64 + 150 * days.length }}>
           <div className="sticky left-0 z-20 w-16 shrink-0 bg-background">
             <div className="h-16 border-b border-r">&nbsp;</div>
             {hours.map(hour => (
               <div key={`time-gutter-${hour}`} className="relative h-[120px] border-r text-right">
-                <span className="absolute top-0 right-2 -translate-y-1/2 bg-background px-1 text-xs text-muted-foreground">
+                <button 
+                  onClick={() => handleHourClick(hour)}
+                  className="absolute top-0 right-2 -translate-y-1/2 bg-background px-1 text-xs text-muted-foreground transition-colors hover:font-bold hover:text-primary"
+                >
                   {format(setHours(new Date(), hour), 'ha')}
-                </span>
+                </button>
               </div>
             ))}
           </div>
 
-          {/* Day Column */}
-          <div className="grid flex-1" style={{ gridTemplateColumns: `minmax(150px, 1fr)` }}>
-             <TimelineDayColumn
-                day={date}
-                dayEvents={dayEvents}
-                viewStartHour={viewStartHour}
-                viewEndHour={viewEndHour}
-                onEventDrop={handleEventDrop}
-             />
-          </div>
-        </div>
-      </ScrollArea>
-    );
-  };
-
-  const renderMultiDayView = (numDays: 5 | 7) => {
-    if (!date) return null;
-
-    const weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 1; // Monday
-    const startDate = numDays === 7 ? startOfWeek(date, { weekStartsOn }) : date;
-    const dayRange = eachDayOfInterval({ start: startDate, end: addDays(startDate, numDays - 1) });
-
-    return (
-      <ScrollArea className="h-full w-full">
-        <div className="flex" style={{ minWidth: 64 + 150 * numDays }}>
-          <div className="sticky left-0 z-20 w-16 shrink-0 bg-background">
-            <div className="h-16 border-b border-r">&nbsp;</div>
-            {hours.map(hour => (
-              <div key={`time-gutter-${hour}`} className="relative h-[120px] border-r text-right">
-                <span className="absolute top-0 right-2 -translate-y-1/2 bg-background px-1 text-xs text-muted-foreground">
-                  {format(setHours(new Date(), hour), 'ha')}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid flex-1" style={{ gridTemplateColumns: `repeat(${numDays}, minmax(150px, 1fr))` }}>
-            {dayRange.map((day) => {
+          <div className="grid flex-1" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(150px, 1fr))` }}>
+            {days.map((day) => {
                const dayEvents = events.filter(event => isSameDay(event.start, day));
                return (
                   <TimelineDayColumn
@@ -313,17 +435,20 @@ function CalendarPageContent() {
         </div>
       </ScrollArea>
     );
-  };
-
+  }
 
   const renderViewContent = () => {
+    if (!date) return null;
     switch (view) {
       case "day":
-        return renderDayTimelineView();
+        return renderTimelineView([date]);
       case "5days":
-        return renderMultiDayView(5);
+        const fiveDayRange = eachDayOfInterval({ start: date, end: addDays(date, 4) });
+        return renderTimelineView(fiveDayRange);
       case "week":
-        return renderMultiDayView(7);
+        const weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 1; // Monday
+        const weekRange = eachDayOfInterval({ start: startOfWeek(date, { weekStartsOn }), end: endOfWeek(date, { weekStartsOn }) });
+        return renderTimelineView(weekRange);
       default:
         return null;
     }
@@ -454,6 +579,13 @@ function CalendarPageContent() {
             </ResizablePanel>
           </ResizablePanelGroup>
         </div>
+        {selectedHourForDetail && (
+            <HourDetailView
+                isOpen={isHourDetailOpen}
+                onOpenChange={setIsHourDetailOpen}
+                hourStart={selectedHourForDetail}
+            />
+        )}
       </div>
   )
 }
