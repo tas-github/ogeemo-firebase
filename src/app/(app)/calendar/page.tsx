@@ -2,8 +2,8 @@
 "use client"
 
 import * as React from "react"
-import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set, addMinutes } from "date-fns"
-import { Users, Settings } from "lucide-react"
+import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set, addMinutes, startOfMinute } from "date-fns"
+import { Users, Settings, Plus } from "lucide-react"
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
@@ -217,10 +217,10 @@ const TimelineDayColumn = ({
 };
 
 
-const DraggableHourTask = ({ task, style }: { task: HourTask; style: React.CSSProperties }) => {
+const DraggableHourTask = ({ task }: { task: HourTask }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'hourTask',
-    item: task,
+    item: { id: task.id },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
@@ -229,14 +229,61 @@ const DraggableHourTask = ({ task, style }: { task: HourTask; style: React.CSSPr
   return (
     <div
       ref={drag}
-      style={{ ...style, opacity: isDragging ? 0.5 : 1 }}
-      className="absolute left-1 right-1 cursor-move rounded-md bg-accent p-1 border border-accent-foreground/50 overflow-hidden text-accent-foreground"
+      style={{ opacity: isDragging ? 0.4 : 1 }}
+      className="w-full cursor-move rounded-md bg-accent p-2 border border-accent-foreground/50 text-accent-foreground shadow"
     >
-      <p className="font-semibold text-xs truncate">{task.title}</p>
-      <p className="text-xs opacity-80 truncate">{format(task.start, 'p')} - {format(task.end, 'p')}</p>
+      <p className="font-semibold text-sm truncate">{task.title}</p>
     </div>
   );
 };
+
+const TimeSlot = ({
+  slotTime,
+  tasks,
+  onTaskDrop
+}: {
+  slotTime: Date;
+  tasks: HourTask[];
+  onTaskDrop: (taskId: string, newStartTime: Date) => void;
+}) => {
+  const [{ isOver }, drop] = useDrop(() => ({
+    accept: 'hourTask',
+    drop: (item: { id: string }) => {
+      onTaskDrop(item.id, slotTime);
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver(),
+    }),
+  }));
+
+  return (
+    <div className="flex items-start gap-4 p-2 border-b">
+        <div className="w-28 text-right shrink-0">
+            <p className="font-mono text-lg font-bold">{format(slotTime, 'p')}</p>
+            <p className="font-mono text-sm text-muted-foreground">
+                - {format(addMinutes(slotTime, 5), 'p')}
+            </p>
+        </div>
+        <div 
+            ref={drop} 
+            className={cn(
+                "flex-1 min-h-[4.5rem] rounded-lg bg-muted/30 p-2 transition-colors",
+                isOver && "bg-primary/20"
+            )}
+        >
+          {tasks.length > 0 ? (
+            <div className="space-y-2">
+              {tasks.map(task => <DraggableHourTask key={task.id} task={task} />)}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground/50 text-sm">
+                Drop task here
+            </div>
+          )}
+        </div>
+    </div>
+  )
+}
 
 
 function HourDetailView({ 
@@ -256,103 +303,107 @@ function HourDetailView({
             end: addMinutes(hourStart, t.startMinutes + t.durationMinutes),
         }));
     });
+    
+    const [unassignedTasks, setUnassignedTasks] = React.useState<HourTask[]>([]);
 
-    const onTaskDrop = React.useCallback((taskId: string, newStart: Date) => {
-        setTasks(prevTasks => {
-            const taskToUpdate = prevTasks.find(t => t.id === taskId);
-            if (!taskToUpdate) return prevTasks;
-            
-            const duration = taskToUpdate.end.getTime() - taskToUpdate.start.getTime();
+    const onTaskDrop = React.useCallback((taskId: string, newSlotTime: Date) => {
+        const moveTask = (taskToMove: HourTask) => {
+            const duration = taskToMove.end.getTime() - taskToMove.start.getTime();
+            const newStart = startOfMinute(newSlotTime);
             const newEnd = new Date(newStart.getTime() + duration);
             
-            return prevTasks.map(t =>
+            setTasks(prev => prev.map(t =>
                 t.id === taskId ? { ...t, start: newStart, end: newEnd } : t
-            );
-        });
-    }, []);
+            ));
+        }
 
-    const fiveMinuteIntervals = Array.from({ length: 12 }, (_, i) => i * 5);
-    const PIXELS_PER_MINUTE_DETAIL = 4;
-    const CONTAINER_HEIGHT = 60 * PIXELS_PER_MINUTE_DETAIL;
-    const dropRef = React.useRef<HTMLDivElement>(null);
+        const taskToUpdate = tasks.find(t => t.id === taskId);
+        if (taskToUpdate) {
+            moveTask(taskToUpdate);
+        } else {
+            const unassignedTask = unassignedTasks.find(t => t.id === taskId);
+            if(unassignedTask) {
+                setUnassignedTasks(prev => prev.filter(t => t.id !== taskId));
+                setTasks(prev => [...prev, unassignedTask]);
+                moveTask(unassignedTask);
+            }
+        }
+    }, [tasks, unassignedTasks]);
+    
+    const handleNewTask = () => {
+        const newTask: HourTask = {
+            id: `task-${Date.now()}`,
+            title: "New Task - Edit Me",
+            start: new Date(0), // Sentinel for unassigned
+            end: new Date(0),
+        };
+        setUnassignedTasks(prev => [...prev, newTask]);
+    };
+    
+    const timeSlots = React.useMemo(() => {
+        return Array.from({ length: 12 }, (_, i) => addMinutes(hourStart, i * 5));
+    }, [hourStart]);
 
-    const [, drop] = useDrop(() => ({
+
+    const [, unassignedDrop] = useDrop(() => ({
         accept: 'hourTask',
-        drop: (item: HourTask, monitor) => {
-            if (!dropRef.current) return;
-            const dropTargetRect = dropRef.current.getBoundingClientRect();
-            const clientOffset = monitor.getClientOffset();
-            const scrollOffset = dropRef.current.scrollTop;
-
-            if (!clientOffset) return;
-            
-            const dropY = clientOffset.y - dropTargetRect.top + scrollOffset;
-            
-            let minutesFromStart = Math.round(dropY / PIXELS_PER_MINUTE_DETAIL);
-            minutesFromStart = Math.max(0, Math.round(minutesFromStart / 5) * 5);
-            
-            const newStartDate = set(hourStart, { minutes: minutesFromStart, seconds: 0, milliseconds: 0 });
-            
-            onTaskDrop(item.id, newStartDate);
-        },
+        drop: (item: { id: string }) => {
+            const task = tasks.find(t => t.id === item.id);
+            if (task) {
+                setTasks(prev => prev.filter(t => t.id !== item.id));
+                setUnassignedTasks(prev => [...prev, task]);
+            }
+        }
     }));
-
-    drop(dropRef);
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
-                <DialogHeader className="p-4 pb-2 border-b">
-                    <DialogTitle>Timebox for {format(hourStart, 'h a')}</DialogTitle>
-                    <DialogDescription>
-                        Plan your hour in 5-minute increments. Drag tasks to reschedule.
-                    </DialogDescription>
+                <DialogHeader className="p-4 pb-2 border-b flex-row items-center justify-between">
+                    <div>
+                        <DialogTitle className="text-2xl">Timebox for {format(hourStart, 'h a, EEEE, MMMM do')}</DialogTitle>
+                        <DialogDescription>
+                            Plan your hour by adding tasks and dragging them into 5-minute slots.
+                        </DialogDescription>
+                    </div>
+                    <Button onClick={handleNewTask}><Plus className="mr-2 h-4 w-4" /> New Task</Button>
                 </DialogHeader>
-                <div className="flex-1 flex overflow-hidden">
-                    <ScrollArea className="h-full flex-1">
-                        <div className="flex">
-                            <div className="w-24 shrink-0 border-r bg-muted/50">
-                                {fiveMinuteIntervals.map(minute => {
-                                    const timeForSlot = addMinutes(hourStart, minute);
+                <div className="flex-1 grid grid-cols-4 overflow-hidden">
+                    <div ref={unassignedDrop} className="col-span-1 border-r bg-muted/20 flex flex-col">
+                        <h3 className="p-4 font-bold text-lg border-b shrink-0">Unassigned Tasks</h3>
+                        <ScrollArea className="flex-1">
+                            <div className="p-4 space-y-2">
+                                {unassignedTasks.map(task => <DraggableHourTask key={task.id} task={task} />)}
+                                {unassignedTasks.length === 0 && (
+                                    <div className="text-center text-sm text-muted-foreground py-10">
+                                        <p>No unassigned tasks. Drop tasks here to unschedule them.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </ScrollArea>
+                    </div>
+
+                    <div className="col-span-3 flex-1 overflow-hidden">
+                        <ScrollArea className="h-full">
+                            <div className="p-2">
+                                {timeSlots.map(slotTime => {
+                                    const slotTasks = tasks.filter(t => {
+                                        const taskStart = t.start;
+                                        return taskStart >= slotTime && taskStart < addMinutes(slotTime, 5);
+                                    });
+
                                     return (
-                                        <div key={minute} className="relative text-right" style={{ height: `${5 * PIXELS_PER_MINUTE_DETAIL}px` }}>
-                                            <span className="absolute -top-2.5 right-2 text-xs text-muted-foreground pr-1">
-                                                {format(timeForSlot, 'p')}
-                                            </span>
-                                        </div>
+                                        <TimeSlot 
+                                            key={slotTime.toISOString()}
+                                            slotTime={slotTime}
+                                            tasks={slotTasks}
+                                            onTaskDrop={onTaskDrop}
+                                        />
                                     )
                                 })}
                             </div>
-                            <div ref={dropRef} className="relative flex-1" style={{ height: `${CONTAINER_HEIGHT}px` }}>
-                                {fiveMinuteIntervals.map((minute, index) => (
-                                   <div 
-                                    key={`line-${minute}`} 
-                                    className={cn(
-                                        "border-b", 
-                                        index % 2 === 0 && "bg-muted/20"
-                                    )} 
-                                    style={{ height: `${5 * PIXELS_PER_MINUTE_DETAIL}px` }}
-                                    ></div>
-                                ))}
-                                {tasks.map(task => {
-                                    const startMinutes = task.start.getMinutes();
-                                    const endMinutes = task.end.getMinutes();
-                                    const durationMinutes = Math.max(5, (endMinutes === 0 ? 60 : endMinutes) - startMinutes);
-                                    
-                                    const top = startMinutes * PIXELS_PER_MINUTE_DETAIL;
-                                    const height = durationMinutes * PIXELS_PER_MINUTE_DETAIL;
-
-                                    return (
-                                        <DraggableHourTask
-                                            key={task.id}
-                                            task={task}
-                                            style={{ top: `${top}px`, height: `${height}px` }}
-                                        />
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </ScrollArea>
+                        </ScrollArea>
+                    </div>
                 </div>
             </DialogContent>
         </Dialog>
