@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { format, setHours } from "date-fns";
+import { format, setHours, set } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -40,24 +40,23 @@ interface NewTaskDialogProps {
   defaultStartDate?: Date;
 }
 
-const hourOptions = Array.from({ length: 24 }, (_, i) => ({
-    value: i,
-    label: format(setHours(new Date(), i), 'ha'),
-}));
-
-const minuteOptions = Array.from({ length: 12 }, (_, i) => ({
-    value: i * 5,
-    label: String(i * 5).padStart(2, '0'),
-}));
+const timeOptions = Array.from({ length: 24 * 12 }, (_, i) => {
+    const totalMinutes = i * 5;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const date = set(new Date(), { hours, minutes });
+    return {
+        value: `${hours}:${minutes}`,
+        label: format(date, 'h:mm a'),
+    };
+});
 
 export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTaskDialogProps) {
   const [startDate, setStartDate] = useState<Date | undefined>();
-  const [startHour, setStartHour] = useState<number | undefined>();
-  const [startMinute, setStartMinute] = useState<number | undefined>();
+  const [startTime, setStartTime] = useState<string | undefined>();
   
   const [dueDate, setDueDate] = useState<Date | undefined>();
-  const [dueHour, setDueHour] = useState<number | undefined>();
-  const [dueMinute, setDueMinute] = useState<number | undefined>();
+  const [dueTime, setDueTime] = useState<string | undefined>();
 
   const [contacts, setContacts] = useState<Contact[]>([]);
 
@@ -66,16 +65,15 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTas
     if (isOpen) {
       setStartDate(defaultStartDate);
       if (defaultStartDate) {
-        setStartHour(defaultStartDate.getHours());
-        setStartMinute(Math.round(defaultStartDate.getMinutes() / 5) * 5);
+        const hour = defaultStartDate.getHours();
+        const minute = Math.round(defaultStartDate.getMinutes() / 5) * 5;
+        setStartTime(`${hour}:${minute}`);
       } else {
-        setStartHour(undefined);
-        setStartMinute(undefined);
+        setStartTime(undefined);
       }
 
       setDueDate(undefined);
-      setDueHour(undefined);
-      setDueMinute(undefined);
+      setDueTime(undefined);
     }
   }, [isOpen, defaultStartDate]);
 
@@ -189,30 +187,16 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTas
                     </PopoverContent>
                     </Popover>
                     <Select
-                        value={startHour !== undefined ? String(startHour) : ""}
-                        onValueChange={(v) => setStartHour(Number(v))}
+                        value={startTime}
+                        onValueChange={setStartTime}
                         disabled={!startDate}
                     >
-                        <SelectTrigger className="w-[110px]">
-                            <SelectValue placeholder="Hour" />
+                        <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Time" />
                         </SelectTrigger>
                         <SelectContent>
-                        {hourOptions.map((option) => (
-                            <SelectItem key={`start-hr-${option.value}`} value={String(option.value)}>{option.label}</SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
-                    <Select
-                        value={startMinute !== undefined ? String(startMinute) : ""}
-                        onValueChange={(v) => setStartMinute(Number(v))}
-                        disabled={!startDate}
-                    >
-                        <SelectTrigger className="w-[90px]">
-                            <SelectValue placeholder="Min" />
-                        </SelectTrigger>
-                        <SelectContent>
-                        {minuteOptions.map((option) => (
-                            <SelectItem key={`start-min-${option.value}`} value={String(option.value)}>{option.label}</SelectItem>
+                        {timeOptions.map((option) => (
+                            <SelectItem key={`start-time-${option.value}`} value={option.value}>{option.label}</SelectItem>
                         ))}
                         </SelectContent>
                     </Select>
@@ -249,30 +233,16 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate }: NewTas
                     </PopoverContent>
                     </Popover>
                     <Select
-                        value={dueHour !== undefined ? String(dueHour) : ""}
-                        onValueChange={(v) => setDueHour(Number(v))}
+                        value={dueTime}
+                        onValueChange={setDueTime}
                         disabled={!dueDate}
                     >
-                        <SelectTrigger className="w-[110px]">
-                            <SelectValue placeholder="Hour" />
+                        <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Time" />
                         </SelectTrigger>
                         <SelectContent>
-                        {hourOptions.map((option) => (
-                            <SelectItem key={`due-hr-${option.value}`} value={String(option.value)}>{option.label}</SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
-                    <Select
-                        value={dueMinute !== undefined ? String(dueMinute) : ""}
-                        onValueChange={(v) => setDueMinute(Number(v))}
-                        disabled={!dueDate}
-                    >
-                        <SelectTrigger className="w-[90px]">
-                            <SelectValue placeholder="Min" />
-                        </SelectTrigger>
-                        <SelectContent>
-                        {minuteOptions.map((option) => (
-                            <SelectItem key={`due-min-${option.value}`} value={String(option.value)}>{option.label}</SelectItem>
+                        {timeOptions.map((option) => (
+                            <SelectItem key={`due-time-${option.value}`} value={option.value}>{option.label}</SelectItem>
                         ))}
                         </SelectContent>
                     </Select>
