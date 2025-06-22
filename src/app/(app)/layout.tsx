@@ -12,7 +12,6 @@ import {
   Wand2,
   Beaker,
   Contact,
-  ListTodo,
   Calendar,
   Folder,
   Lightbulb,
@@ -108,10 +107,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/tasks")} tooltip="Tasks">
+                <SidebarMenuButton asChild isActive={isActive("/tasks")} tooltip="Projects">
                   <Link href="/tasks">
-                    <ListTodo />
-                    <span>Tasks</span>
+                    <Briefcase />
+                    <span>Projects</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -169,14 +168,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       <path d="M18 14a6 6 0 0 1-6 6h-1a6 6 0 1 1 5-10l-2 2h3" />
                     </svg>
                     <span>Google</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/projects")} tooltip="Projects">
-                  <Link href="/projects">
-                    <Briefcase />
-                    <span>Projects</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
