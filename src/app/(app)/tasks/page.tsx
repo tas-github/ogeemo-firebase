@@ -147,7 +147,7 @@ export default function TasksPage() {
               Project Manager
             </h1>
             <Select value={selectedProjectId ?? ''} onValueChange={setSelectedProjectId}>
-              <SelectTrigger className="w-[250px]">
+              <SelectTrigger className="w-[250px] bg-primary text-primary-foreground hover:bg-primary/90 border-primary [&>svg]:opacity-100">
                 <SelectValue placeholder="Select a project" />
               </SelectTrigger>
               <SelectContent>
@@ -164,7 +164,7 @@ export default function TasksPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setIsNewProjectOpen(true)}>
+            <Button onClick={() => setIsNewProjectOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Project
             </Button>
