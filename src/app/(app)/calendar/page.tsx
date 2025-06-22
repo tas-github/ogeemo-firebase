@@ -40,6 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 
 
 type CalendarView = "day" | "5days" | "week";
@@ -289,11 +290,13 @@ const TimeSlot = ({
 function HourDetailView({ 
     isOpen, 
     onOpenChange, 
-    hourStart 
+    hourStart,
+    onNewTaskClick,
 }: { 
     isOpen: boolean; 
     onOpenChange: (open: boolean) => void; 
     hourStart: Date; 
+    onNewTaskClick: () => void;
 }) {
     const [tasks, setTasks] = React.useState<HourTask[]>(() => {
         return mockHourTasksData.map(t => ({
@@ -366,7 +369,7 @@ function HourDetailView({
                             Plan your hour by adding tasks and dragging them into 5-minute slots.
                         </DialogDescription>
                     </div>
-                    <Button onClick={handleNewTask}><Plus className="mr-2 h-4 w-4" /> New Task</Button>
+                    <Button onClick={onNewTaskClick}><Plus className="mr-2 h-4 w-4" /> New Task</Button>
                 </DialogHeader>
                 <div className="flex-1 grid grid-cols-4 overflow-hidden">
                     <div ref={unassignedDrop} className="col-span-1 border-r bg-muted/20 flex flex-col">
@@ -419,6 +422,8 @@ function CalendarPageContent() {
   
   const [isHourDetailOpen, setIsHourDetailOpen] = React.useState(false);
   const [selectedHourForDetail, setSelectedHourForDetail] = React.useState<Date | null>(null);
+  const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = React.useState(false);
+
 
   const viewOptions: { id: CalendarView; label: string }[] = [
     { id: "day", label: "Day" },
@@ -645,8 +650,10 @@ function CalendarPageContent() {
                 isOpen={isHourDetailOpen}
                 onOpenChange={setIsHourDetailOpen}
                 hourStart={selectedHourForDetail}
+                onNewTaskClick={() => setIsNewTaskDialogOpen(true)}
             />
         )}
+        <NewTaskDialog isOpen={isNewTaskDialogOpen} onOpenChange={setIsNewTaskDialogOpen} />
       </div>
   )
 }
