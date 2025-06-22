@@ -447,10 +447,12 @@ export default function ContactsPage() {
           <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
               <div className="flex flex-col space-y-1.5 text-center p-6 pb-4 border-b">
                 <h1 className="text-3xl font-bold font-headline text-primary">
-                  {contactToEdit ? `Edit ${contactToEdit.name}` : "Create New Contact"}
+                  {contactToEdit ? contactToEdit.name : "Create New Contact"}
                 </h1>
                 <p className="text-muted-foreground">
-                  {contactToEdit ? "Update the contact's details below." : `Add a new contact to the "${selectedFolder?.name}" folder.`}
+                  {contactToEdit 
+                    ? `Folder: ${folders.find(f => f.id === contactToEdit.folderId)?.name || 'Unassigned'}` 
+                    : `Add a new contact to the "${selectedFolder?.name}" folder.`}
                 </p>
               </div>
               <Form {...form}>
