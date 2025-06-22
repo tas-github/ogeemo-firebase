@@ -2,7 +2,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar as CalendarIcon } from "lucide-react";
+import Link from "next/link";
+import { Calendar as CalendarIcon, Plus } from "lucide-react";
 import { format, set } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -82,16 +83,16 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
   
   const isEditMode = !!eventToEdit;
 
-  const resetForm = () => {
+  const resetForm = (date = defaultStartDate) => {
     setTitle("");
     setDescription("");
     setPriority(undefined);
     setUrgency(undefined);
     setAssigneeId(undefined);
-    setStartDate(defaultStartDate);
-    if (defaultStartDate) {
-      setStartHour(String(defaultStartDate.getHours()));
-      const roundedMinute = Math.round(defaultStartDate.getMinutes() / 5) * 5;
+    setStartDate(date);
+    if (date) {
+      setStartHour(String(date.getHours()));
+      const roundedMinute = Math.round(date.getMinutes() / 5) * 5;
       setStartMinute(String(roundedMinute));
     } else {
       setStartHour(undefined);
@@ -136,13 +137,13 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
               setAssigneeId(undefined);
           }
       } else {
-        resetForm();
+        resetForm(defaultStartDate);
       }
     }
   }, [isOpen, eventToEdit, defaultStartDate]);
 
   const handleSaveTask = () => {
-    if (!title) {
+    if (!title.trim()) {
         toast({
             variant: "destructive",
             title: "Missing Information",
@@ -199,6 +200,10 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
             attendees: assignee ? ['You', assignee.name] : ['You'],
         };
         onTaskUpdate?.(updatedEvent);
+        toast({
+            title: "Task Updated",
+            description: `"${updatedEvent.title}" has been successfully updated.`,
+        });
     } else {
         const newEvent: Event = {
             id: `event-${Date.now()}`,
@@ -209,6 +214,10 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
             attendees: assignee ? ['You', assignee.name] : ['You'],
         };
         onTaskCreate?.(newEvent);
+        toast({
+            title: "Task Created",
+            description: `"${newEvent.title}" has been successfully created.`,
+        });
     }
 
     onOpenChange(false);
@@ -305,7 +314,6 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
                     <Select
                         value={startHour}
                         onValueChange={setStartHour}
-                        disabled={!startDate}
                     >
                         <SelectTrigger className="w-[100px]">
                             <SelectValue placeholder="Hour" />
@@ -319,7 +327,6 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
                      <Select
                         value={startMinute}
                         onValueChange={setStartMinute}
-                        disabled={!startDate}
                     >
                         <SelectTrigger className="w-[100px]">
                             <SelectValue placeholder="Minute" />
@@ -365,7 +372,6 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
                     <Select
                         value={dueHour}
                         onValueChange={setDueHour}
-                        disabled={!dueDate}
                     >
                         <SelectTrigger className="w-[100px]">
                             <SelectValue placeholder="Hour" />
@@ -379,7 +385,6 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
                      <Select
                         value={dueMinute}
                         onValueChange={setDueMinute}
-                        disabled={!dueDate}
                     >
                         <SelectTrigger className="w-[100px]">
                             <SelectValue placeholder="Minute" />
@@ -394,19 +399,27 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="task-assignee">Assignee</Label>
-              <Select value={assigneeId} onValueChange={setAssigneeId}>
-                <SelectTrigger id="task-assignee">
-                  <SelectValue placeholder="Assign to a team member" />
-                </SelectTrigger>
-                <SelectContent>
-                  {contacts.map((contact) => (
-                    <SelectItem key={contact.id} value={contact.id}>
-                      {contact.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="task-contact">Contact</Label>
+              <div className="flex items-center gap-2">
+                <Select value={assigneeId} onValueChange={setAssigneeId}>
+                  <SelectTrigger id="task-contact">
+                    <SelectValue placeholder="Select a contact" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contacts.map((contact) => (
+                      <SelectItem key={contact.id} value={contact.id}>
+                        {contact.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="icon" asChild>
+                  <Link href="/contacts" target="_blank" rel="noopener noreferrer">
+                    <Plus className="h-4 w-4" />
+                    <span className="sr-only">Add New Contact</span>
+                  </Link>
+                </Button>
+              </div>
             </div>
           </div>
         </ScrollArea>
