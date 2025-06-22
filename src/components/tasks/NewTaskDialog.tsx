@@ -85,7 +85,7 @@ export function NewTaskDialog({ isOpen, onOpenChange }: NewTaskDialogProps) {
                 rows={8}
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="task-status">Status</Label>
                 <Select defaultValue="todo">
@@ -104,6 +104,19 @@ export function NewTaskDialog({ isOpen, onOpenChange }: NewTaskDialogProps) {
                 <Select>
                   <SelectTrigger id="task-priority">
                     <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="task-urgency">Urgency</Label>
+                <Select>
+                  <SelectTrigger id="task-urgency">
+                    <SelectValue placeholder="Select urgency" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Low</SelectItem>
