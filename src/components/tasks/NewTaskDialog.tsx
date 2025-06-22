@@ -51,12 +51,63 @@ export function NewTaskDialog({ isOpen, onOpenChange }: NewTaskDialogProps) {
     setContacts(mockContacts);
   }, []);
 
+  const handleSelectStartDate = (day: Date | undefined) => {
+    if (!day) {
+      setStartDate(undefined);
+      return;
+    }
+    const newDate = startDate ? new Date(startDate) : new Date();
+    newDate.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
+    if (!startDate) {
+      newDate.setHours(9, 0, 0, 0);
+    }
+    setStartDate(newDate);
+  };
+
+  const handleStartTimeChange = (type: "hour" | "minute", value: string) => {
+    const newDate = startDate ? new Date(startDate) : new Date();
+    if (type === "hour") {
+      newDate.setHours(parseInt(value, 10));
+    } else {
+      newDate.setMinutes(parseInt(value, 10));
+    }
+    setStartDate(newDate);
+  };
+
+  const handleSelectDueDate = (day: Date | undefined) => {
+    if (!day) {
+      setDueDate(undefined);
+      return;
+    }
+    const newDate = dueDate ? new Date(dueDate) : new Date();
+    newDate.setFullYear(day.getFullYear(), day.getMonth(), day.getDate());
+    if (!dueDate) {
+      newDate.setHours(17, 0, 0, 0);
+    }
+    setDueDate(newDate);
+  };
+
+  const handleDueTimeChange = (type: "hour" | "minute", value: string) => {
+    const newDate = dueDate ? new Date(dueDate) : new Date();
+    if (type === "hour") {
+      newDate.setHours(parseInt(value, 10));
+    } else {
+      newDate.setMinutes(parseInt(value, 10));
+    }
+    setDueDate(newDate);
+  };
+
 
   const handleCreateTask = () => {
     // In a real app, you'd gather form data and create the task.
     // For now, we just close the dialog.
     console.log("Task created (mock)");
     onOpenChange(false);
+  };
+  
+  const timeOptions = {
+    hours: Array.from({ length: 24 }, (_, i) => i),
+    minutes: [0, 15, 30, 45],
   };
 
   return (
@@ -125,55 +176,165 @@ export function NewTaskDialog({ isOpen, onOpenChange }: NewTaskDialogProps) {
                   </SelectContent>
                 </Select>
               </div>
-               <div className="space-y-2">
-                <Label>Start Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !startDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={setStartDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label>Start Date & Time</Label>
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "flex-1 justify-start text-left font-normal",
+                          !startDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {startDate ? (
+                          format(startDate, "PPP")
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={startDate}
+                        onSelect={handleSelectStartDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Select
+                    value={
+                      startDate
+                        ? String(startDate.getHours()).padStart(2, "0")
+                        : undefined
+                    }
+                    onValueChange={(value) => handleStartTimeChange("hour", value)}
+                    disabled={!startDate}
+                  >
+                    <SelectTrigger className="w-[5.5rem]">
+                      <SelectValue placeholder="Hour" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeOptions.hours.map((hour) => (
+                        <SelectItem
+                          key={`start-hour-${hour}`}
+                          value={String(hour)}
+                        >
+                          {String(hour).padStart(2, "0")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={
+                      startDate
+                        ? String(startDate.getMinutes()).padStart(2, "0")
+                        : undefined
+                    }
+                    onValueChange={(value) =>
+                      handleStartTimeChange("minute", value)
+                    }
+                    disabled={!startDate}
+                  >
+                    <SelectTrigger className="w-[5.5rem]">
+                      <SelectValue placeholder="Min" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeOptions.minutes.map((minute) => (
+                        <SelectItem
+                          key={`start-min-${minute}`}
+                          value={String(minute)}
+                        >
+                          {String(minute).padStart(2, "0")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Due Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !dueDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={dueDate}
-                      onSelect={setDueDate}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <Label>Due Date & Time</Label>
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "flex-1 justify-start text-left font-normal",
+                          !dueDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dueDate ? (
+                          format(dueDate, "PPP")
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={dueDate}
+                        onSelect={handleSelectDueDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Select
+                    value={
+                      dueDate
+                        ? String(dueDate.getHours()).padStart(2, "0")
+                        : undefined
+                    }
+                    onValueChange={(value) => handleDueTimeChange("hour", value)}
+                    disabled={!dueDate}
+                  >
+                    <SelectTrigger className="w-[5.5rem]">
+                      <SelectValue placeholder="Hour" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeOptions.hours.map((hour) => (
+                        <SelectItem
+                          key={`due-hour-${hour}`}
+                          value={String(hour)}
+                        >
+                          {String(hour).padStart(2, "0")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={
+                      dueDate
+                        ? String(dueDate.getMinutes()).padStart(2, "0")
+                        : undefined
+                    }
+                    onValueChange={(value) =>
+                      handleDueTimeChange("minute", value)
+                    }
+                    disabled={!dueDate}
+                  >
+                    <SelectTrigger className="w-[5.5rem]">
+                      <SelectValue placeholder="Min" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeOptions.minutes.map((minute) => (
+                        <SelectItem
+                          key={`due-min-${minute}`}
+                          value={String(minute)}
+                        >
+                          {String(minute).padStart(2, "0")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
             <div className="space-y-2">
