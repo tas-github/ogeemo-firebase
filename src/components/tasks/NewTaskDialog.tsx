@@ -177,7 +177,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, onTaskCr
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-4xl h-[90vh] flex flex-col p-0">
+      <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
         <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle>Create a New Task</DialogTitle>
           <DialogDescription>
