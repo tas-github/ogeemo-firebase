@@ -2,7 +2,8 @@
 "use client"
 
 import * as React from "react"
-import { format } from "date-fns"
+import { format, addDays, setHours, isSameDay } from "date-fns"
+import { Clock, Users } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -12,12 +13,84 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+
 
 type CalendarView = "hour" | "day" | "5days" | "week" | "month";
+
+type Event = {
+  id: string;
+  title: string;
+  description: string;
+  start: Date;
+  end: Date;
+  attendees: string[];
+};
+
+const today = new Date();
+const mockEvents: Event[] = [
+  {
+    id: '1',
+    title: 'Project Standup',
+    description: 'Weekly sync for Project Phoenix.',
+    start: setHours(today, 9),
+    end: setHours(today, 9, 30),
+    attendees: ['You', 'John Doe'],
+  },
+  {
+    id: '2',
+    title: 'Design Review',
+    description: 'Review new mockups for the dashboard.',
+    start: setHours(today, 14),
+    end: setHours(today, 15),
+    attendees: ['You', 'Jane Smith', 'John Doe'],
+  },
+  {
+    id: '3',
+    title: 'Client Call',
+    description: 'Discuss Q3 goals with Acme Corp.',
+    start: setHours(addDays(today, 1), 11),
+    end: setHours(addDays(today, 1), 11, 45),
+    attendees: ['You', 'Frank White'],
+  },
+  {
+    id: '4',
+    title: 'Frontend Team Sync',
+    description: 'Discuss component library progress.',
+    start: setHours(addDays(today, 2), 10),
+    end: setHours(addDays(today, 2), 11),
+    attendees: ['You', 'William Kim', 'Sofia Davis'],
+  },
+  {
+    id: '5',
+    title: '1:1 with Manager',
+    description: 'Performance review.',
+    start: setHours(addDays(today, 3), 16),
+    end: setHours(addDays(today, 3), 16, 30),
+    attendees: ['You', 'Alice Johnson'],
+  },
+  {
+    id: '6',
+    title: 'Finalize Marketing Plan',
+    description: 'Finalize the marketing plan for the upcoming launch.',
+    start: setHours(addDays(today, 4), 13),
+    end: setHours(addDays(today, 4), 15),
+    attendees: ['You', 'Charlie Brown'],
+  },
+];
+
 
 export default function CalendarPage() {
   const [date, setDate] = React.useState<Date | undefined>(new Date())
   const [view, setView] = React.useState<CalendarView>("day");
+  const [events] = React.useState<Event[]>(mockEvents);
 
   const viewOptions: { id: CalendarView; label: string }[] = [
     { id: "hour", label: "Hour" },
@@ -27,10 +100,43 @@ export default function CalendarPage() {
     { id: "month", label: "Month" },
   ];
 
+  const dailyEvents = React.useMemo(() => {
+    if (!date) return [];
+    return events
+      .filter((event) => isSameDay(event.start, date))
+      .sort((a, b) => a.start.getTime() - b.start.getTime());
+  }, [events, date]);
+
   const renderViewContent = () => {
     switch (view) {
       case "day":
-        return <p className="text-muted-foreground">No events for this day.</p>;
+        if (dailyEvents.length === 0) {
+            return <p className="text-muted-foreground">No events for this day.</p>;
+        }
+        return (
+            <ScrollArea className="h-full w-full">
+                <div className="space-y-4 pr-4">
+                    {dailyEvents.map(event => (
+                        <Card key={event.id}>
+                            <CardHeader>
+                                <CardTitle className="text-lg">{event.title}</CardTitle>
+                                <CardDescription>{event.description}</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-2 text-sm">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Clock className="h-4 w-4" />
+                                    <span>{format(event.start, 'p')} - {format(event.end, 'p')}</span>
+                                </div>
+                                 <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Users className="h-4 w-4" />
+                                    <span>{event.attendees.join(', ')}</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </ScrollArea>
+        );
       case "hour":
         return <p className="text-muted-foreground">Hour view coming soon.</p>;
       case "5days":
