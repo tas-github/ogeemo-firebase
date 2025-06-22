@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { format, addDays, setHours, isSameDay } from "date-fns"
-import { Clock, Users } from "lucide-react"
+import { Users, Settings } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 
 type CalendarView = "hour" | "day" | "5days" | "week" | "month";
@@ -76,6 +92,8 @@ export default function CalendarPage() {
   const [date, setDate] = React.useState<Date | undefined>(new Date())
   const [view, setView] = React.useState<CalendarView>("day");
   const [events] = React.useState<Event[]>(mockEvents);
+  const [viewStartHour, setViewStartHour] = React.useState(8);
+  const [viewEndHour, setViewEndHour] = React.useState(17);
 
   const viewOptions: { id: CalendarView; label: string }[] = [
     { id: "hour", label: "Hour" },
@@ -92,11 +110,18 @@ export default function CalendarPage() {
       .sort((a, b) => a.start.getTime() - b.start.getTime());
   }, [events, date]);
 
+  const timeOptions = React.useMemo(() => {
+    return Array.from({ length: 24 }, (_, i) => ({
+      value: i,
+      label: format(setHours(new Date(), i), 'ha'), // e.g., "12AM", "1AM", "1PM"
+    }));
+  }, []);
+
   const renderViewContent = () => {
     switch (view) {
       case "day":
         if (dailyEvents.length === 0) {
-            return <p className="text-muted-foreground p-4 text-center">No events for this day.</p>;
+            return <div className="flex justify-center items-start pt-10"><p className="text-muted-foreground">No events for this day.</p></div>;
         }
         return (
             <ScrollArea className="h-full w-full">
@@ -129,19 +154,25 @@ export default function CalendarPage() {
             </ScrollArea>
         );
       case "hour":
-        const hours = Array.from({ length: 24 }, (_, i) => i);
-        const PIXELS_PER_MINUTE = 1.5;
-        const CONTAINER_HEIGHT = 24 * 60 * PIXELS_PER_MINUTE;
+        const hours = Array.from({ length: viewEndHour - viewStartHour + 1 }, (_, i) => i + viewStartHour);
+        const PIXELS_PER_MINUTE = 2;
+        const CONTAINER_HEIGHT = (viewEndHour - viewStartHour + 1) * 60 * PIXELS_PER_MINUTE;
+
+        const visibleEvents = dailyEvents.filter(event => {
+          const startHour = event.start.getHours();
+          const endHour = event.end.getHours();
+          return endHour >= viewStartHour && startHour <= viewEndHour;
+        });
 
         return (
             <ScrollArea className="h-full w-full">
                 <div className="relative" style={{ height: `${CONTAINER_HEIGHT}px` }}>
                     {/* Render hour lines */}
                     {hours.map(hour => (
-                        <div key={hour} className="absolute w-full" style={{ top: `${hour * 60 * PIXELS_PER_MINUTE}px`}}>
+                        <div key={hour} className="absolute w-full" style={{ top: `${(hour - viewStartHour) * 60 * PIXELS_PER_MINUTE}px`}}>
                             <div className="flex items-center">
                                 <div className="text-xs text-muted-foreground pr-2 w-16 text-right">
-                                    {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
+                                    {format(setHours(new Date(), hour), 'ha')}
                                 </div>
                                 <div className="flex-1 border-t"></div>
                             </div>
@@ -149,7 +180,7 @@ export default function CalendarPage() {
                     ))}
                     {/* Render half-hour lines */}
                     {hours.map(hour => (
-                         <div key={`half-${hour}`} className="absolute w-full" style={{ top: `${(hour * 60 + 30) * PIXELS_PER_MINUTE}px`}}>
+                         <div key={`half-${hour}`} className="absolute w-full" style={{ top: `${((hour - viewStartHour) * 60 + 30) * PIXELS_PER_MINUTE}px`}}>
                             <div className="flex items-center">
                                 <div className="w-16"></div>
                                 <div className="flex-1 border-t border-dashed"></div>
@@ -158,13 +189,18 @@ export default function CalendarPage() {
                     ))}
 
                     {/* Render events */}
-                    {dailyEvents.map(event => {
-                        const startMinutes = event.start.getHours() * 60 + event.start.getMinutes();
-                        const endMinutes = event.end.getHours() * 60 + event.end.getMinutes();
-                        const durationMinutes = Math.max(15, endMinutes - startMinutes);
+                    {visibleEvents.map(event => {
+                        const startMinutes = (event.start.getHours() - viewStartHour) * 60 + event.start.getMinutes();
+                        const endMinutes = (event.end.getHours() - viewStartHour) * 60 + event.end.getMinutes();
+                        
+                        const clampedStartMinutes = Math.max(0, startMinutes);
+                        const clampedEndMinutes = Math.min((viewEndHour - viewStartHour + 1) * 60, endMinutes);
 
-                        const top = startMinutes * PIXELS_PER_MINUTE;
+                        const durationMinutes = Math.max(15, clampedEndMinutes - clampedStartMinutes);
+                        const top = clampedStartMinutes * PIXELS_PER_MINUTE;
                         const height = durationMinutes * PIXELS_PER_MINUTE;
+                        
+                        if (top > CONTAINER_HEIGHT || (top + height) < 0) return null;
 
                         return (
                             <div
@@ -181,11 +217,11 @@ export default function CalendarPage() {
             </ScrollArea>
         );
       case "5days":
-        return <p className="text-muted-foreground p-4 text-center">5-day view coming soon.</p>;
+        return <div className="flex justify-center items-start pt-10"><p className="text-muted-foreground">5-day view coming soon.</p></div>;
       case "week":
-        return <p className="text-muted-foreground p-4 text-center">Week view coming soon.</p>;
+        return <div className="flex justify-center items-start pt-10"><p className="text-muted-foreground">Week view coming soon.</p></div>;
       case "month":
-        return <p className="text-muted-foreground p-4 text-center">Month view coming soon.</p>;
+        return <div className="flex justify-center items-start pt-10"><p className="text-muted-foreground">Month view coming soon.</p></div>;
       default:
         return null;
     }
@@ -243,6 +279,70 @@ export default function CalendarPage() {
                         </Button>
                         ))}
                     </div>
+                     <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Calendar Settings">
+                                <Settings className="h-4 w-4" />
+                                <span className="sr-only">Settings</span>
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>Calendar Settings</DialogTitle>
+                                <DialogDescription>
+                                    Customize your calendar hourly view.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-2 items-end gap-4">
+                                    <div>
+                                        <Label htmlFor="start-time">Day Start Time</Label>
+                                        <Select
+                                            value={String(viewStartHour)}
+                                            onValueChange={(value) => setViewStartHour(Number(value))}
+                                        >
+                                            <SelectTrigger id="start-time" className="mt-2">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {timeOptions.map((option) => (
+                                                    <SelectItem
+                                                        key={`start-${option.value}`}
+                                                        value={String(option.value)}
+                                                        disabled={option.value >= viewEndHour}
+                                                    >
+                                                        {option.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="end-time">Day End Time</Label>
+                                        <Select
+                                            value={String(viewEndHour)}
+                                            onValueChange={(value) => setViewEndHour(Number(value))}
+                                        >
+                                            <SelectTrigger id="end-time" className="mt-2">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {timeOptions.map((option) => (
+                                                    <SelectItem
+                                                        key={`end-${option.value}`}
+                                                        value={String(option.value)}
+                                                        disabled={option.value <= viewStartHour}
+                                                    >
+                                                        {option.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                   </div>
                 </div>
                 <div className="flex-1 mt-4 border-t pt-4 overflow-hidden">
