@@ -293,14 +293,14 @@ export default function OgeeMailWelcomePage() {
       </div>
 
       <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
-        <DialogContent className="sm:max-w-xl flex flex-col h-[80vh] max-h-[600px]">
-          <DialogHeader>
+        <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
+          <DialogHeader className="p-6 pb-4 border-b shrink-0">
             <DialogTitle>Chat with Ogeemo</DialogTitle>
             <DialogDescription>
               Ask me anything or tell me what you would like to do.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden -mx-6 px-6">
+          <div className="flex-1 p-6 overflow-hidden">
             <ScrollArea className="h-full pr-4" ref={chatScrollAreaRef}>
               <div className="space-y-4">
                 {messages.length === 0 && (
@@ -357,7 +357,7 @@ export default function OgeeMailWelcomePage() {
               </div>
             </ScrollArea>
           </div>
-          <DialogFooter className="pt-4 border-t">
+          <DialogFooter className="p-6 pt-4 border-t shrink-0">
             <form
               onSubmit={handleSendMessage}
               className="flex w-full items-center space-x-2"
