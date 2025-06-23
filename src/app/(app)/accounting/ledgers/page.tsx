@@ -26,23 +26,33 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { ListFilter } from "lucide-react";
 import { AccountingPageHeader } from "@/components/accounting/page-header";
 
-const incomeData = [
+const initialIncomeData = [
   { id: "inc_1", date: "2024-07-25", source: "Client Alpha", description: "Web Development Services", amount: 5000, category: "Service Revenue", paymentMethod: "ACH", invoiceNumber: "INV-2024-001" },
   { id: "inc_2", date: "2024-07-24", source: "Client Beta", description: "Consulting Retainer - July", amount: 2500, category: "Consulting", paymentMethod: "Credit Card", invoiceNumber: "INV-2024-002" },
   { id: "inc_3", date: "2024-07-22", source: "E-commerce Store", description: "Product Sales", amount: 850.75, category: "Sales Revenue", paymentMethod: "Stripe", invoiceNumber: "N/A" },
   { id: "inc_4", date: "2024-07-20", source: "Affiliate Payout", description: "Q2 Affiliate Earnings", amount: 320.50, category: "Other Income", paymentMethod: "PayPal", invoiceNumber: "N/A" },
 ];
 
-const expenseData = [
+const initialExpenseData = [
   { id: "exp_1", date: "2024-07-25", vendor: "Cloud Hosting Inc.", description: "Server Costs - July", amount: 150, category: "Utilities", paymentMethod: "Auto-Draft", receiptNumber: "CH-98765" },
   { id: "exp_2", date: "2024-07-23", vendor: "SaaS Tools Co.", description: "Software Subscriptions", amount: 75.99, category: "Software", paymentMethod: "Credit Card", receiptNumber: "STC-12345" },
   { id: "exp_3", date: "2024-07-21", vendor: "Office Supply Hub", description: "Stationery and Supplies", amount: 45.30, category: "Office Supplies", paymentMethod: "Credit Card", receiptNumber: "OSH-55443" },
   { id: "exp_4", date: "2024-07-20", vendor: "Freelance Designer", description: "Logo Design", amount: 800, category: "Contractors", paymentMethod: "Bank Transfer", receiptNumber: "FD-001" },
 ];
+
+const incomeCategories = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income", "Uncategorized"];
+const expenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals", "Uncategorized"];
 
 type IncomeColumn = "date" | "source" | "description" | "amount" | "category" | "paymentMethod" | "invoiceNumber";
 type ExpenseColumn = "date" | "vendor" | "description" | "amount" | "category" | "paymentMethod" | "receiptNumber";
@@ -68,12 +78,15 @@ const expenseColumnLabels: Record<ExpenseColumn, string> = {
 };
 
 export default function LedgersPage() {
+  const [incomeLedger, setIncomeLedger] = React.useState(initialIncomeData);
+  const [expenseLedger, setExpenseLedger] = React.useState(initialExpenseData);
+
   const [visibleIncomeColumns, setVisibleIncomeColumns] = React.useState<Record<IncomeColumn, boolean>>({
     date: true,
     source: true,
     description: true,
     amount: true,
-    category: false,
+    category: true,
     paymentMethod: false,
     invoiceNumber: true,
   });
@@ -91,6 +104,18 @@ export default function LedgersPage() {
   const activeIncomeColumns = (Object.keys(visibleIncomeColumns) as IncomeColumn[]).filter(key => visibleIncomeColumns[key]);
   const activeExpenseColumns = (Object.keys(visibleExpenseColumns) as ExpenseColumn[]).filter(key => visibleExpenseColumns[key]);
 
+  const handleIncomeCategoryChange = (id: string, newCategory: string) => {
+    setIncomeLedger(prev =>
+      prev.map(item => (item.id === id ? { ...item, category: newCategory } : item))
+    );
+  };
+
+  const handleExpenseCategoryChange = (id: string, newCategory: string) => {
+    setExpenseLedger(prev =>
+      prev.map(item => (item.id === id ? { ...item, category: newCategory } : item))
+    );
+  };
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <AccountingPageHeader pageTitle="General Ledgers" />
@@ -100,7 +125,7 @@ export default function LedgersPage() {
             General Ledgers
           </h1>
           <p className="text-muted-foreground">
-            A common-sense view of your income and expenses. Toggle columns to customize your view.
+            A common-sense view of your income and expenses. Toggle columns and categorize transactions.
           </p>
         </header>
 
@@ -151,15 +176,31 @@ export default function LedgersPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {incomeData.map(item => (
+                    {incomeLedger.map(item => (
                       <TableRow key={item.id}>
-                        {activeIncomeColumns.map(col => (
-                          <TableCell key={`${item.id}-${col}`}>
-                            {col === 'amount'
-                              ? item[col].toLocaleString("en-US", { style: "currency", currency: "USD" })
-                              : item[col as keyof typeof item]}
-                          </TableCell>
-                        ))}
+                        {activeIncomeColumns.map(col => {
+                          if (col === 'category') {
+                            return (
+                              <TableCell key={`${item.id}-${col}`} onClick={(e) => e.stopPropagation()}>
+                                <Select value={item.category} onValueChange={(newCategory) => handleIncomeCategoryChange(item.id, newCategory)}>
+                                  <SelectTrigger className="w-[180px] h-9">
+                                    <SelectValue placeholder="Select..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {incomeCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                            );
+                          }
+                          return (
+                            <TableCell key={`${item.id}-${col}`}>
+                              {col === 'amount'
+                                ? item[col].toLocaleString("en-US", { style: "currency", currency: "USD" })
+                                : item[col as keyof typeof item]}
+                            </TableCell>
+                          );
+                        })}
                       </TableRow>
                     ))}
                   </TableBody>
@@ -209,15 +250,31 @@ export default function LedgersPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {expenseData.map(item => (
+                    {expenseLedger.map(item => (
                       <TableRow key={item.id}>
-                        {activeExpenseColumns.map(col => (
-                          <TableCell key={`${item.id}-${col}`}>
-                            {col === 'amount'
-                              ? `(${item[col].toLocaleString("en-US", { style: "currency", currency: "USD" })})`
-                              : item[col as keyof typeof item]}
-                          </TableCell>
-                        ))}
+                        {activeExpenseColumns.map(col => {
+                           if (col === 'category') {
+                            return (
+                              <TableCell key={`${item.id}-${col}`} onClick={(e) => e.stopPropagation()}>
+                                <Select value={item.category} onValueChange={(newCategory) => handleExpenseCategoryChange(item.id, newCategory)}>
+                                  <SelectTrigger className="w-[180px] h-9">
+                                    <SelectValue placeholder="Select..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {expenseCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                            );
+                          }
+                          return (
+                            <TableCell key={`${item.id}-${col}`}>
+                              {col === 'amount'
+                                ? `(${item[col].toLocaleString("en-US", { style: "currency", currency: "USD" })})`
+                                : item[col as keyof typeof item]}
+                            </TableCell>
+                          )
+                        })}
                       </TableRow>
                     ))}
                   </TableBody>
