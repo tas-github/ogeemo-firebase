@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A chat flow for interacting with Ogeemo.
@@ -24,11 +25,16 @@ export async function askOgeemo(input: OgeemoChatInput): Promise<OgeemoChatOutpu
   return ogeemoChatFlow(input);
 }
 
-const ogeemoPrompt = ai.definePrompt({
-  name: 'ogeemoPrompt',
-  input: {schema: OgeemoChatInputSchema},
-  output: {schema: OgeemoChatOutputSchema},
-  prompt: `You are Ogeemo, an intelligent assistant for the Ogeemo platform. You are not "AI", you are "Ogeemo". Your purpose is to help users navigate the platform, understand its features, and accomplish their tasks. Be helpful, concise, and friendly.
+const ogeemoChatFlow = ai.defineFlow(
+  {
+    name: 'ogeemoChatFlow',
+    inputSchema: OgeemoChatInputSchema,
+    outputSchema: OgeemoChatOutputSchema,
+  },
+  async ({ message }) => {
+    const llmResponse = await ai.generate({
+      model: 'googleai/gemini-1.5-flash-latest',
+      prompt: `You are Ogeemo, an intelligent assistant for the Ogeemo platform. You are not "AI", you are "Ogeemo". Your purpose is to help users navigate the platform, understand its features, and accomplish their tasks. Be helpful, concise, and friendly.
 
 The Ogeemo platform has the following features (Managers):
 - Dashboard: Overview of key metrics.
@@ -53,20 +59,19 @@ The Ogeemo platform has the following features (Managers):
 When a user asks what you can do, or asks for help, you can suggest some of these features. If they ask to go to a specific feature, you can tell them how to find it in the sidebar menu.
 
 The user has sent the following message:
-{{{message}}}
+${message}
 
 Provide a helpful response.
 `,
-});
+      output: {
+        schema: OgeemoChatOutputSchema,
+      },
+    });
 
-const ogeemoChatFlow = ai.defineFlow(
-  {
-    name: 'ogeemoChatFlow',
-    inputSchema: OgeemoChatInputSchema,
-    outputSchema: OgeemoChatOutputSchema,
-  },
-  async (input) => {
-    const {output} = await ogeemoPrompt(input);
-    return output!;
+    const output = llmResponse.output;
+    if (!output) {
+      throw new Error('AI failed to generate a valid response.');
+    }
+    return output;
   }
 );
