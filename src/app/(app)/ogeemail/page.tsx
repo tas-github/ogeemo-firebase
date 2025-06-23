@@ -26,10 +26,7 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
@@ -294,12 +291,12 @@ export default function OgeeMailWelcomePage() {
 
       <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
         <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-          <DialogHeader className="p-6 pb-4 border-b shrink-0">
-            <DialogTitle>Chat with Ogeemo</DialogTitle>
-            <DialogDescription>
+          <div className="p-6 pb-4 border-b shrink-0 text-center">
+            <h2 className="text-2xl font-bold font-headline text-primary">Chat with Ogeemo</h2>
+            <p className="text-sm text-muted-foreground">
               Ask me anything or tell me what you would like to do.
-            </DialogDescription>
-          </DialogHeader>
+            </p>
+          </div>
           <div className="flex-1 p-6 overflow-hidden">
             <ScrollArea className="h-full pr-4" ref={chatScrollAreaRef}>
               <div className="space-y-4">
