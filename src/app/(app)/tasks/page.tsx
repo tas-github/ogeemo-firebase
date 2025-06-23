@@ -54,7 +54,13 @@ export default function TasksPage() {
     try {
       const storedProjects = localStorage.getItem('projects');
       if (storedProjects) {
-        setProjects(JSON.parse(storedProjects));
+        let projectsFromStorage = JSON.parse(storedProjects);
+        const projectOne = projectsFromStorage.find((p: Project) => p.id === 'proj-1');
+        if (projectOne && projectOne.name === 'General Tasks') {
+            projectOne.name = 'Project List';
+            localStorage.setItem('projects', JSON.stringify(projectsFromStorage));
+        }
+        setProjects(projectsFromStorage);
       } else {
         setProjects(initialProjects);
         localStorage.setItem('projects', JSON.stringify(initialProjects));
