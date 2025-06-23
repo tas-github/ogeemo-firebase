@@ -174,9 +174,18 @@ export default function TasksPage() {
         </div>
       </div>
 
-      <main className="flex-1 flex flex-col gap-6 pb-6 min-h-0">
-        {selectedProject && selectedProject.id !== 'proj-1' && (
+      <main className="flex-1 min-h-0">
+        {selectedProject && selectedProject.id !== 'proj-1' ? (
           <ProjectInfoCard project={selectedProject} tasks={tasksForSelectedProject} />
+        ) : (
+          <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed">
+            <div className="text-center">
+              <h3 className="text-xl font-semibold">Welcome to your Project List</h3>
+              <p className="text-muted-foreground mt-2">
+                Select a specific project to see its details or create a new one.
+              </p>
+            </div>
+          </div>
         )}
       </main>
 
