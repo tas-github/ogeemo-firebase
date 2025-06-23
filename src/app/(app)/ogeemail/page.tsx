@@ -208,7 +208,7 @@ export default function OgeeMailWelcomePage() {
           {/* Primary Action Card */}
           <Card className="flex flex-col h-full">
             <CardHeader className="text-center">
-              <CardTitle>Ready to Write?</CardTitle>
+              <CardTitle className="text-primary">Ready to Write?</CardTitle>
               <CardDescription>
                 Start drafting a new message or chat with your assistant.
               </CardDescription>
@@ -240,7 +240,7 @@ export default function OgeeMailWelcomePage() {
           <div className="space-y-6">
             <Card>
               <CardHeader className="text-center">
-                <CardTitle>Quick Navigation</CardTitle>
+                <CardTitle className="text-primary">Quick Navigation</CardTitle>
                 <CardDescription>Jump to any folder instantly.</CardDescription>
               </CardHeader>
               <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -260,7 +260,7 @@ export default function OgeeMailWelcomePage() {
 
             <Card>
               <CardHeader className="text-center">
-                <CardTitle>Feature Spotlight</CardTitle>
+                <CardTitle className="text-primary">Feature Spotlight</CardTitle>
                 <CardDescription>Voice-Powered Ogeemo Assistant</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col items-center gap-4">
@@ -305,12 +305,12 @@ export default function OgeeMailWelcomePage() {
 
       <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
         <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-          <DialogHeader className="p-6 pb-4 border-b shrink-0 text-center">
-            <DialogTitle className="text-2xl font-bold font-headline text-primary">Chat with Ogeemo</DialogTitle>
-            <DialogDescription>
+          <div className="flex flex-col space-y-1.5 text-center p-6 pb-4 border-b">
+            <h2 className="text-2xl font-bold font-headline text-primary">Chat with Ogeemo</h2>
+            <p className="text-sm text-muted-foreground">
               Ask me anything or tell me what you would like to do.
-            </DialogDescription>
-          </DialogHeader>
+            </p>
+          </div>
           <div className="flex-1 p-6 overflow-hidden">
             <ScrollArea className="h-full pr-4" ref={chatScrollAreaRef}>
               <div className="space-y-4">
