@@ -23,6 +23,7 @@ import {
   AreaChart,
   BarChart3,
   Bell,
+  Bug,
 } from "lucide-react";
 
 import {
@@ -208,6 +209,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <Link href="/alerts">
                     <Bell />
                     <span>Alerts</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive("/test-chat")}
+                  tooltip="Test Chat"
+                >
+                  <Link href="/test-chat">
+                    <Bug />
+                    <span>Test Chat</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
