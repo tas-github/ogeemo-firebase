@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import { Plus, Edit } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { NewProjectDialog } from "@/components/tasks/NewProjectDialog";
 import { EditProjectDialog } from "@/components/tasks/EditProjectDialog";
@@ -23,23 +22,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ProjectInfoCard } from "@/components/tasks/ProjectInfoCard";
 
-
-function TaskItem({
-  title,
-  description,
-}: {
-  title: string;
-  description:string;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-3">
-        <h4 className="font-semibold text-sm">{title}</h4>
-        <p className="text-xs text-muted-foreground mt-1">{description}</p>
-      </CardContent>
-    </Card>
-  );
-}
 
 export default function TasksPage() {
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
@@ -119,12 +101,6 @@ export default function TasksPage() {
   }, [allTasks]);
   
   const tasksForSelectedProject = allTasks.filter(task => task.projectId === selectedProjectId);
-  
-  const tasksByStatus = {
-    todo: tasksForSelectedProject.filter(task => task.status === 'todo'),
-    inProgress: tasksForSelectedProject.filter(task => task.status === 'inProgress'),
-    done: tasksForSelectedProject.filter(task => task.status === 'done'),
-  };
 
   const handleCreateTask = (newEvent: Event) => {
     setAllTasks(prev => [newEvent, ...prev]);
@@ -198,56 +174,12 @@ export default function TasksPage() {
         </div>
       </div>
 
-      <main className="flex-1 grid md:grid-cols-3 gap-6 pb-6 min-h-0">
+      <main className="flex-1 flex flex-col gap-6 pb-6 min-h-0">
         {selectedProject && selectedProject.id !== 'proj-1' && (
           <ProjectInfoCard project={selectedProject} tasks={tasksForSelectedProject} />
         )}
-
-        <Card className="flex flex-col">
-          <CardHeader className="shrink-0">
-            <CardTitle>To Do</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 space-y-4 overflow-y-auto custom-scrollbar p-4 pt-0">
-            {tasksByStatus.todo.map(task => (
-              <TaskItem
-                key={task.id}
-                title={task.title}
-                description={task.description}
-              />
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card className="flex flex-col">
-          <CardHeader className="shrink-0">
-            <CardTitle>In Progress</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 space-y-4 overflow-y-auto custom-scrollbar p-4 pt-0">
-            {tasksByStatus.inProgress.map(task => (
-               <TaskItem
-                key={task.id}
-                title={task.title}
-                description={task.description}
-              />
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card className="flex flex-col">
-          <CardHeader className="shrink-0">
-            <CardTitle>Done</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 space-y-4 overflow-y-auto custom-scrollbar p-4 pt-0">
-            {tasksByStatus.done.map(task => (
-              <TaskItem
-                key={task.id}
-                title={task.title}
-                description={task.description}
-              />
-            ))}
-          </CardContent>
-        </Card>
       </main>
+
       <NewTaskDialog isOpen={isNewTaskOpen} onOpenChange={setIsNewTaskOpen} onTaskCreate={handleCreateTask} projectId={selectedProjectId} />
       <NewProjectDialog isOpen={isNewProjectOpen} onOpenChange={setIsNewProjectOpen} onProjectCreate={handleCreateProject} />
       <EditProjectDialog
