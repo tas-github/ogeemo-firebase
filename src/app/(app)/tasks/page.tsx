@@ -106,7 +106,9 @@ export default function TasksPage() {
     setAllTasks(prev => [newEvent, ...prev]);
   };
 
-  const handleCreateProject = (projectName: string, projectDescription: string) => {
+  type PartialTask = { title: string; description: string };
+
+  const handleCreateProject = (projectName: string, projectDescription: string, tasks: PartialTask[]) => {
     const newProject: Project = {
       id: `proj-${Date.now()}`,
       name: projectName,
@@ -114,9 +116,23 @@ export default function TasksPage() {
     };
     setProjects(prev => [...prev, newProject]);
     setSelectedProjectId(newProject.id);
+
+    const newTasks: Event[] = tasks.map((task, index) => ({
+      id: `task-${newProject.id}-${Date.now()}-${index}`,
+      title: task.title,
+      description: task.description,
+      start: new Date(),
+      end: new Date(new Date().getTime() + 30 * 60000), // Default 30 min duration
+      attendees: [],
+      status: 'todo',
+      projectId: newProject.id,
+    }));
+
+    setAllTasks(prev => [...prev, ...newTasks]);
+
     toast({
       title: "Project Created",
-      description: `"${projectName}" has been created.`,
+      description: `"${projectName}" has been created with ${tasks.length} tasks.`,
     });
   };
   
