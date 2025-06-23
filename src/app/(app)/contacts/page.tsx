@@ -500,16 +500,16 @@ export default function ContactsPage() {
 
       <Dialog open={isContactFormOpen} onOpenChange={(open) => { if (!open) closeContactForm(); else setIsContactFormOpen(true); }}>
           <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-              <div className="flex flex-col space-y-1.5 text-center p-4 pb-2 border-b">
-                <h1 className="text-2xl font-bold font-headline text-primary">
+              <DialogHeader className="p-4 pb-2 border-b text-center">
+                <DialogTitle className="text-2xl font-bold font-headline text-primary">
                   {contactToEdit ? contactToEdit.name : "New Contact"}
-                </h1>
-                <p className="text-sm text-muted-foreground">
+                </DialogTitle>
+                <DialogDescription>
                   {contactToEdit 
                     ? `Folder: ${folders.find(f => f.id === contactToEdit.folderId)?.name || 'Unassigned'}` 
                     : `Folder: ${selectedFolder?.name}`}
-                </p>
-              </div>
+                </DialogDescription>
+              </DialogHeader>
               <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
                       <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-2">
