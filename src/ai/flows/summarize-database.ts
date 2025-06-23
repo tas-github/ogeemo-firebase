@@ -8,7 +8,7 @@
  * - SummarizeDatabaseOutput - The return type for the summarizeDatabase function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, aiFeaturesEnabled} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const SummarizeDatabaseInputSchema = z.object({
@@ -29,6 +29,9 @@ const SummarizeDatabaseOutputSchema = z.object({
 export type SummarizeDatabaseOutput = z.infer<typeof SummarizeDatabaseOutputSchema>;
 
 export async function summarizeDatabase(input: SummarizeDatabaseInput): Promise<SummarizeDatabaseOutput> {
+  if (!aiFeaturesEnabled) {
+    return { summary: "Database summarization is currently disabled. Please make sure the GOOGLE_API_KEY environment variable is configured correctly." };
+  }
   return summarizeDatabaseFlow(input);
 }
 

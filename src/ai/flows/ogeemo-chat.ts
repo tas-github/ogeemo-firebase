@@ -7,7 +7,7 @@
  * - OgeemoChatOutput - The return type for the askOgeemo function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, aiFeaturesEnabled} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const OgeemoChatInputSchema = z.object({
@@ -21,6 +21,9 @@ const OgeemoChatOutputSchema = z.object({
 export type OgeemoChatOutput = z.infer<typeof OgeemoChatOutputSchema>;
 
 export async function askOgeemo(input: OgeemoChatInput): Promise<OgeemoChatOutput> {
+  if (!aiFeaturesEnabled) {
+    return { reply: "Ogeemo AI features are currently disabled. Please make sure the GOOGLE_API_KEY environment variable is configured correctly." };
+  }
   return ogeemoChatFlow(input);
 }
 
