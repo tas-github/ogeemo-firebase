@@ -30,7 +30,9 @@ export type SummarizeDatabaseOutput = z.infer<typeof SummarizeDatabaseOutputSche
 
 export async function summarizeDatabase(input: SummarizeDatabaseInput): Promise<SummarizeDatabaseOutput> {
   if (!aiFeaturesEnabled) {
-    throw new Error("Database summarization is currently disabled. Please make sure the GOOGLE_API_KEY environment variable is configured correctly.");
+    return {
+      summary: "Database summarization is currently disabled. Please make sure the GOOGLE_API_KEY environment variable is configured correctly. This feature requires a valid GOOGLE_API_KEY to be set in the environment variables."
+    };
   }
   return summarizeDatabaseFlow(input);
 }
