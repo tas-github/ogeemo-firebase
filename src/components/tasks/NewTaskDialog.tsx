@@ -233,6 +233,18 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
 
     onOpenChange(false);
   };
+  
+  const handleSaveToCalendar = () => {
+    if (!startDate || !startHour || !startMinute || !dueDate || !dueHour || !dueMinute) {
+      toast({
+        variant: "destructive",
+        title: "Date & Time Required",
+        description: "Start date, start time, due date, and due time are all mandatory when saving to the calendar.",
+      });
+      return;
+    }
+    handleSaveTask();
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -434,10 +446,11 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
             </div>
           </div>
         </ScrollArea>
-        <DialogFooter className="p-6 pt-4 border-t">
+        <DialogFooter className="p-6 pt-4 border-t flex justify-end gap-2">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
+          <Button variant="outline" onClick={handleSaveToCalendar}>Save to Calendar</Button>
           <Button onClick={handleSaveTask}>{isEditMode ? "Save Changes" : "Create Task"}</Button>
         </DialogFooter>
       </DialogContent>
