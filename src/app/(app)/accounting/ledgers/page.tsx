@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ListFilter } from "lucide-react";
+import { AccountingPageHeader } from "@/components/accounting/page-header";
 
 const incomeData = [
   { id: "inc_1", date: "2024-07-25", source: "Client Alpha", description: "Web Development Services", amount: 5000, category: "Service Revenue", paymentMethod: "ACH", invoiceNumber: "INV-2024-001" },
@@ -91,138 +92,141 @@ export default function LedgersPage() {
   const activeExpenseColumns = (Object.keys(visibleExpenseColumns) as ExpenseColumn[]).filter(key => visibleExpenseColumns[key]);
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 flex flex-col items-center">
-      <header className="text-center mb-6 max-w-4xl">
-        <h1 className="text-3xl font-bold font-headline text-primary">
-          General Ledgers
-        </h1>
-        <p className="text-muted-foreground">
-          A common-sense view of your income and expenses. Toggle columns to customize your view.
-        </p>
-      </header>
+    <div className="p-4 sm:p-6 space-y-6">
+      <AccountingPageHeader pageTitle="General Ledgers" />
+      <div className="flex flex-col items-center">
+        <header className="text-center mb-6 max-w-4xl">
+          <h1 className="text-3xl font-bold font-headline text-primary">
+            General Ledgers
+          </h1>
+          <p className="text-muted-foreground">
+            A common-sense view of your income and expenses. Toggle columns to customize your view.
+          </p>
+        </header>
 
-      <Tabs defaultValue="income" className="w-full max-w-6xl">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="income">Income Ledger</TabsTrigger>
-          <TabsTrigger value="expenses">Expense Ledger</TabsTrigger>
-        </TabsList>
-        <TabsContent value="income">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Income</CardTitle>
-                <CardDescription>All incoming revenue streams.</CardDescription>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="ml-auto h-8 flex">
-                    <ListFilter className="mr-2 h-4 w-4" />
-                    View
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {Object.entries(incomeColumnLabels).map(([key, label]) => (
-                    <DropdownMenuCheckboxItem
-                      key={key}
-                      className="capitalize"
-                      checked={visibleIncomeColumns[key as IncomeColumn]}
-                      onCheckedChange={(value) =>
-                        setVisibleIncomeColumns(prev => ({...prev, [key]: Boolean(value)}))
-                      }
-                    >
-                      {label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {activeIncomeColumns.map(col => (
-                      <TableHead key={col}>{incomeColumnLabels[col]}</TableHead>
+        <Tabs defaultValue="income" className="w-full max-w-6xl">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="income">Income Ledger</TabsTrigger>
+            <TabsTrigger value="expenses">Expense Ledger</TabsTrigger>
+          </TabsList>
+          <TabsContent value="income">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Income</CardTitle>
+                  <CardDescription>All incoming revenue streams.</CardDescription>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="ml-auto h-8 flex">
+                      <ListFilter className="mr-2 h-4 w-4" />
+                      View
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {Object.entries(incomeColumnLabels).map(([key, label]) => (
+                      <DropdownMenuCheckboxItem
+                        key={key}
+                        className="capitalize"
+                        checked={visibleIncomeColumns[key as IncomeColumn]}
+                        onCheckedChange={(value) =>
+                          setVisibleIncomeColumns(prev => ({...prev, [key]: Boolean(value)}))
+                        }
+                      >
+                        {label}
+                      </DropdownMenuCheckboxItem>
                     ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {incomeData.map(item => (
-                    <TableRow key={item.id}>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
                       {activeIncomeColumns.map(col => (
-                        <TableCell key={`${item.id}-${col}`}>
-                           {col === 'amount'
-                            ? item[col].toLocaleString("en-US", { style: "currency", currency: "USD" })
-                            : item[col as keyof typeof item]}
-                        </TableCell>
+                        <TableHead key={col}>{incomeColumnLabels[col]}</TableHead>
                       ))}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="expenses">
-           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Expenses</CardTitle>
-                <CardDescription>All outgoing expenditures.</CardDescription>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="ml-auto h-8 flex">
-                    <ListFilter className="mr-2 h-4 w-4" />
-                    View
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                   {Object.entries(expenseColumnLabels).map(([key, label]) => (
-                    <DropdownMenuCheckboxItem
-                      key={key}
-                      className="capitalize"
-                      checked={visibleExpenseColumns[key as ExpenseColumn]}
-                      onCheckedChange={(value) =>
-                        setVisibleExpenseColumns(prev => ({...prev, [key]: Boolean(value)}))
-                      }
-                    >
-                      {label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {activeExpenseColumns.map(col => (
-                      <TableHead key={col}>{expenseColumnLabels[col]}</TableHead>
+                  </TableHeader>
+                  <TableBody>
+                    {incomeData.map(item => (
+                      <TableRow key={item.id}>
+                        {activeIncomeColumns.map(col => (
+                          <TableCell key={`${item.id}-${col}`}>
+                            {col === 'amount'
+                              ? item[col].toLocaleString("en-US", { style: "currency", currency: "USD" })
+                              : item[col as keyof typeof item]}
+                          </TableCell>
+                        ))}
+                      </TableRow>
                     ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {expenseData.map(item => (
-                    <TableRow key={item.id}>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="expenses">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Expenses</CardTitle>
+                  <CardDescription>All outgoing expenditures.</CardDescription>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="ml-auto h-8 flex">
+                      <ListFilter className="mr-2 h-4 w-4" />
+                      View
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {Object.entries(expenseColumnLabels).map(([key, label]) => (
+                      <DropdownMenuCheckboxItem
+                        key={key}
+                        className="capitalize"
+                        checked={visibleExpenseColumns[key as ExpenseColumn]}
+                        onCheckedChange={(value) =>
+                          setVisibleExpenseColumns(prev => ({...prev, [key]: Boolean(value)}))
+                        }
+                      >
+                        {label}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
                       {activeExpenseColumns.map(col => (
-                        <TableCell key={`${item.id}-${col}`}>
-                           {col === 'amount'
-                            ? `(${item[col].toLocaleString("en-US", { style: "currency", currency: "USD" })})`
-                            : item[col as keyof typeof item]}
-                        </TableCell>
+                        <TableHead key={col}>{expenseColumnLabels[col]}</TableHead>
                       ))}
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                  </TableHeader>
+                  <TableBody>
+                    {expenseData.map(item => (
+                      <TableRow key={item.id}>
+                        {activeExpenseColumns.map(col => (
+                          <TableCell key={`${item.id}-${col}`}>
+                            {col === 'amount'
+                              ? `(${item[col].toLocaleString("en-US", { style: "currency", currency: "USD" })})`
+                              : item[col as keyof typeof item]}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }
