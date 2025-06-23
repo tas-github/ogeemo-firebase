@@ -1,8 +1,5 @@
 import {genkit, type GenkitConfig} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
-import { config } from 'dotenv';
-
-config();
 
 const genkitConfig: GenkitConfig = {
   plugins: [],
