@@ -47,7 +47,7 @@ export default function TasksPage() {
         setProjects(initialProjects);
         localStorage.setItem('projects', JSON.stringify(initialProjects));
       }
-    } catch (error) {
+    } catch (error) => {
       console.error("Could not read projects from localStorage", error);
       setProjects(initialProjects);
     }
@@ -63,7 +63,7 @@ export default function TasksPage() {
     if (projects.length > 0) {
       try {
         localStorage.setItem('projects', JSON.stringify(projects));
-      } catch (error) {
+      } catch (error) => {
         console.error("Could not write projects to localStorage", error);
       }
     }
@@ -84,7 +84,7 @@ export default function TasksPage() {
         setAllTasks(initialEvents);
         localStorage.setItem('calendarEvents', JSON.stringify(initialEvents));
       }
-    } catch (error) {
+    } catch (error) => {
       console.error("Could not read calendar events from localStorage", error);
       setAllTasks(initialEvents);
     }
@@ -94,7 +94,7 @@ export default function TasksPage() {
     if (allTasks.length > 0) {
       try {
         localStorage.setItem('calendarEvents', JSON.stringify(allTasks));
-      } catch (error) {
+      } catch (error) => {
         console.error("Could not write calendar events to localStorage", error);
       }
     }
@@ -199,10 +199,10 @@ export default function TasksPage() {
           <ProjectInfoCard project={selectedProject} tasks={tasksForSelectedProject} />
         ) : (
           <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed">
-            <div className="text-center">
-              <h3 className="text-xl font-semibold">Welcome to your Project List</h3>
+            <div className="text-center max-w-2xl">
+              <h3 className="text-xl font-semibold">Welcome to Your Integrated Workspace</h3>
               <p className="text-muted-foreground mt-2">
-                Select a specific project to see its details or create a new one.
+                Here, projects, tasks, and your calendar work together seamlessly. Every project is a collection of tasks, and every task you create can be instantly added to your calendar. This integration helps you visualize your workload, manage deadlines, and ensure nothing falls through the cracks. Select a project to get started, or create a new one to begin organizing your work.
               </p>
             </div>
           </div>
