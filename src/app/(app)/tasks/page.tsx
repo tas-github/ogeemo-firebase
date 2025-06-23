@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Edit } from "lucide-react";
+import { Plus, Edit, FileText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
@@ -162,6 +162,10 @@ export default function TasksPage() {
             <Button onClick={() => setIsNewProjectOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
                 <Plus className="mr-2 h-4 w-4" />
                 New Project
+            </Button>
+            <Button onClick={() => {}} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <FileText className="mr-2 h-4 w-4" />
+                Project Templates
             </Button>
             <Button onClick={() => setIsEditProjectOpen(true)} disabled={!selectedProjectId} className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Edit className="mr-2 h-4 w-4" />
