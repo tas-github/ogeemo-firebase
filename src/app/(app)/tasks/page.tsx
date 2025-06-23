@@ -33,6 +33,10 @@ export default function TasksPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    // This effect runs only on the client-side
+    if (typeof window === "undefined") return;
+
+    // Load projects from localStorage
     try {
       const storedProjects = localStorage.getItem('projects');
       if (storedProjects) {
@@ -50,6 +54,25 @@ export default function TasksPage() {
     } catch (error) {
       console.error("Could not read projects from localStorage", error);
       setProjects(initialProjects);
+    }
+
+    // Load tasks from localStorage
+    try {
+      const storedEvents = localStorage.getItem('calendarEvents');
+      if (storedEvents) {
+        const parsedEvents = JSON.parse(storedEvents).map((e: any) => ({
+          ...e,
+          start: new Date(e.start),
+          end: new Date(e.end),
+        }));
+        setAllTasks(parsedEvents);
+      } else {
+        setAllTasks(initialEvents);
+        localStorage.setItem('calendarEvents', JSON.stringify(initialEvents));
+      }
+    } catch (error) {
+      console.error("Could not read calendar events from localStorage", error);
+      setAllTasks(initialEvents);
     }
   }, []);
   
@@ -69,26 +92,6 @@ export default function TasksPage() {
     }
   }, [projects]);
 
-
-  useEffect(() => {
-    try {
-      const storedEvents = localStorage.getItem('calendarEvents');
-      if (storedEvents) {
-        const parsedEvents = JSON.parse(storedEvents).map((e: any) => ({
-          ...e,
-          start: new Date(e.start),
-          end: new Date(e.end),
-        }));
-        setAllTasks(parsedEvents);
-      } else {
-        setAllTasks(initialEvents);
-        localStorage.setItem('calendarEvents', JSON.stringify(initialEvents));
-      }
-    } catch (error) {
-      console.error("Could not read calendar events from localStorage", error);
-      setAllTasks(initialEvents);
-    }
-  }, []);
 
   useEffect(() => {
     if (allTasks.length > 0) {
