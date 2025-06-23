@@ -7,7 +7,7 @@
  * - GenerateImageOutput - The return type for the generateImage function.
  */
 
-import {ai, aiFeaturesEnabled} from '@/ai/genkit';
+import {ai} from '@/ai/genkit';
 import { googleAI } from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
@@ -22,9 +22,6 @@ const GenerateImageOutputSchema = z.object({
 export type GenerateImageOutput = z.infer<typeof GenerateImageOutputSchema>;
 
 export async function generateImage(input: GenerateImageInput): Promise<GenerateImageOutput> {
-  if (!aiFeaturesEnabled) {
-    throw new Error('Image generation is disabled. Please make sure the GOOGLE_API_KEY environment variable is configured correctly.');
-  }
   return generateImageFlow(input);
 }
 
