@@ -25,9 +25,8 @@ import {
   DollarSign,
   TrendingUp,
   TrendingDown,
-  FileOutput,
   User,
-  Bank,
+  Landmark,
   ShieldCheck,
   PlusCircle,
   FileText,
@@ -223,7 +222,7 @@ export default function AccountingPage() {
                 <User className="mr-2 h-4 w-4" /> Owner's View
               </Button>
               <Button variant="outline" className="justify-start">
-                <Bank className="mr-2 h-4 w-4" /> Banker's View
+                <Landmark className="mr-2 h-4 w-4" /> Banker's View
               </Button>
               <Button variant="outline" className="justify-start">
                 <ShieldCheck className="mr-2 h-4 w-4" /> Tax Auditor's View
