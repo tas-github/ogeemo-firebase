@@ -163,49 +163,15 @@ export default function ComposeEmailPage() {
     },
   });
 
-  const [bodyBeforeSpeech, setBodyBeforeSpeech] = React.useState('');
-  // Speech-to-text for Editor
-  const {
-    isListening: isEditorListening,
-    startListening: startEditorListening,
-    stopListening: stopEditorListening,
-    isSupported: isEditorSupported,
-  } = useSpeechToText({
-    onTranscript: (transcript) => {
-      if (editorRef.current) {
-        const newContent = bodyBeforeSpeech ? `${bodyBeforeSpeech} ${transcript}` : transcript;
-        editorRef.current.innerHTML = newContent;
-        setBody(newContent);
-
-        const range = document.createRange();
-        const sel = window.getSelection();
-        range.selectNodeContents(editorRef.current);
-        range.collapse(false);
-        sel?.removeAllRanges();
-        sel?.addRange(range);
-      }
-    },
-  });
-
-  const handleEditorMicClick = () => {
-    if (isEditorListening) {
-      stopEditorListening();
-    } else {
-      setBodyBeforeSpeech(body);
-      startEditorListening();
-      editorRef.current?.focus();
-    }
-  };
-
   React.useEffect(() => {
-    if (isChatSupported === false || isEditorSupported === false) {
+    if (isChatSupported === false) {
       toast({
         variant: "destructive",
         title: "Voice Input Not Supported",
         description: "Your browser does not support the Web Speech API.",
       });
     }
-  }, [isChatSupported, isEditorSupported, toast]);
+  }, [isChatSupported, toast]);
 
   React.useEffect(() => {
     if (chatScrollAreaRef.current) {
@@ -991,34 +957,6 @@ export default function ComposeEmailPage() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
-              {isEditorListening ? (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={handleEditorMicClick}
-                  className="w-28 animate-pulse"
-                  title="Stop composing"
-                >
-                  <Square className="mr-2 h-4 w-4" />
-                  Stop
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleEditorMicClick}
-                  disabled={isEditorSupported === false}
-                  className="w-28"
-                  title={
-                    isEditorSupported === false
-                      ? "Voice input not supported"
-                      : "Compose with voice"
-                  }
-                >
-                  <Mic className="mr-2 h-4 w-4" />
-                  Dictate
-                </Button>
-              )}
             </div>
             <Button>
               <Mail className="mr-2 h-4 w-4" />
