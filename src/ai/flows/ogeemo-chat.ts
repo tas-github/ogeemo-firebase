@@ -22,7 +22,7 @@ export type OgeemoChatOutput = z.infer<typeof OgeemoChatOutputSchema>;
 
 export async function askOgeemo(input: OgeemoChatInput): Promise<OgeemoChatOutput> {
   if (!aiFeaturesEnabled) {
-    return { reply: "Ogeemo AI features are currently disabled. Please make sure the GOOGLE_API_KEY environment variable is configured correctly." };
+    throw new Error("Ogeemo AI features are currently disabled. Please make sure the GOOGLE_API_KEY environment variable is configured correctly.");
   }
   return ogeemoChatFlow(input);
 }
