@@ -130,6 +130,7 @@ export default function ComposeEmailPage() {
   const [chatInput, setChatInput] = React.useState("");
   const [isChatLoading, setIsChatLoading] = React.useState(false);
   const chatScrollAreaRef = React.useRef<HTMLDivElement>(null);
+  const [chatInputBeforeSpeech, setChatInputBeforeSpeech] = React.useState("");
 
   const [isGenerateImageDialogOpen, setIsGenerateImageDialogOpen] = React.useState(false);
   const [imagePrompt, setImagePrompt] = React.useState('');
@@ -159,9 +160,19 @@ export default function ComposeEmailPage() {
     isSupported: isChatSupported,
   } = useSpeechToText({
     onTranscript: (transcript) => {
-      setChatInput(transcript);
+      const newText = chatInputBeforeSpeech ? `${chatInputBeforeSpeech} ${transcript}`.trim() : transcript;
+      setChatInput(newText);
     },
   });
+
+  const handleChatMicClick = () => {
+    if (isChatListening) {
+        stopChatListening();
+    } else {
+        setChatInputBeforeSpeech(chatInput);
+        startChatListening();
+    }
+  };
 
   React.useEffect(() => {
     if (isChatSupported === false) {
@@ -889,9 +900,7 @@ export default function ComposeEmailPage() {
                             "flex-shrink-0",
                             isChatListening && "text-destructive"
                           )}
-                          onClick={
-                            isChatListening ? stopChatListening : startChatListening
-                          }
+                          onClick={handleChatMicClick}
                           disabled={!isChatSupported || isChatLoading}
                           title={
                             !isChatSupported
