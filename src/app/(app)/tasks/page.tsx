@@ -162,7 +162,7 @@ export default function TasksPage() {
     <div className="p-4 sm:p-6 flex flex-col h-full">
       <header className="text-center pb-4 border-b shrink-0">
         <h1 className="text-3xl font-bold font-headline text-primary">
-          Project Manager
+          Project Task Manager
         </h1>
         <p className="text-sm text-muted-foreground mt-2">
           All projects are multiple tasks. Tasks entered here get entered into your calendar automatically.
