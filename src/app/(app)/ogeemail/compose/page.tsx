@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
+  DialogTrigger,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -812,12 +813,12 @@ export default function ComposeEmailPage() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-                    <DialogHeader className="p-6 pb-4 border-b text-center">
+                    <div className="flex flex-col space-y-1.5 text-center p-6 pb-4 border-b">
                       <DialogTitle className="text-2xl font-bold font-headline text-primary">Chat with Ogeemo</DialogTitle>
                       <DialogDescription>
                         Ask me anything or tell me what you would like to do.
                       </DialogDescription>
-                    </DialogHeader>
+                    </div>
                     <div className="flex-1 p-6 overflow-hidden">
                       <ScrollArea className="h-full pr-4" ref={chatScrollAreaRef}>
                         <div className="space-y-4">
