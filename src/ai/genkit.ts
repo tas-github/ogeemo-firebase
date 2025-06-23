@@ -9,7 +9,7 @@ export const aiFeaturesEnabled = !!process.env.GOOGLE_API_KEY;
 
 if (aiFeaturesEnabled) {
   genkitConfig.plugins?.push(googleAI());
-  genkitConfig.model = 'googleai/gemini-2.0-flash';
+  genkitConfig.model = 'googleai/gemini-1.5-flash-latest';
   
 } else {
   console.warn(
