@@ -115,65 +115,67 @@ export function EditProjectDialog({ isOpen, onOpenChange, project, tasks, onProj
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader className="bg-primary text-primary-foreground p-4 rounded-t-lg">
+      <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
+        <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle>Edit Project: {project.name}</DialogTitle>
-          <DialogDescription className="text-primary-foreground/90">
+          <DialogDescription>
             Manage project details, steps, and apply templates.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4 px-6 grid gap-6">
-            <div className="space-y-2">
-                <Label htmlFor="edit-project-name">Project Name</Label>
-                <Input
-                id="edit-project-name"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="edit-project-description">Project Description</Label>
-                <Textarea
-                id="edit-project-description"
-                value={projectDescription}
-                onChange={(e) => setProjectDescription(e.target.value)}
-                />
-            </div>
-            <Separator />
-             <div>
-                <h3 className="text-lg font-semibold mb-2">Project Steps ({currentTasks.length})</h3>
-                <ScrollArea className="h-48 border rounded-md p-2">
-                    {currentTasks.length > 0 ? (
-                        <div className="space-y-2">
-                            {currentTasks.map(task => (
-                                <div key={task.id} className="p-2 bg-muted/50 rounded-md text-sm">
-                                    {task.title}
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-sm text-muted-foreground text-center py-4">No steps in this project yet.</p>
-                    )}
-                </ScrollArea>
-             </div>
-             <div>
-                <h3 className="text-lg font-semibold mb-2">Project Templates</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {projectTemplates.map((template, index) => (
-                        <Card key={template.name}>
-                            <CardHeader className="p-4">
-                                <CardTitle className="text-base">{template.name}</CardTitle>
-                                <CardDescription className="text-xs">{template.steps.length} steps</CardDescription>
-                            </CardHeader>
-                            <CardFooter className="p-4 pt-0">
-                                <Button size="sm" variant="outline" onClick={() => handleApplyTemplate(index)}>Apply Template</Button>
-                            </CardFooter>
-                        </Card>
-                    ))}
-                </div>
-             </div>
-        </div>
-        <DialogFooter className="px-6 pb-6">
+        <ScrollArea className="flex-1">
+          <div className="p-6 space-y-6">
+              <div className="space-y-2">
+                  <Label htmlFor="edit-project-name">Project Name</Label>
+                  <Input
+                  id="edit-project-name"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  />
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="edit-project-description">Project Description</Label>
+                  <Textarea
+                  id="edit-project-description"
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
+                  />
+              </div>
+              <Separator />
+              <div>
+                  <h3 className="text-lg font-semibold mb-2">Project Steps ({currentTasks.length})</h3>
+                  <ScrollArea className="h-48 border rounded-md p-2">
+                      {currentTasks.length > 0 ? (
+                          <div className="space-y-2">
+                              {currentTasks.map(task => (
+                                  <div key={task.id} className="p-2 bg-muted/50 rounded-md text-sm">
+                                      {task.title}
+                                  </div>
+                              ))}
+                          </div>
+                      ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4">No steps in this project yet.</p>
+                      )}
+                  </ScrollArea>
+              </div>
+              <div>
+                  <h3 className="text-lg font-semibold mb-2">Project Templates</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {projectTemplates.map((template, index) => (
+                          <Card key={template.name}>
+                              <CardHeader className="p-4">
+                                  <CardTitle className="text-base">{template.name}</CardTitle>
+                                  <CardDescription className="text-xs">{template.steps.length} steps</CardDescription>
+                              </CardHeader>
+                              <CardFooter className="p-4 pt-0">
+                                  <Button size="sm" variant="outline" onClick={() => handleApplyTemplate(index)}>Apply Template</Button>
+                              </CardFooter>
+                          </Card>
+                      ))}
+                  </div>
+              </div>
+          </div>
+        </ScrollArea>
+        <DialogFooter className="p-6 pt-4 border-t">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSave}>Save Project</Button>
         </DialogFooter>
