@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -9,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Receipt, Activity, BarChart3, ArrowRight } from "lucide-react";
+import { UserPlus, Receipt, Activity, BarChart3, ArrowRight, BookText } from "lucide-react";
 
 export default function AccountingHubPage() {
   const features = [
@@ -35,6 +36,13 @@ export default function AccountingHubPage() {
       cta: "Check Vitals",
     },
     {
+      icon: BookText,
+      title: "General Ledgers",
+      description: "Review detailed income and expense ledgers with customizable views.",
+      href: "/accounting/ledgers",
+      cta: "View Ledgers",
+    },
+    {
       icon: BarChart3,
       title: "Reporting Hub",
       description: "Generate and view reports tailored for different stakeholders.",
@@ -54,9 +62,9 @@ export default function AccountingHubPage() {
         </p>
       </header>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 max-w-4xl mx-auto">
-        {features.map((feature) => (
-          <Card key={feature.title} className="flex flex-col">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        {features.map((feature, index) => (
+          <Card key={feature.title} className={`flex flex-col ${features.length % 2 !== 0 && index === features.length -1 && features.length > 2 ? 'md:col-span-2 lg:col-span-1' : ''} ${features.length === 5 && index === features.length -1 ? 'lg:col-start-2' : ''}`}>
             <CardHeader className="flex flex-row items-start gap-4">
               <div className="p-3 bg-primary/10 rounded-lg">
                   <feature.icon className="h-6 w-6 text-primary" />
