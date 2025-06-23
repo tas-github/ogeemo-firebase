@@ -47,7 +47,7 @@ export default function TasksPage() {
         setProjects(initialProjects);
         localStorage.setItem('projects', JSON.stringify(initialProjects));
       }
-    } catch (error) => {
+    } catch (error) {
       console.error("Could not read projects from localStorage", error);
       setProjects(initialProjects);
     }
@@ -63,7 +63,7 @@ export default function TasksPage() {
     if (projects.length > 0) {
       try {
         localStorage.setItem('projects', JSON.stringify(projects));
-      } catch (error) => {
+      } catch (error) {
         console.error("Could not write projects to localStorage", error);
       }
     }
@@ -84,7 +84,7 @@ export default function TasksPage() {
         setAllTasks(initialEvents);
         localStorage.setItem('calendarEvents', JSON.stringify(initialEvents));
       }
-    } catch (error) => {
+    } catch (error) {
       console.error("Could not read calendar events from localStorage", error);
       setAllTasks(initialEvents);
     }
@@ -94,7 +94,7 @@ export default function TasksPage() {
     if (allTasks.length > 0) {
       try {
         localStorage.setItem('calendarEvents', JSON.stringify(allTasks));
-      } catch (error) => {
+      } catch (error) {
         console.error("Could not write calendar events to localStorage", error);
       }
     }

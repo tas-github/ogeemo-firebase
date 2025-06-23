@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -135,9 +136,11 @@ export function EditProjectDialog({ isOpen, onOpenChange, project, tasks, onProj
               <div className="space-y-2">
                   <Label htmlFor="edit-project-description">Project Description</Label>
                   <Textarea
-                  id="edit-project-description"
-                  value={projectDescription}
-                  onChange={(e) => setProjectDescription(e.target.value)}
+                    id="edit-project-description"
+                    placeholder="Describe the project's goals and scope."
+                    value={projectDescription}
+                    onChange={(e) => setProjectDescription(e.target.value)}
+                    rows={4}
                   />
               </div>
               <Separator />
