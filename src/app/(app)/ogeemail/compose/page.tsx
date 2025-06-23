@@ -58,7 +58,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -368,7 +367,7 @@ export default function ComposeEmailPage() {
       id: `c-${Date.now()}`,
       name: values.name,
       email: values.email,
-      phone: values.phone || '',
+      businessPhone: values.phone || '',
       folderId: values.folderId,
     };
     
