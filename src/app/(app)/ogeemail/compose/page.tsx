@@ -890,7 +890,7 @@ export default function ComposeEmailPage() {
                             isChatListening && "text-destructive"
                           )}
                           onClick={isChatListening ? stopChatListening : startChatListening}
-                          disabled={isChatSupported === false || isChatLoading}
+                          disabled={!isChatSupported || isChatLoading}
                           title={
                             !isChatSupported
                               ? "Voice input not supported"
@@ -966,5 +966,3 @@ export default function ComposeEmailPage() {
     </div>
   );
 }
-
-    
