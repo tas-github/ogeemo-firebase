@@ -32,6 +32,7 @@ import {
   PlusCircle,
   FileText,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Mock data for recent transactions
 const recentTransactions = [
