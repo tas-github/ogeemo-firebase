@@ -146,7 +146,7 @@ export default function ComposeEmailPage() {
   
   const newContactForm = useForm<z.infer<typeof newContactSchema>>({
     resolver: zodResolver(newContactSchema),
-    defaultValues: { name: "", email: "", phone: "" },
+    defaultValues: { name: "", email: "", phone: "", folderId: "" },
   });
 
 
@@ -812,7 +812,7 @@ export default function ComposeEmailPage() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-                    <DialogHeader className="p-6 pb-4 border-b shrink-0 text-center">
+                    <DialogHeader className="p-6 pb-4 border-b text-center">
                       <DialogTitle className="text-2xl font-bold font-headline text-primary">Chat with Ogeemo</DialogTitle>
                       <DialogDescription>
                         Ask me anything or tell me what you would like to do.
