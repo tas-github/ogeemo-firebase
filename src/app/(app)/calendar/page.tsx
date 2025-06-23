@@ -466,6 +466,9 @@ function CalendarPageContent() {
                     </h2>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-auto w-auto p-0">
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>Select a date</DialogTitle>
+                    </DialogHeader>
                     <Calendar
                         mode="single"
                         selected={date}

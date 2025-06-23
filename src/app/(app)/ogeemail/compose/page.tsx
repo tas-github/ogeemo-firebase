@@ -152,10 +152,10 @@ export default function ComposeEmailPage() {
 
   // Speech-to-text for Chat
   const {
-    isListening: isChatListening,
-    startListening: startChatListening,
-    stopListening: stopChatListening,
-    isSupported: isChatSupported,
+    isListening,
+    startListening,
+    stopListening,
+    isSupported,
   } = useSpeechToText({
     onTranscript: (transcript) => {
       setChatInput(transcript);
@@ -163,14 +163,14 @@ export default function ComposeEmailPage() {
   });
 
   React.useEffect(() => {
-    if (isChatSupported === false) {
+    if (isSupported === false) {
       toast({
         variant: "destructive",
         title: "Voice Input Not Supported",
         description: "Your browser does not support the Web Speech API.",
       });
     }
-  }, [isChatSupported, toast]);
+  }, [isSupported, toast]);
 
   React.useEffect(() => {
     if (chatScrollAreaRef.current) {
@@ -185,8 +185,8 @@ export default function ComposeEmailPage() {
     e.preventDefault();
     if (!chatInput.trim() || isChatLoading) return;
 
-    if (isChatListening) {
-      stopChatListening();
+    if (isListening) {
+      stopListening();
     }
 
     const userMessage: Message = {
@@ -272,8 +272,8 @@ export default function ComposeEmailPage() {
 
   const handleChatOpenChange = (open: boolean) => {
     setIsChatOpen(open);
-    if (!open && isChatListening) {
-      stopChatListening();
+    if (!open && isListening) {
+      stopListening();
     }
   };
 
@@ -812,12 +812,12 @@ export default function ComposeEmailPage() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-                    <div className="p-6 pb-4 border-b shrink-0 text-center">
-                      <h2 className="text-2xl font-bold font-headline text-primary">Chat with Ogeemo</h2>
-                      <p className="text-sm text-muted-foreground">
+                    <DialogHeader className="p-6 pb-4 border-b shrink-0 text-center">
+                      <DialogTitle className="text-2xl font-bold font-headline text-primary">Chat with Ogeemo</DialogTitle>
+                      <DialogDescription>
                         Ask me anything or tell me what you would like to do.
-                      </p>
-                    </div>
+                      </DialogDescription>
+                    </DialogHeader>
                     <div className="flex-1 p-6 overflow-hidden">
                       <ScrollArea className="h-full pr-4" ref={chatScrollAreaRef}>
                         <div className="space-y-4">
@@ -886,19 +886,19 @@ export default function ComposeEmailPage() {
                           size="icon"
                           className={cn(
                             "flex-shrink-0",
-                            isChatListening && "text-destructive"
+                            isListening && "text-destructive"
                           )}
-                          onClick={isChatListening ? stopChatListening : startChatListening}
-                          disabled={!isChatSupported || isChatLoading}
+                          onClick={isListening ? stopListening : startListening}
+                          disabled={isSupported === false || isChatLoading}
                           title={
-                            !isChatSupported
+                            isSupported === false
                               ? "Voice input not supported"
-                              : isChatListening
+                              : isListening
                               ? "Stop listening"
                               : "Start listening"
                           }
                         >
-                          {isChatListening ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                          {isListening ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                           <span className="sr-only">Use Voice</span>
                         </Button>
                         <Input
