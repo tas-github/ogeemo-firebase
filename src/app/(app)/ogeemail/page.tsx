@@ -54,6 +54,7 @@ export default function OgeeMailWelcomePage() {
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatScrollAreaRef = useRef<HTMLDivElement>(null);
+  const [chatInputBeforeSpeech, setChatInputBeforeSpeech] = useState("");
 
   // Speech-to-text for the Feature Spotlight
   const {
@@ -81,9 +82,19 @@ export default function OgeeMailWelcomePage() {
     isSupported: isChatSupported,
   } = useSpeechToText({
     onTranscript: (transcript) => {
-      setChatInput(transcript);
+      const newText = chatInputBeforeSpeech ? `${chatInputBeforeSpeech} ${transcript}`.trim() : transcript;
+      setChatInput(newText);
     },
   });
+
+  const handleChatMicClick = () => {
+    if (isChatListening) {
+      stopChatListening();
+    } else {
+      setChatInputBeforeSpeech(chatInput);
+      startChatListening();
+    }
+  };
 
   useEffect(() => {
     if (isSpotlightSupported === false) {
@@ -367,9 +378,7 @@ export default function OgeeMailWelcomePage() {
                   "flex-shrink-0",
                   isChatListening && "text-destructive"
                 )}
-                onClick={
-                  isChatListening ? stopChatListening : startChatListening
-                }
+                onClick={handleChatMicClick}
                 disabled={!isChatSupported || isChatLoading}
                 title={
                   !isChatSupported
