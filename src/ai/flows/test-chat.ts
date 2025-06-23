@@ -8,7 +8,7 @@
  * - TestChatOutput - The return type for the askTestChat function.
  */
 
-import {ai, aiFeaturesEnabled} from '@/ai/genkit';
+import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const TestChatInputSchema = z.object({
@@ -22,11 +22,6 @@ const TestChatOutputSchema = z.object({
 export type TestChatOutput = z.infer<typeof TestChatOutputSchema>;
 
 export async function askTestChat(input: TestChatInput): Promise<TestChatOutput> {
-  if (!aiFeaturesEnabled) {
-    return {
-      reply: "Test Chat AI features are currently disabled. Please make sure the GOOGLE_API_KEY environment variable is configured correctly."
-    };
-  }
   return testChatFlow(input);
 }
 
