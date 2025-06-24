@@ -15,10 +15,10 @@ export interface FolderItem {
 }
 
 export const mockFolders: FolderItem[] = [
-  { id: 'folder-1', name: 'Project Documents', parentId: null },
+  { id: 'folder-1', name: 'Folders', parentId: null },
   { id: 'folder-2', name: 'Invoices', parentId: 'folder-1' },
   { id: 'folder-3', name: 'Marketing Assets', parentId: 'folder-1' },
-  { id: 'folder-4', name: 'Legal', parentId: null },
+  { id: 'folder-4', name: 'Sub folders', parentId: null },
   { id: 'folder-5', name: 'Contracts', parentId: 'folder-4' },
 ];
 
