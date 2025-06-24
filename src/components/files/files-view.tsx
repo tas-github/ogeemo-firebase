@@ -184,7 +184,7 @@ export function FilesView() {
   };
   
   const handleBulkArchiveFiles = () => {
-    let archiveFolder = folders.find(f => f.name.toLowerCase() === 'archive');
+    let archiveFolder = folders.find(f => f.name.toLowerCase() === 'archive' && f.parentId === null);
     if (!archiveFolder) {
       archiveFolder = { id: 'folder-archive', name: 'Archive', parentId: null };
       setFolders(prev => [...prev, archiveFolder!]);
@@ -210,7 +210,7 @@ export function FilesView() {
   };
 
   const handleCreateFolderInDialog = () => {
-      if (newFolderNameInDialog.trim()) {
+      if (newFolderNameInDialog.trim() && uploadTargetFolderId) {
           const newFolder: FolderItem = {
               id: `f-${Date.now()}`,
               name: newFolderNameInDialog.trim(),
@@ -277,6 +277,17 @@ export function FilesView() {
     setExpandedFolderIds(prev => prev.includes(folderId) ? prev.filter(id => id !== folderId) : [...prev, folderId]);
   };
 
+  const breadcrumbPath = useMemo(() => {
+    if (!selectedFolderId) return [];
+    const path: FolderItem[] = [];
+    let currentFolder = folders.find(f => f.id === selectedFolderId);
+    while (currentFolder) {
+      path.unshift(currentFolder);
+      currentFolder = folders.find(f => f.id === currentFolder!.parentId);
+    }
+    return path;
+  }, [selectedFolderId, folders]);
+
   const renderFolderTree = (parentId: string | null, level = 0): React.ReactNode => {
     const childFolders = folders.filter(folder => folder.parentId === parentId);
 
@@ -317,18 +328,6 @@ export function FilesView() {
     });
   };
 
-  const getBreadcrumbPath = (folderId: string | null): FolderItem[] => {
-    if (!folderId) return [];
-    const path: FolderItem[] = [];
-    let currentFolder = folders.find(f => f.id === folderId);
-    while (currentFolder) {
-      path.unshift(currentFolder);
-      currentFolder = folders.find(f => f.id === currentFolder!.parentId);
-    }
-    return path;
-  };
-  const breadcrumbPath = getBreadcrumbPath(selectedFolderId);
-  
   const renderMoveToMenuItems = (parentId: string | null, currentFileFolderId: string): React.ReactNode[] => {
     return folders
         .filter(folder => folder.parentId === parentId)
@@ -407,9 +406,7 @@ export function FilesView() {
                   {renderUploadFolderOptions(null)}
                 </RadioGroup>
             </ScrollArea>
-
             <Separator />
-
             <div>
                 <Label htmlFor="new-folder-dialog-input" className="font-semibold">Or create a new subfolder in '{folders.find(f => f.id === uploadTargetFolderId)?.name || 'Root'}'</Label>
                 <div className="flex items-center space-x-2 mt-2">
@@ -579,17 +576,19 @@ export function FilesView() {
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem><Download className="mr-2 h-4 w-4" /> Download</DropdownMenuItem>
                                                 <DropdownMenuItem><Pencil className="mr-2 h-4 w-4" /> Rename</DropdownMenuItem>
-                                                <DropdownMenuSub>
-                                                    <DropdownMenuSubTrigger>
-                                                        <Move className="mr-2 h-4 w-4" />
-                                                        <span>Move to Folder</span>
-                                                    </DropdownMenuSubTrigger>
-                                                    <DropdownMenuPortal>
-                                                        <DropdownMenuSubContent>
-                                                            {renderMoveToMenuItems(null, file.folderId)}
-                                                        </DropdownMenuSubContent>
-                                                    </DropdownMenuPortal>
-                                                </DropdownMenuSub>
+                                                {selectedFileIds.length <= 1 && (
+                                                  <DropdownMenuSub>
+                                                      <DropdownMenuSubTrigger>
+                                                          <Move className="mr-2 h-4 w-4" />
+                                                          <span>Move to Folder</span>
+                                                      </DropdownMenuSubTrigger>
+                                                      <DropdownMenuPortal>
+                                                          <DropdownMenuSubContent>
+                                                              {renderMoveToMenuItems(null, file.folderId)}
+                                                          </DropdownMenuSubContent>
+                                                      </DropdownMenuPortal>
+                                                  </DropdownMenuSub>
+                                                )}
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteFiles([file.id])}>
                                                 <Trash2 className="mr-2 h-4 w-4" /> Delete
