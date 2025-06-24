@@ -131,7 +131,6 @@ export default function OgeeMailWelcomePage() {
         } finally {
           setIsSpotlightLoading(false);
           setShouldProcessSpotlight(false);
-          setTranscript("");
         }
       };
       processTranscript();
@@ -283,15 +282,15 @@ export default function OgeeMailWelcomePage() {
           </p>
         </header>
 
-        <div className="grid md:grid-cols-2 gap-6 items-start flex-1">
-          <Card className="flex flex-col h-full">
+        <div className="grid md:grid-cols-2 gap-6">
+          <Card>
             <CardHeader className="text-center">
               <CardTitle className="text-primary">Ready to Write?</CardTitle>
               <CardDescription>
                 Start drafting a new message or chat with your assistant.
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex-1 flex items-center justify-center gap-4">
+            <CardContent className="flex items-center justify-center gap-4">
               <Button
                 size="lg"
                 className="h-16 text-lg px-8"
@@ -314,64 +313,72 @@ export default function OgeeMailWelcomePage() {
             </CardFooter>
           </Card>
 
-          <div className="space-y-6">
-            <Card>
-              <CardHeader className="text-center">
-                <CardTitle className="text-primary">Quick Navigation</CardTitle>
-                <CardDescription>Jump to any folder instantly.</CardDescription>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {quickNavItems.map((item) => (
-                  <Button
-                    key={item.label}
-                    variant="outline"
-                    className="flex flex-col h-20 gap-2"
-                    onClick={item.action}
-                  >
-                    <item.icon className="w-6 h-6" />
-                    <span>{item.label}</span>
-                  </Button>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="text-center">
-                <CardTitle className="text-primary">Feature Spotlight</CardTitle>
-                <CardDescription>Voice-Powered Ogeemo Assistant</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center gap-4">
+          <Card>
+            <CardHeader className="text-center">
+              <CardTitle className="text-primary">Quick Navigation</CardTitle>
+              <CardDescription>Jump to any folder instantly.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {quickNavItems.map((item) => (
                 <Button
-                  variant={spotlightStatus === 'listening' ? "destructive" : "outline"}
-                  size="icon"
-                  className={cn(
-                    "h-20 w-20 rounded-full",
-                    spotlightStatus !== 'listening' && "bg-primary/10 text-primary",
-                    spotlightStatus === 'listening' && "animate-pulse"
-                  )}
-                  onClick={handleSpotlightMicClick}
-                  disabled={isSpotlightSupported === false || spotlightStatus === 'activating' || isSpotlightLoading}
-                  title={getSpotlightMicButtonTitle(spotlightStatus)}
+                  key={item.label}
+                  variant="outline"
+                  className="flex flex-col h-20 gap-2"
+                  onClick={item.action}
                 >
-                  {isSpotlightLoading ? <LoaderCircle className="w-8 h-8 animate-spin" /> : renderSpotlightMicIcon(spotlightStatus)}
+                  <item.icon className="w-6 h-6" />
+                  <span>{item.label}</span>
                 </Button>
-                <p className="text-sm text-muted-foreground h-10 flex items-center justify-center text-center px-4">
-                  {isSpotlightLoading ? (
-                    "Thinking..."
-                  ) : spotlightStatus === 'listening' ? (
-                    "Listening..."
-                  ) : spotlightResponse ? (
-                    spotlightResponse
-                  ) : transcript ? (
-                    `I heard: "${transcript}"`
-                  ) : (
-                    "Click the mic and speak and click the icon when you stop speaking"
-                  )}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+              ))}
+            </CardContent>
+          </Card>
         </div>
+
+        <Card className="flex-1 flex flex-col">
+          <CardHeader className="text-center">
+            <CardTitle className="text-primary">Feature Spotlight</CardTitle>
+            <CardDescription>Voice-Powered Ogeemo Assistant</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
+            <Button
+              variant={spotlightStatus === 'listening' ? "destructive" : "outline"}
+              size="icon"
+              className={cn(
+                "h-20 w-20 rounded-full",
+                spotlightStatus !== 'listening' && "bg-primary/10 text-primary",
+                spotlightStatus === 'listening' && "animate-pulse"
+              )}
+              onClick={handleSpotlightMicClick}
+              disabled={isSpotlightSupported === false || spotlightStatus === 'activating' || isSpotlightLoading}
+              title={getSpotlightMicButtonTitle(spotlightStatus)}
+            >
+              {isSpotlightLoading ? <LoaderCircle className="w-8 h-8 animate-spin" /> : renderSpotlightMicIcon(spotlightStatus)}
+            </Button>
+
+            <div className="w-full max-w-2xl min-h-[6rem] text-center flex items-center justify-center rounded-lg bg-muted p-4">
+              {isSpotlightLoading ? (
+                <div className="flex items-center gap-2 text-lg">
+                  <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <p className="text-muted-foreground">Thinking...</p>
+                </div>
+              ) : transcript ? (
+                 <div className="flex items-start gap-3 w-full">
+                    <User className="h-6 w-6 text-primary shrink-0 mt-1" />
+                    <p className="text-lg font-medium text-left">{`"${transcript}"`}</p>
+                  </div>
+              ) : spotlightResponse ? (
+                <div className="flex items-start gap-3 w-full">
+                  <Bot className="h-6 w-6 text-primary shrink-0 mt-1" />
+                  <p className="text-lg text-left">{spotlightResponse}</p>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">
+                  Click the mic and speak, then click again when you're done.
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Dialog open={isChatOpen} onOpenChange={setIsChatOpen}>
