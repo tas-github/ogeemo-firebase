@@ -27,7 +27,7 @@ const testChatPrompt = ai.definePrompt({
     model: 'googleai/gemini-1.5-flash',
     input: { schema: TestChatInputSchema },
     output: { schema: TestChatOutputSchema },
-    prompt: `You are a test assistant. The user said: {{{message}}}. Reply with: "Message received."`,
+    prompt: `You are a helpful test assistant. The user said: {{{message}}}. Respond to their message.`,
 });
 
 const testChatFlow = ai.defineFlow(
