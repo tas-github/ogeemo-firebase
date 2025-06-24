@@ -617,5 +617,3 @@ export function FilesView() {
     </>
   );
 }
-
-    
