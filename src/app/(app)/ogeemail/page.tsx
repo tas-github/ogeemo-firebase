@@ -350,8 +350,9 @@ export default function OgeeMailWelcomePage() {
             <ScrollArea className="h-full pr-4" ref={chatScrollAreaRef}>
               <div className="space-y-4">
                 {messages.length === 0 && (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    Start the conversation...
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center">
+                    <p>Start the conversation...</p>
+                    <p className="text-sm mt-2">In order to start and stop voice to text, click the mic icon</p>
                   </div>
                 )}
                 {messages.map((message) => (
