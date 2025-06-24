@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -86,7 +87,6 @@ export function ContactsView() {
   const [contactToEdit, setContactToEdit] = useState<Contact | null>(null);
   const [isSelectFolderDialogOpen, setIsSelectFolderDialogOpen] = useState(false);
   const [notesBeforeSpeech, setNotesBeforeSpeech] = useState('');
-  const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
   
   const { toast } = useToast();
 
@@ -388,7 +388,6 @@ export function ContactsView() {
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <Button variant="outline" onClick={() => setIsTestDialogOpen(true)}>Test Box</Button>
                                         <Button onClick={handleNewContactClick}>
                                             <Plus className="mr-2 h-4 w-4" /> New Contact
                                         </Button>
@@ -480,23 +479,6 @@ export function ContactsView() {
         </DialogContent>
       </Dialog>
       
-      <Dialog open={isTestDialogOpen} onOpenChange={setIsTestDialogOpen}>
-        <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-          <DialogHeader className="p-6 pb-4 border-b">
-            <DialogTitle>Test Dialog Box</DialogTitle>
-            <DialogDescription>
-              This is a test to troubleshoot dialog sizing.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="p-6 flex-1 bg-muted/50 flex items-center justify-center">
-            <p className="text-2xl text-muted-foreground">Content Area</p>
-          </div>
-          <DialogFooter className="p-6 pt-4 border-t">
-            <Button onClick={() => setIsTestDialogOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={isContactFormOpen} onOpenChange={(open) => { if (!open) closeContactForm(); else setIsContactFormOpen(true); }}>
           <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
               <DialogHeader className="p-4 pb-2 border-b text-center">
