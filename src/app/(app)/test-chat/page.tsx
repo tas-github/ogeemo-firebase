@@ -40,8 +40,11 @@ export default function TestChatPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const [inputBeforeSpeech, setInputBeforeSpeech] = useState("");
   const { toast } = useToast();
+
+  // Use a ref to hold the text from before speech recognition starts.
+  // This avoids stale state issues in callbacks.
+  const baseTextRef = useRef("");
 
   const {
     isListening,
@@ -50,7 +53,11 @@ export default function TestChatPage() {
     isSupported,
   } = useSpeechToText({
     onTranscript: (transcript) => {
-      const newText = inputBeforeSpeech ? `${inputBeforeSpeech} ${transcript}`.trim() : transcript;
+      // Combine the base text with the current transcript.
+      // A space is added only if baseText exists.
+      const newText = baseTextRef.current
+        ? `${baseTextRef.current} ${transcript}`
+        : transcript;
       setInput(newText);
     },
   });
@@ -78,7 +85,8 @@ export default function TestChatPage() {
     if (isListening) {
       stopListening();
     } else {
-      setInputBeforeSpeech(input);
+      // When starting, save the current input to the ref.
+      baseTextRef.current = input.trim();
       startListening();
     }
   };
