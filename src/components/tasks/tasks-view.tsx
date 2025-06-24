@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,9 +9,17 @@ import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { NewProjectDialog } from "@/components/tasks/NewProjectDialog";
 import { EditProjectDialog } from "@/components/tasks/EditProjectDialog";
 import { type Event } from "@/types/calendar";
-import { type Project } from "@/data/projects";
+import { type Project, initialProjects } from "@/data/projects";
 import { initialEvents } from "@/data/events";
-import { initialProjects } from "@/data/projects";
+import { type ProjectTemplate, type PartialTask, initialProjectTemplates } from "@/data/project-templates";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -28,24 +37,18 @@ export function TasksView() {
   const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
   const [allTasks, setAllTasks] = useState<Event[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectTemplates, setProjectTemplates] = useState<ProjectTemplate[]>([]);
+  const [templateToApply, setTemplateToApply] = useState<PartialTask[] | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    // This effect runs only on the client-side
     if (typeof window === "undefined") return;
 
-    // Load projects from localStorage
     try {
       const storedProjects = localStorage.getItem('projects');
       if (storedProjects) {
-        let projectsFromStorage = JSON.parse(storedProjects);
-        const projectOne = projectsFromStorage.find((p: Project) => p.id === 'proj-1');
-        if (projectOne && projectOne.name === 'General Tasks') {
-            projectOne.name = 'Project List';
-            localStorage.setItem('projects', JSON.stringify(projectsFromStorage));
-        }
-        setProjects(projectsFromStorage);
+        setProjects(JSON.parse(storedProjects));
       } else {
         setProjects(initialProjects);
         localStorage.setItem('projects', JSON.stringify(initialProjects));
@@ -55,7 +58,6 @@ export function TasksView() {
       setProjects(initialProjects);
     }
 
-    // Load tasks from localStorage
     try {
       const storedEvents = localStorage.getItem('calendarEvents');
       if (storedEvents) {
@@ -72,6 +74,19 @@ export function TasksView() {
     } catch (error) {
       console.error("Could not read calendar events from localStorage", error);
       setAllTasks(initialEvents);
+    }
+
+    try {
+      const storedTemplates = localStorage.getItem('projectTemplates');
+      if (storedTemplates) {
+        setProjectTemplates(JSON.parse(storedTemplates));
+      } else {
+        setProjectTemplates(initialProjectTemplates);
+        localStorage.setItem('projectTemplates', JSON.stringify(initialProjectTemplates));
+      }
+    } catch (error) {
+      console.error("Could not read project templates from localStorage", error);
+      setProjectTemplates(initialProjectTemplates);
     }
   }, []);
   
@@ -102,13 +117,21 @@ export function TasksView() {
     }
   }, [allTasks]);
   
+  useEffect(() => {
+    if (projectTemplates.length > 0) {
+      try {
+        localStorage.setItem('projectTemplates', JSON.stringify(projectTemplates));
+      } catch (error) {
+        console.error("Could not write project templates to localStorage", error);
+      }
+    }
+  }, [projectTemplates]);
+  
   const tasksForSelectedProject = allTasks.filter(task => task.projectId === selectedProjectId);
 
   const handleCreateTask = (newEvent: Event) => {
     setAllTasks(prev => [newEvent, ...prev]);
   };
-
-  type PartialTask = { title: string; description: string };
 
   const handleCreateProject = (projectName: string, projectDescription: string, tasks: PartialTask[]) => {
     const newProject: Project = {
@@ -150,6 +173,24 @@ export function TasksView() {
     });
   };
 
+  const handleSaveTemplate = (name: string, steps: PartialTask[]) => {
+    const newTemplate: ProjectTemplate = {
+      id: `template-${Date.now()}`,
+      name,
+      steps,
+    };
+    setProjectTemplates(prev => [...prev, newTemplate]);
+    toast({
+      title: "Template Saved",
+      description: `"${name}" has been saved as a new project template.`,
+    });
+  };
+  
+  const handleSelectTemplate = (template: ProjectTemplate) => {
+    setTemplateToApply(template.steps);
+    setIsNewProjectOpen(true);
+  };
+
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   return (
@@ -181,10 +222,23 @@ export function TasksView() {
                 <Plus className="mr-2 h-4 w-4" />
                 New Project
             </Button>
-            <Button onClick={() => {}} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                <FileText className="mr-2 h-4 w-4" />
-                Project Templates
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Project Templates
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuLabel>Apply a Template</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {projectTemplates.map((template) => (
+                    <DropdownMenuItem key={template.id} onSelect={() => handleSelectTemplate(template)}>
+                        {template.name}
+                    </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button onClick={() => setIsEditProjectOpen(true)} disabled={!selectedProjectId} className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Edit className="mr-2 h-4 w-4" />
               Edit Project
@@ -212,13 +266,25 @@ export function TasksView() {
       </main>
 
       <NewTaskDialog isOpen={isNewTaskOpen} onOpenChange={setIsNewTaskOpen} onTaskCreate={handleCreateTask} projectId={selectedProjectId} />
-      <NewProjectDialog isOpen={isNewProjectOpen} onOpenChange={setIsNewProjectOpen} onProjectCreate={handleCreateProject} />
+      <NewProjectDialog
+        isOpen={isNewProjectOpen}
+        onOpenChange={(open) => {
+            setIsNewProjectOpen(open);
+            if (!open) setTemplateToApply(null);
+        }}
+        onProjectCreate={handleCreateProject}
+        templates={projectTemplates}
+        onSaveAsTemplate={handleSaveTemplate}
+        initialTasks={templateToApply}
+      />
       <EditProjectDialog
         isOpen={isEditProjectOpen}
         onOpenChange={setIsEditProjectOpen}
         project={selectedProject}
         tasks={tasksForSelectedProject}
         onProjectSave={handleProjectSave}
+        templates={projectTemplates}
+        onSaveAsTemplate={handleSaveTemplate}
       />
     </div>
   );
