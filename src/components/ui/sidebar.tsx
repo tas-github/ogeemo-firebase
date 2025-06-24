@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -533,7 +534,7 @@ const sidebarMenuButtonVariants = cva(
   }
 )
 
-const SidebarMenuButton = React.forwardRef<
+const _SidebarMenuButton = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button"> & {
     asChild?: boolean
@@ -590,6 +591,9 @@ const SidebarMenuButton = React.forwardRef<
     )
   }
 )
+_SidebarMenuButton.displayName = "SidebarMenuButton"
+
+const SidebarMenuButton = React.memo(_SidebarMenuButton)
 SidebarMenuButton.displayName = "SidebarMenuButton"
 
 const SidebarMenuAction = React.forwardRef<
