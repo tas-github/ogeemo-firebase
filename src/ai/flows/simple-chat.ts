@@ -31,8 +31,9 @@ export async function askSimpleChat(input: SimpleChatInput): Promise<SimpleChatO
     };
   } catch (error) {
     console.error("Critical Error in askSimpleChat:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      reply: "An error occurred in the AI flow. Please check the server logs for details.",
+      reply: `I encountered a critical error. Please tell the engineer: ${errorMessage}`,
     };
   }
 }
