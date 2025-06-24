@@ -13,6 +13,7 @@ import {
   FilePenLine,
   Move,
   FolderPlus,
+  ChevronDown,
 } from 'lucide-react';
 import { format } from "date-fns";
 
@@ -75,20 +76,37 @@ export function FilesView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderType, setNewFolderType] = useState<'folder' | 'subfolder'>('folder');
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     // Simulate loading data
     setIsLoading(true);
     setFolders(mockFolders);
     setFiles(mockFiles);
+    // Initially expand all parent folders
+    const parentFolderIds = new Set(mockFolders.filter(f => f.parentId).map(f => f.parentId!));
+    setExpandedFolders(parentFolderIds);
     setIsLoading(false);
   }, []);
 
   const topLevelFolders = useMemo(() => folders.filter(f => !f.parentId), [folders]);
-  
+  const subfoldersByParentId = useMemo(() => {
+    const map = new Map<string, FolderItem[]>();
+    folders.forEach(folder => {
+      if (folder.parentId) {
+        if (!map.has(folder.parentId)) {
+          map.set(folder.parentId, []);
+        }
+        map.get(folder.parentId)!.push(folder);
+      }
+    });
+    return map;
+  }, [folders]);
+
   const displayedFiles = useMemo(() => {
     return files
       .filter(file => file.folderId === selectedFolderId)
@@ -126,7 +144,16 @@ export function FilesView() {
   };
 
   const handleUploadClick = () => {
-    fileInputRef.current?.click();
+    const selectedFolder = folders.find(f => f.id === selectedFolderId);
+    if (!selectedFolder) {
+      toast({
+        variant: "destructive",
+        title: "Please select a folder",
+        description: "You must select a folder before you can upload files.",
+      });
+      return;
+    }
+    setIsUploadDialogOpen(true);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,14 +177,13 @@ export function FilesView() {
     setNewFolderName("");
 
     if (parentId) {
-      // Pre-select for subfolder creation from a context menu
       setNewFolderType('subfolder');
       setNewFolderParentId(parentId);
     } else {
-      // Default state for the main "New Folder" button
       setNewFolderType('folder');
-      const currentSelectedIsTopLevel = folders.find(f => f.id === selectedFolderId && !f.parentId);
-      setNewFolderParentId(currentSelectedIsTopLevel ? selectedFolderId : null);
+      const currentSelectedFolder = folders.find(f => f.id === selectedFolderId);
+      const isTopLevel = currentSelectedFolder && !currentSelectedFolder.parentId;
+      setNewFolderParentId(isTopLevel ? selectedFolderId : (currentSelectedFolder?.parentId || null));
     }
     setIsNewFolderDialogOpen(true);
   };
@@ -179,6 +205,9 @@ export function FilesView() {
       parentId: newFolderType === 'folder' ? null : newFolderParentId,
     };
     setFolders(prev => [...prev, newFolder]);
+    if (newFolder.parentId) {
+        setExpandedFolders(prev => new Set(prev).add(newFolder.parentId!));
+    }
     setNewFolderName("");
     setIsNewFolderDialogOpen(false);
     toast({ title: "Folder Created" });
@@ -187,6 +216,18 @@ export function FilesView() {
   const handleFolderSelect = (folderId: string) => {
     setSelectedFolderId(folderId);
     setSelectedFileIds([]);
+  };
+
+  const toggleFolderExpansion = (folderId: string) => {
+    setExpandedFolders(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(folderId)) {
+            newSet.delete(folderId);
+        } else {
+            newSet.add(folderId);
+        }
+        return newSet;
+    });
   };
 
   const formatFileSize = (bytes: number) => {
@@ -208,6 +249,27 @@ export function FilesView() {
         className="hidden"
         multiple
       />
+       <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Start Upload</DialogTitle>
+            <DialogDescription>
+              You are about to upload files to the "{currentFolderName}" folder.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsUploadDialogOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                setIsUploadDialogOpen(false);
+                fileInputRef.current?.click();
+              }}
+            >
+              Start Upload
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="flex flex-col h-full">
         <header className="text-center py-4 sm:py-6 px-4 sm:px-6">
           <h1 className="text-3xl font-bold font-headline text-primary">File Manager</h1>
@@ -240,7 +302,7 @@ export function FilesView() {
                                         </Label>
                                     </div>
                                     <div>
-                                        <RadioGroupItem value="subfolder" id="r2" className="peer sr-only" disabled={folders.filter(f => !f.parentId).length === 0} />
+                                        <RadioGroupItem value="subfolder" id="r2" className="peer sr-only" disabled={topLevelFolders.length === 0} />
                                         <Label htmlFor="r2" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
                                             Subfolder
                                         </Label>
@@ -292,14 +354,25 @@ export function FilesView() {
                   </Dialog>
                 </div>
                 <ScrollArea className="flex-1">
-                    <nav className="flex flex-col gap-1 p-2">
-                      <p className="px-2 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Folders</p>
-                       {topLevelFolders.map(folder => (
+                    <nav className="flex flex-col gap-0.5 p-2">
+                       {topLevelFolders.map(folder => {
+                          const subfolders = subfoldersByParentId.get(folder.id) || [];
+                          const isExpanded = expandedFolders.has(folder.id);
+                          
+                          return (
                           <div key={folder.id} className="w-full">
-                             <div className="w-full group/folder-item relative">
+                             <div className="w-full group/folder-item relative flex items-center">
+                                {subfolders.length > 0 && (
+                                    <button
+                                        onClick={() => toggleFolderExpansion(folder.id)}
+                                        className="p-1 rounded-sm hover:bg-accent"
+                                    >
+                                        <ChevronDown className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                                    </button>
+                                )}
                                 <Button
                                   variant={selectedFolderId === folder.id ? 'secondary' : 'ghost'}
-                                  className="w-full justify-start gap-2 pr-8"
+                                  className={`w-full justify-start gap-2 h-9 flex-1 ${subfolders.length > 0 ? 'pl-1' : 'pl-8'}`}
                                   onClick={() => handleFolderSelect(folder.id)}
                                 >
                                   <Folder className="h-4 w-4" />
@@ -319,21 +392,23 @@ export function FilesView() {
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
-                            <div className="pl-4 flex flex-col gap-1 pt-1">
-                              {folders.filter(f => f.parentId === folder.id).map(subFolder => (
-                                <Button
-                                  key={subFolder.id}
-                                  variant={selectedFolderId === subFolder.id ? 'secondary' : 'ghost'}
-                                  className="w-full justify-start gap-2 h-9"
-                                  onClick={() => handleFolderSelect(subFolder.id)}
-                                >
-                                  <Folder className="h-4 w-4" />
-                                  <span className="truncate">{subFolder.name}</span>
-                                </Button>
-                              ))}
-                            </div>
+                            {isExpanded && (
+                                <div className="pl-6 flex flex-col gap-0.5 pt-0.5">
+                                  {subfolders.map(subFolder => (
+                                    <Button
+                                      key={subFolder.id}
+                                      variant={selectedFolderId === subFolder.id ? 'secondary' : 'ghost'}
+                                      className="w-full justify-start gap-2 h-9"
+                                      onClick={() => handleFolderSelect(subFolder.id)}
+                                    >
+                                      <Folder className="h-4 w-4" />
+                                      <span className="truncate">{subFolder.name}</span>
+                                    </Button>
+                                  ))}
+                                </div>
+                            )}
                           </div>
-                        ))}
+                        )})}
                     </nav>
                 </ScrollArea>
               </div>
