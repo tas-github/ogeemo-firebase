@@ -11,13 +11,15 @@ export interface FileItem {
 export interface FolderItem {
   id: string;
   name: string;
+  parentId?: string | null;
 }
 
 export const mockFolders: FolderItem[] = [
-  { id: 'folder-1', name: 'Project Documents' },
-  { id: 'folder-2', name: 'Invoices' },
-  { id: 'folder-3', name: 'Marketing Assets' },
-  { id: 'folder-4', name: 'Legal' },
+  { id: 'folder-1', name: 'Project Documents', parentId: null },
+  { id: 'folder-2', name: 'Invoices', parentId: 'folder-1' },
+  { id: 'folder-3', name: 'Marketing Assets', parentId: 'folder-1' },
+  { id: 'folder-4', name: 'Legal', parentId: null },
+  { id: 'folder-5', name: 'Contracts', parentId: 'folder-4' },
 ];
 
 export const mockFiles: FileItem[] = [
@@ -76,5 +78,13 @@ export const mockFiles: FileItem[] = [
     size: 890432,
     modifiedAt: new Date('2024-06-15T12:00:00Z'),
     folderId: 'folder-4',
+  },
+  {
+    id: 'file-8',
+    name: 'NDA_Partner.pdf',
+    type: 'application/pdf',
+    size: 450123,
+    modifiedAt: new Date('2024-06-18T10:00:00Z'),
+    folderId: 'folder-5',
   },
 ];
