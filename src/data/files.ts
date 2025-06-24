@@ -11,17 +11,13 @@ export interface FileItem {
 export interface FolderItem {
   id: string;
   name: string;
-  parentId: string | null;
 }
 
 export const mockFolders: FolderItem[] = [
-  { id: 'folder-1', name: 'Project Documents', parentId: null },
-  { id: 'folder-1-1', name: 'Q1 Reports', parentId: 'folder-1' },
-  { id: 'folder-1-2', name: 'Q2 Reports', parentId: 'folder-1' },
-  { id: 'folder-2', name: 'Invoices', parentId: null },
-  { id: 'folder-3', name: 'Marketing Assets', parentId: null },
-  { id: 'folder-4', name: 'Legal', parentId: null },
-  { id: 'folder-4-1', name: 'Contracts', parentId: 'folder-4' },
+  { id: 'folder-1', name: 'Project Documents' },
+  { id: 'folder-2', name: 'Invoices' },
+  { id: 'folder-3', name: 'Marketing Assets' },
+  { id: 'folder-4', name: 'Legal' },
 ];
 
 export const mockFiles: FileItem[] = [
@@ -39,15 +35,7 @@ export const mockFiles: FileItem[] = [
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     size: 34567,
     modifiedAt: new Date('2024-07-21T14:30:00Z'),
-    folderId: 'folder-1-1',
-  },
-    {
-    id: 'file-2a',
-    name: 'Q1_Presentation.pptx',
-    type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    size: 450123,
-    modifiedAt: new Date('2024-07-22T11:00:00Z'),
-    folderId: 'folder-1-1',
+    folderId: 'folder-1',
   },
   {
     id: 'file-3',
@@ -87,6 +75,6 @@ export const mockFiles: FileItem[] = [
     type: 'application/pdf',
     size: 890432,
     modifiedAt: new Date('2024-06-15T12:00:00Z'),
-    folderId: 'folder-4-1',
+    folderId: 'folder-4',
   },
 ];
