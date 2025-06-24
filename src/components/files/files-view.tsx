@@ -12,6 +12,7 @@ import {
   UploadCloud,
   FilePenLine,
   Move,
+  FolderPlus,
 } from 'lucide-react';
 import { format } from "date-fns";
 
@@ -144,21 +145,19 @@ export function FilesView() {
     e.target.value = '';
   };
   
-  const openNewFolderDialog = () => {
+  const openNewFolderDialog = (options: { parentId?: string } = {}) => {
+    const { parentId } = options;
     setNewFolderName("");
-    const currentSelectedFolder = folders.find(f => f.id === selectedFolderId);
 
-    if (currentSelectedFolder) {
-      if (!currentSelectedFolder.parentId) {
-        setNewFolderParentId(currentSelectedFolder.id);
-        setNewFolderType('subfolder');
-      } else {
-        setNewFolderParentId(currentSelectedFolder.parentId);
-        setNewFolderType('subfolder');
-      }
+    if (parentId) {
+      // Pre-select for subfolder creation from a context menu
+      setNewFolderType('subfolder');
+      setNewFolderParentId(parentId);
     } else {
-      setNewFolderParentId(null);
+      // Default state for the main "New Folder" button
       setNewFolderType('folder');
+      const currentSelectedIsTopLevel = folders.find(f => f.id === selectedFolderId && !f.parentId);
+      setNewFolderParentId(currentSelectedIsTopLevel ? selectedFolderId : null);
     }
     setIsNewFolderDialogOpen(true);
   };
@@ -221,7 +220,7 @@ export function FilesView() {
                 <div className="p-2">
                   <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
                       <DialogTrigger asChild>
-                          <Button className="w-full" onClick={openNewFolderDialog}>
+                          <Button className="w-full" onClick={() => openNewFolderDialog()}>
                               <Plus className="mr-2 h-4 w-4" /> New Folder
                           </Button>
                       </DialogTrigger>
@@ -297,14 +296,29 @@ export function FilesView() {
                       <p className="px-2 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Folders</p>
                        {topLevelFolders.map(folder => (
                           <div key={folder.id} className="w-full">
-                             <Button
-                              variant={selectedFolderId === folder.id ? 'secondary' : 'ghost'}
-                              className="w-full justify-start gap-2"
-                              onClick={() => handleFolderSelect(folder.id)}
-                            >
-                              <Folder className="h-4 w-4" />
-                              <span className="truncate">{folder.name}</span>
-                            </Button>
+                             <div className="w-full group/folder-item relative">
+                                <Button
+                                  variant={selectedFolderId === folder.id ? 'secondary' : 'ghost'}
+                                  className="w-full justify-start gap-2 pr-8"
+                                  onClick={() => handleFolderSelect(folder.id)}
+                                >
+                                  <Folder className="h-4 w-4" />
+                                  <span className="truncate">{folder.name}</span>
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover/folder-item:opacity-100 focus-within:opacity-100">
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onSelect={() => openNewFolderDialog({ parentId: folder.id })}>
+                                      <FolderPlus className="mr-2 h-4 w-4" />
+                                      <span>Add Subfolder</span>
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
                             <div className="pl-4 flex flex-col gap-1 pt-1">
                               {folders.filter(f => f.parentId === folder.id).map(subFolder => (
                                 <Button
