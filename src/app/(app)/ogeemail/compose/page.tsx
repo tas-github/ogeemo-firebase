@@ -222,7 +222,7 @@ export default function ComposeEmailPage() {
     }
   }, [chatInput, isChatLoading, chatStatus, stopListening]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (chatStatus === 'idle' && shouldSubmitOnMicStop) {
       submitChatMessage();
       setShouldSubmitOnMicStop(false);
