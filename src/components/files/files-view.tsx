@@ -82,7 +82,6 @@ export function FilesView() {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // This effect runs only once on the client after initial render
     setIsLoading(true);
     try {
       const storedFolders = localStorage.getItem('fileManagerFolders');
@@ -94,11 +93,11 @@ export function FilesView() {
       setFolders(loadedFolders);
       setFiles(loadedFiles);
 
-      if (loadedFolders.length > 0 && !selectedFolderId) {
+      const currentSelectionIsValid = loadedFolders.some((f: FolderItem) => f.id === selectedFolderId);
+      if (!currentSelectionIsValid && loadedFolders.length > 0) {
         setSelectedFolderId(loadedFolders[0].id);
       }
       
-      // Initially expand all parent folders
       const parentFolderIds = new Set(loadedFolders.filter((f: FolderItem) => f.parentId).map((f: FolderItem) => f.parentId!));
       setExpandedFolders(parentFolderIds);
 
@@ -219,9 +218,7 @@ export function FilesView() {
       setNewFolderParentId(parentId);
     } else {
       setNewFolderType('folder');
-      const currentSelectedFolder = folders.find(f => f.id === selectedFolderId);
-      const isTopLevel = currentSelectedFolder && !currentSelectedFolder.parentId;
-      setNewFolderParentId(isTopLevel ? selectedFolderId : (currentSelectedFolder?.parentId || null));
+      setNewFolderParentId(null);
     }
     setIsNewFolderDialogOpen(true);
   };
