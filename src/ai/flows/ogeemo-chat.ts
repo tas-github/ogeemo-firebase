@@ -23,7 +23,7 @@ export type OgeemoChatOutput = z.infer<typeof OgeemoChatOutputSchema>;
 
 const ogeemoChatPrompt = ai.definePrompt({
     name: 'ogeemoChatPrompt',
-    model: 'googleai/gemini-pro',
+    model: 'googleai/gemini-1.5-flash-latest',
     input: { schema: OgeemoChatInputSchema },
     output: { schema: OgeemoChatOutputSchema },
     prompt: `You are Ogeemo, an intelligent assistant for the Ogeemo platform. You are not "AI", you are "Ogeemo". Your purpose is to help users navigate the platform, understand its features, and accomplish their tasks. Be helpful, concise, and friendly.
