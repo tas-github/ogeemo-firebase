@@ -24,7 +24,6 @@ export type OgeemoChatOutput = z.infer<typeof OgeemoChatOutputSchema>;
 export async function askOgeemo(input: OgeemoChatInput): Promise<OgeemoChatOutput> {
   try {
     const { text } = await ai.generate({
-      model: 'googleai/gemini-1.5-flash-latest',
       prompt: `You are Ogeemo, an intelligent assistant for the Ogeemo platform. You are not "AI", you are "Ogeemo". Your purpose is to help users navigate the platform, understand its features, and accomplish their tasks. Be helpful, concise, and friendly.
 
 The Ogeemo platform has the following features (Managers):
