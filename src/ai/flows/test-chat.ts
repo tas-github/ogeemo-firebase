@@ -24,7 +24,7 @@ export type TestChatOutput = z.infer<typeof TestChatOutputSchema>;
 
 const testChatPrompt = ai.definePrompt({
     name: 'testChatPrompt',
-    model: 'googleai/gemini-pro',
+    model: 'googleai/gemini-1.5-flash-latest',
     input: { schema: TestChatInputSchema },
     output: { schema: TestChatOutputSchema },
     prompt: `You are a test assistant. The user said: {{{message}}}. Reply with: "Message received."`,

@@ -35,7 +35,7 @@ export async function summarizeDatabase(input: SummarizeDatabaseInput): Promise<
 
 const summarizeDatabasePrompt = ai.definePrompt({
   name: 'summarizeDatabasePrompt',
-  model: 'googleai/gemini-pro',
+  model: 'googleai/gemini-1.5-flash-latest',
   input: {schema: SummarizeDatabaseInputSchema},
   output: {schema: SummarizeDatabaseOutputSchema},
   prompt: `You are an expert database analyst tasked with summarizing the contents and statistics of a Firebase database.
