@@ -61,6 +61,11 @@ export default function OgeeMailWelcomePage() {
   const chatScrollAreaRef = useRef<HTMLDivElement>(null);
   const chatBaseTextRef = useRef("");
   const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const {
     status: spotlightStatus,
@@ -88,14 +93,14 @@ export default function OgeeMailWelcomePage() {
   });
 
   useEffect(() => {
-    if (isSpotlightSupported === false || isChatSupported === false) {
+    if (hasMounted && (isSpotlightSupported === false || isChatSupported === false)) {
       toast({
         variant: "destructive",
         title: "Voice Input Not Supported",
         description: "Your browser does not support the Web Speech API.",
       });
     }
-  }, [isSpotlightSupported, isChatSupported, toast]);
+  }, [hasMounted, isSpotlightSupported, isChatSupported, toast]);
 
   useEffect(() => {
     if (chatScrollAreaRef.current) {
@@ -136,6 +141,7 @@ export default function OgeeMailWelcomePage() {
       processTranscript();
     }
   }, [spotlightStatus, shouldProcessSpotlight, transcript]);
+
 
   const handleComposeClick = () => {
     router.push('/ogeemail/compose');
@@ -349,10 +355,14 @@ export default function OgeeMailWelcomePage() {
                 spotlightStatus === 'listening' && "animate-pulse"
               )}
               onClick={handleSpotlightMicClick}
-              disabled={isSpotlightSupported === false || spotlightStatus === 'activating' || isSpotlightLoading}
-              title={getSpotlightMicButtonTitle(spotlightStatus)}
+              disabled={!hasMounted || isSpotlightSupported === false || spotlightStatus === 'activating' || isSpotlightLoading}
+              title={!hasMounted ? "Loading..." : getSpotlightMicButtonTitle(spotlightStatus)}
             >
-              {isSpotlightLoading ? <LoaderCircle className="w-8 h-8 animate-spin" /> : renderSpotlightMicIcon(spotlightStatus)}
+              {!hasMounted || isSpotlightLoading ? (
+                <LoaderCircle className="w-8 h-8 animate-spin" />
+              ) : (
+                renderSpotlightMicIcon(spotlightStatus)
+              )}
             </Button>
 
             <div className="w-full max-w-2xl min-h-[6rem] text-center flex items-center justify-center rounded-lg bg-muted p-4">
