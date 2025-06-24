@@ -12,6 +12,7 @@ import {
   Pencil,
   Archive,
   Move,
+  Search,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,7 @@ export function FilesView() {
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [uploadTargetFolderId, setUploadTargetFolderId] = useState<string | null>(null);
   const [newFolderNameInDialog, setNewFolderNameInDialog] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { toast } = useToast();
 
@@ -127,8 +129,12 @@ export function FilesView() {
   );
   
   const displayedFiles = useMemo(
-    () => files.filter((f) => f.folderId === selectedFolderId),
-    [files, selectedFolderId]
+    () => files.filter((f) => {
+        if (f.folderId !== selectedFolderId) return false;
+        if (!searchQuery.trim()) return true;
+        return f.name.toLowerCase().includes(searchQuery.toLowerCase());
+    }),
+    [files, selectedFolderId, searchQuery]
   );
 
   const allVisibleFilesSelected = displayedFiles.length > 0 && selectedFileIds.length === displayedFiles.length;
@@ -463,9 +469,21 @@ export function FilesView() {
                               {selectedFolder ? `${displayedFiles.length} item(s)` : 'No folder selected'}
                             </p>
                           </div>
-                          <Button onClick={handleUploadClick}>
-                            <Upload className="mr-2 h-4 w-4" /> Upload File
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    type="search"
+                                    placeholder="Search this folder..."
+                                    className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[300px]"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+                            <Button onClick={handleUploadClick}>
+                                <Upload className="mr-2 h-4 w-4" /> Upload File
+                            </Button>
+                          </div>
                         </>
                       )}
                     </div>
@@ -544,7 +562,7 @@ export function FilesView() {
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={5} className="h-24 text-center">
-                                        {selectedFolderId ? "This folder is empty." : "Please select a folder to view its files."}
+                                        {selectedFolderId ? (searchQuery ? "No files match your search." : "This folder is empty.") : "Please select a folder to view its files."}
                                     </TableCell>
                                 </TableRow>
                             )}
