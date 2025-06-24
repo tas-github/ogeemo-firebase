@@ -13,6 +13,9 @@ import {
   Bot,
   User,
   Square,
+  Sparkles,
+  Folder,
+  FilePlus2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -269,14 +272,42 @@ export default function OgeeMailWelcomePage() {
 
         <Card className="flex-1 flex flex-col">
             <CardHeader className="text-center">
-                <CardTitle className="text-primary">Feature Spotlight</CardTitle>
-                <CardDescription>Ogeemo Assistant</CardDescription>
+                <CardTitle className="text-primary">Supercharge Your Workflow</CardTitle>
+                <CardDescription>
+                    Discover how OgeeMail can save you hours every week.
+                </CardDescription>
             </CardHeader>
-            <CardContent className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
-                <Bot className="h-16 w-16 text-primary opacity-50" />
-                <p className="text-xl text-muted-foreground">
-                    To chat with me, click the <strong>Chat</strong> button.
-                </p>
+            <CardContent className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
+                <div className="grid grid-cols-2 gap-x-8 gap-y-6 w-full max-w-md">
+                    <div className="flex items-start gap-3">
+                        <Sparkles className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
+                        <div>
+                            <h4 className="font-semibold">AI Summaries</h4>
+                            <p className="text-sm text-muted-foreground">Instantly get the gist of long email threads.</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <Folder className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
+                        <div>
+                            <h4 className="font-semibold">Smart Sorting</h4>
+                            <p className="text-sm text-muted-foreground">Automatically categorize incoming mail for you.</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <Mic className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
+                        <div>
+                            <h4 className="font-semibold">Voice Commands</h4>
+                            <p className="text-sm text-muted-foreground">Manage your inbox hands-free with your voice.</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                        <FilePlus2 className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
+                        <div>
+                            <h4 className="font-semibold">AI Drafts & Templates</h4>
+                            <p className="text-sm text-muted-foreground">Generate replies and save common emails as templates.</p>
+                        </div>
+                    </div>
+                </div>
             </CardContent>
         </Card>
       </div>
