@@ -200,12 +200,12 @@ export function MainMenu() {
       <SidebarMenuItem>
         <SidebarMenuButton
           asChild
-          isActive={isActive("/simple-chat")}
-          tooltip="Simple Chat"
+          isActive={isActive("/test-chat")}
+          tooltip="Test Chat"
         >
-          <Link href="/simple-chat">
+          <Link href="/test-chat">
             <Bug />
-            <span>Simple Chat</span>
+            <span>Test Chat</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>

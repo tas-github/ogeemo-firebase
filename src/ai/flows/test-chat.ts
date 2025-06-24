@@ -21,24 +21,36 @@ const TestChatOutputSchema = z.object({
 });
 export type TestChatOutput = z.infer<typeof TestChatOutputSchema>;
 
+
+const testChatPrompt = ai.definePrompt({
+    name: 'testChatPrompt',
+    input: { schema: TestChatInputSchema },
+    output: { schema: TestChatOutputSchema },
+    prompt: `You are a test assistant. The user said: {{{message}}}. Reply with: "Message received."`,
+});
+
+const testChatFlow = ai.defineFlow(
+  {
+    name: 'testChatFlow',
+    inputSchema: TestChatInputSchema,
+    outputSchema: TestChatOutputSchema,
+  },
+  async (input) => {
+    const { output } = await testChatPrompt(input);
+    return output!;
+  }
+);
+
 export async function askTestChat(input: TestChatInput): Promise<TestChatOutput> {
+  // Wrap the flow call in a try/catch to provide a graceful error response.
   try {
-    const { text } = await ai.generate({
-      prompt: `You are a simple test assistant. Your only purpose is to confirm you are working.
-
-        The user has sent the following message:
-        ${input.message}
-
-        Reply with a confirmation that you received the message.`,
-    });
-
-    return {
-      reply: text || "The AI returned an empty response. This might be due to a content filter.",
-    };
+    return await testChatFlow(input);
   } catch (error) {
     console.error("Error in askTestChat:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+    // Return a structured error response that matches the output schema.
     return {
-      reply: "An error occurred while communicating with the AI. Please check the server logs for more details.",
+      reply: `An error occurred: ${errorMessage}. Please check the server logs.`
     };
   }
 }
