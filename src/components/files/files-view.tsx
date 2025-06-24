@@ -43,7 +43,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -56,6 +55,7 @@ import { type FileItem, type FolderItem, mockFiles, mockFolders } from '@/data/f
 import { useToast } from '@/hooks/use-toast';
 import { FileIcon } from '@/components/files/file-icon';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export function FilesView() {
   const [folders, setFolders] = useState<FolderItem[]>([]);
@@ -274,9 +274,6 @@ export function FilesView() {
                       <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
                           <DialogTitle>Create New Folder</DialogTitle>
-                          <DialogDescription>
-                            Enter a name for your new folder.
-                          </DialogDescription>
                         </DialogHeader>
                         <div className="py-4">
                           <Label htmlFor="folder-name" className="sr-only">Name</Label>
