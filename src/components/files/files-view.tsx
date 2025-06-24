@@ -61,13 +61,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from '@/components/ui/separator';
 
 
 export function FilesView() {
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedFolderId, setSelectedFolderId] = useState<string>('folder-1');
+  
+  // `selectedFolderId` tracks the folder whose contents are shown in the file list.
+  const [selectedFolderId, setSelectedFolderId] = useState<string>('folder-1'); 
+  // `activeParentFolderId` tracks the parent folder selected to show its subfolders.
+  const [activeParentFolderId, setActiveParentFolderId] = useState<string | null>('folder-1');
+
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
@@ -86,6 +92,12 @@ export function FilesView() {
     setIsLoading(false);
   }, []);
 
+  const topLevelFolders = useMemo(() => folders.filter(f => !f.parentId), [folders]);
+  const subFolders = useMemo(() => {
+    if (!activeParentFolderId) return [];
+    return folders.filter(f => f.parentId === activeParentFolderId);
+  }, [folders, activeParentFolderId]);
+  
   const displayedFiles = useMemo(() => {
     return files
       .filter(file => file.folderId === selectedFolderId)
@@ -118,8 +130,6 @@ export function FilesView() {
   };
   
   const handleArchiveSelected = () => {
-    // In a real app, this would change the folderId to an 'archive' folder.
-    // For now, we'll just show a toast.
     toast({ title: `${selectedFileIds.length} file(s) archived.` });
     setSelectedFileIds([]);
   };
@@ -141,26 +151,30 @@ export function FilesView() {
       setFiles(prev => [...prev, ...newFiles]);
       toast({ title: `${newFiles.length} file(s) uploaded.` });
     }
-    // Reset file input
     e.target.value = '';
+  };
+  
+  const openNewFolderDialog = () => {
+    setNewFolderName("");
+    // When opening the dialog, if there's an active parent, default to creating a subfolder under it.
+    if (activeParentFolderId) {
+      setNewFolderParentId(activeParentFolderId);
+      setNewFolderType('subfolder');
+    } else {
+      setNewFolderParentId(null);
+      setNewFolderType('folder');
+    }
+    setIsNewFolderDialogOpen(true);
   };
 
   const handleCreateFolder = () => {
     if (!newFolderName.trim()) {
-       toast({
-        variant: "destructive",
-        title: "Folder Name Required",
-        description: "Please provide a name for the new folder.",
-      });
+       toast({ variant: "destructive", title: "Folder Name Required" });
       return;
     }
 
     if (newFolderType === 'subfolder' && !newFolderParentId) {
-      toast({
-        variant: "destructive",
-        title: "Parent Folder Required",
-        description: "Please select a parent folder for the subfolder.",
-      });
+      toast({ variant: "destructive", title: "Parent Folder Required" });
       return;
     }
 
@@ -172,12 +186,18 @@ export function FilesView() {
     setFolders(prev => [...prev, newFolder]);
     setNewFolderName("");
     setIsNewFolderDialogOpen(false);
-    setNewFolderType('folder');
-    setNewFolderParentId(null);
-    toast({
-      title: "Folder Created",
-      description: `Folder "${newFolder.name}" has been successfully created.`,
-    });
+    toast({ title: "Folder Created" });
+  };
+
+  const handleSelectTopLevelFolder = (folderId: string) => {
+    setActiveParentFolderId(folderId);
+    setSelectedFolderId(folderId); // When clicking a parent, show its files by default
+    setSelectedFileIds([]);
+  };
+
+  const handleSelectSubFolder = (folderId: string) => {
+    setSelectedFolderId(folderId); // When clicking a subfolder, show its files
+    setSelectedFileIds([]);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -187,6 +207,8 @@ export function FilesView() {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
+
+  const currentFolderName = folders.find(f => f.id === selectedFolderId)?.name || 'Files';
 
   return (
     <>
@@ -209,7 +231,7 @@ export function FilesView() {
                 <div className="p-2">
                   <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
                       <DialogTrigger asChild>
-                          <Button className="w-full">
+                          <Button className="w-full" onClick={openNewFolderDialog}>
                               <Plus className="mr-2 h-4 w-4" /> New Folder
                           </Button>
                       </DialogTrigger>
@@ -239,12 +261,12 @@ export function FilesView() {
                                 {newFolderType === 'subfolder' && (
                                     <div className="space-y-2">
                                         <Label htmlFor="parent-folder">Parent Folder</Label>
-                                        <Select onValueChange={setNewFolderParentId} disabled={folders.length === 0}>
+                                        <Select value={newFolderParentId ?? undefined} onValueChange={setNewFolderParentId} disabled={folders.length === 0}>
                                             <SelectTrigger id="parent-folder">
                                                 <SelectValue placeholder="Select a parent folder..." />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {folders.map((folder) => (
+                                                {topLevelFolders.map((folder) => (
                                                     <SelectItem key={folder.id} value={folder.id}>
                                                         {folder.name}
                                                     </SelectItem>
@@ -282,30 +304,38 @@ export function FilesView() {
                 </div>
                 <ScrollArea className="flex-1">
                     <nav className="flex flex-col gap-1 p-2">
-                        {folders.filter(f => !f.parentId).map(folder => (
-                            <React.Fragment key={folder.id}>
-                                <Button
-                                    variant={selectedFolderId === folder.id ? 'secondary' : 'ghost'}
-                                    className="w-full justify-start gap-3"
-                                    onClick={() => setSelectedFolderId(folder.id)}
-                                >
-                                    <Folder className="h-4 w-4" />
-                                    <span>{folder.name}</span>
-                                </Button>
-                                {folders.filter(sub => sub.parentId === folder.id).map(subFolder => (
-                                    <Button
-                                        key={subFolder.id}
-                                        variant={selectedFolderId === subFolder.id ? 'secondary' : 'ghost'}
-                                        className="w-full justify-start gap-3 pl-8"
-                                        onClick={() => setSelectedFolderId(subFolder.id)}
-                                    >
-                                        <Folder className="h-4 w-4" />
-                                        <span>{subFolder.name}</span>
-                                    </Button>
-                                ))}
-                            </React.Fragment>
+                      <p className="px-2 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Folders</p>
+                        {topLevelFolders.map(folder => (
+                            <Button
+                                key={folder.id}
+                                variant={activeParentFolderId === folder.id ? 'secondary' : 'ghost'}
+                                className="w-full justify-start gap-3"
+                                onClick={() => handleSelectTopLevelFolder(folder.id)}
+                            >
+                                <Folder className="h-4 w-4" />
+                                <span>{folder.name}</span>
+                            </Button>
                         ))}
                     </nav>
+                     {subFolders.length > 0 && (
+                      <>
+                        <Separator className="my-2" />
+                        <nav className="flex flex-col gap-1 p-2">
+                          <p className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Subfolders</p>
+                            {subFolders.map(subFolder => (
+                                <Button
+                                    key={subFolder.id}
+                                    variant={selectedFolderId === subFolder.id ? 'secondary' : 'ghost'}
+                                    className="w-full justify-start gap-3"
+                                    onClick={() => handleSelectSubFolder(subFolder.id)}
+                                >
+                                    <Folder className="h-4 w-4" />
+                                    <span>{subFolder.name}</span>
+                                </Button>
+                            ))}
+                        </nav>
+                      </>
+                    )}
                 </ScrollArea>
               </div>
             </ResizablePanel>
@@ -323,7 +353,10 @@ export function FilesView() {
                         </>
                     ) : (
                         <>
-                             <div className="relative flex-1 max-w-sm">
+                             <div className="flex-1">
+                                <h2 className="text-lg font-semibold px-2">{currentFolderName}</h2>
+                             </div>
+                             <div className="relative max-w-sm mr-2">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     type="search"
