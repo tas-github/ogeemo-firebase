@@ -8,7 +8,8 @@ import {
   Trash2,
   Upload,
   Download,
-  FolderPlus
+  FolderPlus,
+  Pencil
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
