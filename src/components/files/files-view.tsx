@@ -13,6 +13,7 @@ import {
   Archive,
   Move,
   Search,
+  ChevronRight,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -67,7 +76,6 @@ export function FilesView() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
-  const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -76,6 +84,7 @@ export function FilesView() {
   const [uploadTargetFolderId, setUploadTargetFolderId] = useState<string | null>(null);
   const [newFolderNameInDialog, setNewFolderNameInDialog] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [expandedFolderIds, setExpandedFolderIds] = useState<string[]>(['folder-1', 'folder-4']);
 
   const { toast } = useToast();
 
@@ -98,7 +107,9 @@ export function FilesView() {
     } finally {
       setFolders(loadedFolders);
       setFiles(loadedFiles);
-      setSelectedFolderId(loadedFolders[0]?.id || null);
+      if (!selectedFolderId) {
+        setSelectedFolderId(loadedFolders[0]?.id || null);
+      }
       setIsLoading(false);
     }
   }, []);
@@ -154,28 +165,17 @@ export function FilesView() {
     }
   };
 
-  const handleToggleFolderSelect = (folderId: string) => {
-    setSelectedFolderIds(prev => prev.includes(folderId) ? prev.filter(id => id !== folderId) : [...prev, folderId]);
-  };
-  
-  const handleSelectAllFolders = (checked: boolean | 'indeterminate') => {
-    if (checked) {
-      setSelectedFolderIds(folders.map(f => f.id));
-    } else {
-      setSelectedFolderIds([]);
-    }
-  };
-
-  const allFoldersSelected = folders.length > 0 && selectedFolderIds.length === folders.length;
-  const someFoldersSelected = selectedFolderIds.length > 0 && selectedFolderIds.length < folders.length;
-
   const handleCreateFolder = () => {
     if (newFolderName.trim()) {
       const newFolder: FolderItem = {
         id: `f-${Date.now()}`,
         name: newFolderName.trim(),
+        parentId: selectedFolderId,
       };
       setFolders([...folders, newFolder]);
+      if(selectedFolderId && !expandedFolderIds.includes(selectedFolderId)) {
+        setExpandedFolderIds(prev => [...prev, selectedFolderId!]);
+      }
       setNewFolderName("");
       setIsNewFolderDialogOpen(false);
       setSelectedFolderId(newFolder.id);
@@ -188,21 +188,10 @@ export function FilesView() {
     toast({ title: `${fileIds.length} File(s) Deleted`, description: `The selected files have been removed.` });
   };
   
-  const handleBulkDeleteFolders = () => {
-    // Prevent deleting the currently viewed folder without resetting view
-    if (selectedFolderId && selectedFolderIds.includes(selectedFolderId)) {
-        setSelectedFolderId(folders.find(f => !selectedFolderIds.includes(f.id))?.id || null);
-    }
-    setFolders(prev => prev.filter(f => !selectedFolderIds.includes(f.id)));
-    setFiles(prev => prev.filter(file => !selectedFolderIds.includes(file.folderId)));
-    toast({ title: `${selectedFolderIds.length} Folder(s) Deleted`, description: "The selected folders and their contents have been removed." });
-    setSelectedFolderIds([]);
-  };
-
   const handleBulkArchiveFiles = () => {
     let archiveFolder = folders.find(f => f.name.toLowerCase() === 'archive');
     if (!archiveFolder) {
-      archiveFolder = { id: 'folder-archive', name: 'Archive' };
+      archiveFolder = { id: 'folder-archive', name: 'Archive', parentId: null };
       setFolders(prev => [...prev, archiveFolder!]);
     }
     const archiveFolderId = archiveFolder.id;
@@ -220,8 +209,8 @@ export function FilesView() {
     setSelectedFileIds([]);
   };
 
-
   const handleUploadClick = () => {
+    setUploadTargetFolderId(selectedFolderId);
     setIsUploadDialogOpen(true);
   };
 
@@ -230,6 +219,7 @@ export function FilesView() {
           const newFolder: FolderItem = {
               id: `f-${Date.now()}`,
               name: newFolderNameInDialog.trim(),
+              parentId: uploadTargetFolderId,
           };
           setFolders(prev => [...prev, newFolder]);
           setUploadTargetFolderId(newFolder.id);
@@ -288,9 +278,108 @@ export function FilesView() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
   
-  const handleFolderRowClick = (folderId: string) => {
-    setSelectedFolderId(folderId);
-    setSelectedFolderIds([]);
+  const handleToggleExpand = (folderId: string) => {
+    setExpandedFolderIds(prev => prev.includes(folderId) ? prev.filter(id => id !== folderId) : [...prev, folderId]);
+  };
+
+  const renderFolderTree = (parentId: string | null, level = 0) => {
+    const childFolders = folders.filter(folder => folder.parentId === parentId);
+
+    return childFolders.map(folder => {
+      const hasChildren = folders.some(f => f.parentId === folder.id);
+      const isExpanded = expandedFolderIds.includes(folder.id);
+
+      return (
+        <div key={folder.id} style={{ marginLeft: `${level * 1}rem` }}>
+          <div
+            className={cn(
+              "flex items-center gap-2 rounded-md pr-2 transition-colors group",
+              selectedFolderId === folder.id && "bg-secondary"
+            )}
+          >
+            {hasChildren ? (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleToggleExpand(folder.id)}>
+                <ChevronRight className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-90")} />
+              </Button>
+            ) : (
+              <div className="w-7" />
+            )}
+            <div
+              onClick={() => setSelectedFolderId(folder.id)}
+              className="flex-1 flex items-center gap-2 h-8 px-2 cursor-pointer hover:bg-accent rounded-md"
+            >
+              <Folder className="h-4 w-4" />
+              <span className="flex-1 truncate">{folder.name}</span>
+            </div>
+          </div>
+          {isExpanded && hasChildren && (
+            <div className="mt-1">
+              {renderFolderTree(folder.id, level + 1)}
+            </div>
+          )}
+        </div>
+      );
+    });
+  };
+
+  const getBreadcrumbPath = (folderId: string | null): FolderItem[] => {
+    if (!folderId) return [];
+    const path: FolderItem[] = [];
+    let currentFolder = folders.find(f => f.id === folderId);
+    while (currentFolder) {
+      path.unshift(currentFolder);
+      currentFolder = folders.find(f => f.id === currentFolder!.parentId);
+    }
+    return path;
+  };
+  const breadcrumbPath = getBreadcrumbPath(selectedFolderId);
+  
+  const renderMoveToMenuItems = (parentId: string | null, currentFileFolderId: string): React.ReactNode[] => {
+    return folders
+        .filter(folder => folder.parentId === parentId)
+        .map(targetFolder => {
+            const children = renderMoveToMenuItems(targetFolder.id, currentFileFolderId);
+            
+            const item = (
+                <DropdownMenuItem 
+                    key={targetFolder.id} 
+                    onSelect={() => handleMoveFile(selectedFileIds[0], targetFolder.id)}
+                    disabled={targetFolder.id === currentFileFolderId}
+                >
+                    <Folder className="mr-2 h-4 w-4" />
+                    <span>{targetFolder.name}</span>
+                </DropdownMenuItem>
+            );
+
+            if (children.length > 0) {
+                return (
+                    <DropdownMenuSub key={targetFolder.id}>
+                        <DropdownMenuSubTrigger disabled={targetFolder.id === currentFileFolderId}>
+                            <Folder className="mr-2 h-4 w-4" />
+                            <span>{targetFolder.name}</span>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                            <DropdownMenuSubContent>{children}</DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                    </DropdownMenuSub>
+                );
+            }
+            return item;
+        });
+  };
+
+  const renderUploadFolderOptions = (parentId: string | null, level = 0) => {
+    return folders
+        .filter(folder => folder.parentId === parentId)
+        .map(folder => (
+            <React.Fragment key={folder.id}>
+                <div className="flex items-center space-x-2 py-1" style={{ paddingLeft: `${level * 1.5}rem`}}>
+                    <RadioGroupItem value={folder.id} id={`r-${folder.id}`} />
+                    <Label htmlFor={`r-${folder.id}`} className="font-normal cursor-pointer flex-1">{folder.name}</Label>
+                </div>
+                {renderUploadFolderOptions(folder.id, level + 1)}
+            </React.Fragment>
+        ));
   };
 
   return (
@@ -320,19 +409,14 @@ export function FilesView() {
             <Label className="font-semibold">Select an existing folder</Label>
             <ScrollArea className="h-32 border rounded-md p-2">
                 <RadioGroup onValueChange={setUploadTargetFolderId} value={uploadTargetFolderId ?? ""}>
-                    {folders.map(folder => (
-                        <div key={folder.id} className="flex items-center space-x-2 py-1">
-                            <RadioGroupItem value={folder.id} id={`r-${folder.id}`} />
-                            <Label htmlFor={`r-${folder.id}`} className="font-normal cursor-pointer flex-1">{folder.name}</Label>
-                        </div>
-                    ))}
+                  {renderUploadFolderOptions(null)}
                 </RadioGroup>
             </ScrollArea>
 
             <Separator />
 
             <div>
-                <Label htmlFor="new-folder-dialog-input" className="font-semibold">Or create a new one</Label>
+                <Label htmlFor="new-folder-dialog-input" className="font-semibold">Or create a new subfolder in '{folders.find(f => f.id === uploadTargetFolderId)?.name || 'Root'}'</Label>
                 <div className="flex items-center space-x-2 mt-2">
                     <Input
                         id="new-folder-dialog-input"
@@ -340,8 +424,9 @@ export function FilesView() {
                         value={newFolderNameInDialog}
                         onChange={(e) => setNewFolderNameInDialog(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateFolderInDialog(); }}}
+                        disabled={!uploadTargetFolderId}
                     />
-                    <Button type="button" onClick={handleCreateFolderInDialog} disabled={!newFolderNameInDialog.trim()}>
+                    <Button type="button" onClick={handleCreateFolderInDialog} disabled={!newFolderNameInDialog.trim() || !uploadTargetFolderId}>
                       Create
                     </Button>
                 </div>
@@ -365,14 +450,6 @@ export function FilesView() {
             <ResizablePanel defaultSize={25} minSize={20}>
               <div className="flex h-full flex-col p-2">
                 <div className="p-2 border-b">
-                   {selectedFolderIds.length > 0 ? (
-                    <div className="flex items-center justify-between h-[40px]">
-                      <span className="text-sm font-medium">{selectedFolderIds.length} selected</span>
-                      <Button size="sm" variant="destructive" onClick={handleBulkDeleteFolders}>
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                      </Button>
-                    </div>
-                  ) : (
                     <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
                       <DialogTrigger asChild>
                         <Button className="w-full">
@@ -382,7 +459,9 @@ export function FilesView() {
                       <DialogContent className="sm:max-w-[425px]">
                         <DialogHeader>
                           <DialogTitle>Create New Folder</DialogTitle>
-                          <DialogDescription>Enter a name for your new folder.</DialogDescription>
+                          <DialogDescription>
+                            Enter a name for your new folder. It will be created inside '{selectedFolder?.name || 'the root'}'.
+                          </DialogDescription>
                         </DialogHeader>
                         <div className="py-4">
                           <Label htmlFor="folder-name" className="sr-only">Name</Label>
@@ -399,54 +478,14 @@ export function FilesView() {
                           <Button onClick={handleCreateFolder}>Create</Button>
                         </DialogFooter>
                       </DialogContent>
-                    </Dialog>
-                  )}
                 </div>
-                <div className="flex items-center gap-3 p-2 border-b">
-                  <Checkbox 
-                    id="select-all-folders"
-                    checked={allFoldersSelected ? true : someFoldersSelected ? 'indeterminate' : false}
-                    onCheckedChange={handleSelectAllFolders}
-                  />
-                  <Label htmlFor="select-all-folders" className="text-sm font-medium">Folder Name</Label>
-                </div>
-                <ScrollArea className="flex-1">
-                  <nav className="flex flex-col gap-1 p-2">
-                    {folders.map((folder) => (
-                      <div
-                        key={folder.id}
-                        className={cn(
-                          "flex items-center gap-3 rounded-md pr-2 transition-colors",
-                          selectedFolderId === folder.id && selectedFolderIds.length === 0 && "bg-secondary"
-                        )}
-                      >
-                        <Checkbox 
-                          id={`select-${folder.id}`}
-                          className="ml-2"
-                          checked={selectedFolderIds.includes(folder.id)}
-                          onCheckedChange={() => handleToggleFolderSelect(folder.id)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <div
-                          onClick={() => handleFolderRowClick(folder.id)}
-                          className="flex-1 flex items-center gap-3 h-9 px-2 cursor-pointer hover:bg-accent rounded-md"
-                        >
-                          <Folder className="h-4 w-4" />
-                          <span className="flex-1 truncate">{folder.name}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </nav>
+                <ScrollArea className="flex-1 p-2">
+                  {renderFolderTree(null)}
                 </ScrollArea>
               </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={75}>
-                {selectedFolderIds.length > 0 ? (
-                   <div className="h-full flex items-center justify-center text-muted-foreground">
-                        <p>{selectedFolderIds.length} folders selected. Clear selection to view files.</p>
-                   </div>
-                ) : (
                   <div className="flex flex-col h-full">
                     <div className="flex items-center justify-between p-4 border-b h-20">
                       {selectedFileIds.length > 0 ? (
@@ -463,12 +502,26 @@ export function FilesView() {
                         </>
                       ) : (
                         <>
-                          <div>
-                            <h2 className="text-xl font-bold">{selectedFolder?.name || "Select a folder"}</h2>
-                            <p className="text-sm text-muted-foreground">
-                              {selectedFolder ? `${displayedFiles.length} item(s)` : 'No folder selected'}
-                            </p>
-                          </div>
+                          <Breadcrumb>
+                            <BreadcrumbList>
+                              <BreadcrumbItem>
+                                <BreadcrumbLink onClick={() => setSelectedFolderId(null)}>Root</BreadcrumbLink>
+                              </BreadcrumbItem>
+                              {breadcrumbPath.length > 0 && <BreadcrumbSeparator />}
+                              {breadcrumbPath.map((folder, index) => (
+                                <React.Fragment key={folder.id}>
+                                  <BreadcrumbItem>
+                                    {index === breadcrumbPath.length - 1 ? (
+                                      <BreadcrumbPage>{folder.name}</BreadcrumbPage>
+                                    ) : (
+                                      <BreadcrumbLink onClick={() => setSelectedFolderId(folder.id)}>{folder.name}</BreadcrumbLink>
+                                    )}
+                                  </BreadcrumbItem>
+                                  {index < breadcrumbPath.length - 1 && <BreadcrumbSeparator />}
+                                </React.Fragment>
+                              ))}
+                            </BreadcrumbList>
+                          </Breadcrumb>
                           <div className="flex items-center gap-2">
                             <div className="relative">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -478,9 +531,10 @@ export function FilesView() {
                                     className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[300px]"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
+                                    disabled={!selectedFolderId}
                                 />
                             </div>
-                            <Button onClick={handleUploadClick}>
+                            <Button onClick={handleUploadClick} disabled={!selectedFolderId}>
                                 <Upload className="mr-2 h-4 w-4" /> Upload File
                             </Button>
                           </div>
@@ -537,16 +591,7 @@ export function FilesView() {
                                                     </DropdownMenuSubTrigger>
                                                     <DropdownMenuPortal>
                                                         <DropdownMenuSubContent>
-                                                            {folders.filter(folder => folder.id !== file.folderId).length > 0 ? (
-                                                                folders.filter(folder => folder.id !== file.folderId).map(targetFolder => (
-                                                                    <DropdownMenuItem key={targetFolder.id} onSelect={() => handleMoveFile(file.id, targetFolder.id)}>
-                                                                        <Folder className="mr-2 h-4 w-4" />
-                                                                        <span>{targetFolder.name}</span>
-                                                                    </DropdownMenuItem>
-                                                                ))
-                                                            ) : (
-                                                                <DropdownMenuItem disabled>No other folders</DropdownMenuItem>
-                                                            )}
+                                                            {renderMoveToMenuItems(null, file.folderId)}
                                                         </DropdownMenuSubContent>
                                                     </DropdownMenuPortal>
                                                 </DropdownMenuSub>
@@ -570,7 +615,6 @@ export function FilesView() {
                       </Table>
                     </div>
                   </div>
-                )}
             </ResizablePanel>
           </ResizablePanelGroup>
         </div>
