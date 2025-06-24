@@ -22,14 +22,9 @@ const OgeemoChatOutputSchema = z.object({
 export type OgeemoChatOutput = z.infer<typeof OgeemoChatOutputSchema>;
 
 export async function askOgeemo(input: OgeemoChatInput): Promise<OgeemoChatOutput> {
-  return ogeemoChatFlow(input);
-}
-
-const ogeemoChatPrompt = ai.definePrompt({
-  name: 'ogeemoChatPrompt',
-  input: { schema: OgeemoChatInputSchema },
-  output: { schema: OgeemoChatOutputSchema },
-  prompt: `You are Ogeemo, an intelligent assistant for the Ogeemo platform. You are not "AI", you are "Ogeemo". Your purpose is to help users navigate the platform, understand its features, and accomplish their tasks. Be helpful, concise, and friendly.
+  try {
+    const { text } = await ai.generate({
+      prompt: `You are Ogeemo, an intelligent assistant for the Ogeemo platform. You are not "AI", you are "Ogeemo". Your purpose is to help users navigate the platform, understand its features, and accomplish their tasks. Be helpful, concise, and friendly.
 
 The Ogeemo platform has the following features (Managers):
 - Dashboard: Overview of key metrics.
@@ -54,23 +49,19 @@ The Ogeemo platform has the following features (Managers):
 When a user asks what you can do, or asks for help, you can suggest some of these features. If they ask to go to a specific feature, you can tell them how to find it in the sidebar menu.
 
 The user has sent the following message:
-{{{message}}}
+${input.message}
 
 Provide a helpful response.
 `,
-});
+    });
 
-const ogeemoChatFlow = ai.defineFlow(
-  {
-    name: 'ogeemoChatFlow',
-    inputSchema: OgeemoChatInputSchema,
-    outputSchema: OgeemoChatOutputSchema,
-  },
-  async (input) => {
-    const { output } = await ogeemoChatPrompt(input);
-    if (!output) {
-      throw new Error('AI failed to generate a valid response.');
+    return {
+        reply: text || "Ogeemo returned an empty response. This might be due to a content filter.",
+    };
+  } catch (error) {
+    console.error("Error in askOgeemo:", error);
+    return {
+        reply: "An error occurred while communicating with Ogeemo. Please check the server logs for more details."
     }
-    return output;
   }
-);
+}
