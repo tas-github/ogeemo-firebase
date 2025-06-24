@@ -108,7 +108,7 @@ export function FilesView() {
       setFolders(loadedFolders);
       setFiles(loadedFiles);
       if (!selectedFolderId) {
-        setSelectedFolderId(loadedFolders[0]?.id || null);
+        setSelectedFolderId(loadedFolders.find(f => f.parentId === null)?.id || null);
       }
       setIsLoading(false);
     }
@@ -133,11 +133,6 @@ export function FilesView() {
       }
     }
   }, [files, isLoading]);
-  
-  const selectedFolder = useMemo(
-    () => folders.find((f) => f.id === selectedFolderId),
-    [folders, selectedFolderId]
-  );
   
   const displayedFiles = useMemo(
     () => files.filter((f) => {
@@ -282,7 +277,7 @@ export function FilesView() {
     setExpandedFolderIds(prev => prev.includes(folderId) ? prev.filter(id => id !== folderId) : [...prev, folderId]);
   };
 
-  const renderFolderTree = (parentId: string | null, level = 0) => {
+  const renderFolderTree = (parentId: string | null, level = 0): React.ReactNode => {
     const childFolders = folders.filter(folder => folder.parentId === parentId);
 
     return childFolders.map(folder => {
@@ -368,7 +363,7 @@ export function FilesView() {
         });
   };
 
-  const renderUploadFolderOptions = (parentId: string | null, level = 0) => {
+  const renderUploadFolderOptions = (parentId: string | null, level = 0): React.ReactNode => {
     return folders
         .filter(folder => folder.parentId === parentId)
         .map(folder => (
@@ -384,7 +379,7 @@ export function FilesView() {
 
   return (
     <>
-       <input
+      <input
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
@@ -460,7 +455,7 @@ export function FilesView() {
                         <DialogHeader>
                           <DialogTitle>Create New Folder</DialogTitle>
                           <DialogDescription>
-                            Enter a name for your new folder. It will be created inside '{selectedFolder?.name || 'the root'}'.
+                            Enter a name for your new folder. It will be created inside '{selectedFolderId ? folders.find(f=>f.id === selectedFolderId)?.name : 'the root'}'.
                           </DialogDescription>
                         </DialogHeader>
                         <div className="py-4">
@@ -622,3 +617,5 @@ export function FilesView() {
     </>
   );
 }
+
+    
