@@ -22,30 +22,26 @@ const TestChatOutputSchema = z.object({
 export type TestChatOutput = z.infer<typeof TestChatOutputSchema>;
 
 export async function askTestChat(input: TestChatInput): Promise<TestChatOutput> {
-  return testChatFlow(input);
-}
+  try {
+    const { text } = await ai.generate({
+        prompt: `You are a simple test assistant. Your only purpose is to confirm you are working.
 
-const testPrompt = ai.definePrompt({
-  name: 'testPrompt',
-  input: {schema: TestChatInputSchema},
-  output: {schema: TestChatOutputSchema},
-  prompt: `You are a simple test assistant. Your only purpose is to confirm you are working.
+        The user has sent the following message:
+        ${input.message}
 
-The user has sent the following message:
-{{{message}}}
+        Reply with a confirmation that you received the message.`,
+    });
 
-Reply with a confirmation that you received the message.
-`,
-});
-
-const testChatFlow = ai.defineFlow(
-  {
-    name: 'testChatFlow',
-    inputSchema: TestChatInputSchema,
-    outputSchema: TestChatOutputSchema,
-  },
-  async (input) => {
-    const {output} = await testPrompt(input);
-    return output!;
+    return {
+        reply: text,
+    };
+  } catch (error) {
+    console.error("Error in askTestChat:", error);
+    // Ensure we always return something that looks like TestChatOutput,
+    // or re-throw to be caught by the UI.
+    // For now, let's return a structured error message.
+    return {
+        reply: "An error occurred while communicating with the AI. Please check the server logs."
+    }
   }
-);
+}
