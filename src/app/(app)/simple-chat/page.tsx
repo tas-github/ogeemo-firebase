@@ -1,7 +1,8 @@
+
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Bot, LoaderCircle, Send, User } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Bot, LoaderCircle, Send, User, Mic, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,6 +17,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { askSimpleChat } from "@/ai/flows/simple-chat";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useSpeechToText, type SpeechRecognitionStatus } from "@/hooks/use-speech-to-text";
+import { useToast } from "@/hooks/use-toast";
 
 type Message = {
   id: string;
@@ -28,6 +31,33 @@ export default function SimpleChatPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const baseTextRef = useRef("");
+  const { toast } = useToast();
+  const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = useState(false);
+
+  const {
+    status,
+    startListening,
+    stopListening,
+    isSupported,
+  } = useSpeechToText({
+    onTranscript: (transcript) => {
+      const newText = baseTextRef.current
+        ? `${baseTextRef.current} ${transcript}`
+        : transcript;
+      setInput(newText);
+    },
+  });
+
+  useEffect(() => {
+    if (isSupported === false) {
+      toast({
+        variant: "destructive",
+        title: "Voice Input Not Supported",
+        description: "Your browser does not support the Web Speech API.",
+      });
+    }
+  }, [isSupported, toast]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -38,13 +68,17 @@ export default function SimpleChatPage() {
     }
   }, [messages]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const submitMessage = useCallback(async () => {
+    const currentInput = input.trim();
+    if (!currentInput || isLoading) return;
+
+    if (status === 'listening') {
+      stopListening();
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: input,
+      text: currentInput,
       sender: "user",
     };
     setMessages((prev) => [...prev, userMessage]);
@@ -52,7 +86,7 @@ export default function SimpleChatPage() {
     setIsLoading(true);
 
     try {
-      const response = await askSimpleChat({ message: input });
+      const response = await askSimpleChat({ message: currentInput });
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: response.reply,
@@ -70,6 +104,53 @@ export default function SimpleChatPage() {
     } finally {
       setIsLoading(false);
     }
+  }, [input, isLoading, status, stopListening]);
+
+  useEffect(() => {
+    if (status === 'idle' && shouldSubmitOnMicStop) {
+      submitMessage();
+      setShouldSubmitOnMicStop(false);
+    }
+  }, [status, shouldSubmitOnMicStop, submitMessage]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    submitMessage();
+  };
+
+  const handleMicClick = () => {
+    if (status === 'listening') {
+      stopListening();
+      setShouldSubmitOnMicStop(true);
+    } else {
+      baseTextRef.current = input.trim();
+      startListening();
+    }
+  };
+
+  const renderMicIcon = (currentStatus: SpeechRecognitionStatus) => {
+    switch (currentStatus) {
+      case 'listening':
+        return <Square className="h-5 w-5" />;
+      case 'activating':
+        return <LoaderCircle className="h-5 w-5 animate-spin" />;
+      case 'idle':
+      default:
+        return <Mic className="h-5 w-5" />;
+    }
+  };
+
+  const getMicButtonTitle = (currentStatus: SpeechRecognitionStatus) => {
+     if (isSupported === false) return "Voice input not supported";
+     switch (currentStatus) {
+        case 'listening':
+            return "Stop and send message";
+        case 'activating':
+            return "Activating...";
+        case 'idle':
+        default:
+            return "Start listening";
+     }
   };
 
   return (
@@ -137,6 +218,21 @@ export default function SimpleChatPage() {
           </CardContent>
           <CardFooter>
             <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
+               <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "flex-shrink-0",
+                  status === 'listening' && "text-destructive"
+                )}
+                onClick={handleMicClick}
+                disabled={isSupported === false || isLoading || status === 'activating'}
+                title={getMicButtonTitle(status)}
+              >
+                {renderMicIcon(status)}
+                <span className="sr-only">Use Voice</span>
+              </Button>
               <Input
                 placeholder="Send a message..."
                 value={input}
