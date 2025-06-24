@@ -64,6 +64,9 @@ export function FilesView() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+
   useEffect(() => {
     // Simulate loading data
     setIsLoading(true);
@@ -131,6 +134,22 @@ export function FilesView() {
     e.target.value = '';
   };
 
+  const handleCreateFolder = () => {
+    if (newFolderName.trim()) {
+      const newFolder: FolderItem = {
+        id: `folder-${Date.now()}`,
+        name: newFolderName.trim(),
+      };
+      setFolders(prev => [...prev, newFolder]);
+      setNewFolderName("");
+      setIsNewFolderDialogOpen(false);
+      toast({
+        title: "Folder Created",
+        description: `Folder "${newFolder.name}" has been successfully created.`,
+      });
+    }
+  };
+
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -158,9 +177,45 @@ export function FilesView() {
             <ResizablePanel defaultSize={25} minSize={20}>
               <div className="flex h-full flex-col p-2">
                 <div className="p-2">
-                  <Button className="w-full">
-                    <Plus className="mr-2 h-4 w-4" /> New Folder
-                  </Button>
+                  <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
+                      <DialogTrigger asChild>
+                          <Button className="w-full">
+                              <Plus className="mr-2 h-4 w-4" /> New Folder
+                          </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                          <DialogHeader>
+                              <DialogTitle>Create New Folder</DialogTitle>
+                              <DialogDescription>
+                                  Enter a name for your new folder.
+                              </DialogDescription>
+                          </DialogHeader>
+                          <div className="py-4">
+                              <div className="grid grid-cols-4 items-center gap-4">
+                                  <Label htmlFor="folder-name" className="text-right">
+                                      Name
+                                  </Label>
+                                  <Input
+                                      id="folder-name"
+                                      value={newFolderName}
+                                      onChange={(e) => setNewFolderName(e.target.value)}
+                                      className="col-span-3"
+                                      placeholder="e.g., 'Client Reports'"
+                                      onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                              e.preventDefault();
+                                              handleCreateFolder();
+                                          }
+                                      }}
+                                  />
+                              </div>
+                          </div>
+                          <DialogFooter>
+                              <Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button>
+                              <Button onClick={handleCreateFolder}>Create Folder</Button>
+                          </DialogFooter>
+                      </DialogContent>
+                  </Dialog>
                 </div>
                 <ScrollArea className="flex-1">
                     <nav className="flex flex-col gap-1 p-2">
