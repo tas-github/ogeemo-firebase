@@ -62,7 +62,7 @@ import {
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useSpeechToText } from '@/hooks/use-speech-to-text';
+import { useSpeechToText, type SpeechRecognitionStatus } from '@/hooks/use-speech-to-text';
 import { useToast } from '@/hooks/use-toast';
 import { askOgeemo } from '@/ai/flows/ogeemo-chat';
 import { generateImage } from '@/ai/flows/generate-image-flow';
@@ -130,13 +130,14 @@ export default function ComposeEmailPage() {
   const [chatInput, setChatInput] = React.useState("");
   const [isChatLoading, setIsChatLoading] = React.useState(false);
   const chatScrollAreaRef = React.useRef<HTMLDivElement>(null);
+  const chatBaseTextRef = React.useRef("");
+  const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = React.useState(false);
 
   const [isGenerateImageDialogOpen, setIsGenerateImageDialogOpen] = React.useState(false);
   const [imagePrompt, setImagePrompt] = React.useState('');
   const [isGeneratingImage, setIsGeneratingImage] = React.useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = React.useState<string | null>(null);
 
-  // Contact Picker State
   const [isContactPickerOpen, setIsContactPickerOpen] = React.useState(false);
   const [contactPickerTarget, setContactPickerTarget] = React.useState<'recipient' | 'cc' | 'bcc' | null>(null);
   const [allContacts, setAllContacts] = React.useState<Contact[]>(mockContacts);
@@ -150,16 +151,17 @@ export default function ComposeEmailPage() {
     defaultValues: { name: "", email: "", phone: "", folderId: "" },
   });
 
-
-  // Speech-to-text for Chat
   const {
-    isListening,
+    status: chatStatus,
     startListening,
     stopListening,
     isSupported,
   } = useSpeechToText({
     onTranscript: (transcript) => {
-      setChatInput(transcript);
+       const newText = chatBaseTextRef.current
+        ? `${chatBaseTextRef.current} ${transcript}`
+        : transcript;
+      setChatInput(newText);
     },
   });
 
@@ -182,17 +184,17 @@ export default function ComposeEmailPage() {
     }
   }, [messages]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim() || isChatLoading) return;
+  const submitChatMessage = React.useCallback(async () => {
+    const currentInput = chatInput.trim();
+    if (!currentInput || isChatLoading) return;
 
-    if (isListening) {
+    if (chatStatus === 'listening') {
       stopListening();
     }
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: chatInput,
+      text: currentInput,
       sender: "user",
     };
     setMessages((prev) => [...prev, userMessage]);
@@ -200,7 +202,7 @@ export default function ComposeEmailPage() {
     setIsChatLoading(true);
 
     try {
-      const response = await askOgeemo({ message: chatInput });
+      const response = await askOgeemo({ message: currentInput });
       const ogeemoMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: response.reply,
@@ -218,8 +220,54 @@ export default function ComposeEmailPage() {
     } finally {
       setIsChatLoading(false);
     }
+  }, [chatInput, isChatLoading, chatStatus, stopListening]);
+
+  useEffect(() => {
+    if (chatStatus === 'idle' && shouldSubmitOnMicStop) {
+      submitChatMessage();
+      setShouldSubmitOnMicStop(false);
+    }
+  }, [chatStatus, shouldSubmitOnMicStop, submitChatMessage]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    submitChatMessage();
   };
 
+  const handleChatMicClick = () => {
+    if (chatStatus === 'listening') {
+      stopListening();
+      setShouldSubmitOnMicStop(true);
+    } else {
+      chatBaseTextRef.current = chatInput.trim();
+      startListening();
+    }
+  };
+
+  const renderMicIcon = (currentStatus: SpeechRecognitionStatus) => {
+    switch (currentStatus) {
+      case 'listening':
+        return <Square className="h-5 w-5" />;
+      case 'activating':
+        return <LoaderCircle className="h-5 w-5 animate-spin" />;
+      case 'idle':
+      default:
+        return <Mic className="h-5 w-5" />;
+    }
+  };
+
+  const getMicButtonTitle = (currentStatus: SpeechRecognitionStatus) => {
+     if (isSupported === false) return "Voice input not supported";
+     switch (currentStatus) {
+        case 'listening':
+            return "Stop and send message";
+        case 'activating':
+            return "Activating...";
+        case 'idle':
+        default:
+            return "Start listening";
+     }
+  };
 
   const handleFormat = (command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -273,7 +321,7 @@ export default function ComposeEmailPage() {
 
   const handleChatOpenChange = (open: boolean) => {
     setIsChatOpen(open);
-    if (!open && isListening) {
+    if (!open && chatStatus === 'listening') {
       stopListening();
     }
   };
@@ -318,12 +366,10 @@ export default function ComposeEmailPage() {
       handleFormat('insertImage', generatedImageUrl);
     }
     setIsGenerateImageDialogOpen(false);
-    // Reset state for next time
     setImagePrompt('');
     setGeneratedImageUrl(null);
   };
 
-  // Contact Picker Logic
   const openContactPicker = (target: 'recipient' | 'cc' | 'bcc') => {
       setContactPickerTarget(target);
       const getTargetState = () => {
@@ -372,9 +418,7 @@ export default function ComposeEmailPage() {
       folderId: values.folderId,
     };
     
-    // Update local state for immediate feedback in picker
     setAllContacts(prev => [...prev, newContact]);
-    
     newContactForm.reset();
     setIsNewContactDialogOpen(false);
   }
@@ -510,7 +554,6 @@ export default function ComposeEmailPage() {
       <Dialog open={isGenerateImageDialogOpen} onOpenChange={(open) => {
           setIsGenerateImageDialogOpen(open);
           if (!open) {
-              // Reset state when closing
               setImagePrompt('');
               setGeneratedImageUrl(null);
               setIsGeneratingImage(false);
@@ -887,19 +930,13 @@ export default function ComposeEmailPage() {
                           size="icon"
                           className={cn(
                             "flex-shrink-0",
-                            isListening && "text-destructive"
+                            chatStatus === 'listening' && "text-destructive"
                           )}
-                          onClick={isListening ? stopListening : startListening}
-                          disabled={isSupported === false || isChatLoading}
-                          title={
-                            isSupported === false
-                              ? "Voice input not supported"
-                              : isListening
-                              ? "Stop listening"
-                              : "Start listening"
-                          }
+                          onClick={handleChatMicClick}
+                          disabled={isSupported === false || isChatLoading || chatStatus === 'activating'}
+                          title={getMicButtonTitle(chatStatus)}
                         >
-                          {isListening ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                          {renderMicIcon(chatStatus)}
                           <span className="sr-only">Use Voice</span>
                         </Button>
                         <Input

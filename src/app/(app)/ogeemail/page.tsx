@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Inbox,
   Star,
-  Send,
+  Send as SendIcon,
   Archive,
   Pencil,
   Mic,
@@ -32,7 +32,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useRouter } from "next/navigation";
-import { useSpeechToText } from "@/hooks/use-speech-to-text";
+import { useSpeechToText, type SpeechRecognitionStatus } from "@/hooks/use-speech-to-text";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { askOgeemo } from "@/ai/flows/ogeemo-chat";
@@ -51,15 +51,14 @@ export default function OgeeMailWelcomePage() {
   const { toast } = useToast();
   const [transcript, setTranscript] = useState("");
 
-  // Chat Dialog State
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatScrollAreaRef = useRef<HTMLDivElement>(null);
-  const [chatInputBeforeSpeech, setChatInputBeforeSpeech] = useState("");
+  const chatBaseTextRef = useRef("");
+  const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = useState(false);
 
-  // Speech-to-text for the Feature Spotlight
   const {
     isListening: isSpotlightListening,
     startListening: startSpotlightListening,
@@ -70,44 +69,35 @@ export default function OgeeMailWelcomePage() {
       setTranscript(text);
     },
     onFinalTranscript: () => {
-      // Automatically stop listening when user pauses
       if (isSpotlightListening) {
         stopSpotlightListening();
       }
     },
   });
 
-  // Speech-to-text for the Chat Dialog
   const {
-    isListening: isChatListening,
+    status: chatStatus,
     startListening: startChatListening,
     stopListening: stopChatListening,
     isSupported: isChatSupported,
   } = useSpeechToText({
     onTranscript: (transcript) => {
-      const newText = chatInputBeforeSpeech ? `${chatInputBeforeSpeech} ${transcript}`.trim() : transcript;
+      const newText = chatBaseTextRef.current
+        ? `${chatBaseTextRef.current} ${transcript}`
+        : transcript;
       setChatInput(newText);
     },
   });
 
-  const handleChatMicClick = () => {
-    if (isChatListening) {
-      stopChatListening();
-    } else {
-      setChatInputBeforeSpeech(chatInput);
-      startChatListening();
-    }
-  };
-
   useEffect(() => {
-    if (isSpotlightSupported === false) {
+    if (isSpotlightSupported === false || isChatSupported === false) {
       toast({
         variant: "destructive",
         title: "Voice Input Not Supported",
         description: "Your browser does not support the Web Speech API.",
       });
     }
-  }, [isSpotlightSupported, toast]);
+  }, [isSpotlightSupported, isChatSupported, toast]);
 
   useEffect(() => {
     if (chatScrollAreaRef.current) {
@@ -131,17 +121,17 @@ export default function OgeeMailWelcomePage() {
     router.push('/ogeemail/compose');
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim() || isChatLoading) return;
+  const submitChatMessage = useCallback(async () => {
+    const currentInput = chatInput.trim();
+    if (!currentInput || isChatLoading) return;
 
-    if (isChatListening) {
+    if (chatStatus === 'listening') {
       stopChatListening();
     }
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: chatInput,
+      text: currentInput,
       sender: "user",
     };
     setMessages((prev) => [...prev, userMessage]);
@@ -149,7 +139,7 @@ export default function OgeeMailWelcomePage() {
     setIsChatLoading(true);
 
     try {
-      const response = await askOgeemo({ message: chatInput });
+      const response = await askOgeemo({ message: currentInput });
       const ogeemoMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: response.reply,
@@ -167,6 +157,53 @@ export default function OgeeMailWelcomePage() {
     } finally {
       setIsChatLoading(false);
     }
+  }, [chatInput, isChatLoading, chatStatus, stopChatListening]);
+
+  useEffect(() => {
+    if (chatStatus === 'idle' && shouldSubmitOnMicStop) {
+      submitChatMessage();
+      setShouldSubmitOnMicStop(false);
+    }
+  }, [chatStatus, shouldSubmitOnMicStop, submitChatMessage]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    submitChatMessage();
+  };
+
+  const handleChatMicClick = () => {
+    if (chatStatus === 'listening') {
+      stopChatListening();
+      setShouldSubmitOnMicStop(true);
+    } else {
+      chatBaseTextRef.current = chatInput.trim();
+      startChatListening();
+    }
+  };
+  
+  const renderMicIcon = (currentStatus: SpeechRecognitionStatus) => {
+    switch (currentStatus) {
+      case 'listening':
+        return <Square className="h-5 w-5" />;
+      case 'activating':
+        return <LoaderCircle className="h-5 w-5 animate-spin" />;
+      case 'idle':
+      default:
+        return <Mic className="h-5 w-5" />;
+    }
+  };
+
+  const getMicButtonTitle = (currentStatus: SpeechRecognitionStatus) => {
+     if (isChatSupported === false) return "Voice input not supported";
+     switch (currentStatus) {
+        case 'listening':
+            return "Stop and send message";
+        case 'activating':
+            return "Activating...";
+        case 'idle':
+        default:
+            return "Start listening";
+     }
   };
 
   const quickNavItems = [
@@ -181,7 +218,7 @@ export default function OgeeMailWelcomePage() {
       action: () => console.log("Navigate to Starred"),
     },
     {
-      icon: Send,
+      icon: SendIcon,
       label: "Sent",
       action: () => console.log("Navigate to Sent"),
     },
@@ -205,7 +242,6 @@ export default function OgeeMailWelcomePage() {
         </header>
 
         <div className="grid md:grid-cols-2 gap-6 items-start flex-1">
-          {/* Primary Action Card */}
           <Card className="flex flex-col h-full">
             <CardHeader className="text-center">
               <CardTitle className="text-primary">Ready to Write?</CardTitle>
@@ -236,7 +272,6 @@ export default function OgeeMailWelcomePage() {
             </CardFooter>
           </Card>
 
-          {/* Quick Navigation & Feature Spotlight */}
           <div className="space-y-6">
             <Card>
               <CardHeader className="text-center">
@@ -379,19 +414,13 @@ export default function OgeeMailWelcomePage() {
                 size="icon"
                 className={cn(
                   "flex-shrink-0",
-                  isChatListening && "text-destructive"
+                  chatStatus === 'listening' && "text-destructive"
                 )}
                 onClick={handleChatMicClick}
-                disabled={!isChatSupported || isChatLoading}
-                title={
-                  !isChatSupported
-                    ? "Voice input not supported"
-                    : isChatListening
-                    ? "Stop listening"
-                    : "Start listening"
-                }
+                disabled={isChatSupported === false || isChatLoading || chatStatus === 'activating'}
+                title={getMicButtonTitle(chatStatus)}
               >
-                {isChatListening ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                {renderMicIcon(chatStatus)}
                 <span className="sr-only">Use Voice</span>
               </Button>
               <Input
@@ -406,7 +435,7 @@ export default function OgeeMailWelcomePage() {
                 size="icon"
                 disabled={isChatLoading || !chatInput.trim()}
               >
-                <Send className="h-5 w-5" />
+                <SendIcon className="h-5 w-5" />
                 <span className="sr-only">Send Message</span>
               </Button>
             </form>
