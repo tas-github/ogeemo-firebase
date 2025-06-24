@@ -60,18 +60,13 @@ export default function OgeeMailWelcomePage() {
   const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = useState(false);
 
   const {
-    isListening: isSpotlightListening,
+    status: spotlightStatus,
     startListening: startSpotlightListening,
     stopListening: stopSpotlightListening,
     isSupported: isSpotlightSupported,
   } = useSpeechToText({
     onTranscript: (text) => {
       setTranscript(text);
-    },
-    onFinalTranscript: () => {
-      if (isSpotlightListening) {
-        stopSpotlightListening();
-      }
     },
   });
 
@@ -109,7 +104,7 @@ export default function OgeeMailWelcomePage() {
   }, [messages]);
 
   const handleSpotlightMicClick = () => {
-    if (isSpotlightListening) {
+    if (spotlightStatus === 'listening') {
       stopSpotlightListening();
     } else {
       setTranscript("");
@@ -229,6 +224,26 @@ export default function OgeeMailWelcomePage() {
     },
   ];
 
+  const renderSpotlightMicIcon = (status: SpeechRecognitionStatus) => {
+    switch (status) {
+      case 'listening': return <Square className="w-8 h-8" />;
+      case 'activating': return <LoaderCircle className="w-8 h-8 animate-spin" />;
+      case 'idle':
+      default: return <Mic className="w-8 h-8" />;
+    }
+  };
+
+  const getSpotlightMicButtonTitle = (status: SpeechRecognitionStatus) => {
+    if (isSpotlightSupported === false) return "Voice input not supported";
+    switch (status) {
+      case 'listening': return "Stop listening";
+      case 'activating': return "Activating...";
+      case 'idle':
+      default: return "Start listening";
+    }
+  };
+
+
   return (
     <>
       <div className="p-4 sm:p-6 flex flex-col flex-1 space-y-6 min-h-0">
@@ -300,37 +315,25 @@ export default function OgeeMailWelcomePage() {
               </CardHeader>
               <CardContent className="flex flex-col items-center gap-4">
                 <Button
-                  variant={isSpotlightListening ? "destructive" : "outline"}
+                  variant={spotlightStatus === 'listening' ? "destructive" : "outline"}
                   size="icon"
                   className={cn(
                     "h-20 w-20 rounded-full",
-                    !isSpotlightListening && "bg-primary/10 text-primary",
-                    isSpotlightListening && "animate-pulse"
+                    spotlightStatus !== 'listening' && "bg-primary/10 text-primary",
+                    spotlightStatus === 'listening' && "animate-pulse"
                   )}
                   onClick={handleSpotlightMicClick}
-                  disabled={isSpotlightSupported === false}
-                  title={
-                    isSpotlightSupported === false
-                      ? "Voice input not supported"
-                      : isSpotlightListening
-                      ? "Stop listening"
-                      : "Start listening"
-                  }
+                  disabled={isSpotlightSupported === false || spotlightStatus === 'activating'}
+                  title={getSpotlightMicButtonTitle(spotlightStatus)}
                 >
-                  {isSpotlightSupported === undefined ? (
-                    <LoaderCircle className="w-8 h-8 animate-spin" />
-                  ) : isSpotlightListening ? (
-                    <Square className="w-8 h-8" />
-                  ) : (
-                    <Mic className="w-8 h-8" />
-                  )}
+                  {renderSpotlightMicIcon(spotlightStatus)}
                 </Button>
                 <p className="text-sm text-muted-foreground h-10 flex items-center justify-center text-center px-4">
-                  {isSpotlightListening
+                  {spotlightStatus === 'listening'
                     ? "Listening..."
                     : transcript
                     ? `I heard: "${transcript}"`
-                    : "Click the mic and speak. I'll stop when you pause."}
+                    : "Click the mic and speak and click the icon when you stop speaking"}
                 </p>
               </CardContent>
             </Card>
