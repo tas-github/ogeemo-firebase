@@ -50,6 +50,8 @@ import { FileIcon } from '@/components/files/file-icon';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '../ui/scroll-area';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
 
 export function FilesView() {
   const [folders, setFolders] = useState<FolderItem[]>([]);
@@ -58,9 +60,13 @@ export function FilesView() {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
-  const [isUploadPromptOpen, setIsUploadPromptOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // New state for the improved upload flow
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [uploadTargetFolderId, setUploadTargetFolderId] = useState<string | null>(null);
+  const [newFolderNameInDialog, setNewFolderNameInDialog] = useState("");
 
   const { toast } = useToast();
 
@@ -155,30 +161,45 @@ export function FilesView() {
   };
   
   const handleUploadClick = () => {
-    if (selectedFolderId) {
-      fileInputRef.current?.click();
-    } else {
-      setIsUploadPromptOpen(true);
-    }
+    setIsUploadDialogOpen(true);
+  };
+
+  const handleCreateFolderInDialog = () => {
+      if (newFolderNameInDialog.trim()) {
+          const newFolder: FolderItem = {
+              id: `f-${Date.now()}`,
+              name: newFolderNameInDialog.trim(),
+          };
+          setFolders(prev => [...prev, newFolder]);
+          setUploadTargetFolderId(newFolder.id); // auto-select the new folder
+          setNewFolderNameInDialog(""); // clear the input
+      }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && selectedFolderId) {
+    if (e.target.files && uploadTargetFolderId) {
+      const targetFolder = folders.find(f => f.id === uploadTargetFolderId);
       const newFiles: FileItem[] = Array.from(e.target.files).map(file => ({
         id: `file-${Date.now()}-${file.name}`,
         name: file.name,
         type: file.type || 'unknown',
         size: file.size,
         modifiedAt: new Date(),
-        folderId: selectedFolderId,
+        folderId: uploadTargetFolderId,
       }));
       
       setFiles(prev => [...prev, ...newFiles]);
       toast({
         title: "Upload Successful",
-        description: `${newFiles.length} file(s) have been added to "${selectedFolder?.name}".`
+        description: `${newFiles.length} file(s) have been added to "${targetFolder?.name}".`
       });
       e.target.value = ''; // Reset file input
+
+      // Reset and close dialog
+      setIsUploadDialogOpen(false);
+      setSelectedFolderId(uploadTargetFolderId); // switch view to the target folder
+      setUploadTargetFolderId(null);
+      setNewFolderNameInDialog("");
     }
   };
 
@@ -199,23 +220,55 @@ export function FilesView() {
         className="hidden"
         multiple
       />
-      <Dialog open={isUploadPromptOpen} onOpenChange={setIsUploadPromptOpen}>
+      <Dialog open={isUploadDialogOpen} onOpenChange={(open) => {
+        setIsUploadDialogOpen(open);
+        if (!open) {
+            setUploadTargetFolderId(null);
+            setNewFolderNameInDialog("");
+        }
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Folder Required</DialogTitle>
+            <DialogTitle>Upload File</DialogTitle>
             <DialogDescription>
-              You must select or create a folder before uploading files.
+              First, select or create a folder to upload your files into.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="pt-4">
-            <Button variant="ghost" onClick={() => setIsUploadPromptOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => {
-              setIsUploadPromptOpen(false);
-              setIsNewFolderDialogOpen(true);
-            }}>
-              Create New Folder
+          <div className="py-4 space-y-4">
+            <Label className="font-semibold">Select an existing folder</Label>
+            <ScrollArea className="h-32 border rounded-md p-2">
+                <RadioGroup onValueChange={setUploadTargetFolderId} value={uploadTargetFolderId ?? ""}>
+                    {folders.map(folder => (
+                        <div key={folder.id} className="flex items-center space-x-2 py-1">
+                            <RadioGroupItem value={folder.id} id={`r-${folder.id}`} />
+                            <Label htmlFor={`r-${folder.id}`} className="font-normal cursor-pointer flex-1">{folder.name}</Label>
+                        </div>
+                    ))}
+                </RadioGroup>
+            </ScrollArea>
+
+            <Separator />
+
+            <div>
+                <Label htmlFor="new-folder-dialog-input" className="font-semibold">Or create a new one</Label>
+                <div className="flex items-center space-x-2 mt-2">
+                    <Input
+                        id="new-folder-dialog-input"
+                        placeholder="New folder name..."
+                        value={newFolderNameInDialog}
+                        onChange={(e) => setNewFolderNameInDialog(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleCreateFolderInDialog(); }}}
+                    />
+                    <Button type="button" onClick={handleCreateFolderInDialog} disabled={!newFolderNameInDialog.trim()}>
+                      Create
+                    </Button>
+                </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsUploadDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => fileInputRef.current?.click()} disabled={!uploadTargetFolderId}>
+              Upload File Now
             </Button>
           </DialogFooter>
         </DialogContent>
