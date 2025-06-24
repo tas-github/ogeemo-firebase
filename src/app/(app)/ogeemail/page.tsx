@@ -49,10 +49,6 @@ type Message = {
 export default function OgeeMailWelcomePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [transcript, setTranscript] = useState("");
-  const [spotlightResponse, setSpotlightResponse] = useState("");
-  const [isSpotlightLoading, setIsSpotlightLoading] = useState(false);
-  const [shouldProcessSpotlight, setShouldProcessSpotlight] = useState(false);
 
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -61,22 +57,6 @@ export default function OgeeMailWelcomePage() {
   const chatScrollAreaRef = useRef<HTMLDivElement>(null);
   const chatBaseTextRef = useRef("");
   const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = useState(false);
-  const [hasMounted, setHasMounted] = useState(false);
-
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
-
-  const {
-    status: spotlightStatus,
-    startListening: startSpotlightListening,
-    stopListening: stopSpotlightListening,
-    isSupported: isSpotlightSupported,
-  } = useSpeechToText({
-    onTranscript: (text) => {
-      setTranscript(text);
-    },
-  });
 
   const {
     status: chatStatus,
@@ -93,14 +73,14 @@ export default function OgeeMailWelcomePage() {
   });
 
   useEffect(() => {
-    if (hasMounted && (isSpotlightSupported === false || isChatSupported === false)) {
+    if (isChatSupported === false) {
       toast({
         variant: "destructive",
         title: "Voice Input Not Supported",
         description: "Your browser does not support the Web Speech API.",
       });
     }
-  }, [hasMounted, isSpotlightSupported, isChatSupported, toast]);
+  }, [isChatSupported, toast]);
 
   useEffect(() => {
     if (chatScrollAreaRef.current) {
@@ -110,38 +90,6 @@ export default function OgeeMailWelcomePage() {
       });
     }
   }, [messages]);
-
-  const handleSpotlightMicClick = () => {
-    if (spotlightStatus === 'listening') {
-      stopSpotlightListening();
-      setShouldProcessSpotlight(true);
-    } else {
-      setTranscript("");
-      setSpotlightResponse("");
-      startSpotlightListening();
-    }
-  };
-
-  useEffect(() => {
-    if (spotlightStatus === 'idle' && shouldProcessSpotlight && transcript.trim()) {
-      const processTranscript = async () => {
-        setIsSpotlightLoading(true);
-        setSpotlightResponse("");
-        try {
-          const response = await askOgeemo({ message: transcript });
-          setSpotlightResponse(response.reply);
-        } catch (error) {
-          console.error("Error with Spotlight Ogeemo:", error);
-          setSpotlightResponse("Sorry, I encountered an error. Please try again.");
-        } finally {
-          setIsSpotlightLoading(false);
-          setShouldProcessSpotlight(false);
-        }
-      };
-      processTranscript();
-    }
-  }, [spotlightStatus, shouldProcessSpotlight, transcript]);
-
 
   const handleComposeClick = () => {
     router.push('/ogeemail/compose');
@@ -255,27 +203,6 @@ export default function OgeeMailWelcomePage() {
     },
   ];
 
-  const renderSpotlightMicIcon = (status: SpeechRecognitionStatus) => {
-    switch (status) {
-      case 'listening': return <Square className="w-8 h-8" />;
-      case 'activating': return <LoaderCircle className="w-8 h-8 animate-spin" />;
-      case 'idle':
-      default: return <Mic className="w-8 h-8" />;
-    }
-  };
-
-  const getSpotlightMicButtonTitle = (status: SpeechRecognitionStatus) => {
-    if (isSpotlightLoading) return "Processing...";
-    if (isSpotlightSupported === false) return "Voice input not supported";
-    switch (status) {
-      case 'listening': return "Stop listening";
-      case 'activating': return "Activating...";
-      case 'idle':
-      default: return "Start listening";
-    }
-  };
-
-
   return (
     <>
       <div className="p-4 sm:p-6 flex flex-col flex-1 space-y-6 min-h-0">
@@ -341,53 +268,16 @@ export default function OgeeMailWelcomePage() {
         </div>
 
         <Card className="flex-1 flex flex-col">
-          <CardHeader className="text-center">
-            <CardTitle className="text-primary">Feature Spotlight</CardTitle>
-            <CardDescription>Voice-Powered Ogeemo Assistant</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col items-center justify-center gap-6 p-6">
-            <Button
-              variant={spotlightStatus === 'listening' ? "destructive" : "outline"}
-              size="icon"
-              className={cn(
-                "h-20 w-20 rounded-full",
-                spotlightStatus !== 'listening' && "bg-primary/10 text-primary",
-                spotlightStatus === 'listening' && "animate-pulse"
-              )}
-              onClick={handleSpotlightMicClick}
-              disabled={!hasMounted || isSpotlightSupported === false || spotlightStatus === 'activating' || isSpotlightLoading}
-              title={!hasMounted ? "Loading..." : getSpotlightMicButtonTitle(spotlightStatus)}
-            >
-              {!hasMounted || isSpotlightLoading ? (
-                <LoaderCircle className="w-8 h-8 animate-spin" />
-              ) : (
-                renderSpotlightMicIcon(spotlightStatus)
-              )}
-            </Button>
-
-            <div className="w-full max-w-2xl min-h-[6rem] text-center flex items-center justify-center rounded-lg bg-muted p-4">
-              {isSpotlightLoading ? (
-                <div className="flex items-center gap-2 text-lg">
-                  <LoaderCircle className="h-6 w-6 animate-spin text-muted-foreground" />
-                  <p className="text-muted-foreground">Thinking...</p>
-                </div>
-              ) : transcript ? (
-                 <div className="flex items-start gap-3 w-full">
-                    <User className="h-6 w-6 text-primary shrink-0 mt-1" />
-                    <p className="text-lg font-medium text-left">{`"${transcript}"`}</p>
-                  </div>
-              ) : spotlightResponse ? (
-                <div className="flex items-start gap-3 w-full">
-                  <Bot className="h-6 w-6 text-primary shrink-0 mt-1" />
-                  <p className="text-lg text-left">{spotlightResponse}</p>
-                </div>
-              ) : (
-                <p className="text-muted-foreground">
-                  Click the mic and speak, then click again when you're done.
+            <CardHeader className="text-center">
+                <CardTitle className="text-primary">Feature Spotlight</CardTitle>
+                <CardDescription>Ogeemo Assistant</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col items-center justify-center gap-4 p-6 text-center">
+                <Bot className="h-16 w-16 text-primary opacity-50" />
+                <p className="text-xl text-muted-foreground">
+                    To chat with me, click the <strong>Chat</strong> button.
                 </p>
-              )}
-            </div>
-          </CardContent>
+            </CardContent>
         </Card>
       </div>
 
