@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Bot,
   Send,
@@ -40,6 +40,7 @@ export default function ActionManagerPage() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const baseTextRef = useRef("");
   const { toast } = useToast();
+  const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = useState(false);
 
   const {
     status,
@@ -74,18 +75,9 @@ export default function ActionManagerPage() {
     }
   }, [messages]);
 
-  const handleMicClick = () => {
-    if (status === 'listening') {
-      stopListening();
-    } else {
-      baseTextRef.current = input.trim();
-      startListening();
-    }
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const submitMessage = useCallback(async () => {
+    const currentInput = input.trim();
+    if (!currentInput || isLoading) return;
 
     if (status === 'listening') {
       stopListening();
@@ -93,7 +85,7 @@ export default function ActionManagerPage() {
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: input,
+      text: currentInput,
       sender: "user",
     };
     setMessages((prev) => [...prev, userMessage]);
@@ -101,7 +93,7 @@ export default function ActionManagerPage() {
     setIsLoading(true);
 
     try {
-      const response = await askOgeemo({ message: input });
+      const response = await askOgeemo({ message: currentInput });
       const ogeemoMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: response.reply,
@@ -118,6 +110,28 @@ export default function ActionManagerPage() {
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+    }
+  }, [input, isLoading, status, stopListening]);
+
+  useEffect(() => {
+    if (status === 'idle' && shouldSubmitOnMicStop) {
+      submitMessage();
+      setShouldSubmitOnMicStop(false);
+    }
+  }, [status, shouldSubmitOnMicStop, submitMessage]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    submitMessage();
+  };
+
+  const handleMicClick = () => {
+    if (status === 'listening') {
+      stopListening();
+      setShouldSubmitOnMicStop(true);
+    } else {
+      baseTextRef.current = input.trim();
+      startListening();
     }
   };
   
@@ -137,7 +151,7 @@ export default function ActionManagerPage() {
      if (isSupported === false) return "Voice input not supported";
      switch (currentStatus) {
         case 'listening':
-            return "Stop listening";
+            return "Stop and send message";
         case 'activating':
             return "Activating...";
         case 'idle':

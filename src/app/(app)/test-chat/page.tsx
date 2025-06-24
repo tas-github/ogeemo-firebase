@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Bot, LoaderCircle, Send, User, Mic, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +42,7 @@ export default function TestChatPage() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const baseTextRef = useRef("");
+  const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = useState(false);
 
   const {
     status,
@@ -75,19 +76,10 @@ export default function TestChatPage() {
       });
     }
   }, [messages]);
-  
-  const handleMicClick = () => {
-    if (status === 'listening') {
-      stopListening();
-    } else {
-      baseTextRef.current = input.trim();
-      startListening();
-    }
-  };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const submitMessage = useCallback(async () => {
+    const currentInput = input.trim();
+    if (!currentInput || isLoading) return;
 
     if (status === 'listening') {
       stopListening();
@@ -95,7 +87,7 @@ export default function TestChatPage() {
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      text: input,
+      text: currentInput,
       sender: "user",
     };
     setMessages((prev) => [...prev, userMessage]);
@@ -103,7 +95,7 @@ export default function TestChatPage() {
     setIsLoading(true);
 
     try {
-      const response = await askTestChat({ message: input });
+      const response = await askTestChat({ message: currentInput });
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: response.reply,
@@ -120,6 +112,28 @@ export default function TestChatPage() {
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+    }
+  }, [input, isLoading, status, stopListening]);
+
+  useEffect(() => {
+    if (status === 'idle' && shouldSubmitOnMicStop) {
+      submitMessage();
+      setShouldSubmitOnMicStop(false);
+    }
+  }, [status, shouldSubmitOnMicStop, submitMessage]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    submitMessage();
+  };
+
+  const handleMicClick = () => {
+    if (status === 'listening') {
+      stopListening();
+      setShouldSubmitOnMicStop(true);
+    } else {
+      baseTextRef.current = input.trim();
+      startListening();
     }
   };
   
@@ -139,7 +153,7 @@ export default function TestChatPage() {
      if (isSupported === false) return "Voice input not supported";
      switch (currentStatus) {
         case 'listening':
-            return "Stop listening";
+            return "Stop and send message";
         case 'activating':
             return "Activating...";
         case 'idle':
