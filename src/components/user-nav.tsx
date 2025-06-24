@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -20,6 +21,13 @@ import {
 export function UserNav() {
   const router = useRouter();
   const { state: sidebarState } = useSidebar();
+
+  const handleLogout = () => {
+    // Perform a systematic shutdown by clearing session data from the browser
+    localStorage.clear();
+    // Redirect to the login page for a fresh start
+    router.push("/login");
+  };
 
   const dropdownContent = (
     <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -47,7 +55,7 @@ export function UserNav() {
         </DropdownMenuItem>
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
-      <DropdownMenuItem onClick={() => router.push("/login")}>
+      <DropdownMenuItem onClick={handleLogout}>
         <LogOut className="mr-2 h-4 w-4" />
         <span>Log out</span>
       </DropdownMenuItem>
