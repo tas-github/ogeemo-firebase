@@ -11,7 +11,8 @@ import {
   Search,
   UploadCloud,
   FilePenLine,
-  Move
+  Move,
+  ChevronRight,
 } from 'lucide-react';
 import { format } from "date-fns";
 
@@ -61,8 +62,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from '@/components/ui/separator';
-
 
 export function FilesView() {
   const [folders, setFolders] = useState<FolderItem[]>([]);
@@ -79,6 +78,15 @@ export function FilesView() {
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderType, setNewFolderType] = useState<'folder' | 'subfolder'>('folder');
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
+  const [collapsedFolders, setCollapsedFolders] = useState<string[]>([]);
+
+  const toggleFolderCollapse = (folderId: string) => {
+    setCollapsedFolders(prev =>
+      prev.includes(folderId)
+        ? prev.filter(id => id !== folderId)
+        : [...prev, folderId]
+    );
+  };
 
   useEffect(() => {
     // Simulate loading data
@@ -151,17 +159,14 @@ export function FilesView() {
     const currentSelectedFolder = folders.find(f => f.id === selectedFolderId);
 
     if (currentSelectedFolder) {
-      // If a top-level folder is selected, it can be a parent for a new subfolder.
       if (!currentSelectedFolder.parentId) {
         setNewFolderParentId(currentSelectedFolder.id);
         setNewFolderType('subfolder');
       } else {
-        // If a subfolder is selected, default to its parent for the new subfolder.
         setNewFolderParentId(currentSelectedFolder.parentId);
         setNewFolderType('subfolder');
       }
     } else {
-      // Default to creating a top-level folder if nothing is selected.
       setNewFolderParentId(null);
       setNewFolderType('folder');
     }
@@ -302,27 +307,43 @@ export function FilesView() {
                       <p className="px-2 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Folders</p>
                        {topLevelFolders.map(folder => {
                           const subFoldersForThisParent = folders.filter(f => f.parentId === folder.id);
+                          const isCollapsed = collapsedFolders.includes(folder.id);
                           return (
-                            <div key={folder.id}>
-                              <Button
-                                variant={selectedFolderId === folder.id ? 'secondary' : 'ghost'}
-                                className="w-full justify-start gap-3"
-                                onClick={() => handleFolderSelect(folder.id)}
-                              >
-                                <Folder className="h-4 w-4" />
-                                <span>{folder.name}</span>
-                              </Button>
-                              {subFoldersForThisParent.length > 0 && (
-                                <div className="pl-6 pt-1 flex flex-col gap-1">
+                            <div key={folder.id} className="w-full">
+                              <div className="flex items-center gap-1">
+                                {subFoldersForThisParent.length > 0 ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 shrink-0"
+                                    onClick={() => toggleFolderCollapse(folder.id)}
+                                    aria-label={isCollapsed ? `Expand ${folder.name}` : `Collapse ${folder.name}`}
+                                  >
+                                    <ChevronRight className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-90")} />
+                                  </Button>
+                                ) : (
+                                  <div className="w-8 shrink-0" />
+                                )}
+                                <Button
+                                  variant={selectedFolderId === folder.id ? 'secondary' : 'ghost'}
+                                  className="w-full justify-start gap-2"
+                                  onClick={() => handleFolderSelect(folder.id)}
+                                >
+                                  <Folder className="h-4 w-4" />
+                                  <span className="truncate">{folder.name}</span>
+                                </Button>
+                              </div>
+                              {!isCollapsed && subFoldersForThisParent.length > 0 && (
+                                <div className="pl-8 flex flex-col gap-1 pt-1">
                                   {subFoldersForThisParent.map(subFolder => (
                                     <Button
                                       key={subFolder.id}
                                       variant={selectedFolderId === subFolder.id ? 'secondary' : 'ghost'}
-                                      className="w-full justify-start gap-3 h-8"
+                                      className="w-full justify-start gap-2 h-9"
                                       onClick={() => handleFolderSelect(subFolder.id)}
                                     >
                                       <Folder className="h-4 w-4" />
-                                      <span>{subFolder.name}</span>
+                                      <span className="truncate">{subFolder.name}</span>
                                     </Button>
                                   ))}
                                 </div>
