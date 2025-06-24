@@ -167,6 +167,9 @@ export default function ActionManagerPage() {
         <p className="text-muted-foreground">
           Your intelligent assistant for navigating the Ogeemo platform.
         </p>
+        <p className="text-sm text-muted-foreground mt-2">
+          In order to start and stop voice to text, click the mic icon.
+        </p>
       </header>
 
       <div className="flex-1 min-h-0">
