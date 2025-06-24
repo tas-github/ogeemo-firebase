@@ -11,6 +11,7 @@ import {
   FolderPlus,
   Pencil,
   Archive,
+  Move,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuPortal,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -40,7 +46,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -248,6 +253,23 @@ export function FilesView() {
       setSelectedFolderId(uploadTargetFolderId);
       setUploadTargetFolderId(null);
       setNewFolderNameInDialog("");
+    }
+  };
+
+  const handleMoveFile = (fileId: string, targetFolderId: string) => {
+    const fileToMove = files.find(f => f.id === fileId);
+    const targetFolder = folders.find(f => f.id === targetFolderId);
+
+    if (fileToMove && targetFolder) {
+      setFiles(prevFiles =>
+        prevFiles.map(f =>
+          f.id === fileId ? { ...f, folderId: targetFolderId } : f
+        )
+      );
+      toast({
+        title: "File Moved",
+        description: `"${fileToMove.name}" has been moved to the "${targetFolder.name}" folder.`,
+      });
     }
   };
 
@@ -485,14 +507,35 @@ export function FilesView() {
                                     <TableCell>{format(file.modifiedAt, 'PPp')}</TableCell>
                                     <TableCell>
                                         <DropdownMenu>
-                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem><Download className="mr-2 h-4 w-4" /> Download</DropdownMenuItem>
-                                            <DropdownMenuItem><Pencil className="mr-2 h-4 w-4" /> Rename</DropdownMenuItem>
-                                            <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteFiles([file.id])}>
-                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
+                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem><Download className="mr-2 h-4 w-4" /> Download</DropdownMenuItem>
+                                                <DropdownMenuItem><Pencil className="mr-2 h-4 w-4" /> Rename</DropdownMenuItem>
+                                                <DropdownMenuSub>
+                                                    <DropdownMenuSubTrigger>
+                                                        <Move className="mr-2 h-4 w-4" />
+                                                        <span>Move to Folder</span>
+                                                    </DropdownMenuSubTrigger>
+                                                    <DropdownMenuPortal>
+                                                        <DropdownMenuSubContent>
+                                                            {folders.filter(folder => folder.id !== file.folderId).length > 0 ? (
+                                                                folders.filter(folder => folder.id !== file.folderId).map(targetFolder => (
+                                                                    <DropdownMenuItem key={targetFolder.id} onSelect={() => handleMoveFile(file.id, targetFolder.id)}>
+                                                                        <Folder className="mr-2 h-4 w-4" />
+                                                                        <span>{targetFolder.name}</span>
+                                                                    </DropdownMenuItem>
+                                                                ))
+                                                            ) : (
+                                                                <DropdownMenuItem disabled>No other folders</DropdownMenuItem>
+                                                            )}
+                                                        </DropdownMenuSubContent>
+                                                    </DropdownMenuPortal>
+                                                </DropdownMenuSub>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteFiles([file.id])}>
+                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
                                     </TableRow>
