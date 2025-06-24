@@ -69,11 +69,7 @@ export function FilesView() {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // `selectedFolderId` tracks the folder whose contents are shown in the file list.
   const [selectedFolderId, setSelectedFolderId] = useState<string>('folder-1'); 
-  // `activeParentFolderId` tracks the parent folder selected to show its subfolders.
-  const [activeParentFolderId, setActiveParentFolderId] = useState<string | null>('folder-1');
-
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
@@ -93,10 +89,6 @@ export function FilesView() {
   }, []);
 
   const topLevelFolders = useMemo(() => folders.filter(f => !f.parentId), [folders]);
-  const subFolders = useMemo(() => {
-    if (!activeParentFolderId) return [];
-    return folders.filter(f => f.parentId === activeParentFolderId);
-  }, [folders, activeParentFolderId]);
   
   const displayedFiles = useMemo(() => {
     return files
@@ -156,11 +148,20 @@ export function FilesView() {
   
   const openNewFolderDialog = () => {
     setNewFolderName("");
-    // When opening the dialog, if there's an active parent, default to creating a subfolder under it.
-    if (activeParentFolderId) {
-      setNewFolderParentId(activeParentFolderId);
-      setNewFolderType('subfolder');
+    const currentSelectedFolder = folders.find(f => f.id === selectedFolderId);
+
+    if (currentSelectedFolder) {
+      // If a top-level folder is selected, it can be a parent for a new subfolder.
+      if (!currentSelectedFolder.parentId) {
+        setNewFolderParentId(currentSelectedFolder.id);
+        setNewFolderType('subfolder');
+      } else {
+        // If a subfolder is selected, default to its parent for the new subfolder.
+        setNewFolderParentId(currentSelectedFolder.parentId);
+        setNewFolderType('subfolder');
+      }
     } else {
+      // Default to creating a top-level folder if nothing is selected.
       setNewFolderParentId(null);
       setNewFolderType('folder');
     }
@@ -189,14 +190,8 @@ export function FilesView() {
     toast({ title: "Folder Created" });
   };
 
-  const handleSelectTopLevelFolder = (folderId: string) => {
-    setActiveParentFolderId(folderId);
-    setSelectedFolderId(folderId); // When clicking a parent, show its files by default
-    setSelectedFileIds([]);
-  };
-
-  const handleSelectSubFolder = (folderId: string) => {
-    setSelectedFolderId(folderId); // When clicking a subfolder, show its files
+  const handleFolderSelect = (folderId: string) => {
+    setSelectedFolderId(folderId);
     setSelectedFileIds([]);
   };
 
@@ -251,7 +246,7 @@ export function FilesView() {
                                         </Label>
                                     </div>
                                     <div>
-                                        <RadioGroupItem value="subfolder" id="r2" className="peer sr-only" disabled={folders.length === 0} />
+                                        <RadioGroupItem value="subfolder" id="r2" className="peer sr-only" disabled={folders.filter(f => !f.parentId).length === 0} />
                                         <Label htmlFor="r2" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
                                             Subfolder
                                         </Label>
@@ -261,7 +256,7 @@ export function FilesView() {
                                 {newFolderType === 'subfolder' && (
                                     <div className="space-y-2">
                                         <Label htmlFor="parent-folder">Parent Folder</Label>
-                                        <Select value={newFolderParentId ?? undefined} onValueChange={setNewFolderParentId} disabled={folders.length === 0}>
+                                        <Select value={newFolderParentId ?? undefined} onValueChange={setNewFolderParentId} disabled={topLevelFolders.length === 0}>
                                             <SelectTrigger id="parent-folder">
                                                 <SelectValue placeholder="Select a parent folder..." />
                                             </SelectTrigger>
@@ -273,7 +268,7 @@ export function FilesView() {
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        {folders.length === 0 && (
+                                        {topLevelFolders.length === 0 && (
                                           <p className="text-xs text-destructive">You must create a top-level folder before you can create a subfolder.</p>
                                         )}
                                     </div>
@@ -305,37 +300,37 @@ export function FilesView() {
                 <ScrollArea className="flex-1">
                     <nav className="flex flex-col gap-1 p-2">
                       <p className="px-2 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Folders</p>
-                        {topLevelFolders.map(folder => (
-                            <Button
-                                key={folder.id}
-                                variant={activeParentFolderId === folder.id ? 'secondary' : 'ghost'}
+                       {topLevelFolders.map(folder => {
+                          const subFoldersForThisParent = folders.filter(f => f.parentId === folder.id);
+                          return (
+                            <div key={folder.id}>
+                              <Button
+                                variant={selectedFolderId === folder.id ? 'secondary' : 'ghost'}
                                 className="w-full justify-start gap-3"
-                                onClick={() => handleSelectTopLevelFolder(folder.id)}
-                            >
+                                onClick={() => handleFolderSelect(folder.id)}
+                              >
                                 <Folder className="h-4 w-4" />
                                 <span>{folder.name}</span>
-                            </Button>
-                        ))}
+                              </Button>
+                              {subFoldersForThisParent.length > 0 && (
+                                <div className="pl-6 pt-1 flex flex-col gap-1">
+                                  {subFoldersForThisParent.map(subFolder => (
+                                    <Button
+                                      key={subFolder.id}
+                                      variant={selectedFolderId === subFolder.id ? 'secondary' : 'ghost'}
+                                      className="w-full justify-start gap-3 h-8"
+                                      onClick={() => handleFolderSelect(subFolder.id)}
+                                    >
+                                      <Folder className="h-4 w-4" />
+                                      <span>{subFolder.name}</span>
+                                    </Button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                     </nav>
-                     {subFolders.length > 0 && (
-                      <>
-                        <Separator className="my-2" />
-                        <nav className="flex flex-col gap-1 p-2">
-                          <p className="px-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Subfolders</p>
-                            {subFolders.map(subFolder => (
-                                <Button
-                                    key={subFolder.id}
-                                    variant={selectedFolderId === subFolder.id ? 'secondary' : 'ghost'}
-                                    className="w-full justify-start gap-3"
-                                    onClick={() => handleSelectSubFolder(subFolder.id)}
-                                >
-                                    <Folder className="h-4 w-4" />
-                                    <span>{subFolder.name}</span>
-                                </Button>
-                            ))}
-                        </nav>
-                      </>
-                    )}
                 </ScrollArea>
               </div>
             </ResizablePanel>
