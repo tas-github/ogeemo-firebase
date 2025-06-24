@@ -12,7 +12,6 @@ import {
   UploadCloud,
   FilePenLine,
   Move,
-  ChevronRight,
 } from 'lucide-react';
 import { format } from "date-fns";
 
@@ -42,7 +41,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { FileIcon } from '@/components/files/file-icon';
 import { type FileItem, type FolderItem, mockFiles, mockFolders } from '@/data/files';
-import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -63,6 +61,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+
 export function FilesView() {
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -78,15 +77,6 @@ export function FilesView() {
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderType, setNewFolderType] = useState<'folder' | 'subfolder'>('folder');
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
-  const [collapsedFolders, setCollapsedFolders] = useState<string[]>([]);
-
-  const toggleFolderCollapse = (folderId: string) => {
-    setCollapsedFolders(prev =>
-      prev.includes(folderId)
-        ? prev.filter(id => id !== folderId)
-        : [...prev, folderId]
-    );
-  };
 
   useEffect(() => {
     // Simulate loading data
@@ -305,52 +295,31 @@ export function FilesView() {
                 <ScrollArea className="flex-1">
                     <nav className="flex flex-col gap-1 p-2">
                       <p className="px-2 pt-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Folders</p>
-                       {topLevelFolders.map(folder => {
-                          const subFoldersForThisParent = folders.filter(f => f.parentId === folder.id);
-                          const isCollapsed = collapsedFolders.includes(folder.id);
-                          return (
-                            <div key={folder.id} className="w-full">
-                              <div className="flex items-center gap-1">
-                                {subFoldersForThisParent.length > 0 ? (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 shrink-0"
-                                    onClick={() => toggleFolderCollapse(folder.id)}
-                                    aria-label={isCollapsed ? `Expand ${folder.name}` : `Collapse ${folder.name}`}
-                                  >
-                                    <ChevronRight className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-90")} />
-                                  </Button>
-                                ) : (
-                                  <div className="w-8 shrink-0" />
-                                )}
+                       {topLevelFolders.map(folder => (
+                          <div key={folder.id} className="w-full">
+                             <Button
+                              variant={selectedFolderId === folder.id ? 'secondary' : 'ghost'}
+                              className="w-full justify-start gap-2"
+                              onClick={() => handleFolderSelect(folder.id)}
+                            >
+                              <Folder className="h-4 w-4" />
+                              <span className="truncate">{folder.name}</span>
+                            </Button>
+                            <div className="pl-4 flex flex-col gap-1 pt-1">
+                              {folders.filter(f => f.parentId === folder.id).map(subFolder => (
                                 <Button
-                                  variant={selectedFolderId === folder.id ? 'secondary' : 'ghost'}
-                                  className="w-full justify-start gap-2"
-                                  onClick={() => handleFolderSelect(folder.id)}
+                                  key={subFolder.id}
+                                  variant={selectedFolderId === subFolder.id ? 'secondary' : 'ghost'}
+                                  className="w-full justify-start gap-2 h-9"
+                                  onClick={() => handleFolderSelect(subFolder.id)}
                                 >
                                   <Folder className="h-4 w-4" />
-                                  <span className="truncate">{folder.name}</span>
+                                  <span className="truncate">{subFolder.name}</span>
                                 </Button>
-                              </div>
-                              {!isCollapsed && subFoldersForThisParent.length > 0 && (
-                                <div className="pl-8 flex flex-col gap-1 pt-1">
-                                  {subFoldersForThisParent.map(subFolder => (
-                                    <Button
-                                      key={subFolder.id}
-                                      variant={selectedFolderId === subFolder.id ? 'secondary' : 'ghost'}
-                                      className="w-full justify-start gap-2 h-9"
-                                      onClick={() => handleFolderSelect(subFolder.id)}
-                                    >
-                                      <Folder className="h-4 w-4" />
-                                      <span className="truncate">{subFolder.name}</span>
-                                    </Button>
-                                  ))}
-                                </div>
-                              )}
+                              ))}
                             </div>
-                          );
-                        })}
+                          </div>
+                        ))}
                     </nav>
                 </ScrollArea>
               </div>
