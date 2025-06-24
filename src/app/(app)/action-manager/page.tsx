@@ -4,11 +4,9 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Bot,
-  Mic,
   Send,
   User,
   LoaderCircle,
-  Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,8 +22,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { askOgeemo } from "@/ai/flows/ogeemo-chat";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useSpeechToText } from "@/hooks/use-speech-to-text";
-import { useToast } from "@/hooks/use-toast";
 
 type Message = {
   id: string;
@@ -38,25 +34,6 @@ export default function ActionManagerPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
-
-  const { isListening, startListening, stopListening, isSupported } =
-    useSpeechToText({
-      onTranscript: (transcript) => {
-        setInput(transcript);
-      },
-    });
-
-  useEffect(() => {
-    if (isSupported === false) {
-      toast({
-        variant: "destructive",
-        title: "Voice Input Not Supported",
-        description: "Your browser does not support the Web Speech API.",
-      });
-    }
-  }, [isSupported, toast]);
-
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -70,10 +47,6 @@ export default function ActionManagerPage() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
-
-    if (isListening) {
-      stopListening();
-    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -170,18 +143,6 @@ export default function ActionManagerPage() {
             </CardContent>
             <CardFooter>
                 <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className={cn("flex-shrink-0", isListening && "text-destructive")}
-                      onClick={isListening ? stopListening : startListening}
-                      disabled={!isSupported || isLoading}
-                      title={!isSupported ? "Voice input not supported" : (isListening ? "Stop listening" : "Start listening")}
-                    >
-                      {isListening ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
-                      <span className="sr-only">Use Voice</span>
-                    </Button>
                     <Input
                         placeholder="Enter your message here..."
                         value={input}
