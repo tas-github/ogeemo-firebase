@@ -167,9 +167,6 @@ export default function ActionManagerPage() {
         <p className="text-muted-foreground">
           Your intelligent assistant for navigating the Ogeemo platform.
         </p>
-        <p className="text-sm text-muted-foreground mt-2">
-          In order to start and stop voice to text, click the mic icon.
-        </p>
       </header>
 
       <div className="flex-1 min-h-0">
@@ -179,6 +176,9 @@ export default function ActionManagerPage() {
                 <CardDescription>
                 Ask me anything about Ogeemo or describe what you'd like to accomplish.
                 </CardDescription>
+                <p className="text-sm text-muted-foreground mt-2">
+                  In order to start and stop voice to text, click the mic icon.
+                </p>
             </CardHeader>
             <CardContent className="flex-1 overflow-hidden">
                <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
