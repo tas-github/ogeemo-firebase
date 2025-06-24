@@ -18,8 +18,6 @@ export const mockFolders: FolderItem[] = [
   { id: 'folder-1', name: 'Folders', parentId: null },
   { id: 'folder-2', name: 'Invoices', parentId: 'folder-1' },
   { id: 'folder-3', name: 'Marketing Assets', parentId: 'folder-1' },
-  { id: 'folder-4', name: 'Sub folders', parentId: null },
-  { id: 'folder-5', name: 'Contracts', parentId: 'folder-4' },
 ];
 
 export const mockFiles: FileItem[] = [
@@ -70,21 +68,5 @@ export const mockFiles: FileItem[] = [
     size: 980432,
     modifiedAt: new Date('2024-07-23T16:45:00Z'),
     folderId: 'folder-3',
-  },
-  {
-    id: 'file-7',
-    name: 'MSA_Client_Corp.pdf',
-    type: 'application/pdf',
-    size: 890432,
-    modifiedAt: new Date('2024-06-15T12:00:00Z'),
-    folderId: 'folder-4',
-  },
-  {
-    id: 'file-8',
-    name: 'NDA_Partner.pdf',
-    type: 'application/pdf',
-    size: 450123,
-    modifiedAt: new Date('2024-06-18T10:00:00Z'),
-    folderId: 'folder-5',
   },
 ];
