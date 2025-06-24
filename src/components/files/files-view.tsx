@@ -4,10 +4,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Folder,
-  Plus,
   MoreVertical,
   Trash2,
-  Pencil,
   Upload,
   Download,
   FolderPlus
@@ -59,6 +57,7 @@ export function FilesView() {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
+  const [isUploadPromptOpen, setIsUploadPromptOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -155,7 +154,11 @@ export function FilesView() {
   };
   
   const handleUploadClick = () => {
-    fileInputRef.current?.click();
+    if (selectedFolderId) {
+      fileInputRef.current?.click();
+    } else {
+      setIsUploadPromptOpen(true);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -195,6 +198,27 @@ export function FilesView() {
         className="hidden"
         multiple
       />
+      <Dialog open={isUploadPromptOpen} onOpenChange={setIsUploadPromptOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Folder Required</DialogTitle>
+            <DialogDescription>
+              You must select or create a folder before uploading files.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="pt-4">
+            <Button variant="ghost" onClick={() => setIsUploadPromptOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => {
+              setIsUploadPromptOpen(false);
+              setIsNewFolderDialogOpen(true);
+            }}>
+              Create New Folder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="flex flex-col h-full">
         <header className="text-center py-4 sm:py-6 px-4 sm:px-6">
           <h1 className="text-3xl font-bold font-headline text-primary">File Manager</h1>
@@ -269,7 +293,7 @@ export function FilesView() {
                           {selectedFolder ? `${displayedFiles.length} item(s)` : 'No folder selected'}
                         </p>
                       </div>
-                      <Button onClick={handleUploadClick} disabled={!selectedFolderId}>
+                      <Button onClick={handleUploadClick}>
                         <Upload className="mr-2 h-4 w-4" /> Upload File
                       </Button>
                     </>
