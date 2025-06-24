@@ -29,8 +29,10 @@ type UseSpeechToTextOptions = {
   onFinalTranscript?: (transcript: string) => void;
 };
 
+export type SpeechRecognitionStatus = 'idle' | 'activating' | 'listening';
+
 export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechToTextOptions) {
-  const [isListening, setIsListening] = useState(false);
+  const [status, setStatus] = useState<SpeechRecognitionStatus>('idle');
   const [isSupported, setIsSupported] = useState<boolean | undefined>(undefined);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
@@ -45,8 +47,9 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
   }, []);
 
   const startListening = useCallback(() => {
-    if (isListening || !isSupported) return;
+    if (status !== 'idle' || !isSupported) return;
 
+    setStatus('activating');
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognitionAPI();
     recognitionRef.current = recognition;
@@ -56,17 +59,17 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
     recognition.continuous = true;
 
     recognition.onstart = () => {
-      setIsListening(true);
+      setStatus('listening');
     };
 
     recognition.onend = () => {
-      setIsListening(false);
+      setStatus('idle');
       recognitionRef.current = null;
     };
 
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
-      setIsListening(false);
+      setStatus('idle');
     };
 
     recognition.onresult = (event: any) => {
@@ -83,13 +86,13 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
     };
 
     recognition.start();
-  }, [isListening, isSupported, onTranscript, onFinalTranscript]);
+  }, [status, isSupported, onTranscript, onFinalTranscript]);
 
   const stopListening = useCallback(() => {
-    if (recognitionRef.current && isListening) {
+    if (recognitionRef.current && status === 'listening') {
       recognitionRef.current.stop();
     }
-  }, [isListening]);
+  }, [status]);
   
   useEffect(() => {
     return () => {
@@ -100,7 +103,7 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
   }, []);
 
   return {
-    isListening,
+    status,
     startListening,
     stopListening,
     isSupported,
