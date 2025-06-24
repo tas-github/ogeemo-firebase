@@ -50,6 +50,9 @@ export default function OgeeMailWelcomePage() {
   const router = useRouter();
   const { toast } = useToast();
   const [transcript, setTranscript] = useState("");
+  const [spotlightResponse, setSpotlightResponse] = useState("");
+  const [isSpotlightLoading, setIsSpotlightLoading] = useState(false);
+  const [shouldProcessSpotlight, setShouldProcessSpotlight] = useState(false);
 
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -106,11 +109,34 @@ export default function OgeeMailWelcomePage() {
   const handleSpotlightMicClick = () => {
     if (spotlightStatus === 'listening') {
       stopSpotlightListening();
+      setShouldProcessSpotlight(true);
     } else {
       setTranscript("");
+      setSpotlightResponse("");
       startSpotlightListening();
     }
   };
+
+  useEffect(() => {
+    if (spotlightStatus === 'idle' && shouldProcessSpotlight && transcript.trim()) {
+      const processTranscript = async () => {
+        setIsSpotlightLoading(true);
+        setSpotlightResponse("");
+        try {
+          const response = await askOgeemo({ message: transcript });
+          setSpotlightResponse(response.reply);
+        } catch (error) {
+          console.error("Error with Spotlight Ogeemo:", error);
+          setSpotlightResponse("Sorry, I encountered an error. Please try again.");
+        } finally {
+          setIsSpotlightLoading(false);
+          setShouldProcessSpotlight(false);
+          setTranscript("");
+        }
+      };
+      processTranscript();
+    }
+  }, [spotlightStatus, shouldProcessSpotlight, transcript]);
 
   const handleComposeClick = () => {
     router.push('/ogeemail/compose');
@@ -234,6 +260,7 @@ export default function OgeeMailWelcomePage() {
   };
 
   const getSpotlightMicButtonTitle = (status: SpeechRecognitionStatus) => {
+    if (isSpotlightLoading) return "Processing...";
     if (isSpotlightSupported === false) return "Voice input not supported";
     switch (status) {
       case 'listening': return "Stop listening";
@@ -323,17 +350,23 @@ export default function OgeeMailWelcomePage() {
                     spotlightStatus === 'listening' && "animate-pulse"
                   )}
                   onClick={handleSpotlightMicClick}
-                  disabled={isSpotlightSupported === false || spotlightStatus === 'activating'}
+                  disabled={isSpotlightSupported === false || spotlightStatus === 'activating' || isSpotlightLoading}
                   title={getSpotlightMicButtonTitle(spotlightStatus)}
                 >
-                  {renderSpotlightMicIcon(spotlightStatus)}
+                  {isSpotlightLoading ? <LoaderCircle className="w-8 h-8 animate-spin" /> : renderSpotlightMicIcon(spotlightStatus)}
                 </Button>
                 <p className="text-sm text-muted-foreground h-10 flex items-center justify-center text-center px-4">
-                  {spotlightStatus === 'listening'
-                    ? "Listening..."
-                    : transcript
-                    ? `I heard: "${transcript}"`
-                    : "Click the mic and speak and click the icon when you stop speaking"}
+                  {isSpotlightLoading ? (
+                    "Thinking..."
+                  ) : spotlightStatus === 'listening' ? (
+                    "Listening..."
+                  ) : spotlightResponse ? (
+                    spotlightResponse
+                  ) : transcript ? (
+                    `I heard: "${transcript}"`
+                  ) : (
+                    "Click the mic and speak and click the icon when you stop speaking"
+                  )}
                 </p>
               </CardContent>
             </Card>
