@@ -46,6 +46,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -247,7 +248,7 @@ export function FilesView() {
         title: "Upload Successful",
         description: `${newFiles.length} file(s) have been added to "${targetFolder?.name}".`
       });
-      e.target.value = '';
+      e.target.value = ''; // Reset file input
 
       setIsUploadDialogOpen(false);
       setSelectedFolderId(uploadTargetFolderId);
