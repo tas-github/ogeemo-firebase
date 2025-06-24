@@ -53,7 +53,7 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
 
     recognition.lang = 'en-US';
     recognition.interimResults = true;
-    recognition.continuous = false;
+    recognition.continuous = true;
 
     recognition.onstart = () => {
       setIsListening(true);
