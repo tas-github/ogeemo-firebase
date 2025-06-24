@@ -50,7 +50,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -83,15 +82,54 @@ export function FilesView() {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // Simulate loading data
+    // This effect runs only once on the client after initial render
     setIsLoading(true);
-    setFolders(mockFolders);
-    setFiles(mockFiles);
-    // Initially expand all parent folders
-    const parentFolderIds = new Set(mockFolders.filter(f => f.parentId).map(f => f.parentId!));
-    setExpandedFolders(parentFolderIds);
-    setIsLoading(false);
+    try {
+      const storedFolders = localStorage.getItem('fileManagerFolders');
+      const storedFiles = localStorage.getItem('fileManagerFiles');
+      
+      const loadedFolders = storedFolders ? JSON.parse(storedFolders) : mockFolders;
+      const loadedFiles = storedFiles ? JSON.parse(storedFiles).map((f: any) => ({ ...f, modifiedAt: new Date(f.modifiedAt) })) : mockFiles;
+      
+      setFolders(loadedFolders);
+      setFiles(loadedFiles);
+
+      if (loadedFolders.length > 0 && !selectedFolderId) {
+        setSelectedFolderId(loadedFolders[0].id);
+      }
+      
+      // Initially expand all parent folders
+      const parentFolderIds = new Set(loadedFolders.filter((f: FolderItem) => f.parentId).map((f: FolderItem) => f.parentId!));
+      setExpandedFolders(parentFolderIds);
+
+    } catch (error) {
+      console.error("Failed to parse from localStorage, using mock data.", error);
+      setFolders(mockFolders);
+      setFiles(mockFiles);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      try {
+          localStorage.setItem('fileManagerFolders', JSON.stringify(folders));
+      } catch (error) {
+          console.error("Failed to save folders to localStorage", error);
+      }
+    }
+  }, [folders, isLoading]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      try {
+          localStorage.setItem('fileManagerFiles', JSON.stringify(files));
+      } catch (error) {
+          console.error("Failed to save files to localStorage", error);
+      }
+    }
+  }, [files, isLoading]);
 
   const topLevelFolders = useMemo(() => folders.filter(f => !f.parentId), [folders]);
   const subfoldersByParentId = useMemo(() => {
@@ -317,7 +355,7 @@ export function FilesView() {
                                                 <SelectValue placeholder="Select a parent folder..." />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {topLevelFolders.map((folder) => (
+                                                {folders.filter(f => !f.parentId).map((folder) => (
                                                     <SelectItem key={folder.id} value={folder.id}>
                                                         {folder.name}
                                                     </SelectItem>
