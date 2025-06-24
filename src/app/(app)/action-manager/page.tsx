@@ -24,7 +24,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { askOgeemo } from "@/ai/flows/ogeemo-chat";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useSpeechToText } from "@/hooks/use-speech-to-text";
+import { useSpeechToText, type SpeechRecognitionStatus } from "@/hooks/use-speech-to-text";
 import { useToast } from "@/hooks/use-toast";
 
 type Message = {
@@ -38,17 +38,19 @@ export default function ActionManagerPage() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const [inputBeforeSpeech, setInputBeforeSpeech] = useState("");
+  const baseTextRef = useRef("");
   const { toast } = useToast();
 
   const {
-    isListening,
+    status,
     startListening,
     stopListening,
     isSupported,
   } = useSpeechToText({
     onTranscript: (transcript) => {
-      const newText = inputBeforeSpeech ? `${inputBeforeSpeech} ${transcript}`.trim() : transcript;
+      const newText = baseTextRef.current
+        ? `${baseTextRef.current} ${transcript}`
+        : transcript;
       setInput(newText);
     },
   });
@@ -73,10 +75,10 @@ export default function ActionManagerPage() {
   }, [messages]);
 
   const handleMicClick = () => {
-    if (isListening) {
+    if (status === 'listening') {
       stopListening();
     } else {
-      setInputBeforeSpeech(input);
+      baseTextRef.current = input.trim();
       startListening();
     }
   };
@@ -85,7 +87,7 @@ export default function ActionManagerPage() {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    if (isListening) {
+    if (status === 'listening') {
       stopListening();
     }
 
@@ -119,6 +121,31 @@ export default function ActionManagerPage() {
     }
   };
   
+  const renderMicIcon = (currentStatus: SpeechRecognitionStatus) => {
+    switch (currentStatus) {
+      case 'listening':
+        return <Square className="h-5 w-5" />;
+      case 'activating':
+        return <LoaderCircle className="h-5 w-5 animate-spin" />;
+      case 'idle':
+      default:
+        return <Mic className="h-5 w-5" />;
+    }
+  };
+
+  const getMicButtonTitle = (currentStatus: SpeechRecognitionStatus) => {
+     if (isSupported === false) return "Voice input not supported";
+     switch (currentStatus) {
+        case 'listening':
+            return "Stop listening";
+        case 'activating':
+            return "Activating...";
+        case 'idle':
+        default:
+            return "Start listening";
+     }
+  };
+
   return (
     <div className="p-4 sm:p-6 flex flex-col flex-1 space-y-4 min-h-0">
       <header className="text-center">
@@ -190,19 +217,13 @@ export default function ActionManagerPage() {
                       size="icon"
                       className={cn(
                         "flex-shrink-0",
-                        isListening && "text-destructive"
+                        status === 'listening' && "text-destructive"
                       )}
                       onClick={handleMicClick}
-                      disabled={isSupported === false || isLoading}
-                      title={
-                        isSupported === false
-                          ? "Voice input not supported"
-                          : isListening
-                          ? "Stop listening"
-                          : "Start listening"
-                      }
+                      disabled={isSupported === false || isLoading || status === 'activating'}
+                      title={getMicButtonTitle(status)}
                     >
-                      {isListening ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                      {renderMicIcon(status)}
                       <span className="sr-only">Use Voice</span>
                     </Button>
                     <Input
