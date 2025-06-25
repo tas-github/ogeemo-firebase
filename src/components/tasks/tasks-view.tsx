@@ -8,7 +8,7 @@ import { Plus, Edit, FileText, ChevronDown, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type Event } from "@/types/calendar";
 import { type Project, initialProjects } from "@/data/projects";
-import { initialEvents } from "@/data/events";
+import { getInitialEvents } from "@/data/events";
 import { type ProjectTemplate, type PartialTask, initialProjectTemplates } from "@/data/project-templates";
 import {
   DropdownMenu,
@@ -84,12 +84,13 @@ export function TasksView() {
         }));
         setAllTasks(parsedEvents);
       } else {
-        setAllTasks(initialEvents);
-        localStorage.setItem('calendarEvents', JSON.stringify(initialEvents));
+        const initial = getInitialEvents();
+        setAllTasks(initial);
+        localStorage.setItem('calendarEvents', JSON.stringify(initial));
       }
     } catch (error) {
       console.error("Could not read calendar events from localStorage", error);
-      setAllTasks(initialEvents);
+      setAllTasks(getInitialEvents());
     }
 
     try {

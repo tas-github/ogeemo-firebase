@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -34,7 +35,7 @@ interface Email {
   folder: 'inbox' | 'sent' | 'archive' | 'trash';
 }
 
-const mockEmails: Email[] = [
+const generateMockEmails = (): Email[] => [
   {
     id: '1',
     from: 'The Ogeemo Team',
@@ -116,13 +117,21 @@ const mockEmails: Email[] = [
 
 
 export function OgeeMailInboxView() {
-    const [emails, setEmails] = useState<Email[]>(mockEmails);
+    const [emails, setEmails] = useState<Email[]>([]);
     const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]);
     const [activeFolder, setActiveFolder] = useState<'inbox' | 'sent' | 'archive' | 'trash' | 'starred'>("inbox");
     const [aiCommand, setAiCommand] = useState('');
     const { toast } = useToast();
+
+    useEffect(() => {
+        const mockData = generateMockEmails();
+        setEmails(mockData);
+        if (mockData.length > 0) {
+            setSelectedEmailId(mockData[0].id);
+        }
+    }, []);
 
     const { 
         isListening: isAiListening, 

@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/select"
 import { type Event } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
-import { initialEvents } from "@/data/events";
+import { getInitialEvents } from "@/data/events";
 
 const NewTaskDialog = dynamic(() => import('@/components/tasks/NewTaskDialog'), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
@@ -244,12 +244,13 @@ function CalendarPageContent() {
         }));
         setEvents(parsedEvents);
       } else {
-        setEvents(initialEvents);
-        localStorage.setItem('calendarEvents', JSON.stringify(initialEvents));
+        const initial = getInitialEvents();
+        setEvents(initial);
+        localStorage.setItem('calendarEvents', JSON.stringify(initial));
       }
     } catch (error) {
       console.error("Could not read calendar events from localStorage", error);
-      setEvents(initialEvents);
+      setEvents(getInitialEvents());
     }
   }, []);
 
