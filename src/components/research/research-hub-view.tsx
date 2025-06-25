@@ -376,16 +376,31 @@ export function ResearchHubView() {
     setTimeout(() => {
       let ogeemoResponse: React.ReactNode = "I'm not sure how to answer that. Try selecting a source first.";
       if (selectedSource) {
-        ogeemoResponse = (
-          <div>
-            <p>Based on "{selectedSource.title}", here are some key points regarding "{userInput}":</p>
-            <ul className="list-disc pl-5 my-2 space-y-1">
-              <li>Ogeemo-driven platforms are transforming market analysis by providing deeper insights.</li>
-              <li>Competitor A has increased market share by 5% this quarter.</li>
-              <li>There is a growing demand for personalized user experiences.</li>
-            </ul>
-          </div>
-        );
+         if (selectedSource.title.startsWith('Web Search:')) {
+            const originalQuery = selectedSource.title.replace('Web Search: "', '').slice(0, -1);
+            ogeemoResponse = (
+              <div>
+                <p>Here are the key findings from the web search for "{originalQuery}":</p>
+                <ul className="list-disc pl-5 my-2 space-y-1">
+                  <li>Supplier A is noted for its high-quality materials and reliable delivery schedules, particularly for residential projects.</li>
+                  <li>Supplier B offers competitive pricing, making it a strong choice for large-scale commercial contracts.</li>
+                  <li>Recent industry reports highlight a trend towards sustainable and eco-friendly roofing materials, with Supplier C leading in this area.</li>
+                  <li>Customer reviews emphasize the importance of post-sale support, an area where Supplier A also excels.</li>
+                </ul>
+              </div>
+            );
+        } else {
+             ogeemoResponse = (
+                <div>
+                    <p>Based on your document "{selectedSource.title}", here are the key points:</p>
+                    <ul className="list-disc pl-5 my-2 space-y-1">
+                        <li>The document outlines the initial project brief for an internal initiative.</li>
+                        <li>Key deliverables include a market analysis, a prototype, and a final presentation.</li>
+                        <li>The deadline for the first phase is the end of the current quarter.</li>
+                    </ul>
+                </div>
+            );
+        }
       }
       setChatMessages(prev => [...prev, { sender: 'ogeemo', text: ogeemoResponse }]);
       setIsLoading(false);
@@ -420,9 +435,19 @@ export function ResearchHubView() {
 
   const handleAddToNotepad = (content: React.ReactNode) => {
     if (editorRef.current) {
-        const quoteContent = typeof content === 'string' ? content : (content as React.ReactElement).props.children[1]?.props.children || '';
+        let textContent = '';
+        if (typeof content === 'string') {
+            textContent = content;
+        } else if (React.isValidElement(content)) {
+            // A simple way to extract text from the React node structure we're using
+            const tempDiv = document.createElement('div');
+            const root = require('react-dom/client').createRoot(tempDiv);
+            root.render(content);
+            textContent = tempDiv.innerText || '';
+        }
+        
         const separator = editorRef.current.innerHTML.trim() ? '<hr class="my-4">' : '';
-        editorRef.current.innerHTML += `${separator}<blockquote>${quoteContent}</blockquote><p><br></p>`;
+        editorRef.current.innerHTML += `${separator}<blockquote>${textContent.replace(/\n/g, '<br>')}</blockquote><p><br></p>`;
         toast({ title: "Added to Notepad", description: "The content has been pinned to your notes." });
         setView('notepad');
     }
