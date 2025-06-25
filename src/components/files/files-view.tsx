@@ -12,6 +12,7 @@ import {
   FileUp,
   ChevronRight,
   Pencil,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -41,6 +42,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/auth-context';
 
 
 const NewFolderDialog = dynamic(() => import('@/components/files/new-folder-dialog'), {
@@ -61,9 +63,11 @@ export function FilesView() {
   const [renamingFolder, setRenamingFolder] = useState<FolderItem | null>(null);
   const [renameInputValue, setRenameInputValue] = useState("");
   const [highlightHeader, setHighlightHeader] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const { accessToken } = useAuth();
 
   useEffect(() => {
     let loadedFolders = mockFolders;
@@ -252,6 +256,66 @@ export function FilesView() {
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDownloadToDrive = async () => {
+    if (selectedFileIds.length !== 1) return;
+    if (!accessToken) {
+        toast({
+            variant: 'destructive',
+            title: 'Not Authenticated',
+            description: 'Please connect your Google account on the Google page to download files.',
+        });
+        return;
+    }
+
+    setIsDownloading(true);
+    try {
+        const fileToDownload = files.find(f => f.id === selectedFileIds[0]);
+        if (!fileToDownload) throw new Error("File not found.");
+
+        // Simulate file content since we don't store it
+        const simulatedContent = `This is the content for the file "${fileToDownload.name}" downloaded from Ogeemo.`;
+        const fileBlob = new Blob([simulatedContent], { type: 'text/plain' });
+
+        const metadata = {
+            name: fileToDownload.name,
+            parents: ['root'], // Saves to the root of Google Drive
+        };
+
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        form.append('file', fileBlob);
+
+        const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+            body: form,
+        });
+
+        if (response.ok) {
+            toast({
+                title: 'Download Successful',
+                description: `"${fileToDownload.name}" has been saved to your Google Drive.`,
+            });
+        } else {
+            const errorData = await response.json();
+            console.error('Google Drive API Error:', errorData);
+            throw new Error(errorData.error?.message || 'Failed to upload to Google Drive.');
+        }
+
+    } catch (error) {
+        console.error(error);
+        toast({
+            variant: 'destructive',
+            title: 'Download Failed',
+            description: error instanceof Error ? error.message : 'An unknown error occurred.',
+        });
+    } finally {
+        setIsDownloading(false);
     }
   };
 
@@ -456,10 +520,23 @@ export function FilesView() {
 
                         <div className="flex items-center gap-2">
                             {selectedFileIds.length > 0 ? (
-                                <Button variant="destructive" onClick={handleDeleteSelected}>
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                </Button>
+                                <>
+                                    <Button
+                                      onClick={handleDownloadToDrive}
+                                      disabled={selectedFileIds.length !== 1 || isDownloading}
+                                    >
+                                      {isDownloading ? (
+                                        <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Download className="mr-2 h-4 w-4" />
+                                      )}
+                                      + Download
+                                    </Button>
+                                    <Button variant="destructive" onClick={handleDeleteSelected}>
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete
+                                    </Button>
+                                </>
                             ) : (
                                 <>
                                     <Button onClick={() => openNewFolderDialog({ parentId: null })} className="bg-orange-500 hover:bg-orange-600 text-white">

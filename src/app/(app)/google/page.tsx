@@ -6,8 +6,6 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
-  getAdditionalUserInfo,
-  type User,
   GoogleAuthProvider,
 } from "firebase/auth";
 import { auth, provider } from "@/lib/firebase";
@@ -22,9 +20,10 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { LoaderCircle, CheckCircle2, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
 
 export default function GooglePage() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, accessToken, setAuthInfo } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
@@ -34,12 +33,14 @@ export default function GooglePage() {
       return;
     }
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+      // Set the Firebase user on load, but reset the API token.
+      // A new token is only acquired through an explicit sign-in.
+      setAuthInfo(currentUser, null);
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [setAuthInfo]);
 
   const handleSignIn = async () => {
     if (!auth || !provider) {
@@ -54,21 +55,16 @@ export default function GooglePage() {
       const result = await signInWithPopup(auth, provider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
       
-      // IMPORTANT: This token is what you'll use to access Google APIs later.
-      // For a production app, you would securely send this to your backend
-      // to be stored and used for server-to-server API calls.
       const token = credential?.accessToken;
 
       if (token) {
-        // For now, we'll just log it to demonstrate we have it.
         console.log("Google OAuth Access Token:", token);
+        setAuthInfo(result.user, token);
         toast({
             title: "Authentication Successful",
             description: "Successfully connected to your Google Account.",
         });
       }
-
-      setUser(result.user);
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
       toast({
@@ -83,7 +79,7 @@ export default function GooglePage() {
     if (!auth) return;
     try {
       await signOut(auth);
-      setUser(null);
+      setAuthInfo(null, null);
       toast({
         title: "Disconnected",
         description: "Successfully disconnected from your Google Account.",
@@ -132,7 +128,7 @@ export default function GooglePage() {
             <div className="flex flex-col items-center gap-6">
               <div className="flex items-center gap-4">
                 <CheckCircle2 className="h-8 w-8 text-green-500" />
-                <p className="font-semibold text-lg">Account Connected</p>
+                <p className="font-semibold text-lg">{accessToken ? 'API Ready' : 'Account Connected'}</p>
               </div>
               <div className="flex items-center gap-4 rounded-lg border p-4 w-full">
                 <Avatar className="h-12 w-12">
@@ -144,8 +140,13 @@ export default function GooglePage() {
                   <p className="text-sm text-muted-foreground truncate">{user.email}</p>
                 </div>
               </div>
-              <Button onClick={handleSignOut} variant="destructive">
-                Disconnect Account
+              {!accessToken && (
+                 <p className="text-center text-sm text-muted-foreground">
+                    Your account is connected, but to use API features like downloading to Drive, you need to re-authenticate to get a fresh API token.
+                </p>
+              )}
+              <Button onClick={accessToken ? handleSignOut : handleSignIn} variant={accessToken ? "destructive" : "default"}>
+                {accessToken ? 'Disconnect Account' : 'Connect for API Access'}
               </Button>
             </div>
           ) : (
