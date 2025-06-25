@@ -25,6 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileIcon } from './file-icon';
 import { format } from 'date-fns';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 const NewFolderDialog = dynamic(() => import('@/components/files/new-folder-dialog'), {
   loading: () => <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
@@ -69,8 +70,11 @@ export function FilesView() {
       setFolders(loadedFolders);
       setFiles(loadedFiles);
       if (loadedFolders.length > 0) {
-        setSelectedFolderId(loadedFolders[0].id);
-        setExpandedFolders(new Set([loadedFolders[0].id]));
+        const rootFolder = loadedFolders.find(f => !f.parentId);
+        if (rootFolder) {
+            setSelectedFolderId(rootFolder.id);
+            setExpandedFolders(new Set([rootFolder.id]));
+        }
       }
       setIsLoading(false);
     }
@@ -97,7 +101,7 @@ export function FilesView() {
   }, [files, isLoading]);
   
   const openNewFolderDialog = (options: { parentId?: string | null } = {}) => {
-    const { parentId = null } = options;
+    const { parentId = selectedFolderId } = options;
     setNewFolderInitialParentId(parentId);
     setIsNewFolderDialogOpen(true);
   };
@@ -115,7 +119,8 @@ export function FilesView() {
     setSelectedFileIds([]);
   };
 
-  const toggleFolder = (folderId: string) => {
+  const toggleFolder = (e: React.MouseEvent, folderId: string) => {
+    e.stopPropagation();
     setExpandedFolders(prev => {
       const newSet = new Set(prev);
       if (newSet.has(folderId)) {
@@ -159,41 +164,38 @@ export function FilesView() {
   
   const selectedFolder = useMemo(() => folders.find(f => f.id === selectedFolderId), [folders, selectedFolderId]);
 
-  const FolderTree = ({ parentId = null }: { parentId?: string | null }) => {
+  const FolderTree = ({ parentId = null, level = 0 }: { parentId?: string | null, level?: number }) => {
     const children = folders.filter(f => f.parentId === parentId);
     if (children.length === 0) return null;
 
     return (
-      <div className={parentId !== null ? 'pl-4' : ''}>
+      <div style={{ marginLeft: level > 0 ? '1rem' : '0' }}>
         {children.map(folder => {
           const hasChildren = folders.some(f => f.parentId === folder.id);
+          const isExpanded = expandedFolders.has(folder.id);
           return (
-            <div key={folder.id}>
+            <div key={folder.id} className="my-1">
               <div
-                className="group flex items-center gap-2 rounded-md hover:bg-accent"
+                className="group flex items-center gap-2 rounded-md pr-2 cursor-pointer hover:bg-accent"
+                onClick={() => handleSelectFolder(folder.id)}
                 >
-                {hasChildren ? (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => toggleFolder(folder.id)}
-                  >
-                    <Folder className="h-4 w-4 text-primary transition-transform" style={{ transform: expandedFolders.has(folder.id) ? 'rotate(90deg)' : '' }} />
-                  </Button>
-                ) : (
-                  <Folder className="h-4 w-4 text-primary ml-4" />
-                )}
-                <Button
-                  variant={selectedFolderId === folder.id ? "secondary" : "ghost"}
-                  className="w-full justify-start h-8"
-                  onClick={() => handleSelectFolder(folder.id)}
+                <div
+                    className="flex items-center gap-2 flex-1 p-1 rounded-md"
+                    style={{ backgroundColor: selectedFolderId === folder.id ? 'hsl(var(--accent))' : 'transparent' }}
                 >
-                  <span>{folder.name}</span>
-                </Button>
+                    {hasChildren ? (
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => toggleFolder(e, folder.id)}>
+                            <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                        </Button>
+                    ) : (
+                        <div className="w-6 h-6" /> // Placeholder for alignment
+                    )}
+                    <Folder className="h-4 w-4 text-primary" />
+                    <span className="text-sm truncate flex-1">{folder.name}</span>
+                </div>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100">
                             <MoreVertical className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
@@ -205,16 +207,12 @@ export function FilesView() {
                     </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              {expandedFolders.has(folder.id) && <FolderTree parentId={folder.id} />}
+              {isExpanded && <FolderTree parentId={folder.id} level={level + 1} />}
             </div>
           );
         })}
       </div>
     );
-  };
-
-  const handleUploadClick = () => {
-    setIsUploadDialogOpen(true);
   };
   
   if (isLoading) {
@@ -240,88 +238,93 @@ export function FilesView() {
           </p>
         </header>
 
-        <div className="flex-1 grid grid-cols-[300px_1fr] gap-px bg-border border rounded-lg overflow-hidden">
-            <div className="flex flex-col bg-background">
-                <h3 className="p-4 text-lg font-semibold border-b">Folders</h3>
-                <ScrollArea className="flex-1 p-2">
-                    <FolderTree />
-                </ScrollArea>
-                <div className="p-2 border-t">
-                    <Button variant="outline" className="w-full" onClick={() => openNewFolderDialog()}>
-                        <FolderPlus className="mr-2 h-4 w-4" /> New Folder
-                    </Button>
+        <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border">
+            <ResizablePanel defaultSize={25} minSize={20}>
+                <div className="flex h-full flex-col">
+                    <div className="flex items-center justify-between p-2 border-b">
+                        <h3 className="px-2 text-lg font-semibold">Folders</h3>
+                        <Button variant="ghost" size="icon" onClick={() => openNewFolderDialog({ parentId: null })}>
+                            <FolderPlus className="h-4 w-4" />
+                            <span className="sr-only">New Root Folder</span>
+                        </Button>
+                    </div>
+                    <ScrollArea className="flex-1 p-2">
+                        <FolderTree />
+                    </ScrollArea>
                 </div>
-            </div>
-
-            <div className="flex flex-col bg-background">
-                <div className="flex items-center justify-between p-4 border-b h-[65px]">
-                    {selectedFileIds.length > 0 ? (
-                        <>
-                            <h3 className="text-lg font-semibold">{selectedFileIds.length} selected</h3>
-                            <Button variant="destructive" onClick={handleDeleteSelected}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            <h3 className="text-lg font-semibold">{selectedFolder?.name || 'Select a folder'}</h3>
-                            <Button variant="outline" onClick={handleUploadClick} disabled={!selectedFolderId}>
-                                <FileUp className="mr-2 h-4 w-4" /> Upload
-                            </Button>
-                        </>
-                    )}
-                </div>
-                <ScrollArea className="flex-1">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-[50px]">
-                                    <Checkbox
-                                        checked={selectedFileIds.length > 0 && selectedFileIds.length === filesInSelectedFolder.length}
-                                        onCheckedChange={handleSelectAllFiles}
-                                        aria-label="Select all files"
-                                        disabled={filesInSelectedFolder.length === 0}
-                                    />
-                                </TableHead>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Size</TableHead>
-                                <TableHead>Modified</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filesInSelectedFolder.length > 0 ? (
-                                filesInSelectedFolder.map(file => (
-                                    <TableRow key={file.id}>
-                                        <TableCell>
-                                            <Checkbox
-                                                checked={selectedFileIds.includes(file.id)}
-                                                onCheckedChange={() => handleSelectFile(file.id)}
-                                                aria-label={`Select file ${file.name}`}
-                                            />
-                                        </TableCell>
-                                        <TableCell className="font-medium flex items-center gap-2">
-                                            <FileIcon fileType={file.type} />
-                                            {file.name}
-                                        </TableCell>
-                                        <TableCell>{file.type}</TableCell>
-                                        <TableCell>{(file.size / 1024).toFixed(2)} KB</TableCell>
-                                        <TableCell>{format(file.modifiedAt, 'PPp')}</TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={75}>
+                <div className="flex flex-col h-full">
+                    <div className="flex items-center justify-between p-2 border-b h-[57px]">
+                        {selectedFileIds.length > 0 ? (
+                            <>
+                                <h3 className="px-2 text-lg font-semibold">{selectedFileIds.length} selected</h3>
+                                <Button variant="destructive" onClick={handleDeleteSelected}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <h3 className="px-2 text-lg font-semibold">{selectedFolder?.name || 'Select a folder'}</h3>
+                                <Button variant="outline" onClick={() => setIsUploadDialogOpen(true)} disabled={!selectedFolderId}>
+                                    <FileUp className="mr-2 h-4 w-4" /> Upload
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                    <div className="flex-1 overflow-auto">
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={5} className="h-24 text-center">
-                                        This folder is empty.
-                                    </TableCell>
+                                    <TableHead className="w-[50px]">
+                                        <Checkbox
+                                            checked={filesInSelectedFolder.length > 0 && selectedFileIds.length === filesInSelectedFolder.length}
+                                            onCheckedChange={handleSelectAllFiles}
+                                            aria-label="Select all files"
+                                            disabled={filesInSelectedFolder.length === 0}
+                                        />
+                                    </TableHead>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead>Size</TableHead>
+                                    <TableHead>Modified</TableHead>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </ScrollArea>
-            </div>
-        </div>
+                            </TableHeader>
+                            <TableBody>
+                                {filesInSelectedFolder.length > 0 ? (
+                                    filesInSelectedFolder.map(file => (
+                                        <TableRow key={file.id}>
+                                            <TableCell>
+                                                <Checkbox
+                                                    checked={selectedFileIds.includes(file.id)}
+                                                    onCheckedChange={() => handleSelectFile(file.id)}
+                                                    aria-label={`Select file ${file.name}`}
+                                                />
+                                            </TableCell>
+                                            <TableCell className="font-medium flex items-center gap-2">
+                                                <FileIcon fileType={file.type} />
+                                                {file.name}
+                                            </TableCell>
+                                            <TableCell>{file.type}</TableCell>
+                                            <TableCell>{(file.size / 1024).toFixed(2)} KB</TableCell>
+                                            <TableCell>{format(file.modifiedAt, 'PPp')}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="h-24 text-center">
+                                            This folder is empty.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
+            </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
       
       {isNewFolderDialogOpen && (
@@ -353,3 +356,5 @@ export function FilesView() {
     </>
   );
 }
+
+    

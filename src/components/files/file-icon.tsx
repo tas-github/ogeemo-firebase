@@ -1,5 +1,6 @@
 
-import { File, FileText, FileImage, FileCode, FileVideo, FileAudio, FileArchive } from 'lucide-react';
+import { File, FileText, FileImage, FileArchive, FileVideo, FileAudio, FileCode, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface FileIconProps {
   fileType: string;
@@ -8,7 +9,7 @@ interface FileIconProps {
 
 export function FileIcon({ fileType, className }: FileIconProps) {
   const commonClass = "h-5 w-5 text-muted-foreground";
-  const finalClassName = `${commonClass} ${className || ''}`;
+  const finalClassName = cn(commonClass, className);
 
   if (fileType.startsWith('image/')) {
     return <FileImage className={finalClassName} />;
@@ -25,16 +26,16 @@ export function FileIcon({ fileType, className }: FileIconProps) {
 
   switch (fileType) {
     case 'application/pdf':
-      return <FileText className={finalClassName} color="#e53e3e" />;
+      return <FileText className={cn(finalClassName, "text-red-500")} />;
     case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
     case 'application/msword':
-      return <FileText className={finalClassName} color="#4285f4" />;
+      return <FileText className={cn(finalClassName, "text-blue-500")} />;
     case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
     case 'application/vnd.ms-excel':
-      return <FileText className={finalClassName} color="#34a853" />;
+      return <FileText className={cn(finalClassName, "text-green-500")} />;
     case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
     case 'application/vnd.ms-powerpoint':
-      return <FileText className={finalClassName} color="#fbbc05" />;
+      return <FileText className={cn(finalClassName, "text-orange-500")} />;
     case 'text/plain':
       return <FileText className={finalClassName} />;
     case 'text/html':
@@ -46,3 +47,5 @@ export function FileIcon({ fileType, className }: FileIconProps) {
       return <File className={finalClassName} />;
   }
 }
+
+    
