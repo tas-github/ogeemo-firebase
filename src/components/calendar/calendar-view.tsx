@@ -78,6 +78,7 @@ const TimelineDayColumn = ({
   onEventDrop,
   onEventClick,
   hideHeader = false,
+  today,
 }: {
   day: Date;
   dayEvents: Event[];
@@ -86,6 +87,7 @@ const TimelineDayColumn = ({
   onEventDrop: (eventId: string, newStart: Date) => void;
   onEventClick: (event: Event) => void;
   hideHeader?: boolean;
+  today: Date | null;
 }) => {
   const PIXELS_PER_MINUTE = 2;
   const hours = Array.from({ length: viewEndHour - viewStartHour + 1 }, (_, i) => i + viewStartHour);
@@ -121,7 +123,7 @@ const TimelineDayColumn = ({
       {!hideHeader && (
         <div className="sticky top-0 z-10 h-16 border-b bg-background text-center">
           <p className="text-sm font-semibold">{format(day, 'EEE')}</p>
-          <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
+          <p className={cn("text-2xl font-bold", today && isSameDay(day, today) && "text-primary")}>{format(day, 'd')}</p>
         </div>
       )}
       <div ref={dropRef} className="relative" style={{ height: `${CONTAINER_HEIGHT}px` }}>
@@ -153,7 +155,7 @@ const TimelineDayColumn = ({
   );
 };
 
-const MonthView = ({ date, events, onEventClick }: { date: Date; events: Event[], onEventClick: (event: Event) => void; }) => {
+const MonthView = ({ date, events, onEventClick, today }: { date: Date; events: Event[], onEventClick: (event: Event) => void; today: Date | null }) => {
   const monthStart = startOfMonth(date);
   const monthEnd = endOfMonth(date);
   const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -185,7 +187,7 @@ const MonthView = ({ date, events, onEventClick }: { date: Date; events: Event[]
               >
                 <p className={cn(
                   "font-medium text-sm self-start",
-                  isToday(day) && "bg-primary text-primary-foreground rounded-full h-6 w-6 flex items-center justify-center",
+                  today && isSameDay(day, today) && "bg-primary text-primary-foreground rounded-full h-6 w-6 flex items-center justify-center",
                   !isSameMonth(day, date) && "text-muted-foreground"
                 )}>
                   {format(day, 'd')}
@@ -213,6 +215,7 @@ const MonthView = ({ date, events, onEventClick }: { date: Date; events: Event[]
 
 function CalendarPageContent() {
   const [date, setDate] = React.useState<Date | undefined>();
+  const [today, setToday] = React.useState<Date | null>(null);
   const [view, setView] = React.useState<CalendarView>("day");
   const [events, setEvents] = React.useState<Event[]>([]);
   
@@ -230,7 +233,9 @@ function CalendarPageContent() {
   const { toast } = useToast();
 
   React.useEffect(() => {
-    setDate(new Date());
+    const now = new Date();
+    setDate(now);
+    setToday(now);
   }, []);
 
   React.useEffect(() => {
@@ -424,6 +429,7 @@ function CalendarPageContent() {
                       onEventDrop={handleEventDrop}
                       onEventClick={handleEventClick}
                       hideHeader={hideDayHeader}
+                      today={today}
                     />
                   </div>
                 </div>
@@ -448,7 +454,7 @@ function CalendarPageContent() {
         const weekRange = eachDayOfInterval({ start: startOfWeek(date, { weekStartsOn }), end: endOfWeek(date, { weekStartsOn }) });
         return renderTimelineView(weekRange);
       case "month":
-        return <MonthView date={date} events={events} onEventClick={handleEventClick} />;
+        return <MonthView date={date} events={events} onEventClick={handleEventClick} today={today} />;
       default:
         return null;
     }
@@ -494,8 +500,9 @@ function CalendarPageContent() {
               <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setDate(new Date())}
+                  onClick={() => date && setDate(new Date())}
                   className="h-8 px-3"
+                  disabled={!today || (date ? isSameDay(date, today) : false)}
               >
                   Today
               </Button>
