@@ -44,17 +44,13 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { FileIcon } from '@/components/files/file-icon';
 import { type FileItem, type FolderItem, mockFiles, mockFolders } from '@/data/files';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const NewFolderDialog = dynamic(() => import('@/components/files/new-folder-dialog'), {
+  loading: () => <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
+});
+
+const UploadFolderSelectDialog = dynamic(() => import('@/components/files/upload-folder-select-dialog'), {
   loading: () => <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
 });
 
@@ -70,7 +66,9 @@ export function FilesView() {
 
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderInitialParentId, setNewFolderInitialParentId] = useState<string | null>(null);
-  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [isFolderSelectOpen, setIsFolderSelectOpen] = useState(false);
+  const [uploadTargetFolder, setUploadTargetFolder] = useState<string | null>(null);
+
 
   const topLevelFolders = useMemo(() => folders.filter(f => !f.parentId), [folders]);
   const subfoldersByParentId = useMemo(() => {
@@ -123,30 +121,37 @@ export function FilesView() {
   };
 
   const handleUploadClick = () => {
-    const selectedFolder = folders.find(f => f.id === selectedFolderId);
-    if (!selectedFolder) {
+    if (folders.length === 0) {
       toast({
         variant: "destructive",
-        title: "Please select a folder",
-        description: "You must select a folder before you can upload files.",
+        title: "No Folders Available",
+        description: "Please create a folder before uploading files.",
       });
       return;
     }
-    setIsUploadDialogOpen(true);
+    setIsFolderSelectOpen(true);
+  };
+
+  const handleFolderSelectedForUpload = (folderId: string) => {
+    setUploadTargetFolder(folderId);
+    setIsFolderSelectOpen(false);
+    // Use a timeout to ensure state update completes before triggering the file input click
+    setTimeout(() => fileInputRef.current?.click(), 0);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
+    if (e.target.files && e.target.files.length > 0 && uploadTargetFolder) {
       const newFiles = Array.from(e.target.files).map(file => ({
         id: `file-${Date.now()}-${Math.random()}`,
         name: file.name,
         type: file.type,
         size: file.size,
         modifiedAt: new Date(),
-        folderId: selectedFolderId,
+        folderId: uploadTargetFolder,
       }));
       setFiles(prev => [...prev, ...newFiles]);
       toast({ title: `${newFiles.length} file(s) uploaded.` });
+      setUploadTargetFolder(null); // Reset after upload
     }
     e.target.value = '';
   };
@@ -186,27 +191,6 @@ export function FilesView() {
         className="hidden"
         multiple
       />
-       <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Start Upload</DialogTitle>
-            <DialogDescription>
-              You are about to upload files to the "{currentFolderName}" folder.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsUploadDialogOpen(false)}>Cancel</Button>
-            <Button
-              onClick={() => {
-                setIsUploadDialogOpen(false);
-                fileInputRef.current?.click();
-              }}
-            >
-              Start Upload
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       <div className="flex flex-col h-full">
         <header className="text-center py-4 sm:py-6 px-4 sm:px-6">
           <h1 className="text-3xl font-bold font-headline text-primary">File Manager</h1>
@@ -366,6 +350,14 @@ export function FilesView() {
           onFolderCreated={handleCreateFolder}
           folders={folders}
           initialParentId={newFolderInitialParentId}
+        />
+      )}
+      {isFolderSelectOpen && (
+        <UploadFolderSelectDialog
+          isOpen={isFolderSelectOpen}
+          onOpenChange={setIsFolderSelectOpen}
+          folders={folders}
+          onSelectFolder={handleFolderSelectedForUpload}
         />
       )}
     </>
