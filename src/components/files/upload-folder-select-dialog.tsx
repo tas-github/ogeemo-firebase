@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,11 +11,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { type FolderItem } from "@/data/files";
 import { Folder } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface UploadFolderSelectDialogProps {
   isOpen: boolean;
@@ -24,95 +23,127 @@ interface UploadFolderSelectDialogProps {
   onSelectFolder: (folderId: string) => void;
 }
 
-const FolderRadioList = ({
-  allFolders,
-  parentId = null,
-  level = 0,
-}: {
-  allFolders: FolderItem[];
-  parentId?: string | null;
-  level?: number;
-}) => {
-  const childFolders = allFolders.filter((f) => f.parentId === parentId);
-
-  if (childFolders.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="space-y-2">
-      {childFolders.map((folder) => (
-        <div key={folder.id} style={{ paddingLeft: `${level * 1.5}rem` }}>
-          <div className="flex items-center space-x-3 rounded-md p-2 hover:bg-accent has-[:checked]:bg-accent">
-            <RadioGroupItem value={folder.id} id={folder.id} />
-            <Label
-              htmlFor={folder.id}
-              className="flex-1 cursor-pointer flex items-center gap-2"
-            >
-              <Folder className="h-4 w-4" />
-              {folder.name}
-            </Label>
-          </div>
-          <FolderRadioList
-            allFolders={allFolders}
-            parentId={folder.id}
-            level={level + 1}
-          />
-        </div>
-      ))}
-    </div>
-  );
-};
-
 export default function UploadFolderSelectDialog({
   isOpen,
   onOpenChange,
   folders,
   onSelectFolder,
 }: UploadFolderSelectDialogProps) {
-  const [selectedFolderId, setSelectedFolderId] = useState<string | undefined>();
+  // ID of the folder selected in the left panel to show its children
+  const [selectedParentFolderId, setSelectedParentFolderId] = useState<string | null>(null);
+  // ID of the final destination folder (can be parent or child)
+  const [destinationFolderId, setDestinationFolderId] = useState<string | null>(null);
 
   const handleContinue = () => {
-    if (selectedFolderId) {
-      onSelectFolder(selectedFolderId);
+    if (destinationFolderId) {
+      onSelectFolder(destinationFolderId);
     }
   };
+
+  const topLevelFolders = useMemo(() => folders.filter(f => !f.parentId), [folders]);
+  const subfolders = useMemo(() => {
+    if (!selectedParentFolderId) return [];
+    return folders.filter(f => f.parentId === selectedParentFolderId);
+  }, [folders, selectedParentFolderId]);
+
+  const handleSelectParentFolder = (folderId: string) => {
+    setSelectedParentFolderId(folderId);
+    setDestinationFolderId(folderId); // A parent folder can also be the destination
+  };
+
+  const handleSelectSubfolder = (folderId: string) => {
+    setDestinationFolderId(folderId);
+  };
+  
+  const getFolderName = (folderId: string | null) => {
+    if (!folderId) return null;
+    return folders.find(f => f.id === folderId)?.name;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-        <DialogHeader className="p-6 pb-4 border-b">
-          <DialogTitle>Select Destination Folder</DialogTitle>
-          <DialogDescription>
-            Choose the folder where you want to upload your files.
-          </DialogDescription>
+        <DialogHeader className="p-6 pb-4 border-b text-center">
+            <DialogTitle className="text-3xl font-bold font-headline text-primary">
+                Select Destination Folder
+            </DialogTitle>
+            <DialogDescription>
+                Choose where you want to upload your files.
+            </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 p-6 overflow-hidden">
-          <RadioGroup
-            value={selectedFolderId}
-            onValueChange={setSelectedFolderId}
-            className="h-full"
-          >
-            <ScrollArea className="h-full border rounded-md p-2">
-              {folders.length > 0 ? (
-                <FolderRadioList allFolders={folders} parentId={null} />
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  No folders have been created yet.
-                </div>
-              )}
-            </ScrollArea>
-          </RadioGroup>
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-px bg-border overflow-hidden">
+            {/* Left Panel: Folders */}
+            <div className="flex flex-col bg-background">
+                <h3 className="p-4 text-lg font-semibold border-b">Folders</h3>
+                <ScrollArea className="flex-1 p-2">
+                    <div className="space-y-1">
+                        {topLevelFolders.length > 0 ? (
+                            topLevelFolders.map(folder => (
+                                <Button
+                                    key={folder.id}
+                                    variant={selectedParentFolderId === folder.id ? "secondary" : "ghost"}
+                                    className="w-full justify-start gap-2"
+                                    onClick={() => handleSelectParentFolder(folder.id)}
+                                >
+                                    <Folder className="h-4 w-4" />
+                                    <span>{folder.name}</span>
+                                </Button>
+                            ))
+                        ) : (
+                             <div className="flex items-center justify-center h-full text-muted-foreground p-4">
+                                No top-level folders exist.
+                             </div>
+                        )}
+                    </div>
+                </ScrollArea>
+            </div>
+
+            {/* Right Panel: Subfolders */}
+            <div className="flex flex-col bg-background">
+                <h3 className="p-4 text-lg font-semibold border-b">Subfolders</h3>
+                <ScrollArea className="flex-1 p-2">
+                     <div className="space-y-1">
+                        {subfolders.length > 0 ? (
+                            subfolders.map(folder => (
+                                <Button
+                                    key={folder.id}
+                                    variant={destinationFolderId === folder.id ? "secondary" : "ghost"}
+                                    className="w-full justify-start gap-2"
+                                    onClick={() => handleSelectSubfolder(folder.id)}
+                                >
+                                    <Folder className="h-4 w-4" />
+                                    <span>{folder.name}</span>
+                                </Button>
+                            ))
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-muted-foreground p-4">
+                                {selectedParentFolderId ? 'No subfolders here.' : 'Select a folder to see its subfolders.'}
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
+            </div>
         </div>
 
-        <DialogFooter className="p-6 pt-4 border-t">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleContinue} disabled={!selectedFolderId}>
-            Continue
-          </Button>
+        <DialogFooter className="p-6 pt-4 border-t flex-col sm:flex-row items-center sm:justify-between">
+            <div className="text-sm text-muted-foreground">
+                {destinationFolderId ? (
+                    <>
+                        Selected: <span className="font-semibold text-foreground">{getFolderName(destinationFolderId)}</span>
+                    </>
+                ) : (
+                    <span>No folder selected</span>
+                )}
+            </div>
+            <div className="flex gap-2">
+                <Button variant="ghost" onClick={() => onOpenChange(false)}>
+                    Cancel
+                </Button>
+                <Button onClick={handleContinue} disabled={!destinationFolderId}>
+                    Continue
+                </Button>
+            </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
