@@ -10,6 +10,7 @@ import {
   MoreVertical,
   Trash2,
   FileUp,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -356,5 +357,3 @@ export function FilesView() {
     </>
   );
 }
-
-    
