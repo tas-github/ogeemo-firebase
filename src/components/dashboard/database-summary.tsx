@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -24,14 +25,16 @@ export function DatabaseSummary() {
     setIsLoading(true);
     setSummary(null);
     try {
-      // In a real app, you would dynamically fetch or derive these descriptions.
+      // In a real app, you would dynamically fetch these descriptions from your backend.
       const databaseDescription =
-        "A Firebase database for a modern e-commerce platform. It manages products, customer orders, user accounts, and inventory.";
+        "A Firebase database for the Ogeemo platform, a comprehensive tool for managing business operations including contacts, projects, tasks, and files.";
       const collectionsDescription = `
-        - users: 1,523 documents. Stores customer profile information, shipping addresses, and order history.
-        - products: 8,450 documents. Contains details about each product, including name, description, price, and images.
-        - orders: 12,345 documents. Contains information about each customer order, including items, quantities, and payment status.
-        - inventory: 8,450 documents. Tracks stock levels for each product.
+        - projects: 2 documents. Manages high-level projects and initiatives.
+        - tasks: 15 documents. Stores individual tasks, appointments, and calendar events, linked to projects.
+        - contacts: 6 documents. Contains information about clients, leads, and personal contacts.
+        - contactFolders: 3 documents. Organizes contacts into user-defined groups.
+        - files: 10 documents. Metadata for user-uploaded files.
+        - fileFolders: 7 documents. Organizes files into a hierarchical structure.
       `;
 
       const result = await summarizeDatabase({
