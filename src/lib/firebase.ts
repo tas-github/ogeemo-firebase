@@ -23,8 +23,8 @@ if (firebaseConfig.apiKey) {
     auth = getAuth(app);
     db = getFirestore(app);
     provider = new GoogleAuthProvider();
-    // Request scopes for Google Drive API for the next step.
-    provider.addScope('https://www.googleapis.com/auth/drive.readonly');
+    // Request scope to create new files in the user's Google Drive.
+    provider.addScope('https://www.googleapis.com/auth/drive.file');
   } catch (error) {
     console.error("Firebase initialization error:", error);
     // This will keep app, auth, and db as null if initialization fails

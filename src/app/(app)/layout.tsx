@@ -1,9 +1,13 @@
+
 import { ClientLayout } from "@/components/layout/client-layout";
+import { AuthProvider } from "@/context/auth-context";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClientLayout>
-      {children}
-    </ClientLayout>
+    <AuthProvider>
+      <ClientLayout>
+        {children}
+      </ClientLayout>
+    </AuthProvider>
   );
 }
