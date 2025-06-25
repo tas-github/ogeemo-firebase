@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 
 const NewFolderDialog = dynamic(() => import('@/components/files/new-folder-dialog'), {
@@ -59,6 +60,7 @@ export function FilesView() {
   const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
   const [renamingFolder, setRenamingFolder] = useState<FolderItem | null>(null);
   const [renameInputValue, setRenameInputValue] = useState("");
+  const [highlightHeader, setHighlightHeader] = useState(false);
   
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -112,6 +114,16 @@ export function FilesView() {
       }
     }
   }, [files, isLoading]);
+
+  useEffect(() => {
+    if (selectedFolderId) {
+      setHighlightHeader(true);
+      const timer = setTimeout(() => {
+        setHighlightHeader(false);
+      }, 500); // Highlight duration
+      return () => clearTimeout(timer);
+    }
+  }, [selectedFolderId]);
   
   const openNewFolderDialog = (options: { parentId?: string | null } = {}) => {
     const { parentId = selectedFolderId } = options;
@@ -438,7 +450,9 @@ export function FilesView() {
                             {selectedFileIds.length > 0 ? (
                                 <h3 className="text-lg font-semibold">{selectedFileIds.length} selected</h3>
                             ) : (
-                                <h3 className="text-lg font-semibold">{selectedFolder?.name || 'Select a folder'}</h3>
+                                <h3 className={cn("text-lg font-semibold transition-colors duration-300", highlightHeader && "text-primary")}>
+                                    {selectedFolder?.name || 'Select a folder'}
+                                </h3>
                             )}
                         </div>
 
@@ -463,7 +477,7 @@ export function FilesView() {
                             )}
                         </div>
                     </div>
-                    <div className="flex-1 overflow-auto animate-in fade-in-50 duration-300" key={selectedFolderId ?? 'no-folder'}>
+                    <div className="flex-1 overflow-auto animate-in fade-in-50 duration-300">
                         <Table>
                             <TableHeader>
                                 <TableRow>
