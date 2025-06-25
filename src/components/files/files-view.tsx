@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import {
   Folder,
@@ -15,6 +15,7 @@ import {
   Move,
   FolderPlus,
   LoaderCircle,
+  ChevronRight,
 } from 'lucide-react';
 import { format } from "date-fns";
 
@@ -45,6 +46,7 @@ import { useToast } from '@/hooks/use-toast';
 import { FileIcon } from '@/components/files/file-icon';
 import { type FileItem, type FolderItem, mockFiles, mockFolders } from '@/data/files';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 const NewFolderDialog = dynamic(() => import('@/components/files/new-folder-dialog'), {
   loading: () => <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
@@ -56,11 +58,13 @@ const UploadFolderSelectDialog = dynamic(() => import('@/components/files/upload
 
 
 export function FilesView() {
-  const [folders, setFolders] = useState<FolderItem[]>(mockFolders);
-  const [files, setFiles] = useState<FileItem[]>(mockFiles);
+  const [folders, setFolders] = useState<FolderItem[]>([]);
+  const [files, setFiles] = useState<FileItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedFolderId, setSelectedFolderId] = useState<string>('folder-1'); 
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['folder-1']));
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -70,16 +74,57 @@ export function FilesView() {
   const [uploadTargetFolder, setUploadTargetFolder] = useState<string | null>(null);
 
 
-  const topLevelFolders = useMemo(() => folders.filter(f => !f.parentId), [folders]);
-  const subfoldersByParentId = useMemo(() => {
-    const map = new Map<string, FolderItem[]>();
-    folders.forEach(folder => {
-      if (folder.parentId) {
-        if (!map.has(folder.parentId)) {
-          map.set(folder.parentId, []);
-        }
-        map.get(folder.parentId)!.push(folder);
+  useEffect(() => {
+    let loadedFolders = mockFolders;
+    let loadedFiles = mockFiles;
+    try {
+      const storedFolders = localStorage.getItem('fileManagerFolders');
+      const storedFiles = localStorage.getItem('fileManagerFiles');
+      
+      if (storedFolders) loadedFolders = JSON.parse(storedFolders);
+      if (storedFiles) {
+          loadedFiles = JSON.parse(storedFiles).map((file: FileItem) => ({
+              ...file,
+              modifiedAt: new Date(file.modifiedAt) // Re-hydrate Date objects
+          }));
       }
+    } catch (error) {
+      console.error("Failed to parse from localStorage, using mock data.", error);
+    } finally {
+      setFolders(loadedFolders);
+      setFiles(loadedFiles);
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      try {
+          localStorage.setItem('fileManagerFolders', JSON.stringify(folders));
+      } catch (error) {
+          console.error("Failed to save folders to localStorage", error);
+      }
+    }
+  }, [folders, isLoading]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      try {
+          localStorage.setItem('fileManagerFiles', JSON.stringify(files));
+      } catch (error) {
+          console.error("Failed to save files to localStorage", error);
+      }
+    }
+  }, [files, isLoading]);
+
+  const foldersByParentId = useMemo(() => {
+    const map = new Map<string | null, FolderItem[]>();
+    folders.forEach(folder => {
+        const parentId = folder.parentId || null;
+        if (!map.has(parentId)) {
+            map.set(parentId, []);
+        }
+        map.get(parentId)!.push(folder);
     });
     return map;
   }, [folders]);
@@ -135,7 +180,6 @@ export function FilesView() {
   const handleFolderSelectedForUpload = (folderId: string) => {
     setUploadTargetFolder(folderId);
     setIsFolderSelectOpen(false);
-    // Use a timeout to ensure state update completes before triggering the file input click
     setTimeout(() => fileInputRef.current?.click(), 0);
   };
 
@@ -151,7 +195,7 @@ export function FilesView() {
       }));
       setFiles(prev => [...prev, ...newFiles]);
       toast({ title: `${newFiles.length} file(s) uploaded.` });
-      setUploadTargetFolder(null); // Reset after upload
+      setUploadTargetFolder(null);
     }
     e.target.value = '';
   };
@@ -164,12 +208,27 @@ export function FilesView() {
 
   const handleCreateFolder = (newFolder: FolderItem) => {
     setFolders(prev => [...prev, newFolder]);
+    if (newFolder.parentId) {
+      setExpandedFolders(prev => new Set(prev).add(newFolder.parentId!));
+    }
     toast({ title: "Folder Created" });
   };
 
   const handleFolderSelect = (folderId: string) => {
     setSelectedFolderId(folderId);
     setSelectedFileIds([]);
+  };
+  
+  const handleToggleExpand = (folderId: string) => {
+    setExpandedFolders(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(folderId)) {
+            newSet.delete(folderId);
+        } else {
+            newSet.add(folderId);
+        }
+        return newSet;
+    });
   };
 
   const formatFileSize = (bytes: number) => {
@@ -181,6 +240,62 @@ export function FilesView() {
   };
 
   const currentFolderName = folders.find(f => f.id === selectedFolderId)?.name || 'Files';
+
+  const FolderTreeItem: React.FC<{folder: FolderItem, level: number}> = ({ folder, level }) => {
+      const hasSubfolders = foldersByParentId.has(folder.id);
+      const isExpanded = expandedFolders.has(folder.id);
+      
+      return (
+        <div style={{ paddingLeft: `${level * 1}rem` }}>
+          <div className="w-full group/folder-item flex items-center">
+            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => hasSubfolders && handleToggleExpand(folder.id)} aria-label={isExpanded ? 'Collapse' : 'Expand'}>
+                {hasSubfolders ? (
+                    <ChevronRight className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-90")} />
+                ) : <div className="w-4 h-4" />}
+            </Button>
+            <Button
+              variant={selectedFolderId === folder.id ? 'secondary' : 'ghost'}
+              className="w-full justify-start gap-2 h-9 flex-1"
+              onClick={() => handleFolderSelect(folder.id)}
+            >
+              <Folder className="h-4 w-4" />
+              <span className="truncate">{folder.name}</span>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover/folder-item:opacity-100 focus-within:opacity-100">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => openNewFolderDialog({ parentId: folder.id })}>
+                  <FolderPlus className="mr-2 h-4 w-4" />
+                  <span>Add Subfolder</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          {isExpanded && hasSubfolders && (
+            <div className="space-y-1 mt-1">
+                {(foldersByParentId.get(folder.id) || []).map(subFolder => (
+                    <FolderTreeItem key={subFolder.id} folder={subFolder} level={level + 1} />
+                ))}
+            </div>
+          )}
+        </div>
+      );
+  };
+  
+  if (isLoading) {
+    return (
+        <div className="flex h-full w-full items-center justify-center p-4">
+            <div className="flex flex-col items-center gap-4">
+                <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+                <p className="text-muted-foreground">Loading File Manager...</p>
+            </div>
+        </div>
+    );
+  }
 
   return (
     <>
@@ -207,46 +322,9 @@ export function FilesView() {
                 </div>
                 <ScrollArea className="flex-1">
                     <nav className="flex flex-col gap-1 p-2">
-                       {topLevelFolders.map(folder => (
-                          <div key={folder.id} className="w-full">
-                             <div className="w-full group/folder-item relative">
-                                <Button
-                                  variant={selectedFolderId === folder.id ? 'secondary' : 'ghost'}
-                                  className="w-full justify-start gap-2 h-9"
-                                  onClick={() => handleFolderSelect(folder.id)}
-                                >
-                                  <Folder className="h-4 w-4" />
-                                  <span className="truncate">{folder.name}</span>
-                                </Button>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 opacity-0 group-hover/folder-item:opacity-100 focus-within:opacity-100">
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onSelect={() => openNewFolderDialog({ parentId: folder.id })}>
-                                      <FolderPlus className="mr-2 h-4 w-4" />
-                                      <span>Add Subfolder</span>
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            <div className="pl-4">
-                              {subfoldersByParentId.get(folder.id)?.map(subFolder => (
-                                <Button
-                                  key={subFolder.id}
-                                  variant={selectedFolderId === subFolder.id ? 'secondary' : 'ghost'}
-                                  className="w-full justify-start gap-2 h-9"
-                                  onClick={() => handleFolderSelect(subFolder.id)}
-                                >
-                                  <Folder className="h-4 w-4" />
-                                  <span className="truncate">{subFolder.name}</span>
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
+                       {(foldersByParentId.get(null) || []).map(folder => (
+                         <FolderTreeItem key={folder.id} folder={folder} level={0} />
+                       ))}
                     </nav>
                 </ScrollArea>
               </div>
