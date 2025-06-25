@@ -450,7 +450,7 @@ export function FilesView() {
                             {selectedFileIds.length > 0 ? (
                                 <h3 className="text-lg font-semibold">{selectedFileIds.length} selected</h3>
                             ) : (
-                                <h3 className={cn("text-lg font-semibold p-1 rounded-md transition-all duration-300", highlightHeader && "bg-accent border text-accent-foreground")}>
+                                <h3 className={cn("text-lg font-semibold p-1 rounded-md transition-all duration-500", highlightHeader && "bg-primary/10 border border-primary text-primary")}>
                                     {selectedFolder?.name || 'Select a folder'}
                                 </h3>
                             )}
