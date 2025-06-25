@@ -3,6 +3,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import {
   Folder,
   LoaderCircle,
@@ -60,8 +62,11 @@ const FilePreviewDialog = dynamic(() => import('@/components/files/file-preview-
   loading: () => <DialogLoader />,
 });
 
+const ItemTypes = {
+  FILE: 'file',
+};
 
-export function FilesView() {
+function FilesViewContent() {
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -276,13 +281,12 @@ export function FilesView() {
         const fileToDownload = files.find(f => f.id === selectedFileIds[0]);
         if (!fileToDownload) throw new Error("File not found.");
 
-        // Simulate file content since we don't store it
         const simulatedContent = `This is the content for the file "${fileToDownload.name}" downloaded from Ogeemo.`;
         const fileBlob = new Blob([simulatedContent], { type: 'text/plain' });
 
         const metadata = {
             name: fileToDownload.name,
-            parents: ['root'], // Saves to the root of Google Drive
+            parents: ['root'],
         };
 
         const form = new FormData();
@@ -361,6 +365,42 @@ export function FilesView() {
       }
   };
 
+  const handleFileDrop = (file: FileItem, newFolderId: string) => {
+    if (file.folderId === newFolderId) return;
+
+    setFiles((prevFiles) =>
+      prevFiles.map((f) =>
+        f.id === file.id ? { ...f, folderId: newFolderId } : f
+      )
+    );
+
+    const folder = folders.find((f) => f.id === newFolderId);
+    toast({
+      title: "File Moved",
+      description: `"${file.name}" was moved to "${folder?.name || 'new folder'}"`,
+    });
+  };
+
+  const DraggableTableRow = ({ file, children }: { file: FileItem, children: React.ReactNode }) => {
+    const [{ isDragging }, drag] = useDrag(() => ({
+        type: ItemTypes.FILE,
+        item: file,
+        collect: (monitor) => ({
+            isDragging: monitor.isDragging(),
+        }),
+    }));
+    
+    return (
+      <TableRow
+        ref={drag}
+        onClick={() => setPreviewFile(file)}
+        className={cn("cursor-move", isDragging && "opacity-50")}
+      >
+        {children}
+      </TableRow>
+    );
+  };
+
 
   const FolderTree = ({ parentId = null, level = 0 }: { parentId?: string | null, level?: number }) => {
     const children = folders.filter(f => f.parentId === parentId);
@@ -372,11 +412,24 @@ export function FilesView() {
           const hasChildren = folders.some(f => f.parentId === folder.id);
           const isExpanded = expandedFolders.has(folder.id);
           const isRenaming = renamingFolder?.id === folder.id;
+          
+          const [{ canDrop, isOver }, drop] = useDrop(() => ({
+            accept: ItemTypes.FILE,
+            drop: (item: FileItem) => handleFileDrop(item, folder.id),
+            collect: (monitor) => ({
+                isOver: monitor.isOver(),
+                canDrop: monitor.canDrop(),
+            }),
+          }));
 
           return (
             <div key={folder.id} className="my-1">
               <div
-                className="group flex items-center gap-2 rounded-md pr-2 cursor-pointer hover:bg-accent"
+                ref={drop}
+                className={cn(
+                  "group flex items-center gap-2 rounded-md pr-2 cursor-pointer hover:bg-accent",
+                  (isOver && canDrop) && "bg-primary/20 ring-1 ring-primary"
+                )}
                 onClick={() => handleSelectFolder(folder.id)}
                 >
                 <div
@@ -388,7 +441,7 @@ export function FilesView() {
                             <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                         </Button>
                     ) : (
-                        <div className="w-6 h-6" /> // Placeholder for alignment
+                        <div className="w-6 h-6" />
                     )}
                     <Folder className={`h-4 w-4 ${folder.parentId ? 'text-green-500' : 'text-primary'}`} />
                      {isRenaming ? (
@@ -575,11 +628,7 @@ export function FilesView() {
                                 <TableBody>
                                     {filesInSelectedFolder.length > 0 ? (
                                         filesInSelectedFolder.map(file => (
-                                            <TableRow
-                                              key={file.id}
-                                              onClick={() => setPreviewFile(file)}
-                                              className="cursor-pointer"
-                                            >
+                                            <DraggableTableRow key={file.id} file={file}>
                                                 <TableCell onClick={(e) => e.stopPropagation()}>
                                                     <Checkbox
                                                         checked={selectedFileIds.includes(file.id)}
@@ -594,7 +643,7 @@ export function FilesView() {
                                                 <TableCell>{file.type}</TableCell>
                                                 <TableCell>{(file.size / 1024).toFixed(2)} KB</TableCell>
                                                 <TableCell>{format(file.modifiedAt, 'PPp')}</TableCell>
-                                            </TableRow>
+                                            </DraggableTableRow>
                                         ))
                                     ) : (
                                         <TableRow>
@@ -638,5 +687,13 @@ export function FilesView() {
         />
       )}
     </>
+  );
+}
+
+export function FilesView() {
+  return (
+    <DndProvider backend={HTML5Backend}>
+      <FilesViewContent />
+    </DndProvider>
   );
 }
