@@ -41,7 +41,7 @@ import { type Event } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { initialEvents } from "@/data/events";
 
-const NewTaskDialog = dynamic(() => import('@/components/tasks/NewTaskDialog').then((mod) => mod.NewTaskDialog), {
+const NewTaskDialog = dynamic(() => import('@/components/tasks/NewTaskDialog'), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
 });
 
@@ -212,7 +212,7 @@ const MonthView = ({ date, events, onEventClick }: { date: Date; events: Event[]
 };
 
 function CalendarPageContent() {
-  const [date, setDate] = React.useState<Date | undefined>(new Date())
+  const [date, setDate] = React.useState<Date | undefined>();
   const [view, setView] = React.useState<CalendarView>("day");
   const [events, setEvents] = React.useState<Event[]>([]);
   
@@ -228,6 +228,10 @@ function CalendarPageContent() {
   const [eventToEdit, setEventToEdit] = React.useState<Event | null>(null);
 
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    setDate(new Date());
+  }, []);
 
   React.useEffect(() => {
     try {
