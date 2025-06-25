@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
+import { getAuth, type Auth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -15,12 +15,16 @@ const firebaseConfig = {
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
+let provider: GoogleAuthProvider | null = null;
 
 if (firebaseConfig.apiKey) {
   try {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
     db = getFirestore(app);
+    provider = new GoogleAuthProvider();
+    // Request scopes for Google Drive API for the next step.
+    provider.addScope('https://www.googleapis.com/auth/drive.readonly');
   } catch (error) {
     console.error("Firebase initialization error:", error);
     // This will keep app, auth, and db as null if initialization fails
@@ -29,4 +33,4 @@ if (firebaseConfig.apiKey) {
     console.warn("Firebase configuration is missing. Firebase services will be disabled.");
 }
 
-export { app, auth, db };
+export { app, auth, db, provider };
