@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -56,7 +55,7 @@ export function DatabaseSummary() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="text-center">
         <CardTitle className="font-headline">
           AI-Powered Database Summary
         </CardTitle>
@@ -65,7 +64,7 @@ export function DatabaseSummary() {
           contents and statistics.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="flex flex-col items-center space-y-4">
         <Button onClick={handleGenerateSummary} disabled={isLoading}>
           {isLoading ? (
             <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
@@ -75,7 +74,7 @@ export function DatabaseSummary() {
           {isLoading ? "Generating..." : "Generate Summary"}
         </Button>
         {isLoading && (
-          <div className="space-y-2 rounded-lg border bg-secondary/30 p-4">
+          <div className="w-full space-y-2 rounded-lg border bg-secondary/30 p-4">
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-full" />
             <Skeleton className="h-4 w-4/5" />
