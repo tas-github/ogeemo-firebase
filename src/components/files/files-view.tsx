@@ -433,25 +433,23 @@ export function FilesView() {
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={75}>
                 <div className="flex flex-col h-full">
-                    <div className="grid grid-cols-3 items-center p-2 border-b h-[57px]">
-                        <div /> {/* Spacer div for the first column */}
-                        
-                        <div className="text-center"> {/* Centered title in the second column */}
+                    <div className="flex items-center justify-between p-2 border-b h-[57px]">
+                        <div>
                             {selectedFileIds.length > 0 ? (
-                                <h3 className="text-base font-semibold">{selectedFileIds.length} selected</h3>
+                                <h3 className="text-lg font-semibold">{selectedFileIds.length} selected</h3>
                             ) : (
-                                <h3 className="text-base font-semibold">{selectedFolder?.name || 'Select a folder'}</h3>
+                                <h3 className="text-lg font-semibold">{selectedFolder?.name || 'Select a folder'}</h3>
                             )}
                         </div>
 
-                        <div className="flex justify-end"> {/* Right-aligned content in the third column */}
+                        <div className="flex items-center gap-2">
                             {selectedFileIds.length > 0 ? (
                                 <Button variant="destructive" onClick={handleDeleteSelected}>
                                     <Trash2 className="mr-2 h-4 w-4" />
                                     Delete
                                 </Button>
                             ) : (
-                                <div className="flex items-center gap-2">
+                                <>
                                     <Button onClick={() => openNewFolderDialog({ parentId: null })} className="bg-orange-500 hover:bg-orange-600 text-white">
                                         <FolderPlus className="mr-2 h-4 w-4" /> Create Folder
                                     </Button>
@@ -461,7 +459,7 @@ export function FilesView() {
                                     <Button onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId} className="bg-orange-500 hover:bg-orange-600 text-white">
                                         <FileUp className="mr-2 h-4 w-4" /> Upload File
                                     </Button>
-                                </div>
+                                </>
                             )}
                         </div>
                     </div>
