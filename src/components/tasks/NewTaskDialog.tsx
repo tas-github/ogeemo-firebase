@@ -457,3 +457,6 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
     </Dialog>
   );
 }
+
+// Default export is needed for dynamic import without .then()
+export default NewTaskDialog;
