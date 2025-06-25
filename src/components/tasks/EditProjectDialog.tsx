@@ -213,3 +213,5 @@ export function EditProjectDialog({
     </>
   );
 }
+
+export default EditProjectDialog;
