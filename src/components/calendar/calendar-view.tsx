@@ -1,8 +1,10 @@
+
 "use client"
 
 import * as React from "react"
+import dynamic from "next/dynamic"
 import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set, addMinutes, startOfMinute, startOfMonth, endOfMonth, isToday, isSameMonth, addMonths, addWeeks } from "date-fns"
-import { Users, Settings, Plus, Calendar as CalendarIcon, Edit, ChevronLeft, ChevronRight } from "lucide-react"
+import { Users, Settings, Plus, Calendar as CalendarIcon, Edit, ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react"
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
@@ -35,10 +37,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
 import { type Event } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { initialEvents } from "@/data/events";
+
+const NewTaskDialog = dynamic(() => import('@/components/tasks/NewTaskDialog').then((mod) => mod.NewTaskDialog), {
+  loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
+});
 
 
 type CalendarView = "day" | "5days" | "week" | "month";
@@ -604,20 +609,22 @@ function CalendarPageContent() {
           </div>
         </div>
 
-        <NewTaskDialog 
-          isOpen={isNewTaskDialogOpen} 
-          onOpenChange={(open) => {
-            setIsNewTaskDialogOpen(open);
-            if (!open) {
-                setEventToEdit(null);
-            }
-          }}
-          defaultStartDate={newTaskDefaultDate}
-          eventToEdit={eventToEdit}
-          onTaskCreate={handleTaskCreate}
-          onTaskUpdate={handleTaskUpdate}
-          projectId="proj-1"
-        />
+        {isNewTaskDialogOpen && (
+            <NewTaskDialog 
+                isOpen={isNewTaskDialogOpen} 
+                onOpenChange={(open) => {
+                    setIsNewTaskDialogOpen(open);
+                    if (!open) {
+                        setEventToEdit(null);
+                    }
+                }}
+                defaultStartDate={newTaskDefaultDate}
+                eventToEdit={eventToEdit}
+                onTaskCreate={handleTaskCreate}
+                onTaskUpdate={handleTaskUpdate}
+                projectId="proj-1"
+            />
+        )}
       </div>
   )
 }
