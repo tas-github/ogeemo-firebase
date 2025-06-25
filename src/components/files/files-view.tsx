@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import {
   Folder,
   Plus,
@@ -13,6 +14,7 @@ import {
   FilePenLine,
   Move,
   FolderPlus,
+  LoaderCircle,
 } from 'lucide-react';
 import { format } from "date-fns";
 
@@ -49,18 +51,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
+const NewFolderDialog = dynamic(() => import('./new-folder-dialog'), {
+  loading: () => <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
+});
 
 
 export function FilesView() {
@@ -73,10 +69,8 @@ export function FilesView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
+  const [newFolderInitialParentId, setNewFolderInitialParentId] = useState<string | null>(null);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
-  const [newFolderType, setNewFolderType] = useState<'folder' | 'subfolder'>('folder');
-  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
 
   const topLevelFolders = useMemo(() => folders.filter(f => !f.parentId), [folders]);
   const subfoldersByParentId = useMemo(() => {
@@ -157,39 +151,14 @@ export function FilesView() {
     e.target.value = '';
   };
   
-  const openNewFolderDialog = (options: { parentId?: string } = {}) => {
-    const { parentId } = options;
-    setNewFolderName("");
-
-    if (parentId) {
-      setNewFolderType('subfolder');
-      setNewFolderParentId(parentId);
-    } else {
-      setNewFolderType('folder');
-      setNewFolderParentId(null);
-    }
+  const openNewFolderDialog = (options: { parentId?: string | null } = {}) => {
+    const { parentId = null } = options;
+    setNewFolderInitialParentId(parentId);
     setIsNewFolderDialogOpen(true);
   };
 
-  const handleCreateFolder = () => {
-    if (!newFolderName.trim()) {
-       toast({ variant: "destructive", title: "Folder Name Required" });
-      return;
-    }
-
-    if (newFolderType === 'subfolder' && !newFolderParentId) {
-      toast({ variant: "destructive", title: "Parent Folder Required" });
-      return;
-    }
-
-    const newFolder: FolderItem = {
-      id: `folder-${Date.now()}`,
-      name: newFolderName.trim(),
-      parentId: newFolderType === 'folder' ? null : newFolderParentId,
-    };
+  const handleCreateFolder = (newFolder: FolderItem) => {
     setFolders(prev => [...prev, newFolder]);
-    setNewFolderName("");
-    setIsNewFolderDialogOpen(false);
     toast({ title: "Folder Created" });
   };
 
@@ -248,78 +217,9 @@ export function FilesView() {
             <ResizablePanel defaultSize={25} minSize={20}>
               <div className="flex h-full flex-col p-2">
                 <div className="p-2">
-                  <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
-                      <DialogTrigger asChild>
-                          <Button className="w-full" onClick={() => openNewFolderDialog()}>
-                              <Plus className="mr-2 h-4 w-4" /> New Folder
-                          </Button>
-                      </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px]">
-                            <DialogHeader>
-                                <DialogTitle>Create New</DialogTitle>
-                                <DialogDescription>
-                                    Create a new top-level folder or a subfolder within an existing one.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="py-4 space-y-4">
-                                <RadioGroup defaultValue="folder" value={newFolderType} onValueChange={(value) => setNewFolderType(value as 'folder' | 'subfolder')} className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <RadioGroupItem value="folder" id="r1" className="peer sr-only" />
-                                        <Label htmlFor="r1" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
-                                            Top-level Folder
-                                        </Label>
-                                    </div>
-                                    <div>
-                                        <RadioGroupItem value="subfolder" id="r2" className="peer sr-only" disabled={topLevelFolders.length === 0} />
-                                        <Label htmlFor="r2" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                                            Subfolder
-                                        </Label>
-                                    </div>
-                                </RadioGroup>
-
-                                {newFolderType === 'subfolder' && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="parent-folder">Parent Folder</Label>
-                                        <Select value={newFolderParentId ?? undefined} onValueChange={setNewFolderParentId} disabled={topLevelFolders.length === 0}>
-                                            <SelectTrigger id="parent-folder">
-                                                <SelectValue placeholder="Select a parent folder..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {folders.filter(f => !f.parentId).map((folder) => (
-                                                    <SelectItem key={folder.id} value={folder.id}>
-                                                        {folder.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        {topLevelFolders.length === 0 && (
-                                          <p className="text-xs text-destructive">You must create a top-level folder before you can create a subfolder.</p>
-                                        )}
-                                    </div>
-                                )}
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="folder-name">Name</Label>
-                                    <Input
-                                        id="folder-name"
-                                        value={newFolderName}
-                                        onChange={(e) => setNewFolderName(e.target.value)}
-                                        placeholder="e.g., 'Client Reports'"
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                handleCreateFolder();
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button>
-                                <Button onClick={handleCreateFolder}>Create</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                  </Dialog>
+                  <Button className="w-full" onClick={() => openNewFolderDialog()}>
+                      <Plus className="mr-2 h-4 w-4" /> New Folder
+                  </Button>
                 </div>
                 <ScrollArea className="flex-1">
                     <nav className="flex flex-col gap-1 p-2">
@@ -459,6 +359,15 @@ export function FilesView() {
           </ResizablePanelGroup>
         </div>
       </div>
+      {isNewFolderDialogOpen && (
+        <NewFolderDialog
+          isOpen={isNewFolderDialogOpen}
+          onOpenChange={setIsNewFolderDialogOpen}
+          onFolderCreated={handleCreateFolder}
+          folders={folders}
+          initialParentId={newFolderInitialParentId}
+        />
+      )}
     </>
   );
 }
