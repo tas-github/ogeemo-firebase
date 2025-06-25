@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -8,6 +9,8 @@ import {
   LoaderCircle,
   Mic,
   Square,
+  Grid,
+  Blocks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -160,7 +163,7 @@ export function ActionManagerView() {
   };
 
   return (
-    <div className="p-4 sm:p-6 flex flex-col flex-1 space-y-4 min-h-0">
+    <div className="p-4 sm:p-6 space-y-6">
       <header className="text-center">
         <h1 className="text-3xl font-bold font-headline text-primary">Welcome to your Ogeemo Action Manager</h1>
         <p className="text-muted-foreground">
@@ -168,95 +171,132 @@ export function ActionManagerView() {
         </p>
       </header>
 
-      <div className="flex-1 min-h-0">
-        <Card className="h-full flex flex-col">
-            <CardHeader className="text-center">
-                <CardTitle>Tell me what you would like to do</CardTitle>
-                <CardDescription>
-                Ask me anything about Ogeemo or describe what you'd like to accomplish.
-                </CardDescription>
-                <p className="text-sm text-muted-foreground mt-2">
-                  In order to start and stop voice to text, click the mic icon.
-                </p>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-hidden">
-               <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
-                    <div className="space-y-4">
-                        {messages.map((message) => (
-                            <div
-                            key={message.id}
-                            className={cn(
-                                "flex items-start gap-3",
-                                message.sender === "user" ? "justify-end" : "justify-start"
-                            )}
-                            >
-                            {message.sender === "ogeemo" && (
-                                <Avatar className="h-8 w-8">
-                                <AvatarFallback><Bot /></AvatarFallback>
-                                </Avatar>
-                            )}
-                            <div
-                                className={cn(
-                                "max-w-xs md:max-w-md lg:max-w-lg rounded-lg px-4 py-2 text-sm",
-                                message.sender === "user"
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-muted"
-                                )}
-                            >
-                                {message.text}
-                            </div>
-                            {message.sender === "user" && (
-                                <Avatar className="h-8 w-8">
-                                <AvatarFallback><User /></AvatarFallback>
-                                </Avatar>
-                            )}
-                            </div>
-                        ))}
-                        {isLoading && (
-                            <div className="flex items-start gap-3 justify-start">
-                            <Avatar className="h-8 w-8">
-                                <AvatarFallback><Bot /></AvatarFallback>
-                            </Avatar>
-                            <div className="bg-muted rounded-lg px-4 py-2 text-sm flex items-center">
-                                <LoaderCircle className="h-4 w-4 animate-spin" />
-                            </div>
-                            </div>
-                        )}
-                    </div>
-                </ScrollArea>
-            </CardContent>
-            <CardFooter>
-                <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className={cn(
-                        "flex-shrink-0",
-                        status === 'listening' && "text-destructive"
+      <Card className="h-[65vh] flex flex-col">
+          <CardHeader className="text-center">
+              <CardTitle>Tell me what you would like to do</CardTitle>
+              <CardDescription>
+              Ask me anything about Ogeemo or describe what you'd like to accomplish.
+              </CardDescription>
+              <p className="text-sm text-muted-foreground mt-2">
+                In order to start and stop voice to text, click the mic icon.
+              </p>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-hidden">
+             <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
+                  <div className="space-y-4">
+                      {messages.map((message) => (
+                          <div
+                          key={message.id}
+                          className={cn(
+                              "flex items-start gap-3",
+                              message.sender === "user" ? "justify-end" : "justify-start"
+                          )}
+                          >
+                          {message.sender === "ogeemo" && (
+                              <Avatar className="h-8 w-8">
+                              <AvatarFallback><Bot /></AvatarFallback>
+                              </Avatar>
+                          )}
+                          <div
+                              className={cn(
+                              "max-w-xs md:max-w-md lg:max-w-lg rounded-lg px-4 py-2 text-sm",
+                              message.sender === "user"
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted"
+                              )}
+                          >
+                              {message.text}
+                          </div>
+                          {message.sender === "user" && (
+                              <Avatar className="h-8 w-8">
+                              <AvatarFallback><User /></AvatarFallback>
+                              </Avatar>
+                          )}
+                          </div>
+                      ))}
+                      {isLoading && (
+                          <div className="flex items-start gap-3 justify-start">
+                          <Avatar className="h-8 w-8">
+                              <AvatarFallback><Bot /></AvatarFallback>
+                          </Avatar>
+                          <div className="bg-muted rounded-lg px-4 py-2 text-sm flex items-center">
+                              <LoaderCircle className="h-4 w-4 animate-spin" />
+                          </div>
+                          </div>
                       )}
-                      onClick={handleMicClick}
-                      disabled={isSupported === false || isLoading || status === 'activating'}
-                      title={getMicButtonTitle(status)}
-                    >
-                      {renderMicIcon(status)}
-                      <span className="sr-only">Use Voice</span>
-                    </Button>
-                    <Input
-                        placeholder="Enter your message here..."
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        disabled={isLoading}
-                        autoComplete="off"
-                    />
-                    <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-                        <Send className="h-5 w-5" />
-                        <span className="sr-only">Send Message</span>
-                    </Button>
-                </form>
-            </CardFooter>
-        </Card>
-      </div>
+                  </div>
+              </ScrollArea>
+          </CardContent>
+          <CardFooter>
+              <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "flex-shrink-0",
+                      status === 'listening' && "text-destructive"
+                    )}
+                    onClick={handleMicClick}
+                    disabled={isSupported === false || isLoading || status === 'activating'}
+                    title={getMicButtonTitle(status)}
+                  >
+                    {renderMicIcon(status)}
+                    <span className="sr-only">Use Voice</span>
+                  </Button>
+                  <Input
+                      placeholder="Enter your message here..."
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      disabled={isLoading}
+                      autoComplete="off"
+                  />
+                  <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+                      <Send className="h-5 w-5" />
+                      <span className="sr-only">Send Message</span>
+                  </Button>
+              </form>
+          </CardFooter>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold font-headline text-primary">The Ogeemo Advantage</CardTitle>
+          <CardDescription>
+            Discover how Ogeemo streamlines your workflow and boosts productivity.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-primary/10 rounded-lg"><Grid className="h-6 w-6 text-primary" /></div>
+            <div>
+              <h4 className="font-semibold">Unified Workspace</h4>
+              <p className="text-sm text-muted-foreground">Manage projects, contacts, emails, and more from a single, intuitive interface. No more switching between apps.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-primary/10 rounded-lg"><Bot className="h-6 w-6 text-primary" /></div>
+            <div>
+              <h4 className="font-semibold">AI-Powered Assistance</h4>
+              <p className="text-sm text-muted-foreground">Leverage Ogeemo, your intelligent assistant, to draft emails, summarize content, and automate repetitive tasks.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-primary/10 rounded-lg"><Blocks className="h-6 w-6 text-primary" /></div>
+            <div>
+              <h4 className="font-semibold">Seamless Integrations</h4>
+              <p className="text-sm text-muted-foreground">Connect with the tools you already use, like Google services, to create a truly integrated workflow.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-primary/10 rounded-lg"><Mic className="h-6 w-6 text-primary" /></div>
+            <div>
+              <h4 className="font-semibold">Voice Control</h4>
+              <p className="text-sm text-muted-foreground">Navigate the platform, compose messages, and manage tasks using only your voice for a hands-free experience.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
