@@ -434,8 +434,8 @@ export function FilesView() {
         <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border">
             <ResizablePanel defaultSize={25} minSize={20}>
                 <div className="flex h-full flex-col">
-                    <div className="p-2 border-b">
-                      <h3 className="px-2 text-lg font-semibold mb-2 text-center">All Folders</h3>
+                    <div className="p-2 border-b text-center">
+                      <h3 className="px-2 text-lg font-semibold mb-2">All Folders</h3>
                     </div>
                     <ScrollArea className="flex-1 p-2">
                         <FolderTree />
@@ -450,7 +450,7 @@ export function FilesView() {
                             {selectedFileIds.length > 0 ? (
                                 <h3 className="text-lg font-semibold">{selectedFileIds.length} selected</h3>
                             ) : (
-                                <h3 className={cn("text-lg font-semibold transition-colors duration-300", highlightHeader && "text-primary")}>
+                                <h3 className={cn("text-lg font-semibold p-1 rounded-md transition-all duration-300", highlightHeader && "bg-accent border text-accent-foreground")}>
                                     {selectedFolder?.name || 'Select a folder'}
                                 </h3>
                             )}
@@ -477,7 +477,7 @@ export function FilesView() {
                             )}
                         </div>
                     </div>
-                    <div className="flex-1 overflow-auto animate-in fade-in-50 duration-300">
+                    <div className="flex-1 overflow-auto animate-in fade-in-50 duration-300" key={selectedFolderId}>
                         <Table>
                             <TableHeader>
                                 <TableRow>
