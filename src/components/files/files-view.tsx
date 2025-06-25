@@ -465,7 +465,7 @@ export function FilesView() {
                             )}
                         </div>
                     </div>
-                    <div className="flex-1 overflow-auto">
+                    <div className="flex-1 overflow-auto animate-in fade-in-50 duration-300" key={selectedFolderId ?? 'no-folder'}>
                         <Table>
                             <TableHeader>
                                 <TableRow>
