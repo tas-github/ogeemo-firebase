@@ -31,11 +31,14 @@ import {
   Italic,
   Underline,
   List,
-  ListOrdered
+  ListOrdered,
+  Mic,
+  Square
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useSpeechToText } from '@/hooks/use-speech-to-text';
 
 // Mock data for sources
 const mockSources = [
@@ -62,6 +65,65 @@ export function ResearchHubView() {
   const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
   const editorRef = React.useRef<HTMLDivElement>(null);
+  const chatInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Notepad Speech-to-Text
+  const [notepadContentBeforeSpeech, setNotepadContentBeforeSpeech] = React.useState('');
+  const {
+    isListening: isNotepadListening,
+    startListening: startNotepadListening,
+    stopListening: stopNotepadListening,
+    isSupported: isSttSupported,
+  } = useSpeechToText({
+    onTranscript: (transcript) => {
+      if (editorRef.current) {
+        const newText = notepadContentBeforeSpeech ? `${notepadContentBeforeSpeech} ${transcript}` : transcript;
+        editorRef.current.innerHTML = newText;
+        
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(editorRef.current);
+        range.collapse(false);
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
+    },
+  });
+
+  const handleNotepadMicClick = () => {
+    if (isNotepadListening) {
+      stopNotepadListening();
+    } else {
+      if (editorRef.current) {
+        setNotepadContentBeforeSpeech(editorRef.current.innerHTML);
+        editorRef.current.focus();
+        startNotepadListening();
+      }
+    }
+  };
+
+  // Assistant Speech-to-Text
+  const [assistantInputBeforeSpeech, setAssistantInputBeforeSpeech] = React.useState('');
+  const {
+    isListening: isAssistantListening,
+    startListening: startAssistantListening,
+    stopListening: stopAssistantListening,
+  } = useSpeechToText({
+    onTranscript: (transcript) => {
+      const newText = assistantInputBeforeSpeech ? `${assistantInputBeforeSpeech} ${transcript}` : transcript;
+      setUserInput(newText);
+    },
+  });
+
+  const handleAssistantMicClick = () => {
+    if (isAssistantListening) {
+      stopAssistantListening();
+    } else {
+      setAssistantInputBeforeSpeech(userInput);
+      chatInputRef.current?.focus();
+      startAssistantListening();
+    }
+  };
 
   const selectedSource = sources.find(s => s.id === selectedSourceId);
   
@@ -186,6 +248,9 @@ export function ResearchHubView() {
                 <Button variant="ghost" size="icon" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" title="Dictate Notes" onMouseDown={preventDefault} onClick={handleNotepadMicClick} disabled={!isSttSupported} className={cn(isNotepadListening && "text-destructive")}>
+                    {isNotepadListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </Button>
             </div>
             <ScrollArea className="flex-1 bg-background">
               <div
@@ -251,12 +316,16 @@ export function ResearchHubView() {
             <div className="p-4 border-t">
               <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                 <Input
+                  ref={chatInputRef}
                   value={userInput}
                   onChange={e => setUserInput(e.target.value)}
                   placeholder="Ask a follow-up question..."
                   disabled={isLoading}
                 />
-                <Button type="submit" disabled={isLoading || !userInput.trim()}>
+                <Button type="button" variant="ghost" size="icon" onClick={handleAssistantMicClick} disabled={!isSttSupported || isLoading} className={cn(isAssistantListening && "text-destructive")}>
+                  {isAssistantListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </Button>
+                <Button type="submit" size="icon" disabled={isLoading || !userInput.trim()}>
                   <Send className="h-4 w-4" />
                 </Button>
               </form>
