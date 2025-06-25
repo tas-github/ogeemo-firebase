@@ -2,12 +2,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Edit, FileText, ChevronDown } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Plus, Edit, FileText, ChevronDown, LoaderCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { NewTaskDialog } from "@/components/tasks/NewTaskDialog";
-import { NewProjectDialog } from "@/components/tasks/NewProjectDialog";
-import { EditProjectDialog } from "@/components/tasks/EditProjectDialog";
 import { type Event } from "@/types/calendar";
 import { type Project, initialProjects } from "@/data/projects";
 import { initialEvents } from "@/data/events";
@@ -29,6 +27,24 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ProjectInfoCard } from "@/components/tasks/ProjectInfoCard";
+
+const DialogLoader = () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <LoaderCircle className="h-10 w-10 animate-spin text-white" />
+    </div>
+);
+
+const NewTaskDialog = dynamic(() => import('@/components/tasks/NewTaskDialog'), {
+    loading: () => <DialogLoader />,
+});
+
+const NewProjectDialog = dynamic(() => import('@/components/tasks/NewProjectDialog'), {
+    loading: () => <DialogLoader />,
+});
+
+const EditProjectDialog = dynamic(() => import('@/components/tasks/EditProjectDialog'), {
+    loading: () => <DialogLoader />,
+});
 
 
 export function TasksView() {
@@ -266,8 +282,9 @@ export function TasksView() {
         )}
       </main>
 
-      <NewTaskDialog isOpen={isNewTaskOpen} onOpenChange={setIsNewTaskOpen} onTaskCreate={handleCreateTask} projectId={selectedProjectId} />
-      <NewProjectDialog
+      {isNewTaskOpen && <NewTaskDialog isOpen={isNewTaskOpen} onOpenChange={setIsNewTaskOpen} onTaskCreate={handleCreateTask} projectId={selectedProjectId} />}
+      
+      {isNewProjectOpen && <NewProjectDialog
         isOpen={isNewProjectOpen}
         onOpenChange={(open) => {
             setIsNewProjectOpen(open);
@@ -277,8 +294,9 @@ export function TasksView() {
         templates={projectTemplates}
         onSaveAsTemplate={handleSaveTemplate}
         initialTasks={templateToApply}
-      />
-      <EditProjectDialog
+      />}
+      
+      {isEditProjectOpen && selectedProject && <EditProjectDialog
         isOpen={isEditProjectOpen}
         onOpenChange={setIsEditProjectOpen}
         project={selectedProject}
@@ -286,7 +304,7 @@ export function TasksView() {
         onProjectSave={handleProjectSave}
         templates={projectTemplates}
         onSaveAsTemplate={handleSaveTemplate}
-      />
+      />}
     </div>
   );
 }
