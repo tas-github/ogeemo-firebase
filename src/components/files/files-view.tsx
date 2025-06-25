@@ -424,16 +424,6 @@ export function FilesView() {
                 <div className="flex h-full flex-col">
                     <div className="p-2 border-b">
                       <h3 className="px-2 text-lg font-semibold mb-2">Folders</h3>
-                      <div className="flex flex-col gap-2 px-2">
-                        <Button variant="outline" size="sm" onClick={() => openNewFolderDialog({ parentId: null })}>
-                          <FolderPlus className="mr-2 h-4 w-4" />
-                          Create Folder
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => openNewFolderDialog({ parentId: selectedFolderId })} disabled={!selectedFolderId}>
-                           <FolderPlus className="mr-2 h-4 w-4" />
-                           Create Subfolder
-                        </Button>
-                      </div>
                     </div>
                     <ScrollArea className="flex-1 p-2">
                         <FolderTree />
@@ -455,9 +445,17 @@ export function FilesView() {
                         ) : (
                             <>
                                 <h3 className="px-2 text-lg font-semibold">{selectedFolder?.name || 'Select a folder'}</h3>
-                                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId}>
-                                    <FileUp className="mr-2 h-4 w-4" /> Upload File
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Button variant="outline" onClick={() => openNewFolderDialog({ parentId: null })}>
+                                        <FolderPlus className="mr-2 h-4 w-4" /> Create Folder
+                                    </Button>
+                                    <Button variant="outline" onClick={() => openNewFolderDialog({ parentId: selectedFolderId })} disabled={!selectedFolderId}>
+                                        <FolderPlus className="mr-2 h-4 w-4" /> Create Subfolder
+                                    </Button>
+                                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId}>
+                                        <FileUp className="mr-2 h-4 w-4" /> Upload File
+                                    </Button>
+                                </div>
                             </>
                         )}
                     </div>
