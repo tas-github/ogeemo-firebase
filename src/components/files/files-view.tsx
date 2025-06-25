@@ -190,6 +190,11 @@ export function FilesView() {
     }
   };
 
+  const handleAddFileClick = (folderId: string) => {
+    handleSelectFolder(folderId);
+    fileInputRef.current?.click();
+  };
+
   const FolderTree = ({ parentId = null, level = 0 }: { parentId?: string | null, level?: number }) => {
     const children = folders.filter(f => f.parentId === parentId);
     if (children.length === 0) return null;
@@ -226,6 +231,10 @@ export function FilesView() {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => handleAddFileClick(folder.id)}>
+                            <FileUp className="mr-2 h-4 w-4" />
+                            Add File
+                        </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => openNewFolderDialog({ parentId: folder.id })}>
                             <FolderPlus className="mr-2 h-4 w-4" />
                             Add subfolder
