@@ -67,7 +67,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { type Contact, type FolderData, mockContacts, mockFolders } from '@/data/contacts';
 
-const OgeemoChatDialog = dynamic(() => import('./ogeemo-chat-dialog'), {
+const OgeemoChatDialog = dynamic(() => import('@/components/ogeemail/ogeemo-chat-dialog'), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
 });
 

@@ -52,7 +52,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { type Contact, type FolderData, mockContacts, mockFolders } from '@/data/contacts';
 import { useToast } from '@/hooks/use-toast';
 
-const ContactFormDialog = dynamic(() => import('./contact-form-dialog'), {
+const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-form-dialog'), {
   loading: () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <LoaderCircle className="h-10 w-10 animate-spin text-white" />
