@@ -11,6 +11,7 @@ import {
   Trash2,
   FileUp,
   ChevronRight,
+  Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -38,6 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from '@/components/ui/input';
 
 
 const NewFolderDialog = dynamic(() => import('@/components/files/new-folder-dialog'), {
@@ -55,6 +57,8 @@ export function FilesView() {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
+  const [renamingFolder, setRenamingFolder] = useState<FolderItem | null>(null);
+  const [renameInputValue, setRenameInputValue] = useState("");
   
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -124,6 +128,7 @@ export function FilesView() {
   };
   
   const handleSelectFolder = (folderId: string) => {
+    if (renamingFolder?.id === folderId) return;
     setSelectedFolderId(folderId);
     setSelectedFileIds([]);
   };
@@ -244,6 +249,43 @@ export function FilesView() {
     handleSelectFolder(folderId);
     fileInputRef.current?.click();
   };
+  
+  const handleStartRename = (folder: FolderItem) => {
+    setRenamingFolder(folder);
+    setRenameInputValue(folder.name);
+  };
+
+  const handleCancelRename = () => {
+    setRenamingFolder(null);
+    setRenameInputValue("");
+  };
+  
+  const handleConfirmRename = () => {
+    if (!renamingFolder || !renameInputValue.trim() || renamingFolder.name === renameInputValue.trim()) {
+        handleCancelRename();
+        return;
+    }
+
+    setFolders(prev =>
+        prev.map(f =>
+            f.id === renamingFolder.id ? { ...f, name: renameInputValue.trim() } : f
+        )
+    );
+    toast({
+        title: "Folder Renamed",
+        description: `"${renamingFolder.name}" was renamed to "${renameInputValue.trim()}".`,
+    });
+    handleCancelRename();
+  };
+
+  const handleRenameInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+          handleConfirmRename();
+      } else if (e.key === 'Escape') {
+          handleCancelRename();
+      }
+  };
+
 
   const FolderTree = ({ parentId = null, level = 0 }: { parentId?: string | null, level?: number }) => {
     const children = folders.filter(f => f.parentId === parentId);
@@ -254,6 +296,8 @@ export function FilesView() {
         {children.map(folder => {
           const hasChildren = folders.some(f => f.parentId === folder.id);
           const isExpanded = expandedFolders.has(folder.id);
+          const isRenaming = renamingFolder?.id === folder.id;
+
           return (
             <div key={folder.id} className="my-1">
               <div
@@ -272,33 +316,51 @@ export function FilesView() {
                         <div className="w-6 h-6" /> // Placeholder for alignment
                     )}
                     <Folder className="h-4 w-4 text-primary" />
-                    <span className="text-sm truncate flex-1">{folder.name}</span>
+                     {isRenaming ? (
+                        <Input
+                            value={renameInputValue}
+                            onChange={(e) => setRenameInputValue(e.target.value)}
+                            onBlur={handleConfirmRename}
+                            onKeyDown={handleRenameInputKeyDown}
+                            className="h-7 text-sm flex-1"
+                            autoFocus
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    ) : (
+                        <span className="text-sm truncate flex-1">{folder.name}</span>
+                    )}
                 </div>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100">
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => handleAddFileClick(folder.id)}>
-                            <FileUp className="mr-2 h-4 w-4" />
-                            Add File
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => openNewFolderDialog({ parentId: folder.id })}>
-                            <FolderPlus className="mr-2 h-4 w-4" />
-                            Add subfolder
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                            onSelect={() => handleDeleteFolder(folder)}
-                        >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Folder
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {!isRenaming && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => handleAddFileClick(folder.id)}>
+                                <FileUp className="mr-2 h-4 w-4" />
+                                Add File
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => openNewFolderDialog({ parentId: folder.id })}>
+                                <FolderPlus className="mr-2 h-4 w-4" />
+                                Add subfolder
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleStartRename(folder)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                onSelect={() => handleDeleteFolder(folder)}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Folder
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
               </div>
               {isExpanded && <FolderTree parentId={folder.id} level={level + 1} />}
             </div>
