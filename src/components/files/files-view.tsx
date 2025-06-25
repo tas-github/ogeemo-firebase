@@ -449,10 +449,10 @@ export function FilesView() {
                                     <Button onClick={() => openNewFolderDialog({ parentId: null })} className="bg-orange-500 hover:bg-orange-600 text-white">
                                         <FolderPlus className="mr-2 h-4 w-4" /> Create Folder
                                     </Button>
-                                    <Button variant="outline" onClick={() => openNewFolderDialog({ parentId: selectedFolderId })} disabled={!selectedFolderId}>
+                                    <Button onClick={() => openNewFolderDialog({ parentId: selectedFolderId })} disabled={!selectedFolderId} className="bg-orange-500 hover:bg-orange-600 text-white">
                                         <FolderPlus className="mr-2 h-4 w-4" /> Create Subfolder
                                     </Button>
-                                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId}>
+                                    <Button onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId} className="bg-orange-500 hover:bg-orange-600 text-white">
                                         <FileUp className="mr-2 h-4 w-4" /> Upload File
                                     </Button>
                                 </div>
