@@ -446,7 +446,7 @@ export function FilesView() {
                             <>
                                 <h3 className="px-2 text-lg font-semibold">{selectedFolder?.name || 'Select a folder'}</h3>
                                 <div className="flex items-center gap-2">
-                                    <Button variant="outline" onClick={() => openNewFolderDialog({ parentId: null })}>
+                                    <Button onClick={() => openNewFolderDialog({ parentId: null })} className="bg-orange-500 hover:bg-orange-600 text-white">
                                         <FolderPlus className="mr-2 h-4 w-4" /> Create Folder
                                     </Button>
                                     <Button variant="outline" onClick={() => openNewFolderDialog({ parentId: selectedFolderId })} disabled={!selectedFolderId}>
