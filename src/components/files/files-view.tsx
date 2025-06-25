@@ -423,7 +423,7 @@ export function FilesView() {
             <ResizablePanel defaultSize={25} minSize={20}>
                 <div className="flex h-full flex-col">
                     <div className="p-2 border-b">
-                      <h3 className="px-2 text-lg font-semibold mb-2 text-center">Folders</h3>
+                      <h3 className="px-2 text-lg font-semibold mb-2 text-center">All Folders</h3>
                     </div>
                     <ScrollArea className="flex-1 p-2">
                         <FolderTree />
