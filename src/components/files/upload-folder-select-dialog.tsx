@@ -7,14 +7,12 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { type FolderItem } from "@/data/files";
 import { Folder, FolderPlus } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface UploadFolderSelectDialogProps {
   isOpen: boolean;
@@ -65,14 +63,14 @@ export default function UploadFolderSelectDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-        <DialogHeader className="p-6 pb-4 border-b text-center">
+        <div className="p-6 pb-4 border-b text-center">
             <DialogTitle className="text-3xl font-bold font-headline text-primary">
                 Select Destination Folder
             </DialogTitle>
             <DialogDescription>
                 Choose where you want to upload your files.
             </DialogDescription>
-        </DialogHeader>
+        </div>
 
         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-px bg-border overflow-hidden">
             {/* Left Panel: Folders */}
