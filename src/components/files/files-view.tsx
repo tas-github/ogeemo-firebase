@@ -120,7 +120,7 @@ export function FilesView() {
                                     className="w-full justify-start gap-2"
                                     onClick={() => setSelectedParentFolderId(folder.id)}
                                 >
-                                    <Folder className="h-4 w-4" />
+                                    <Folder className="h-4 w-4 text-primary" />
                                     <span>{folder.name}</span>
                                 </Button>
                             ))
@@ -145,7 +145,7 @@ export function FilesView() {
                                     variant={"ghost"} // Subfolders aren't selectable in this view
                                     className="w-full justify-start gap-2 cursor-default"
                                 >
-                                    <Folder className="h-4 w-4" />
+                                    <Folder className="h-4 w-4 text-chart-2" />
                                     <span>{folder.name}</span>
                                 </Button>
                             ))
