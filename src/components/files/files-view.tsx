@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Pencil,
   Download,
+  FolderSearch,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -62,7 +63,6 @@ export function FilesView() {
   const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
   const [renamingFolder, setRenamingFolder] = useState<FolderItem | null>(null);
   const [renameInputValue, setRenameInputValue] = useState("");
-  const [highlightHeader, setHighlightHeader] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   
   const { toast } = useToast();
@@ -117,16 +117,6 @@ export function FilesView() {
       }
     }
   }, [files, isLoading]);
-
-  useEffect(() => {
-    if (selectedFolderId) {
-      setHighlightHeader(true);
-      const timer = setTimeout(() => {
-        setHighlightHeader(false);
-      }, 500); // Highlight duration
-      return () => clearTimeout(timer);
-    }
-  }, [selectedFolderId]);
   
   const openNewFolderDialog = (options: { parentId?: string | null } = {}) => {
     const { parentId = selectedFolderId } = options;
@@ -512,7 +502,7 @@ export function FilesView() {
                             {selectedFileIds.length > 0 ? (
                                 <h3 className="text-lg font-semibold">{selectedFileIds.length} selected</h3>
                             ) : (
-                                <h3 className={cn("text-lg font-semibold p-1 rounded-md transition-all duration-500", highlightHeader && "bg-primary/10 border border-primary text-primary")}>
+                                <h3 className="text-lg font-semibold p-1 rounded-md">
                                     {selectedFolder?.name || 'Select a folder'}
                                 </h3>
                             )}
@@ -601,8 +591,12 @@ export function FilesView() {
                                 </TableBody>
                             </Table>
                          ) : (
-                            <div className="flex h-full items-center justify-center p-4 text-center text-muted-foreground">
-                                <p>Select a folder from the left to view its contents.</p>
+                            <div className="flex h-full flex-col items-center justify-center gap-4 p-4 text-center">
+                                <FolderSearch className="h-16 w-16 text-primary/30" strokeWidth={1.5} />
+                                <h3 className="text-xl font-semibold text-foreground">Select a Folder</h3>
+                                <p className="text-muted-foreground">
+                                Choose a folder from the list on the left to view its contents.
+                                </p>
                             </div>
                         )}
                     </div>
