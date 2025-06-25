@@ -20,6 +20,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -27,6 +28,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FileIcon } from './file-icon';
 import { format } from 'date-fns';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 const NewFolderDialog = dynamic(() => import('@/components/files/new-folder-dialog'), {
   loading: () => <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
@@ -42,6 +54,7 @@ export function FilesView() {
   const [newFolderInitialParentId, setNewFolderInitialParentId] = useState<string | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
+  const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
   
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -157,6 +170,43 @@ export function FilesView() {
     });
     setSelectedFileIds([]);
   };
+
+  const handleDeleteFolder = (folder: FolderItem) => {
+    setFolderToDelete(folder);
+  };
+  
+  const handleConfirmDeleteFolder = () => {
+      if (!folderToDelete) return;
+
+      const folderIdsToDelete = new Set<string>([folderToDelete.id]);
+      const findDescendants = (parentId: string) => {
+          folders
+              .filter(f => f.parentId === parentId)
+              .forEach(child => {
+                  folderIdsToDelete.add(child.id);
+                  findDescendants(child.id);
+              });
+      };
+      findDescendants(folderToDelete.id);
+
+      const newFolders = folders.filter(f => !folderIdsToDelete.has(f.id));
+      const newFiles = files.filter(f => f.folderId && !folderIdsToDelete.has(f.folderId));
+
+      setFolders(newFolders);
+      setFiles(newFiles);
+
+      if (selectedFolderId && folderIdsToDelete.has(selectedFolderId)) {
+          const rootFolder = newFolders.find(f => !f.parentId);
+          setSelectedFolderId(rootFolder ? rootFolder.id : null);
+      }
+
+      toast({
+          title: "Folder Deleted",
+          description: `Folder "${folderToDelete.name}" and all its contents have been removed.`,
+      });
+
+      setFolderToDelete(null);
+  };
   
   const selectedFolder = useMemo(() => folders.find(f => f.id === selectedFolderId), [folders, selectedFolderId]);
 
@@ -239,6 +289,14 @@ export function FilesView() {
                             <FolderPlus className="mr-2 h-4 w-4" />
                             Add subfolder
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                            onSelect={() => handleDeleteFolder(folder)}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Folder
+                        </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -270,6 +328,25 @@ export function FilesView() {
         className="hidden"
         multiple
       />
+      <AlertDialog open={!!folderToDelete} onOpenChange={(open) => !open && setFolderToDelete(null)}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete the folder <strong>{folderToDelete?.name}</strong> and all its contents, including subfolders and files.
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={handleConfirmDeleteFolder}
+                  >
+                      Delete
+                  </AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
       <div className="flex flex-col h-full p-4 sm:p-6 space-y-6">
         <header className="text-center">
           <h1 className="text-3xl font-bold font-headline text-primary">
