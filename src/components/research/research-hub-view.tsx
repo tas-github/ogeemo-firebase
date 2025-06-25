@@ -22,6 +22,7 @@ import {
   ArrowLeft,
   Pencil,
   Info,
+  Search,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from '@/components/ui/label';
 
 
 // Mock data for sources
@@ -153,15 +155,16 @@ const HubView = ({ setView }: { setView: (view: View) => void }) => {
   )
 };
 
-const SourcesView = ({ setView, sources, selectedSourceId, handleSourceSelect }: { setView: (view: View) => void, sources: typeof mockSources, selectedSourceId: string | null, handleSourceSelect: (id: string) => void }) => (
+const SourcesView = ({ setView, sources, selectedSourceId, handleSourceSelect, onSearchClick }: { setView: (view: View) => void, sources: typeof mockSources, selectedSourceId: string | null, handleSourceSelect: (id: string) => void, onSearchClick: () => void }) => (
   <div className="h-full flex flex-col p-4 sm:p-6">
     <div className="flex items-center gap-4 mb-4">
         <Button variant="outline" onClick={() => setView('hub')}><ArrowLeft className="mr-2 h-4 w-4"/> Back to Hub</Button>
         <h2 className="text-2xl font-bold font-headline">Sources</h2>
     </div>
-    <div className="flex items-center gap-2 mb-4">
-      <Button className="flex-1"><UploadCloud className="mr-2 h-4 w-4" /> Upload File</Button>
-      <Button className="flex-1"><LinkIcon className="mr-2 h-4 w-4" /> Add Web Link</Button>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+      <Button><UploadCloud className="mr-2 h-4 w-4" /> Upload File</Button>
+      <Button><LinkIcon className="mr-2 h-4 w-4" /> Add Web Link</Button>
+      <Button onClick={onSearchClick}><Search className="mr-2 h-4 w-4" /> Search Internet</Button>
     </div>
     <ScrollArea className="flex-1 border rounded-lg">
       <div className="p-4 space-y-2">
@@ -291,6 +294,10 @@ export function ResearchHubView() {
   const editorRef = React.useRef<HTMLDivElement>(null);
   const chatInputRef = React.useRef<HTMLInputElement>(null);
 
+  const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [isSearching, setIsSearching] = React.useState(false);
+
   const [notepadContentBeforeSpeech, setNotepadContentBeforeSpeech] = React.useState('');
   const {
     isListening: isNotepadListening,
@@ -387,6 +394,30 @@ export function ResearchHubView() {
     setUserInput('');
   };
 
+  const handleSearch = () => {
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    setTimeout(() => {
+      const newSource = {
+        id: `src-${Date.now()}`,
+        type: 'web' as const,
+        title: `Web Search: "${searchQuery}"`,
+        url: `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`,
+        summary: `A summary of search results for "${searchQuery}".`,
+      };
+      setSources(prev => [...prev, newSource]);
+      setIsSearching(false);
+      setIsSearchDialogOpen(false);
+      setSearchQuery("");
+      toast({
+        title: "Source Added",
+        description: "The top search result has been added to your sources.",
+      });
+      handleSourceSelect(newSource.id);
+    }, 2000);
+  };
+
+
   const handleAddToNotepad = (content: React.ReactNode) => {
     if (editorRef.current) {
         const quoteContent = typeof content === 'string' ? content : (content as React.ReactElement).props.children[1]?.props.children || '';
@@ -400,7 +431,7 @@ export function ResearchHubView() {
   const renderView = () => {
     switch(view) {
         case 'sources':
-            return <SourcesView setView={setView} sources={sources} selectedSourceId={selectedSourceId} handleSourceSelect={handleSourceSelect} />;
+            return <SourcesView setView={setView} sources={sources} selectedSourceId={selectedSourceId} handleSourceSelect={handleSourceSelect} onSearchClick={() => setIsSearchDialogOpen(true)} />;
         case 'notepad':
             return <NotepadView setView={setView} editorRef={editorRef} handleFormat={handleFormat} handleNotepadMicClick={handleNotepadMicClick} isNotepadListening={isNotepadListening} isSttSupported={isSttSupported} />;
         case 'assistant':
@@ -411,5 +442,38 @@ export function ResearchHubView() {
     }
   }
 
-  return <div className="h-full">{renderView()}</div>;
+  return (
+    <div className="h-full">
+        {renderView()}
+
+        <Dialog open={isSearchDialogOpen} onOpenChange={setIsSearchDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Search the Internet</DialogTitle>
+                    <DialogDescription>
+                        Enter a query to find relevant articles and information. The top result will be added as a source.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-2">
+                    <Label htmlFor="search-query">Search Query</Label>
+                    <Input
+                        id="search-query"
+                        placeholder="e.g., Best suppliers of roofing products in North America"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        disabled={isSearching}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
+                    />
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => setIsSearchDialogOpen(false)} disabled={isSearching}>Cancel</Button>
+                    <Button onClick={handleSearch} disabled={isSearching || !searchQuery.trim()}>
+                        {isSearching ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+                        {isSearching ? 'Searching...' : 'Search'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    </div>
+  );
 }
