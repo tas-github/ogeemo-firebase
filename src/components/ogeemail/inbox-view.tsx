@@ -21,6 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { useToast } from '@/hooks/use-toast';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { format } from 'date-fns';
 
 
 interface Email {
@@ -376,7 +377,7 @@ export function OgeeMailInboxView() {
                                                     <div className="flex items-start justify-between">
                                                         <p className={cn('font-semibold text-sm truncate', !email.read && 'font-bold text-primary')}>{email.from}</p>
                                                         <time className="text-xs text-muted-foreground whitespace-nowrap">
-                                                            {new Date(email.date).toLocaleDateString()}
+                                                            {format(new Date(email.date), 'MM/dd/yyyy')}
                                                         </time>
                                                     </div>
                                                     <p className="font-medium truncate text-sm">{email.subject}</p>

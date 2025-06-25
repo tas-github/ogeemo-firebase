@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -9,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Separator } from '@/components/ui/separator';
+import { format } from 'date-fns';
 
 interface Email {
   id: string;
@@ -182,7 +184,7 @@ export function SandboxView() {
                     <div className="flex items-start justify-between">
                       <p className={cn('font-semibold text-sm truncate', !email.read && 'text-primary')}>{email.from}</p>
                       <time className="text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(email.date).toLocaleDateString()}
+                        {format(new Date(email.date), 'MM/dd/yyyy')}
                       </time>
                     </div>
                     <div className="flex items-center justify-between mt-1">
