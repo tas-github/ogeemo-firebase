@@ -87,7 +87,6 @@ export function FilesView() {
       if (loadedFolders.length > 0) {
         const rootFolder = loadedFolders.find(f => !f.parentId);
         if (rootFolder) {
-            setSelectedFolderId(rootFolder.id);
             setExpandedFolders(new Set([rootFolder.id]));
         }
       }
@@ -213,8 +212,7 @@ export function FilesView() {
       setFiles(newFiles);
 
       if (selectedFolderId && folderIdsToDelete.has(selectedFolderId)) {
-          const rootFolder = newFolders.find(f => !f.parentId);
-          setSelectedFolderId(rootFolder ? rootFolder.id : null);
+          setSelectedFolderId(null);
       }
 
       toast({
@@ -478,52 +476,58 @@ export function FilesView() {
                         </div>
                     </div>
                     <div className="flex-1 overflow-auto animate-in fade-in-50 duration-300" key={selectedFolderId}>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-[50px]">
-                                        <Checkbox
-                                            checked={filesInSelectedFolder.length > 0 && selectedFileIds.length === filesInSelectedFolder.length}
-                                            onCheckedChange={handleSelectAllFiles}
-                                            aria-label="Select all files"
-                                            disabled={filesInSelectedFolder.length === 0}
-                                        />
-                                    </TableHead>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead>Size</TableHead>
-                                    <TableHead>Modified</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filesInSelectedFolder.length > 0 ? (
-                                    filesInSelectedFolder.map(file => (
-                                        <TableRow key={file.id}>
-                                            <TableCell>
-                                                <Checkbox
-                                                    checked={selectedFileIds.includes(file.id)}
-                                                    onCheckedChange={() => handleSelectFile(file.id)}
-                                                    aria-label={`Select file ${file.name}`}
-                                                />
-                                            </TableCell>
-                                            <TableCell className="font-medium flex items-center gap-2">
-                                                <FileIcon fileType={file.type} />
-                                                {file.name}
-                                            </TableCell>
-                                            <TableCell>{file.type}</TableCell>
-                                            <TableCell>{(file.size / 1024).toFixed(2)} KB</TableCell>
-                                            <TableCell>{format(file.modifiedAt, 'PPp')}</TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : (
+                        {selectedFolderId ? (
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={5} className="h-24 text-center">
-                                            This folder is empty.
-                                        </TableCell>
+                                        <TableHead className="w-[50px]">
+                                            <Checkbox
+                                                checked={filesInSelectedFolder.length > 0 && selectedFileIds.length === filesInSelectedFolder.length}
+                                                onCheckedChange={handleSelectAllFiles}
+                                                aria-label="Select all files"
+                                                disabled={filesInSelectedFolder.length === 0}
+                                            />
+                                        </TableHead>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Size</TableHead>
+                                        <TableHead>Modified</TableHead>
                                     </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {filesInSelectedFolder.length > 0 ? (
+                                        filesInSelectedFolder.map(file => (
+                                            <TableRow key={file.id}>
+                                                <TableCell>
+                                                    <Checkbox
+                                                        checked={selectedFileIds.includes(file.id)}
+                                                        onCheckedChange={() => handleSelectFile(file.id)}
+                                                        aria-label={`Select file ${file.name}`}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="font-medium flex items-center gap-2">
+                                                    <FileIcon fileType={file.type} />
+                                                    {file.name}
+                                                </TableCell>
+                                                <TableCell>{file.type}</TableCell>
+                                                <TableCell>{(file.size / 1024).toFixed(2)} KB</TableCell>
+                                                <TableCell>{format(file.modifiedAt, 'PPp')}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="h-24 text-center">
+                                                This folder is empty.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                         ) : (
+                            <div className="flex h-full items-center justify-center p-4 text-center text-muted-foreground">
+                                <p>Select a folder from the left to view its contents.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </ResizablePanel>
