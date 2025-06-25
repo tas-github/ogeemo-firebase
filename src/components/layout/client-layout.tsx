@@ -40,7 +40,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
               {pathname === '/sandbox' && <h1 className="text-xl font-semibold">Sandbox</h1>}
             </div>
           </header>
-          <main className="flex-1 overflow-hidden">
+          <main className="flex-1 overflow-auto">
             {children}
           </main>
         </div>
