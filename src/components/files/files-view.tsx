@@ -32,10 +32,6 @@ const NewFolderDialog = dynamic(() => import('@/components/files/new-folder-dial
   loading: () => <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
 });
 
-const UploadFolderSelectDialog = dynamic(() => import('@/components/files/upload-folder-select-dialog'), {
-    loading: () => <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
-});
-
 
 export function FilesView() {
   const [folders, setFolders] = useState<FolderItem[]>([]);
@@ -45,7 +41,6 @@ export function FilesView() {
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderInitialParentId, setNewFolderInitialParentId] = useState<string | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   
   const { toast } = useToast();
@@ -165,6 +160,36 @@ export function FilesView() {
   
   const selectedFolder = useMemo(() => folders.find(f => f.id === selectedFolderId), [folders, selectedFolderId]);
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || !selectedFolderId) {
+      toast({
+        variant: 'destructive',
+        title: 'Upload Failed',
+        description: 'Please select a folder before uploading files.',
+      });
+      return;
+    }
+
+    const newFiles: FileItem[] = Array.from(event.target.files).map((file) => ({
+      id: `file-${Date.now()}-${Math.random()}`,
+      name: file.name,
+      type: file.type || 'application/octet-stream',
+      size: file.size,
+      modifiedAt: new Date(),
+      folderId: selectedFolderId,
+    }));
+
+    setFiles((prev) => [...prev, ...newFiles]);
+    toast({
+      title: `${newFiles.length} file(s) uploaded successfully!`,
+      description: `Added to "${selectedFolder?.name}".`,
+    });
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const FolderTree = ({ parentId = null, level = 0 }: { parentId?: string | null, level?: number }) => {
     const children = folders.filter(f => f.parentId === parentId);
     if (children.length === 0) return null;
@@ -229,6 +254,13 @@ export function FilesView() {
 
   return (
     <>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        className="hidden"
+        multiple
+      />
       <div className="flex flex-col h-full p-4 sm:p-6 space-y-6">
         <header className="text-center">
           <h1 className="text-3xl font-bold font-headline text-primary">
@@ -269,8 +301,8 @@ export function FilesView() {
                         ) : (
                             <>
                                 <h3 className="px-2 text-lg font-semibold">{selectedFolder?.name || 'Select a folder'}</h3>
-                                <Button variant="outline" onClick={() => setIsUploadDialogOpen(true)} disabled={!selectedFolderId}>
-                                    <FileUp className="mr-2 h-4 w-4" /> Upload
+                                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId}>
+                                    <FileUp className="mr-2 h-4 w-4" /> Upload File
                                 </Button>
                             </>
                         )}
@@ -335,23 +367,6 @@ export function FilesView() {
           onFolderCreated={handleCreateFolder}
           folders={folders}
           initialParentId={newFolderInitialParentId}
-        />
-      )}
-
-      {isUploadDialogOpen && (
-        <UploadFolderSelectDialog
-            isOpen={isUploadDialogOpen}
-            onOpenChange={setIsUploadDialogOpen}
-            folders={folders}
-            onSelectFolder={(folderId) => {
-                console.log("Would upload to folder:", folderId);
-                fileInputRef.current?.click();
-                setIsUploadDialogOpen(false);
-            }}
-            onNewFolderClick={(parentId) => {
-                setIsUploadDialogOpen(false);
-                openNewFolderDialog({ parentId });
-            }}
         />
       )}
     </>
