@@ -46,8 +46,18 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 
 
+const DialogLoader = () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <LoaderCircle className="h-10 w-10 animate-spin text-white" />
+    </div>
+);
+
 const NewFolderDialog = dynamic(() => import('@/components/files/new-folder-dialog'), {
-  loading: () => <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
+  loading: () => <DialogLoader />,
+});
+
+const FilePreviewDialog = dynamic(() => import('@/components/files/file-preview-dialog'), {
+  loading: () => <DialogLoader />,
 });
 
 
@@ -64,6 +74,7 @@ export function FilesView() {
   const [renamingFolder, setRenamingFolder] = useState<FolderItem | null>(null);
   const [renameInputValue, setRenameInputValue] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
+  const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
   
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -564,8 +575,12 @@ export function FilesView() {
                                 <TableBody>
                                     {filesInSelectedFolder.length > 0 ? (
                                         filesInSelectedFolder.map(file => (
-                                            <TableRow key={file.id}>
-                                                <TableCell>
+                                            <TableRow
+                                              key={file.id}
+                                              onClick={() => setPreviewFile(file)}
+                                              className="cursor-pointer"
+                                            >
+                                                <TableCell onClick={(e) => e.stopPropagation()}>
                                                     <Checkbox
                                                         checked={selectedFileIds.includes(file.id)}
                                                         onCheckedChange={() => handleSelectFile(file.id)}
@@ -612,6 +627,14 @@ export function FilesView() {
           onFolderCreated={handleCreateFolder}
           folders={folders}
           initialParentId={newFolderInitialParentId}
+        />
+      )}
+
+      {previewFile && (
+        <FilePreviewDialog
+            isOpen={!!previewFile}
+            onOpenChange={(open) => !open && setPreviewFile(null)}
+            file={previewFile}
         />
       )}
     </>
