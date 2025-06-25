@@ -315,7 +315,7 @@ export function FilesView() {
                     ) : (
                         <div className="w-6 h-6" /> // Placeholder for alignment
                     )}
-                    <Folder className="h-4 w-4 text-primary" />
+                    <Folder className={`h-4 w-4 ${folder.parentId ? 'text-green-500' : 'text-primary'}`} />
                      {isRenaming ? (
                         <Input
                             value={renameInputValue}
@@ -356,7 +356,7 @@ export function FilesView() {
                                 onSelect={() => handleDeleteFolder(folder)}
                             >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Folder
+                                Delete
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -423,7 +423,7 @@ export function FilesView() {
             <ResizablePanel defaultSize={25} minSize={20}>
                 <div className="flex h-full flex-col">
                     <div className="p-2 border-b">
-                      <h3 className="px-2 text-lg font-semibold mb-2">Folders</h3>
+                      <h3 className="px-2 text-lg font-semibold mb-2 text-center">Folders</h3>
                     </div>
                     <ScrollArea className="flex-1 p-2">
                         <FolderTree />
