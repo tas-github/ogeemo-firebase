@@ -15,9 +15,13 @@ export interface FolderItem {
 }
 
 export const mockFolders: FolderItem[] = [
-  { id: 'folder-1', name: 'Folders', parentId: null },
+  { id: 'folder-1', name: 'Client Documents', parentId: null },
   { id: 'folder-2', name: 'Invoices', parentId: 'folder-1' },
   { id: 'folder-3', name: 'Marketing Assets', parentId: 'folder-1' },
+  { id: 'folder-4', name: 'Internal Projects', parentId: null },
+  { id: 'folder-5', name: 'Website V2', parentId: 'folder-4' },
+  { id: 'folder-6', name: 'Design', parentId: 'folder-5' },
+  { id: 'folder-7', name: 'Development', parentId: 'folder-5' },
 ];
 
 export const mockFiles: FileItem[] = [
@@ -27,7 +31,7 @@ export const mockFiles: FileItem[] = [
     type: 'application/pdf',
     size: 1204857,
     modifiedAt: new Date('2024-07-20T10:00:00Z'),
-    folderId: 'folder-1',
+    folderId: 'folder-6',
   },
   {
     id: 'file-2',
@@ -68,5 +72,37 @@ export const mockFiles: FileItem[] = [
     size: 980432,
     modifiedAt: new Date('2024-07-23T16:45:00Z'),
     folderId: 'folder-3',
+  },
+  {
+    id: 'file-7',
+    name: 'api-endpoints.json',
+    type: 'application/json',
+    size: 1234,
+    modifiedAt: new Date('2024-07-26T10:15:00Z'),
+    folderId: 'folder-7',
+  },
+  {
+    id: 'file-8',
+    name: 'Component.tsx',
+    type: 'text/javascript',
+    size: 2456,
+    modifiedAt: new Date('2024-07-26T11:30:00Z'),
+    folderId: 'folder-7',
+  },
+  {
+    id: 'file-9',
+    name: 'landing-page-v1.fig',
+    type: 'application/octet-stream',
+    size: 4500123,
+    modifiedAt: new Date('2024-07-24T09:00:00Z'),
+    folderId: 'folder-6',
+  },
+  {
+    id: 'file-10',
+    name: 'landing-page-v2.fig',
+    type: 'application/octet-stream',
+    size: 5100234,
+    modifiedAt: new Date('2024-07-25T15:20:00Z'),
+    folderId: 'folder-6',
   },
 ];
