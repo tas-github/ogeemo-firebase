@@ -37,17 +37,17 @@ import { useToast } from '@/hooks/use-toast';
 // Mock data for sources
 const mockSources = [
   { id: 'src-1', type: 'pdf', title: 'Q3_Market_Analysis.pdf', summary: 'Analysis of market trends and competitor performance for the third quarter.' },
-  { id: 'src-2', type: 'web', title: 'TechCrunch Article on AI Startups', url: 'https://techcrunch.com/2024/01/01/ai-startups-2024/', summary: 'An overview of the most promising AI startups to watch this year.' },
+  { id: 'src-2', type: 'web', title: 'TechCrunch Article on Ogeemo Startups', url: 'https://techcrunch.com/2024/01/01/ai-startups-2024/', summary: 'An overview of the most promising Ogeemo startups to watch this year.' },
   { id: 'src-3', type: 'pdf', title: 'Project_Phoenix_Brief.pdf', summary: 'Initial project brief outlining goals, scope, and key deliverables for Project Phoenix.' },
 ];
 
-// Mock data for AI Chat
+// Mock data for Ogeemo Chat
 const initialChatMessages = [
-  { sender: 'ai', text: 'Hi! I am your AI research assistant. Ask me anything about your sources, or select one to get a summary.' },
+  { sender: 'ogeemo', text: 'Hi! I am your Ogeemo research assistant. Ask me anything about your sources, or select one to get a summary.' },
 ];
 
 type ChatMessage = {
-  sender: 'user' | 'ai';
+  sender: 'user' | 'ogeemo';
   text: React.ReactNode;
 };
 
@@ -67,7 +67,7 @@ export function ResearchHubView() {
     const source = sources.find(s => s.id === sourceId);
     if (source) {
       setChatMessages(prev => [...prev, {
-        sender: 'ai',
+        sender: 'ogeemo',
         text: (
           <div>
             <p className="font-bold">Summary of "{source.title}":</p>
@@ -86,20 +86,20 @@ export function ResearchHubView() {
     setIsLoading(true);
 
     setTimeout(() => {
-      let aiResponse: React.ReactNode = "I'm not sure how to answer that. Try asking something about your selected sources.";
+      let ogeemoResponse: React.ReactNode = "I'm not sure how to answer that. Try asking something about your selected sources.";
       if (selectedSource) {
-        aiResponse = (
+        ogeemoResponse = (
           <div>
             <p>Based on "{selectedSource.title}", here are some key points regarding "{userInput}":</p>
             <ul className="list-disc pl-5 my-2 space-y-1">
-              <li>AI-driven platforms are transforming market analysis by providing deeper insights.</li>
+              <li>Ogeemo-driven platforms are transforming market analysis by providing deeper insights.</li>
               <li>Competitor A has increased market share by 5% this quarter.</li>
               <li>There is a growing demand for personalized user experiences.</li>
             </ul>
           </div>
         );
       }
-      setChatMessages(prev => [...prev, { sender: 'ai', text: aiResponse }]);
+      setChatMessages(prev => [...prev, { sender: 'ogeemo', text: ogeemoResponse }]);
       setIsLoading(false);
     }, 1500);
 
@@ -168,7 +168,7 @@ export function ResearchHubView() {
           <div className="h-full flex flex-col bg-muted/30">
             <div className="p-4 border-b bg-background">
                 <h3 className="font-semibold text-lg">My Notepad</h3>
-                <p className="text-sm text-muted-foreground">A space for your thoughts and AI-generated insights.</p>
+                <p className="text-sm text-muted-foreground">A space for your thoughts and Ogeemo-generated insights.</p>
             </div>
             <ScrollArea className="flex-1">
               <div
@@ -184,20 +184,20 @@ export function ResearchHubView() {
         <ResizablePanel defaultSize={35} minSize={25}>
           <div className="h-full flex flex-col">
             <div className="p-4 border-b">
-                <h3 className="font-semibold text-lg flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary"/> AI Assistant</h3>
+                <h3 className="font-semibold text-lg flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary"/> Ogeemo Assistant</h3>
                 <p className="text-sm text-muted-foreground">Ask questions about your sources.</p>
             </div>
             <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">
                 {chatMessages.map((msg, index) => (
                     <div key={index} className={cn("flex items-start gap-3", msg.sender === 'user' ? "justify-end" : "justify-start")}>
-                        {msg.sender === 'ai' && <Avatar className="h-8 w-8"><AvatarFallback><Bot/></AvatarFallback></Avatar>}
+                        {msg.sender === 'ogeemo' && <Avatar className="h-8 w-8"><AvatarFallback><Bot/></AvatarFallback></Avatar>}
                         <div className={cn(
                             "max-w-md rounded-lg px-4 py-2 text-sm relative group",
                              msg.sender === 'user' ? "bg-primary text-primary-foreground" : "bg-muted"
                         )}>
                             <div className="prose prose-sm dark:prose-invert max-w-none">{msg.text}</div>
-                            {msg.sender === 'ai' && typeof msg.text !== 'string' && (
+                            {msg.sender === 'ogeemo' && typeof msg.text !== 'string' && (
                                 <Button
                                     size="icon"
                                     variant="ghost"
