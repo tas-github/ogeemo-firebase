@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -7,12 +8,11 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
@@ -20,16 +20,19 @@ import {
   UploadCloud,
   Link as LinkIcon,
   FileText,
-  Plus,
   Bot,
   User,
   Send,
   Sparkles,
   LoaderCircle,
   Pin,
-  MessageSquareQuote,
+  ChevronDown,
+  Bold,
+  Italic,
+  Underline,
+  List,
+  ListOrdered
 } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -61,6 +64,13 @@ export function ResearchHubView() {
   const editorRef = React.useRef<HTMLDivElement>(null);
 
   const selectedSource = sources.find(s => s.id === selectedSourceId);
+  
+  const handleFormat = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+  };
+  
+  const preventDefault = (e: React.MouseEvent) => e.preventDefault();
 
   const handleSourceSelect = (sourceId: string) => {
     setSelectedSourceId(sourceId);
@@ -108,7 +118,7 @@ export function ResearchHubView() {
 
   const handleAddToNotepad = (content: React.ReactNode) => {
     if (editorRef.current) {
-        const quoteContent = (content as React.ReactElement).props.children[1].props.children;
+        const quoteContent = typeof content === 'string' ? content : (content as React.ReactElement).props.children[1]?.props.children || '';
         const separator = editorRef.current.innerHTML.trim() ? '<hr class="my-4">' : '';
         editorRef.current.innerHTML += `${separator}<blockquote>${quoteContent}</blockquote><p><br></p>`;
         toast({ title: "Added to Notepad", description: "The content has been pinned to your notes." });
@@ -127,23 +137,27 @@ export function ResearchHubView() {
       </header>
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         <ResizablePanel defaultSize={20} minSize={15}>
-          <Card className="h-full flex flex-col rounded-none border-0 border-r">
-            <CardHeader className="p-4">
-              <CardTitle>Sources ({sources.length})</CardTitle>
-              <CardDescription>Upload or link documents to analyze.</CardDescription>
-            </CardHeader>
-            <div className="p-4 pt-0">
-               <div className="flex items-center gap-2">
-                 <Button className="flex-1" size="sm">
-                    <UploadCloud className="mr-2 h-4 w-4" /> Upload
-                 </Button>
-                 <Button className="flex-1" size="sm" variant="secondary">
-                    <LinkIcon className="mr-2 h-4 w-4" /> Add Link
-                 </Button>
-               </div>
+          <div className="h-full flex flex-col border-r">
+            <div className="p-4 border-b">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full justify-between">
+                            <span>Sources ({sources.length})</span>
+                            <ChevronDown className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                        <DropdownMenuItem onSelect={() => toast({title: "Coming soon!"})}>
+                            <UploadCloud className="mr-2 h-4 w-4" /> Upload File
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => toast({title: "Coming soon!"})}>
+                            <LinkIcon className="mr-2 h-4 w-4" /> Add Web Link
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
             <ScrollArea className="flex-1">
-              <div className="p-4 pt-0 space-y-2">
+              <div className="p-4 pt-2 space-y-2">
                 {sources.map(source => (
                   <div
                     key={source.id}
@@ -161,16 +175,19 @@ export function ResearchHubView() {
                 ))}
               </div>
             </ScrollArea>
-          </Card>
+          </div>
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={45} minSize={30}>
           <div className="h-full flex flex-col bg-muted/30">
-            <div className="p-4 border-b bg-background">
-                <h3 className="font-semibold text-lg">My Notepad</h3>
-                <p className="text-sm text-muted-foreground">A space for your thoughts and Ogeemo-generated insights.</p>
+            <div className="p-2 border-b bg-background flex items-center gap-1 flex-wrap">
+                <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" title="Italic" onMouseDown={preventDefault} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
             </div>
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 bg-background">
               <div
                 ref={editorRef}
                 contentEditable
@@ -184,8 +201,18 @@ export function ResearchHubView() {
         <ResizablePanel defaultSize={35} minSize={25}>
           <div className="h-full flex flex-col">
             <div className="p-4 border-b">
-                <h3 className="font-semibold text-lg flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary"/> Ogeemo Assistant</h3>
-                <p className="text-sm text-muted-foreground">Ask questions about your sources.</p>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between">
+                          <span className="flex items-center gap-2 font-semibold"><Sparkles className="h-5 w-5 text-primary"/> Ogeemo Assistant</span>
+                          <ChevronDown className="h-4 w-4" />
+                      </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                      <DropdownMenuItem onSelect={() => {setChatMessages(initialChatMessages); toast({title: "Chat Cleared"})}}>Clear Chat</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => toast({title: "Coming soon!"})}>Export Chat</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
             </div>
             <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">
@@ -197,7 +224,7 @@ export function ResearchHubView() {
                              msg.sender === 'user' ? "bg-primary text-primary-foreground" : "bg-muted"
                         )}>
                             <div className="prose prose-sm dark:prose-invert max-w-none">{msg.text}</div>
-                            {msg.sender === 'ogeemo' && typeof msg.text !== 'string' && (
+                            {msg.sender === 'ogeemo' && (
                                 <Button
                                     size="icon"
                                     variant="ghost"
