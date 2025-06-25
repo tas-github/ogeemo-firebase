@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { type FolderItem } from "@/data/files";
-import { Folder } from "lucide-react";
+import { Folder, FolderPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface UploadFolderSelectDialogProps {
@@ -21,6 +21,7 @@ interface UploadFolderSelectDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   folders: FolderItem[];
   onSelectFolder: (folderId: string) => void;
+  onNewFolderClick: (parentId: string | null) => void;
 }
 
 export default function UploadFolderSelectDialog({
@@ -28,6 +29,7 @@ export default function UploadFolderSelectDialog({
   onOpenChange,
   folders,
   onSelectFolder,
+  onNewFolderClick,
 }: UploadFolderSelectDialogProps) {
   // ID of the folder selected in the left panel to show its children
   const [selectedParentFolderId, setSelectedParentFolderId] = useState<string | null>(null);
@@ -127,23 +129,29 @@ export default function UploadFolderSelectDialog({
         </div>
 
         <DialogFooter className="p-6 pt-4 border-t flex-col sm:flex-row items-center sm:justify-between">
-            <div className="text-sm text-muted-foreground">
-                {destinationFolderId ? (
-                    <>
-                        Selected: <span className="font-semibold text-foreground">{getFolderName(destinationFolderId)}</span>
-                    </>
-                ) : (
-                    <span>No folder selected</span>
-                )}
-            </div>
-            <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <div className="text-sm text-muted-foreground mr-auto self-center pb-4 sm:pb-0">
+              {destinationFolderId ? (
+                  <>
+                      Selected: <span className="font-semibold text-foreground">{getFolderName(destinationFolderId)}</span>
+                  </>
+              ) : (
+                  <span>No folder selected</span>
+              )}
+          </div>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => onNewFolderClick(selectedParentFolderId)}>
+                  <FolderPlus className="mr-2 h-4 w-4" />
+                  New Folder
+              </Button>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button variant="ghost" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
                     Cancel
                 </Button>
-                <Button onClick={handleContinue} disabled={!destinationFolderId}>
+                <Button className="w-full sm:w-auto" onClick={handleContinue} disabled={!destinationFolderId}>
                     Continue
                 </Button>
-            </div>
+              </div>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
