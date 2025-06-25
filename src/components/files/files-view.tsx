@@ -438,9 +438,9 @@ export function FilesView() {
                         
                         <div className="text-center"> {/* Centered title in the second column */}
                             {selectedFileIds.length > 0 ? (
-                                <h3 className="text-lg font-semibold">{selectedFileIds.length} selected</h3>
+                                <h3 className="text-base font-semibold">{selectedFileIds.length} selected</h3>
                             ) : (
-                                <h3 className="text-lg font-semibold">{selectedFolder?.name || 'Select a folder'}</h3>
+                                <h3 className="text-base font-semibold">{selectedFolder?.name || 'Select a folder'}</h3>
                             )}
                         </div>
 
