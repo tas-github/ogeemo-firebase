@@ -1,8 +1,18 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DatabaseSummary } from "@/components/dashboard/database-summary";
-import { Users, FileText, DatabaseZap } from "lucide-react";
+import { Briefcase, ListTodo, Contact } from "lucide-react";
+import { initialProjects } from "@/data/projects";
+import { getInitialEvents } from "@/data/events";
+import { mockContacts } from "@/data/contacts";
 
 export default function DashboardPage() {
+  const totalProjects = initialProjects.length;
+  const allTasks = getInitialEvents();
+  const pendingTasks = allTasks.filter(task => task.projectId && (task.status === 'todo' || task.status === 'inProgress')).length;
+  const totalContacts = mockContacts.length;
+
+
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <header className="text-center">
@@ -13,37 +23,37 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Total Documents
+              Total Projects
             </CardTitle>
-            <DatabaseZap className="h-4 w-4 text-muted-foreground" />
+            <Briefcase className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12,540</div>
+            <div className="text-2xl font-bold">{totalProjects}</div>
             <p className="text-xs text-muted-foreground">
-              +5.2% from last month
+              All active and planned projects
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Pending Tasks</CardTitle>
+            <ListTodo className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,234</div>
+            <div className="text-2xl font-bold">{pendingTasks}</div>
             <p className="text-xs text-muted-foreground">
-              +120 since last week
+              Across all projects
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Collections</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
+            <Contact className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">15</div>
-            <p className="text-xs text-muted-foreground">+2 new this month</p>
+            <div className="text-2xl font-bold">{totalContacts}</div>
+            <p className="text-xs text-muted-foreground">Across all folders</p>
           </CardContent>
         </Card>
       </div>
