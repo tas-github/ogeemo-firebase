@@ -54,7 +54,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-const NewFolderDialog = dynamic(() => import('./new-folder-dialog'), {
+const NewFolderDialog = dynamic(() => import('@/components/files/new-folder-dialog'), {
   loading: () => <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
 });
 
