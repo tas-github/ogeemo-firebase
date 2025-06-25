@@ -358,6 +358,10 @@ export function FilesView() {
           onOpenChange={setIsFolderSelectOpen}
           folders={folders}
           onSelectFolder={handleFolderSelectedForUpload}
+          onNewFolderClick={(parentId) => {
+            setIsFolderSelectOpen(false);
+            openNewFolderDialog({ parentId });
+          }}
         />
       )}
     </>
