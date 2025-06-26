@@ -22,7 +22,6 @@ import {
   Save,
   FileText,
   Pencil,
-  FileOpen
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
@@ -318,7 +317,7 @@ export default function ReportTemplatesPage() {
             />
             <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={handleSaveTemplate}><Save className="mr-2 h-4 w-4" /> Save</Button>
-                <Button variant="outline" size="sm" disabled><FileOpen className="mr-2 h-4 w-4" /> Open</Button>
+                <Button variant="outline" size="sm" disabled><FileText className="mr-2 h-4 w-4" /> Open</Button>
                 <Button variant="outline" size="sm" onClick={() => nameInputRef.current?.focus()}><Pencil className="mr-2 h-4 w-4" /> Edit</Button>
                 <Button variant="outline" size="sm" onClick={handleCopyActiveTemplate}><Copy className="mr-2 h-4 w-4" /> Copy</Button>
                 <Button variant="destructive" size="sm" onClick={handleDeleteActiveTemplate}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
