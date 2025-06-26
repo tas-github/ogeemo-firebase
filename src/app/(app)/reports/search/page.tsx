@@ -139,6 +139,7 @@ export default function AdvancedSearchPage() {
   const [searchResults, setSearchResults] = React.useState<Partial<Record<DataSource, any[]>>>({});
   const [searchPerformed, setSearchPerformed] = React.useState(false);
   const { toast } = useToast();
+  const baseTextRef = React.useRef('');
 
   const allTasks = React.useMemo(() => getInitialEvents(), []);
   const allFiles = React.useMemo(() => mockFiles, []);
@@ -150,7 +151,10 @@ export default function AdvancedSearchPage() {
     isSupported
   } = useSpeechToText({
     onTranscript: (transcript) => {
-      setSearchQuery(transcript);
+      const newText = baseTextRef.current
+        ? `${baseTextRef.current} ${transcript}`
+        : transcript;
+      setSearchQuery(newText);
     }
   });
 
@@ -174,6 +178,7 @@ export default function AdvancedSearchPage() {
     if (isListening) {
       stopListening();
     } else {
+      baseTextRef.current = searchQuery.trim();
       startListening();
     }
   };
