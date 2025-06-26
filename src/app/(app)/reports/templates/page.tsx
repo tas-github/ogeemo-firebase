@@ -148,7 +148,7 @@ export default function ReportTemplatesPage() {
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline">
+            <Button className="bg-orange-500 hover:bg-orange-600 text-white">
               Templates
               <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
@@ -164,7 +164,7 @@ export default function ReportTemplatesPage() {
 
         <Dialog open={isInfoOpen} onOpenChange={setIsInfoOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline">
+                <Button className="bg-orange-500 hover:bg-orange-600 text-white">
                     <Info className="mr-2 h-4 w-4" />
                     Information
                 </Button>
