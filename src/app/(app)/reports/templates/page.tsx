@@ -316,10 +316,10 @@ export default function ReportTemplatesPage() {
                 className="text-lg font-semibold border-none shadow-none focus-visible:ring-0 p-0 h-auto flex-1 min-w-[200px]"
             />
             <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={handleSaveTemplate}><Save className="mr-2 h-4 w-4" /> Save</Button>
-                <Button variant="outline" size="sm" disabled><FileText className="mr-2 h-4 w-4" /> Open</Button>
-                <Button variant="outline" size="sm" onClick={() => nameInputRef.current?.focus()}><Pencil className="mr-2 h-4 w-4" /> Edit</Button>
-                <Button variant="outline" size="sm" onClick={handleCopyActiveTemplate}><Copy className="mr-2 h-4 w-4" /> Copy</Button>
+                <Button size="sm" onClick={handleSaveTemplate} className="bg-orange-500 hover:bg-orange-600 text-white"><Save className="mr-2 h-4 w-4" /> Save</Button>
+                <Button size="sm" disabled className="bg-orange-500 hover:bg-orange-600 text-white"><FileText className="mr-2 h-4 w-4" /> Open</Button>
+                <Button size="sm" onClick={() => nameInputRef.current?.focus()} className="bg-orange-500 hover:bg-orange-600 text-white"><Pencil className="mr-2 h-4 w-4" /> Edit</Button>
+                <Button size="sm" onClick={handleCopyActiveTemplate} className="bg-orange-500 hover:bg-orange-600 text-white"><Copy className="mr-2 h-4 w-4" /> Copy</Button>
                 <Button variant="destructive" size="sm" onClick={handleDeleteActiveTemplate}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
             </div>
         </div>
@@ -346,6 +346,7 @@ export default function ReportTemplatesPage() {
                 contentEditable={true}
                 onInput={handleEditorInput}
                 placeholder="Start designing your report template here..."
+                dir="ltr"
             />
         </ScrollArea>
       </div>
