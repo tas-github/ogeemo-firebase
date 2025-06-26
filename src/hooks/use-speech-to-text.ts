@@ -115,6 +115,11 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
         .map((result) => result.transcript)
         .join('');
       
+      // Process common punctuation commands.
+      transcript = transcript
+        .replace(/ comma/gi, ',')
+        .replace(/ period/gi, '.');
+
       onTranscript(transcript);
       
       const lastResult = event.results[event.results.length - 1];
