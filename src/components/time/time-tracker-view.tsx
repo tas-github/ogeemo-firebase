@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -22,10 +23,19 @@ interface TimeEntry {
   billableRate: number;
 }
 
+interface StoredTimerState {
+  contactId: string;
+  description: string;
+  billableRate: number;
+  isPaused: boolean;
+  elapsedTime: number; // elapsed seconds *before* the last active period started
+  lastTickTimestamp: number; // when the timer was last running
+}
+
 const formatTime = (totalSeconds: number) => {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
+  const seconds = Math.floor(totalSeconds % 60);
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
@@ -40,14 +50,44 @@ export function TimeTrackerView() {
   
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const startTimeRef = useRef<Date | null>(null);
   const { toast } = useToast();
 
+  const saveStateToLocalStorage = useCallback((state: StoredTimerState) => {
+    localStorage.setItem('activeTimerState', JSON.stringify(state));
+  }, []);
+
+  const clearStateFromLocalStorage = useCallback(() => {
+    localStorage.removeItem('activeTimerState');
+  }, []);
+
+  useEffect(() => {
+    const savedStateRaw = localStorage.getItem('activeTimerState');
+    if (savedStateRaw) {
+      try {
+        const state: StoredTimerState = JSON.parse(savedStateRaw);
+        setSelectedContactId(state.contactId);
+        setTaskDescription(state.description);
+        setBillableRate(state.billableRate);
+        setIsActive(true);
+        setIsPaused(state.isPaused);
+        
+        let totalElapsed = state.elapsedTime;
+        if (!state.isPaused) {
+          const now = Date.now();
+          const elapsedSinceLastTick = Math.floor((now - state.lastTickTimestamp) / 1000);
+          totalElapsed += elapsedSinceLastTick;
+        }
+        setElapsedTime(totalElapsed);
+
+      } catch (error) {
+        console.error("Failed to parse timer state:", error);
+        clearStateFromLocalStorage();
+      }
+    }
+  }, [clearStateFromLocalStorage]);
+  
   useEffect(() => {
     if (isActive && !isPaused) {
-      if (!startTimeRef.current) {
-        startTimeRef.current = new Date();
-      }
       intervalRef.current = setInterval(() => {
         setElapsedTime(prev => prev + 1);
       }, 1000);
@@ -57,9 +97,7 @@ export function TimeTrackerView() {
       }
     }
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [isActive, isPaused]);
 
@@ -75,10 +113,35 @@ export function TimeTrackerView() {
     setIsActive(true);
     setIsPaused(false);
     setElapsedTime(0);
+
+    const state: StoredTimerState = {
+        contactId: selectedContactId,
+        description: taskDescription,
+        billableRate,
+        isPaused: false,
+        elapsedTime: 0,
+        lastTickTimestamp: Date.now()
+    };
+    saveStateToLocalStorage(state);
   };
 
   const handlePauseResume = () => {
-    setIsPaused(!isPaused);
+    const wasPaused = isPaused;
+    setIsPaused(!wasPaused);
+
+    const savedStateRaw = localStorage.getItem('activeTimerState');
+    if(savedStateRaw) {
+        try {
+            const state: StoredTimerState = JSON.parse(savedStateRaw);
+            state.isPaused = !wasPaused;
+            if (wasPaused) { // Resuming
+                state.lastTickTimestamp = Date.now();
+            } else { // Pausing
+                state.elapsedTime = elapsedTime;
+            }
+            saveStateToLocalStorage(state);
+        } catch(e) { console.error(e) }
+    }
   };
 
   const handleStop = () => {
@@ -92,19 +155,22 @@ export function TimeTrackerView() {
       contactId,
       contactName: contact.name,
       description: taskDescription,
-      startTime: startTimeRef.current || new Date(),
+      startTime: new Date(Date.now() - elapsedTime * 1000), // Approximate start time
       endTime: new Date(),
       duration: elapsedTime,
       billableRate,
     };
 
     setTimeEntries(prev => [newEntry, ...prev]);
-
+    
+    // Reset state
     setIsActive(false);
+    setIsPaused(false);
     setElapsedTime(0);
     setTaskDescription("");
     setSelectedContactId(null);
-    startTimeRef.current = null;
+    clearStateFromLocalStorage();
+
     toast({ title: "Time Logged", description: `Logged ${formatTime(elapsedTime)} for ${contact.name}.` });
   };
   
