@@ -22,7 +22,8 @@ import {
   MoreVertical,
   Save,
   FileText,
-  Pencil
+  Pencil,
+  File
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
@@ -223,7 +224,7 @@ export default function ReportTemplatesPage() {
             modifiedAt: new Date(),
         };
         setFiles(prev => [...prev, newFile]);
-        toast({ title: "Template Duplicated" });
+        toast({ title: "Template Copied" });
     };
 
     const handleDeleteTemplate = (templateId: string) => {
@@ -301,12 +302,16 @@ export default function ReportTemplatesPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem onSelect={() => setSelectedTemplateId(template.id)}>
+                                <File className="mr-2 h-4 w-4" />
+                                Open
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setSelectedTemplateId(template.id)}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => handleCopyTemplate(template)}>
                                 <Copy className="mr-2 h-4 w-4" />
-                                Duplicate
+                                Copy
                             </DropdownMenuItem>
                             <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive" onSelect={() => handleDeleteTemplate(template.id)}>
                                 <Trash2 className="mr-2 h-4 w-4" />
