@@ -26,6 +26,7 @@ import {
   Users,
   Calendar as CalendarIcon,
   ArrowRight,
+  UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +58,13 @@ export function ReportsHubView() {
       cta: "Generate Hours Report",
       href: "/reports/billable-hours",
     },
+    {
+      icon: UserCheck,
+      title: "Client Billing",
+      description: "Generate an itemized report of time tracked for clients, including billable rates and totals.",
+      cta: "View Billing Report",
+      href: "/reports/client-billing",
+    },
   ];
 
   return (
@@ -71,7 +79,7 @@ export function ReportsHubView() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
         {features.map((feature) => (
           <Card key={feature.title} className="flex flex-col">
             <CardHeader>
@@ -96,7 +104,7 @@ export function ReportsHubView() {
           </Card>
         ))}
 
-        <Card className="md:col-span-2 lg:col-span-3 flex flex-col sm:flex-row items-start sm:items-center">
+        <Card className="md:col-span-2 lg:col-span-2 flex flex-col sm:flex-row items-start sm:items-center">
             <CardHeader className="flex-1">
                 <div className="flex items-center gap-4">
                     <div className="p-3 bg-orange-500/10 rounded-lg">
