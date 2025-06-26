@@ -49,6 +49,7 @@ export function TimeTrackerView() {
   const [isPaused, setIsPaused] = useState(false);
   
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
@@ -61,6 +62,7 @@ export function TimeTrackerView() {
   }, []);
 
   useEffect(() => {
+    // Load active timer state
     const savedStateRaw = localStorage.getItem('activeTimerState');
     if (savedStateRaw) {
       try {
@@ -78,13 +80,36 @@ export function TimeTrackerView() {
           totalElapsed += elapsedSinceLastTick;
         }
         setElapsedTime(totalElapsed);
-
       } catch (error) {
         console.error("Failed to parse timer state:", error);
         clearStateFromLocalStorage();
       }
     }
+
+    // Load logged entries
+    const savedEntriesRaw = localStorage.getItem('timeEntries');
+    if (savedEntriesRaw) {
+        try {
+            const savedEntries = JSON.parse(savedEntriesRaw).map((entry: any) => ({
+                ...entry,
+                startTime: new Date(entry.startTime),
+                endTime: new Date(entry.endTime),
+            }));
+            setTimeEntries(savedEntries);
+        } catch (error) {
+            console.error("Failed to parse time entries:", error);
+            localStorage.removeItem('timeEntries');
+        }
+    }
+    setIsLoaded(true);
   }, [clearStateFromLocalStorage]);
+
+  // Save entries to localStorage whenever they change
+  useEffect(() => {
+    if (isLoaded) {
+        localStorage.setItem('timeEntries', JSON.stringify(timeEntries));
+    }
+  }, [timeEntries, isLoaded]);
   
   useEffect(() => {
     if (isActive && !isPaused) {
