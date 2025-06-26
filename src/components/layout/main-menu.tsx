@@ -18,7 +18,7 @@ import {
   FlaskConical,
   Calculator,
   Briefcase,
-  Clock,
+  Users,
   DatabaseBackup,
   AreaChart,
   BarChart3,
@@ -166,10 +166,10 @@ export function MainMenu() {
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isActive("/time")} tooltip="Time">
+        <SidebarMenuButton asChild isActive={isActive("/time")} tooltip="Client Manager">
           <Link href="/time" onClick={handleNavigate}>
-            <Clock />
-            <span>Time</span>
+            <Users />
+            <span>Client Manager</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
