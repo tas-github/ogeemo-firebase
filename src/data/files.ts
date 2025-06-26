@@ -176,6 +176,6 @@ const {
   }
 };</code></pre>
 <p>By following these steps, you can consistently and reliably add voice-to-text capabilities to any manager or component in the application.</p>
-`,
+`
   },
 ];
