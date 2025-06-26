@@ -204,18 +204,6 @@ export default function ReportTemplatesPage() {
         toast({ title: 'Template Saved!', description: `Changes to "${templateToSave.name}" have been saved.` });
     };
 
-    const handleFormat = (command: string, value?: string) => {
-        document.execCommand(command, false, value);
-        editorRef.current?.focus();
-    };
-
-    const handleEditorInput = (e: React.FormEvent<HTMLDivElement>) => {
-        if (!isListening) {
-            const newContent = e.currentTarget.innerHTML;
-            setActiveTemplate(prev => prev ? { ...prev, content: newContent } : null);
-        }
-    };
-
     const handleCopyTemplate = (template: FileItem) => {
         const newFile: FileItem = {
             ...template,
@@ -235,6 +223,18 @@ export default function ReportTemplatesPage() {
                 setSelectedTemplateId(null);
             }
             toast({ title: "Template Deleted", variant: 'destructive' });
+        }
+    };
+
+    const handleFormat = (command: string, value?: string) => {
+        document.execCommand(command, false, value);
+        editorRef.current?.focus();
+    };
+
+    const handleEditorInput = (e: React.FormEvent<HTMLDivElement>) => {
+        if (!isListening) {
+            const newContent = e.currentTarget.innerHTML;
+            setActiveTemplate(prev => prev ? { ...prev, content: newContent } : null);
         }
     };
 
