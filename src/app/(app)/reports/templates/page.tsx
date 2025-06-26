@@ -19,11 +19,10 @@ import {
   Square,
   Copy,
   Trash2,
-  MoreVertical,
   Save,
   FileText,
   Pencil,
-  File
+  FileOpen
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
@@ -32,7 +31,6 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { type FileItem, type FolderItem, mockFiles, mockFolders, REPORT_TEMPLATE_MIMETYPE } from "@/data/files";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -59,6 +57,7 @@ export default function ReportTemplatesPage() {
     const [newTemplateName, setNewTemplateName] = useState("");
 
     const editorRef = useRef<HTMLDivElement>(null);
+    const nameInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
     const [notesBeforeSpeech, setNotesBeforeSpeech] = useState('');
 
@@ -204,18 +203,27 @@ export default function ReportTemplatesPage() {
         toast({ title: 'Template Saved!', description: `Changes to "${templateToSave.name}" have been saved.` });
     };
 
-    const handleCopyTemplate = (template: FileItem) => {
+    const handleCopyActiveTemplate = () => {
+        if (!activeTemplate) return;
+        
+        const templateToCopy = files.find(f => f.id === activeTemplate.id);
+        if (!templateToCopy) return;
+
         const newFile: FileItem = {
-            ...template,
+            ...templateToCopy,
             id: `template-${Date.now()}`,
-            name: `${template.name} (Copy)`,
+            name: `${templateToCopy.name} (Copy)`,
             modifiedAt: new Date(),
         };
         setFiles(prev => [...prev, newFile]);
+        setSelectedTemplateId(newFile.id);
         toast({ title: "Template Copied" });
     };
 
-    const handleDeleteTemplate = (templateId: string) => {
+    const handleDeleteActiveTemplate = () => {
+        if (!activeTemplate || !activeTemplate.id) return;
+        const templateId = activeTemplate.id;
+
         const template = files.find(f => f.id === templateId);
         if (template && window.confirm(`Are you sure you want to delete "${template.name}"?`)) {
             setFiles(prev => prev.filter(f => f.id !== templateId));
@@ -280,46 +288,18 @@ export default function ReportTemplatesPage() {
         <ScrollArea className="h-[calc(100vh-200px)]">
             <div className="space-y-1">
             {reportTemplates.map(template => (
-                <div key={template.id} className="group flex items-center rounded-md pr-1 hover:bg-accent">
-                    <Button
-                        variant="ghost"
-                        className={cn(
-                            "w-full justify-start text-left h-auto py-2",
-                            selectedTemplateId === template.id && "bg-accent"
-                        )}
-                        onClick={() => setSelectedTemplateId(template.id)}
-                    >
-                        <div className="truncate">
-                            <p className="font-semibold truncate">{template.name}</p>
-                            <p className="text-xs text-muted-foreground">{format(template.modifiedAt, 'MMM d, yyyy')}</p>
-                        </div>
-                    </Button>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100">
-                                <MoreVertical className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => setSelectedTemplateId(template.id)}>
-                                <File className="mr-2 h-4 w-4" />
-                                Open
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => setSelectedTemplateId(template.id)}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleCopyTemplate(template)}>
-                                <Copy className="mr-2 h-4 w-4" />
-                                Copy
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive" onSelect={() => handleDeleteTemplate(template.id)}>
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
+                <Button
+                    key={template.id}
+                    variant="ghost"
+                    className={cn(
+                        "w-full justify-start text-left h-auto py-2 flex flex-col items-start",
+                        selectedTemplateId === template.id && "bg-accent"
+                    )}
+                    onClick={() => setSelectedTemplateId(template.id)}
+                >
+                    <p className="font-semibold truncate">{template.name}</p>
+                    <p className="text-xs text-muted-foreground">{format(template.modifiedAt, 'MMM d, yyyy')}</p>
+                </Button>
             ))}
             </div>
         </ScrollArea>
@@ -328,17 +308,21 @@ export default function ReportTemplatesPage() {
     
     const renderEditor = () => (
       <div className="flex-1 flex flex-col h-full">
-        <div className="p-4 border-b flex items-center justify-between">
+        <div className="p-4 border-b flex flex-wrap items-center justify-between gap-2">
             <Input
+                ref={nameInputRef}
                 placeholder="Untitled Template"
                 value={activeTemplate?.name || ''}
                 onChange={(e) => setActiveTemplate(prev => prev ? { ...prev, name: e.target.value } : null)}
-                className="text-lg font-semibold border-none shadow-none focus-visible:ring-0 p-0 h-auto"
+                className="text-lg font-semibold border-none shadow-none focus-visible:ring-0 p-0 h-auto flex-1 min-w-[200px]"
             />
-            <Button onClick={handleSaveTemplate}>
-                <Save className="mr-2 h-4 w-4" />
-                Save
-            </Button>
+            <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleSaveTemplate}><Save className="mr-2 h-4 w-4" /> Save</Button>
+                <Button variant="outline" size="sm" disabled><FileOpen className="mr-2 h-4 w-4" /> Open</Button>
+                <Button variant="outline" size="sm" onClick={() => nameInputRef.current?.focus()}><Pencil className="mr-2 h-4 w-4" /> Edit</Button>
+                <Button variant="outline" size="sm" onClick={handleCopyActiveTemplate}><Copy className="mr-2 h-4 w-4" /> Copy</Button>
+                <Button variant="destructive" size="sm" onClick={handleDeleteActiveTemplate}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
+            </div>
         </div>
         <div className="p-2 border-b flex items-center gap-1 flex-wrap">
             <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
