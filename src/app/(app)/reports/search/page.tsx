@@ -287,6 +287,15 @@ export default function AdvancedSearchPage() {
     <div className="p-4 sm:p-6 flex flex-col h-full space-y-6">
       <ReportsPageHeader pageTitle="Advanced Search" />
 
+      <header className="text-center">
+        <h1 className="text-3xl font-bold font-headline text-primary">
+          Advanced Search
+        </h1>
+        <p className="text-muted-foreground">
+          Perform deep, conditional searches across all your data to find exactly what you need.
+        </p>
+      </header>
+
       <div className="space-y-6 max-w-4xl mx-auto w-full">
         <Card>
           <CardHeader>
@@ -418,4 +427,3 @@ export default function AdvancedSearchPage() {
     </div>
   );
 }
-
