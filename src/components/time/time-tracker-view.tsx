@@ -171,7 +171,7 @@ export function TimeTrackerView() {
     setSelectedContactId(null);
     clearStateFromLocalStorage();
 
-    toast({ title: "Time Logged", description: `Logged ${formatTime(elapsedTime)} for ${contact.name}.` });
+    toast({ title: "Task Time Logged", description: `Logged ${formatTime(elapsedTime)} for ${contact.name}.` });
   };
   
   const selectedContact = mockContacts.find(c => c.id === selectedContactId);
@@ -183,13 +183,13 @@ export function TimeTrackerView() {
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <header className="text-center mb-6">
-        <h1 className="text-3xl font-bold font-headline text-primary">Time Tracker</h1>
-        <p className="text-muted-foreground">Select a client, describe the task, and start the timer.</p>
+        <h1 className="text-3xl font-bold font-headline text-primary">Client Manager</h1>
+        <p className="text-muted-foreground">Select a client to manage their tasks and track time.</p>
       </header>
 
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
-          <CardTitle>New Time Entry</CardTitle>
+          <CardTitle>Client Task Timer</CardTitle>
           <CardDescription>All fields are required to start the timer.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -263,8 +263,8 @@ export function TimeTrackerView() {
         <CardHeader>
             <div className="flex justify-between items-center">
                 <div>
-                    <CardTitle>Logged Time Entries</CardTitle>
-                    <CardDescription>A record of all your tracked time.</CardDescription>
+                    <CardTitle>Logged Task Entries</CardTitle>
+                    <CardDescription>A record of all your tracked time for clients.</CardDescription>
                 </div>
                 <div className="text-right">
                     <p className="text-sm text-muted-foreground">Total Billable</p>
