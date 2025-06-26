@@ -222,7 +222,7 @@ export default function ReportTemplatesPage() {
             modifiedAt: new Date(),
         };
         setFiles(prev => [...prev, newFile]);
-        toast({ title: "Template Copied" });
+        toast({ title: "Template Duplicated" });
     };
 
     const handleDeleteTemplate = (templateId: string) => {
