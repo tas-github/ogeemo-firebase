@@ -124,6 +124,11 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
         .replace(/\s*\bperiod\b/gi, '.')
         .replace(/\s*\bcomma\b/gi, ',');
       
+      // Capitalize the first letter of the new transcript segment.
+      if (transcript.length > 0) {
+        transcript = transcript.charAt(0).toUpperCase() + transcript.slice(1);
+      }
+      
       onTranscript(transcript);
       
       const lastResult = event.results[event.results.length - 1];
