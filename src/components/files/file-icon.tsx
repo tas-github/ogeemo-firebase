@@ -1,6 +1,7 @@
 
 import { File, FileText, FileImage, FileArchive, FileVideo, FileAudio, FileCode, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { REPORT_TEMPLATE_MIMETYPE } from '@/data/files';
 
 interface FileIconProps {
   fileType: string;
@@ -25,6 +26,8 @@ export function FileIcon({ fileType, className }: FileIconProps) {
   }
 
   switch (fileType) {
+    case REPORT_TEMPLATE_MIMETYPE:
+      return <FileText className={cn(finalClassName, "text-orange-500")} />;
     case 'application/pdf':
       return <FileText className={cn(finalClassName, "text-red-500")} />;
     case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':

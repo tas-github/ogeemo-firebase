@@ -9,7 +9,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { FileIcon } from "./file-icon";
-import { type FileItem } from "@/data/files";
+import { type FileItem, REPORT_TEMPLATE_MIMETYPE } from "@/data/files";
 import { format } from "date-fns";
 import Image from 'next/image';
 
@@ -33,6 +33,16 @@ const PreviewContent = ({ file }: { file: FileItem }) => {
                 />
             </div>
         );
+    }
+    if (file.type === REPORT_TEMPLATE_MIMETYPE) {
+        return (
+            <div className="bg-muted rounded-lg p-4 h-64 overflow-auto">
+                <div
+                    className="prose prose-sm dark:prose-invert max-w-none"
+                    dangerouslySetInnerHTML={{ __html: file.content || '' }}
+                />
+            </div>
+        )
     }
     if (file.type === 'application/pdf') {
         return (
