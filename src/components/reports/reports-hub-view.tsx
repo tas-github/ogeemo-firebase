@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -39,7 +38,7 @@ export function ReportsHubView() {
   const features = [
     {
       icon: FileText,
-      title: "Report Templates",
+      title: "Templates",
       description: "Create, manage, and utilize standardized report templates for consistent and efficient reporting.",
       cta: "Manage Templates",
       href: "/reports/templates",
