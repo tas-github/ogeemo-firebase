@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -58,6 +58,7 @@ export default function ContactFormDialog({
 }: ContactFormDialogProps) {
     const { toast } = useToast();
     const [notesBeforeSpeech, setNotesBeforeSpeech] = useState('');
+    const notesRef = useRef<HTMLTextAreaElement>(null);
 
     const form = useForm<ContactFormData>({
         resolver: zodResolver(contactSchema),
@@ -73,19 +74,20 @@ export default function ContactFormDialog({
     const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
         onTranscript: (transcript) => {
             const newText = notesBeforeSpeech ? `${notesBeforeSpeech} ${transcript}`.trim() : transcript;
-            form.setValue('notes', newText, {
-                shouldDirty: true,
-                shouldValidate: true,
-            });
+            if (notesRef.current) {
+                notesRef.current.value = newText;
+            }
         },
     });
 
     const handleDictateNotes = () => {
         if (isListening) {
             stopListening();
+            if (notesRef.current) {
+                form.setValue('notes', notesRef.current.value);
+            }
         } else {
-            const currentNotes = form.getValues('notes') || '';
-            setNotesBeforeSpeech(currentNotes);
+            setNotesBeforeSpeech(form.getValues('notes') || '');
             form.setFocus('notes');
             startListening();
         }
@@ -197,7 +199,21 @@ export default function ContactFormDialog({
                                     <FormItem>
                                         <FormLabel>Notes</FormLabel>
                                         <div className="relative">
-                                            <FormControl><Textarea placeholder="Reference to information regarding the client.." className="resize-none pr-10" rows={5} {...field} /></FormControl>
+                                            <FormControl><Textarea
+                                                placeholder="Reference to information regarding the client.."
+                                                className="resize-none pr-10"
+                                                rows={5}
+                                                {...field}
+                                                ref={(e) => {
+                                                    field.ref(e);
+                                                    (notesRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = e;
+                                                }}
+                                                onChange={(e) => {
+                                                    if (!isListening) {
+                                                        field.onChange(e);
+                                                    }
+                                                }}
+                                            /></FormControl>
                                             <Button type="button" variant={isListening ? 'destructive' : 'ghost'} size="icon" className="absolute bottom-2 right-2 h-8 w-8" onClick={handleDictateNotes} disabled={isSupported === false} title={isSupported === false ? "Voice not supported" : (isListening ? "Stop dictation" : "Dictate notes")}>
                                                 {isListening ? <Square className="h-4 w-4 animate-pulse" /> : <Mic className="h-4 w-4" />}
                                                 <span className="sr-only">{isListening ? "Stop dictation" : "Dictate notes"}</span>

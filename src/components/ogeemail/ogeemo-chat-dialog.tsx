@@ -39,6 +39,7 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
     const chatBaseTextRef = useRef("");
     const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = useState(false);
     const { toast } = useToast();
+    const chatInputRef = useRef<HTMLInputElement>(null);
 
     const {
         status: chatStatus,
@@ -48,10 +49,12 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
         isSupported,
     } = useSpeechToText({
         onTranscript: (transcript) => {
-        const newText = chatBaseTextRef.current
-            ? `${chatBaseTextRef.current} ${transcript}`
-            : transcript;
-        setChatInput(newText);
+            const newText = chatBaseTextRef.current
+                ? `${chatBaseTextRef.current} ${transcript}`
+                : transcript;
+            if (chatInputRef.current) {
+                chatInputRef.current.value = newText;
+            }
         },
     });
 
@@ -75,20 +78,21 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
     }, [messages]);
 
     const submitChatMessage = useCallback(async () => {
-        const currentInput = chatInput.trim();
+        const currentInput = (chatInputRef.current?.value ?? chatInput).trim();
         if (!currentInput || isChatLoading) return;
 
         if (isChatListening) {
-        stopListening();
+            stopListening();
         }
 
         const userMessage: Message = {
-        id: Date.now().toString(),
-        text: currentInput,
-        sender: "user",
+            id: Date.now().toString(),
+            text: currentInput,
+            sender: "user",
         };
         setMessages((prev) => [...prev, userMessage]);
         setChatInput("");
+        if (chatInputRef.current) chatInputRef.current.value = "";
         setIsChatLoading(true);
 
         try {
@@ -121,16 +125,24 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (chatInputRef.current) setChatInput(chatInputRef.current.value);
         submitChatMessage();
     };
 
     const handleChatMicClick = () => {
         if (isChatListening) {
-        stopListening();
-        setShouldSubmitOnMicStop(true);
+            stopListening();
+            if (chatInputRef.current) setChatInput(chatInputRef.current.value);
+            setShouldSubmitOnMicStop(true);
         } else {
-        chatBaseTextRef.current = chatInput.trim();
-        startListening();
+            chatBaseTextRef.current = chatInput.trim();
+            startListening();
+        }
+    };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if(!isChatListening) {
+          setChatInput(e.target.value);
         }
     };
     
@@ -254,9 +266,17 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
                         <span className="sr-only">Use Voice</span>
                     </Button>
                     <Input
+                        ref={chatInputRef}
                         placeholder="Enter your message here..."
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
+                        defaultValue={chatInput}
+                        onChange={handleInputChange}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if(chatInputRef.current) setChatInput(chatInputRef.current.value);
+                                submitChatMessage();
+                            }
+                        }}
                         disabled={isChatLoading}
                         autoComplete="off"
                     />

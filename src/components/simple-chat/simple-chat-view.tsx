@@ -34,6 +34,7 @@ export function SimpleChatView() {
   const baseTextRef = useRef("");
   const { toast } = useToast();
   const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const {
     status,
@@ -46,7 +47,9 @@ export function SimpleChatView() {
       const newText = baseTextRef.current
         ? `${baseTextRef.current} ${transcript}`
         : transcript;
-      setInput(newText);
+      if (inputRef.current) {
+        inputRef.current.value = newText;
+      }
     },
   });
 
@@ -70,7 +73,7 @@ export function SimpleChatView() {
   }, [messages]);
 
   const submitMessage = useCallback(async () => {
-    const currentInput = input.trim();
+    const currentInput = (inputRef.current?.value ?? input).trim();
     if (!currentInput || isLoading) return;
 
     if (isListening) {
@@ -84,6 +87,7 @@ export function SimpleChatView() {
     };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    if (inputRef.current) inputRef.current.value = "";
     setIsLoading(true);
 
     try {
@@ -116,16 +120,24 @@ export function SimpleChatView() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(inputRef.current) setInput(inputRef.current.value);
     submitMessage();
   };
 
   const handleMicClick = () => {
     if (isListening) {
       stopListening();
+      if(inputRef.current) setInput(inputRef.current.value);
       setShouldSubmitOnMicStop(true);
     } else {
       baseTextRef.current = input.trim();
       startListening();
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if(!isListening) {
+      setInput(e.target.value);
     }
   };
 
@@ -235,9 +247,17 @@ export function SimpleChatView() {
                 <span className="sr-only">Use Voice</span>
               </Button>
               <Input
+                ref={inputRef}
                 placeholder="Send a message..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
+                defaultValue={input}
+                onChange={handleInputChange}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if(inputRef.current) setInput(inputRef.current.value);
+                        submitMessage();
+                    }
+                }}
                 disabled={isLoading}
                 autoComplete="off"
               />

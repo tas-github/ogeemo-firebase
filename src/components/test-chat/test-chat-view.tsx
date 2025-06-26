@@ -43,6 +43,7 @@ export function TestChatView() {
   const { toast } = useToast();
   const baseTextRef = useRef("");
   const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const {
     status,
@@ -55,7 +56,9 @@ export function TestChatView() {
       const newText = baseTextRef.current
         ? `${baseTextRef.current} ${transcript}`
         : transcript;
-      setInput(newText);
+      if (inputRef.current) {
+        inputRef.current.value = newText;
+      }
     },
   });
 
@@ -79,7 +82,7 @@ export function TestChatView() {
   }, [messages]);
 
   const submitMessage = useCallback(async () => {
-    const currentInput = input.trim();
+    const currentInput = (inputRef.current?.value ?? input).trim();
     if (!currentInput || isLoading) return;
 
     if (isListening) {
@@ -93,6 +96,7 @@ export function TestChatView() {
     };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    if (inputRef.current) inputRef.current.value = "";
     setIsLoading(true);
 
     try {
@@ -125,12 +129,14 @@ export function TestChatView() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(inputRef.current) setInput(inputRef.current.value);
     submitMessage();
   };
 
   const handleMicClick = () => {
     if (isListening) {
       stopListening();
+      if(inputRef.current) setInput(inputRef.current.value);
       setShouldSubmitOnMicStop(true);
     } else {
       baseTextRef.current = input.trim();
@@ -138,6 +144,12 @@ export function TestChatView() {
     }
   };
   
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if(!isListening) {
+      setInput(e.target.value);
+    }
+  };
+
   const renderMicIcon = (currentStatus: SpeechRecognitionStatus) => {
     switch (currentStatus) {
       case 'listening':
@@ -249,9 +261,17 @@ export function TestChatView() {
                   <span className="sr-only">Use Voice</span>
                 </Button>
                 <Input
+                  ref={inputRef}
                   placeholder="Enter your message here..."
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  defaultValue={input}
+                  onChange={handleInputChange}
+                  onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if(inputRef.current) setInput(inputRef.current.value);
+                          submitMessage();
+                      }
+                  }}
                   disabled={isLoading}
                   autoComplete="off"
                 />

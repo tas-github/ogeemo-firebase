@@ -65,7 +65,12 @@ export function ResearchHubView() {
   });
 
   const handleNotepadMicClick = () => {
-    if (isNotepadListening) stopNotepadListening();
+    if (isNotepadListening) {
+      stopNotepadListening();
+      if (editorRef.current) {
+         editorRef.current.focus();
+      }
+    }
     else {
       if (editorRef.current) {
         setNotepadContentBeforeSpeech(editorRef.current.innerHTML);
@@ -75,23 +80,30 @@ export function ResearchHubView() {
     }
   };
 
-  const [assistantInputBeforeSpeech, setAssistantInputBeforeSpeech] = React.useState('');
   const {
     isListening: isAssistantListening,
     startListening: startAssistantListening,
     stopListening: stopAssistantListening,
   } = useSpeechToText({
     onTranscript: (transcript) => {
-      setUserInput(assistantInputBeforeSpeech ? `${assistantInputBeforeSpeech} ${transcript}` : transcript);
+      if (chatInputRef.current) {
+        chatInputRef.current.value = transcript;
+      }
     },
   });
 
   const handleAssistantMicClick = () => {
-    if (isAssistantListening) stopAssistantListening();
+    if (isAssistantListening) {
+      stopAssistantListening();
+      if (chatInputRef.current) {
+          setUserInput(chatInputRef.current.value);
+      }
+    }
     else {
-      setAssistantInputBeforeSpeech(userInput);
-      chatInputRef.current?.focus();
-      startAssistantListening();
+      if (chatInputRef.current) {
+        chatInputRef.current.focus();
+        startAssistantListening();
+      }
     }
   };
 
@@ -111,9 +123,10 @@ export function ResearchHubView() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userInput.trim()) return;
+    const currentInput = (chatInputRef.current?.value || userInput).trim();
+    if (!currentInput) return;
 
-    setChatMessages(prev => [...prev, { sender: 'user', text: userInput }]);
+    setChatMessages(prev => [...prev, { sender: 'user', text: currentInput }]);
     setIsLoading(true);
     
     const selectedSource = sources.find(s => s.id === selectedSourceId);
@@ -152,6 +165,7 @@ export function ResearchHubView() {
     }, 1500);
 
     setUserInput('');
+    if (chatInputRef.current) chatInputRef.current.value = "";
   };
 
   const handleSearch = () => {
