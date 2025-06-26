@@ -26,7 +26,7 @@ export const SourcesView = ({ setView, sources, selectedSourceId, handleSourceSe
   <div className="h-full flex flex-col p-4 sm:p-6">
     <div className="flex items-center gap-4 mb-4">
         <Button variant="outline" onClick={() => setView('hub')}><ArrowLeft className="mr-2 h-4 w-4"/> Back to Hub</Button>
-        <h2 className="text-2xl font-bold font-headline">Sources</h2>
+        <h2 className="text-2xl font-bold font-headline text-primary">Sources</h2>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
       <Button><UploadCloud className="mr-2 h-4 w-4" /> Upload File</Button>
