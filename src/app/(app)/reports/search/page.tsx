@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 // Import mock data
 import { mockContacts, mockFolders, type Contact } from '@/data/contacts';
@@ -102,7 +103,7 @@ export default function AdvancedSearchPage() {
       toast({
         variant: 'destructive',
         title: 'Empty search value',
-        description: 'Please ensure all conditions have a value before searching.',
+        description: 'Please ensure all filters have a value before searching.',
       });
       return;
     }
@@ -226,120 +227,142 @@ export default function AdvancedSearchPage() {
   return (
     <div className="p-4 sm:p-6 flex flex-col h-full space-y-6">
       <ReportsPageHeader pageTitle="Advanced Search" />
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start flex-1">
-        {/* Query Builder */}
-        <Card className="lg:col-span-1 sticky top-4">
+
+      <div className="space-y-6 max-w-4xl mx-auto w-full">
+        {/* Search Criteria Card */}
+        <Card>
           <CardHeader>
-            <CardTitle>Query Builder</CardTitle>
-            <CardDescription>Construct your search query here.</CardDescription>
+            <CardTitle>Search Criteria</CardTitle>
+            <CardDescription>
+              Build a custom search to find exactly what you're looking for.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            {/* Data Source Selection */}
             <div className="space-y-2">
-              <Label htmlFor="data-source">Data Source</Label>
-              <Select value={dataSource} onValueChange={handleDataSourceChange}>
-                <SelectTrigger id="data-source">
-                  <SelectValue placeholder="Select a data source..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {dataSources.map((source) => (
-                    <SelectItem key={source.value} value={source.value}>{source.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-2">
-              <Label>Conditions</Label>
-              <RadioGroup value={logic} onValueChange={(value) => setLogic(value as 'AND' | 'OR')} className="flex items-center gap-4">
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="AND" id="and" />
-                  <Label htmlFor="and">Match all (AND)</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="OR" id="or" />
-                  <Label htmlFor="or">Match any (OR)</Label>
-                </div>
+              <Label className="text-base font-semibold">1. What do you want to search for?</Label>
+              <RadioGroup
+                value={dataSource}
+                onValueChange={handleDataSourceChange}
+                className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+              >
+                {dataSources.map(source => (
+                  <div key={source.value}>
+                    <RadioGroupItem value={source.value} id={source.value} className="sr-only" />
+                    <Label
+                      htmlFor={source.value}
+                      className={cn(
+                        "flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors",
+                        dataSource === source.value && "border-primary"
+                      )}
+                    >
+                      <span className="text-lg font-bold">{source.label}</span>
+                    </Label>
+                  </div>
+                ))}
               </RadioGroup>
             </div>
             
-            <div className="space-y-3">
-              {conditions.map((condition, index) => (
-                <div key={condition.id} className="p-3 border rounded-md space-y-2 relative bg-background">
-                  <div className="grid grid-cols-2 gap-2">
-                    <Select
-                      value={condition.field}
-                      onValueChange={(value) => handleUpdateCondition(condition.id, { field: value })}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {fieldOptions[dataSource].map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={condition.operator}
-                      onValueChange={(value) => handleUpdateCondition(condition.id, { operator: value as Condition['operator'] })}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {operatorOptions.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+            <Separator />
+
+            {/* Filters Section */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-base font-semibold">2. Add your filters</Label>
+                <RadioGroup
+                  value={logic}
+                  onValueChange={(value) => setLogic(value as 'AND' | 'OR')}
+                  className="flex items-center gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="AND" id="and" />
+                    <Label htmlFor="and" className="font-normal">Match all filters</Label>
                   </div>
-                  <Input
-                    placeholder="Value..."
-                    value={condition.value}
-                    onChange={(e) => handleUpdateCondition(condition.id, { value: e.target.value })}
-                  />
-                  {conditions.length > 1 && (
-                     <Button
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="OR" id="or" />
+                    <Label htmlFor="or" className="font-normal">Match any filter</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              
+              <div className="space-y-3">
+                {conditions.map((condition) => (
+                  <div key={condition.id} className="p-3 border rounded-md space-y-2 relative bg-background/50">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {/* Field Select */}
+                      <Select
+                        value={condition.field}
+                        onValueChange={(value) => handleUpdateCondition(condition.id, { field: value })}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Select a field..." /></SelectTrigger>
+                        <SelectContent>
+                          {fieldOptions[dataSource].map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {/* Operator Select */}
+                      <Select
+                        value={condition.operator}
+                        onValueChange={(value) => handleUpdateCondition(condition.id, { operator: value as Condition['operator'] })}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Select an operator..." /></SelectTrigger>
+                        <SelectContent>
+                          {operatorOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Value Input */}
+                    <Input
+                      placeholder="Enter a value..."
+                      value={condition.value}
+                      onChange={(e) => handleUpdateCondition(condition.id, { value: e.target.value })}
+                    />
+                    {conditions.length > 1 && (
+                      <Button
                         variant="ghost"
                         size="icon"
                         className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/80"
                         onClick={() => handleRemoveCondition(condition.id)}
-                    >
+                      >
                         <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
+                        <span className="sr-only">Remove filter</span>
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
 
-             <Button variant="outline" size="sm" onClick={handleAddCondition}>
-              <Plus className="mr-2 h-4 w-4" /> Add Condition
-            </Button>
+              <Button variant="outline" size="sm" onClick={handleAddCondition}>
+                <Plus className="mr-2 h-4 w-4" /> Add Filter
+              </Button>
+            </div>
           </CardContent>
           <CardFooter>
-            <Button onClick={handleSearch} className="w-full">Search</Button>
+            <Button onClick={handleSearch} className="w-full sm:w-auto">
+              Search Now
+            </Button>
           </CardFooter>
         </Card>
 
-        {/* Results */}
-        <div className="lg:col-span-2">
+        {/* Results Card */}
+        {searchPerformed && (
           <Card>
             <CardHeader>
               <CardTitle>Search Results</CardTitle>
               <CardDescription>
-                {searchPerformed ? `Showing results for ${dataSource}` : 'Results will appear here after you perform a search.'}
+                {`Found ${searchResults.length} ${dataSource} matching your criteria.`}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {!searchPerformed ? (
-                <div className="flex h-48 items-center justify-center rounded-lg border-2 border-dashed">
-                  <p className="text-muted-foreground">Perform a search to see results.</p>
-                </div>
-              ) : (
-                renderResultsTable()
-              )}
+              {renderResultsTable()}
             </CardContent>
           </Card>
-        </div>
+        )}
       </div>
     </div>
   );
 }
+
