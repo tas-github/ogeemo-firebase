@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { addDays, format } from "date-fns";
 import { type DateRange } from "react-day-picker";
 import {
@@ -25,7 +26,7 @@ import {
   Clock,
   Users,
   Calendar as CalendarIcon,
-  Download,
+  ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,18 +42,21 @@ export function ReportsHubView() {
       title: "Report Templates",
       description: "Create, manage, and utilize standardized report templates for consistent and efficient reporting.",
       cta: "Manage Templates",
+      href: "/reports/templates",
     },
     {
       icon: Search,
       title: "Advanced Search",
       description: "Perform deep, conditional searches across all your data to find exactly what you need.",
       cta: "Go to Advanced Search",
+      href: "/reports/search",
     },
     {
       icon: Clock,
       title: "Billable Hours",
       description: "Generate detailed reports on billable hours logged against clients and projects.",
       cta: "Generate Hours Report",
+      href: "/reports/billable-hours",
     },
   ];
 
@@ -83,8 +87,11 @@ export function ReportsHubView() {
                 <CardDescription>{feature.description}</CardDescription>
             </CardContent>
             <CardFooter>
-              <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">
-                {feature.cta}
+              <Button asChild className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+                <Link href={feature.href}>
+                  {feature.cta}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
               </Button>
             </CardFooter>
           </Card>
@@ -139,9 +146,11 @@ export function ReportsHubView() {
                     />
                     </PopoverContent>
                 </Popover>
-                <Button className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white">
-                    <Download className="mr-2 h-4 w-4" />
-                    Generate & Download
+                <Button asChild className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white">
+                  <Link href="/reports/client-entries">
+                    View Report
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
                 </Button>
             </CardContent>
         </Card>
