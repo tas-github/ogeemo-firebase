@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Info, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Quote, Link as LinkIcon, Save, Mic, Square, Pencil, FilePenLine, Copy, Trash2 } from "lucide-react";
+import { Plus, Info, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Quote, Link as LinkIcon, Save, Mic, Square, FilePenLine, Copy, Trash2, MoreVertical } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { type FileItem, type FolderItem, mockFiles, mockFolders, REPORT_TEMPLATE_MIMETYPE } from "@/data/files";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const REPORT_TEMPLATES_FOLDER_ID = 'folder-reports';
 
@@ -235,27 +236,36 @@ export default function ReportTemplatesPage() {
                 <DialogHeader>
                     <DialogTitle>Manage Report Templates</DialogTitle>
                     <DialogDescription>
-                        Edit, rename, copy, or delete your existing report templates.
+                        Load, rename, copy, or delete your existing report templates.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4 space-y-2 max-h-[60vh] overflow-y-auto">
                     {reportTemplates.map((template) => (
-                        <div key={template.id} className="flex items-center justify-between p-2 rounded-lg border hover:bg-accent/50">
-                            <span className="font-medium">{template.name}</span>
-                            <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="icon" title="Edit Template Content" onClick={() => handleLoadTemplate(template)}>
-                                    <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" title="Rename Template" onClick={() => handleRenameTemplate(template)}>
-                                    <FilePenLine className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" title="Copy Template" onClick={() => handleCopyTemplate(template)}>
-                                    <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" title="Delete Template" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTemplate(template)}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </div>
+                        <div key={template.id} className="flex items-center justify-between p-2 rounded-lg border hover:bg-accent/50 group">
+                            <Button variant="link" className="p-0 h-auto font-medium text-foreground text-base" onClick={() => handleLoadTemplate(template)}>
+                                {template.name}
+                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100">
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onSelect={() => handleRenameTemplate(template)}>
+                                        <FilePenLine className="mr-2 h-4 w-4" />
+                                        Rename
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => handleCopyTemplate(template)}>
+                                        <Copy className="mr-2 h-4 w-4" />
+                                        Copy
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive" onSelect={() => handleDeleteTemplate(template)}>
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                     ))}
                 </div>
