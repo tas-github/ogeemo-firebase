@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -341,7 +342,7 @@ export default function AdvancedSearchPage() {
                     Select All
                   </Label>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {dataSources.map(source => (
                   <div key={source.value} className="flex items-center space-x-2">
                     <Checkbox
