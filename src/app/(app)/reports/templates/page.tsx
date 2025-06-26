@@ -28,10 +28,20 @@ import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { type FileItem, type FolderItem, mockFiles, mockFolders, REPORT_TEMPLATE_MIMETYPE } from "@/data/files";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const REPORT_TEMPLATES_FOLDER_ID = 'folder-reports';
 
@@ -42,6 +52,9 @@ export default function ReportTemplatesPage() {
 
     const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
     const [activeTemplate, setActiveTemplate] = useState<Partial<FileItem> | null>(null);
+    
+    const [isNewTemplateDialogOpen, setIsNewTemplateDialogOpen] = useState(false);
+    const [newTemplateName, setNewTemplateName] = useState("");
 
     const editorRef = useRef<HTMLDivElement>(null);
     const { toast } = useToast();
@@ -91,18 +104,8 @@ export default function ReportTemplatesPage() {
     // Effect to update the active template when selection changes
     useEffect(() => {
       if (selectedTemplateId) {
-        if (selectedTemplateId.startsWith('new-')) {
-            setActiveTemplate({
-                id: selectedTemplateId,
-                name: '',
-                content: '',
-                type: REPORT_TEMPLATE_MIMETYPE,
-                folderId: REPORT_TEMPLATES_FOLDER_ID
-            });
-        } else {
-            const foundTemplate = files.find(f => f.id === selectedTemplateId);
-            setActiveTemplate(foundTemplate || null);
-        }
+        const foundTemplate = files.find(f => f.id === selectedTemplateId);
+        setActiveTemplate(foundTemplate || null);
       } else {
         setActiveTemplate(null);
       }
@@ -151,15 +154,42 @@ export default function ReportTemplatesPage() {
             editorRef.current?.focus();
         }
     };
-  
-    const handleSaveTemplate = () => {
-        if (!activeTemplate || !activeTemplate.name?.trim()) {
+    
+    const handleConfirmNewTemplate = () => {
+        if (!newTemplateName.trim()) {
             toast({ variant: 'destructive', title: 'Template name is required.' });
             return;
         }
 
+        const newTemplate: FileItem = {
+            id: `template-${Date.now()}`,
+            name: newTemplateName.trim(),
+            folderId: REPORT_TEMPLATES_FOLDER_ID,
+            type: REPORT_TEMPLATE_MIMETYPE,
+            content: '', // Start with blank content
+            size: 0,
+            modifiedAt: new Date(),
+        };
+
+        setFiles(prev => [...prev, newTemplate]);
+        setSelectedTemplateId(newTemplate.id); // Select the new template
+        setIsNewTemplateDialogOpen(false); // Close the dialog
+        setNewTemplateName(""); // Reset the input
+        
+        toast({
+            title: "Template Created",
+            description: `"${newTemplate.name}" is ready for editing.`,
+        });
+    };
+  
+    const handleSaveTemplate = () => {
+        if (!activeTemplate || !activeTemplate.name?.trim() || !activeTemplate.id) {
+            toast({ variant: 'destructive', title: 'Cannot save template.', description: 'The template must have a name and ID.' });
+            return;
+        }
+
         const templateToSave: FileItem = {
-            id: activeTemplate.id?.startsWith('new-') ? `template-${Date.now()}` : activeTemplate.id!,
+            id: activeTemplate.id,
             name: activeTemplate.name.trim(),
             folderId: REPORT_TEMPLATES_FOLDER_ID,
             type: REPORT_TEMPLATE_MIMETYPE,
@@ -167,17 +197,9 @@ export default function ReportTemplatesPage() {
             size: (activeTemplate.content || '').length,
             modifiedAt: new Date(),
         };
-
-        let isNew = activeTemplate.id?.startsWith('new-');
         
-        if (isNew) {
-            setFiles(prev => [...prev, templateToSave]);
-            setSelectedTemplateId(templateToSave.id); // Update selection to the new saved template
-            toast({ title: 'Template Created!', description: `"${templateToSave.name}" has been saved.` });
-        } else {
-            setFiles(prev => prev.map(f => f.id === templateToSave.id ? templateToSave : f));
-            toast({ title: 'Template Saved!', description: `Changes to "${templateToSave.name}" have been saved.` });
-        }
+        setFiles(prev => prev.map(f => f.id === templateToSave.id ? templateToSave : f));
+        toast({ title: 'Template Saved!', description: `Changes to "${templateToSave.name}" have been saved.` });
     };
 
     const handleFormat = (command: string, value?: string) => {
@@ -190,10 +212,6 @@ export default function ReportTemplatesPage() {
             const newContent = e.currentTarget.innerHTML;
             setActiveTemplate(prev => prev ? { ...prev, content: newContent } : null);
         }
-    };
-
-    const handleNewTemplate = () => {
-        setSelectedTemplateId(`new-${Date.now()}`);
     };
 
     const handleCopyTemplate = (template: FileItem) => {
@@ -222,10 +240,41 @@ export default function ReportTemplatesPage() {
     
     const renderTemplateList = () => (
       <div className="p-2">
-        <Button onClick={handleNewTemplate} className="w-full mb-2">
-            <Plus className="mr-2 h-4 w-4" />
-            New Template
-        </Button>
+        <Dialog open={isNewTemplateDialogOpen} onOpenChange={(open) => {
+            setIsNewTemplateDialogOpen(open);
+            if (!open) setNewTemplateName('');
+        }}>
+          <DialogTrigger asChild>
+            <Button className="w-full mb-2">
+              <Plus className="mr-2 h-4 w-4" />
+              New Template
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Template</DialogTitle>
+              <DialogDescription>
+                Please enter a name for your new report template.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Label htmlFor="new-template-name">Template Name</Label>
+              <Input
+                id="new-template-name"
+                value={newTemplateName}
+                onChange={(e) => setNewTemplateName(e.target.value)}
+                placeholder="e.g., 'Monthly Client Update'"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleConfirmNewTemplate();
+                }}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setIsNewTemplateDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleConfirmNewTemplate}>Create</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <ScrollArea className="h-[calc(100vh-200px)]">
             <div className="space-y-1">
             {reportTemplates.map(template => (
