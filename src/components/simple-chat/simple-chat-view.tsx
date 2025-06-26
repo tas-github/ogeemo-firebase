@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -36,6 +37,7 @@ export function SimpleChatView() {
 
   const {
     status,
+    isListening,
     startListening,
     stopListening,
     isSupported,
@@ -71,7 +73,7 @@ export function SimpleChatView() {
     const currentInput = input.trim();
     if (!currentInput || isLoading) return;
 
-    if (status === 'listening') {
+    if (isListening) {
       stopListening();
     }
 
@@ -103,7 +105,7 @@ export function SimpleChatView() {
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, status, stopListening]);
+  }, [input, isLoading, isListening, stopListening]);
 
   useEffect(() => {
     if (status === 'idle' && shouldSubmitOnMicStop) {
@@ -118,7 +120,7 @@ export function SimpleChatView() {
   };
 
   const handleMicClick = () => {
-    if (status === 'listening') {
+    if (isListening) {
       stopListening();
       setShouldSubmitOnMicStop(true);
     } else {
@@ -223,7 +225,7 @@ export function SimpleChatView() {
                 size="icon"
                 className={cn(
                   "flex-shrink-0",
-                  status === 'listening' && "text-destructive"
+                  isListening && "text-destructive"
                 )}
                 onClick={handleMicClick}
                 disabled={isSupported === false || isLoading || status === 'activating'}

@@ -26,38 +26,36 @@ export default function ReportTemplatesPage() {
   const mockTemplates = ["Monthly Financial Summary", "Client Activity Log", "Project Progress Report"];
   const editorRef = useRef<HTMLDivElement>(null);
   const [body, setBody] = useState('');
-  const baseTextRef = useRef('');
+  const [notesBeforeSpeech, setNotesBeforeSpeech] = useState('');
   const { toast } = useToast();
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
 
   const {
-    status,
+    isListening,
     startListening,
     stopListening,
     isSupported,
   } = useSpeechToText({
     onTranscript: (transcript) => {
-      const newText = baseTextRef.current
-        ? `${baseTextRef.current} ${transcript}`
+      const newText = notesBeforeSpeech
+        ? `${notesBeforeSpeech} ${transcript}`
         : transcript;
       setBody(newText);
+      if (editorRef.current) {
+        editorRef.current.innerHTML = newText;
+        // Move cursor to the end
+        const range = document.createRange();
+        const sel = window.getSelection();
+        if (sel) {
+          range.selectNodeContents(editorRef.current);
+          range.collapse(false);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+      }
     },
   });
-
-  useEffect(() => {
-    if (editorRef.current && editorRef.current.innerHTML !== body) {
-      editorRef.current.innerHTML = body;
-      const range = document.createRange();
-      const sel = window.getSelection();
-      if (sel) {
-        range.selectNodeContents(editorRef.current);
-        range.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-    }
-  }, [body]);
 
   useEffect(() => {
     if (isSupported === false) {
@@ -70,7 +68,7 @@ export default function ReportTemplatesPage() {
   }, [isSupported, toast]);
 
   const handleMicClick = () => {
-    if (status === 'listening') {
+    if (isListening) {
       stopListening();
       const editor = editorRef.current;
       if (editor) {
@@ -83,7 +81,7 @@ export default function ReportTemplatesPage() {
           selection.removeAllRanges();
           selection.addRange(range);
         }
-
+        
         const textContent = (editor.textContent || "").trim();
         const lastChar = textContent.slice(-1);
         if (textContent && !['.', '!', '?'].includes(lastChar)) {
@@ -91,7 +89,7 @@ export default function ReportTemplatesPage() {
         }
       }
     } else {
-      baseTextRef.current = body;
+      setNotesBeforeSpeech(editorRef.current?.innerHTML || '');
       startListening();
       editorRef.current?.focus();
     }
@@ -121,6 +119,14 @@ export default function ReportTemplatesPage() {
   };
 
   const preventDefault = (e: React.MouseEvent) => e.preventDefault();
+  
+  const handleEditorInput = (e: React.FormEvent<HTMLDivElement>) => {
+    // Only update state if not currently listening to voice input
+    // to prevent cursor jumps.
+    if (!isListening) {
+        setBody(e.currentTarget.innerHTML);
+    }
+  };
 
   return (
     <div className="p-4 sm:p-6 flex flex-col h-full space-y-6">
@@ -246,13 +252,13 @@ export default function ReportTemplatesPage() {
             <Button
               variant="ghost"
               size="icon"
-              title={status === 'listening' ? "Stop dictation" : "Dictate notes"}
+              title={isListening ? "Stop dictation" : "Dictate notes"}
               onMouseDown={preventDefault}
               onClick={handleMicClick}
               disabled={isSupported === false}
-              className={cn(status === 'listening' && "text-destructive")}
+              className={cn(isListening && "text-destructive")}
             >
-              {status === 'listening' ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              {isListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
             </Button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
@@ -260,7 +266,7 @@ export default function ReportTemplatesPage() {
                 ref={editorRef}
                 className="prose dark:prose-invert max-w-none focus:outline-none min-h-full"
                 contentEditable={true}
-                onInput={(e) => setBody(e.currentTarget.innerHTML)}
+                onInput={handleEditorInput}
                 dangerouslySetInnerHTML={{ __html: body }}
                 placeholder="Start designing your report template here..."
             />

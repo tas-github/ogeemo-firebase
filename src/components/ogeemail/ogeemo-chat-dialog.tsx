@@ -42,6 +42,7 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
 
     const {
         status: chatStatus,
+        isListening: isChatListening,
         startListening,
         stopListening,
         isSupported,
@@ -77,7 +78,7 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
         const currentInput = chatInput.trim();
         if (!currentInput || isChatLoading) return;
 
-        if (chatStatus === 'listening') {
+        if (isChatListening) {
         stopListening();
         }
 
@@ -109,7 +110,7 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
         } finally {
         setIsChatLoading(false);
         }
-    }, [chatInput, isChatLoading, chatStatus, stopListening]);
+    }, [chatInput, isChatLoading, isChatListening, stopListening]);
 
     useEffect(() => {
         if (chatStatus === 'idle' && shouldSubmitOnMicStop) {
@@ -124,7 +125,7 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
     };
 
     const handleChatMicClick = () => {
-        if (chatStatus === 'listening') {
+        if (isChatListening) {
         stopListening();
         setShouldSubmitOnMicStop(true);
         } else {
@@ -159,7 +160,7 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
     };
 
     const handleOpenChange = (open: boolean) => {
-        if (!open && chatStatus === 'listening') {
+        if (!open && isChatListening) {
             stopListening();
         }
         onOpenChange(open);
@@ -243,7 +244,7 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
                         size="icon"
                         className={cn(
                         "flex-shrink-0",
-                        chatStatus === 'listening' && "text-destructive"
+                        isChatListening && "text-destructive"
                         )}
                         onClick={handleChatMicClick}
                         disabled={isSupported === false || isChatLoading || chatStatus === 'activating'}

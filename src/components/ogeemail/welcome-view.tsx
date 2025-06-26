@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -62,6 +63,7 @@ export function OgeeMailWelcomeView() {
 
   const {
     status: chatStatus,
+    isListening: isChatListening,
     startListening: startChatListening,
     stopListening: stopChatListening,
     isSupported: isChatSupported,
@@ -101,7 +103,7 @@ export function OgeeMailWelcomeView() {
     const currentInput = chatInput.trim();
     if (!currentInput || isChatLoading) return;
 
-    if (chatStatus === 'listening') {
+    if (isChatListening) {
       stopChatListening();
     }
 
@@ -133,7 +135,7 @@ export function OgeeMailWelcomeView() {
     } finally {
       setIsChatLoading(false);
     }
-  }, [chatInput, isChatLoading, chatStatus, stopChatListening]);
+  }, [chatInput, isChatLoading, isChatListening, stopChatListening]);
 
   useEffect(() => {
     if (chatStatus === 'idle' && shouldSubmitOnMicStop) {
@@ -148,7 +150,7 @@ export function OgeeMailWelcomeView() {
   };
 
   const handleChatMicClick = () => {
-    if (chatStatus === 'listening') {
+    if (isChatListening) {
       stopChatListening();
       setShouldSubmitOnMicStop(true);
     } else {
@@ -388,7 +390,7 @@ export function OgeeMailWelcomeView() {
                 size="icon"
                 className={cn(
                   "flex-shrink-0",
-                  chatStatus === 'listening' && "text-destructive"
+                  isChatListening && "text-destructive"
                 )}
                 onClick={handleChatMicClick}
                 disabled={isChatSupported === false || isChatLoading || chatStatus === 'activating'}
