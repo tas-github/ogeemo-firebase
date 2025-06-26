@@ -21,7 +21,8 @@ import {
   Trash2,
   MoreVertical,
   Save,
-  FileText
+  FileText,
+  Pencil
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
@@ -299,6 +300,10 @@ export default function ReportTemplatesPage() {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => setSelectedTemplateId(template.id)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                            </DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => handleCopyTemplate(template)}>
                                 <Copy className="mr-2 h-4 w-4" />
                                 Duplicate
