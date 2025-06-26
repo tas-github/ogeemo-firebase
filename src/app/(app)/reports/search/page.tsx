@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { LoaderCircle } from 'lucide-react';
+import { LoaderCircle, Mic, Square } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { ReportsPageHeader } from "@/components/reports/page-header";
@@ -15,6 +15,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FileIcon } from '@/components/files/file-icon';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSpeechToText } from '@/hooks/use-speech-to-text';
+import { cn } from '@/lib/utils';
 
 // Import AI Flow
 import { generateSearchQuery } from '@/ai/flows/ai-search-flow';
@@ -141,6 +143,17 @@ export default function AdvancedSearchPage() {
   const allTasks = React.useMemo(() => getInitialEvents(), []);
   const allFiles = React.useMemo(() => mockFiles, []);
   
+  const {
+    isListening,
+    startListening,
+    stopListening,
+    isSupported
+  } = useSpeechToText({
+    onTranscript: (transcript) => {
+      setSearchQuery(transcript);
+    }
+  });
+
   const handleDataSourceChange = (sourceValue: DataSource) => {
     setSelectedDataSources(prev => 
         prev.includes(sourceValue)
@@ -157,6 +170,14 @@ export default function AdvancedSearchPage() {
     }
   };
   
+  const handleMicClick = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       toast({
@@ -329,19 +350,37 @@ export default function AdvancedSearchPage() {
                   Describe what you're looking for. For example, "find all emails from John Doe about Project Phoenix" or "show me all incomplete tasks".
                 </p>
               </div>
-              <Textarea
-                placeholder="I'm looking for..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSearch();
-                  }
-                }}
-                rows={3}
-                disabled={isSearching}
-              />
+              <div className="relative">
+                <Textarea
+                  placeholder="I'm looking for..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSearch();
+                    }
+                  }}
+                  rows={3}
+                  disabled={isSearching}
+                  className="pr-12"
+                />
+                 <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                        "absolute bottom-2 right-2 h-8 w-8",
+                        isListening && "text-destructive"
+                    )}
+                    onClick={handleMicClick}
+                    disabled={isSupported === false || isSearching}
+                    title={isSupported === false ? "Voice not supported" : (isListening ? "Stop dictation" : "Dictate search query")}
+                >
+                    {isListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    <span className="sr-only">{isListening ? "Stop dictation" : "Dictate search query"}</span>
+                </Button>
+              </div>
             </div>
           </CardContent>
           <CardFooter>
