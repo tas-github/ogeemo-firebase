@@ -31,7 +31,7 @@ export const NotepadView = ({ setView, editorRef, handleFormat, handleNotepadMic
         <div className="h-full flex flex-col p-4 sm:p-6">
             <div className="flex items-center gap-4 mb-4">
                 <Button variant="outline" onClick={() => setView('hub')}><ArrowLeft className="mr-2 h-4 w-4"/> Back to Hub</Button>
-                <h2 className="text-2xl font-bold font-headline">Notepad</h2>
+                <h2 className="text-2xl font-bold font-headline text-primary">Notepad</h2>
             </div>
             <div className="p-2 border rounded-t-lg flex items-center gap-1 flex-wrap">
                 <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
