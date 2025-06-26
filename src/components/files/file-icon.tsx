@@ -50,5 +50,3 @@ export function FileIcon({ fileType, className }: FileIconProps) {
       return <File className={finalClassName} />;
   }
 }
-
-    
