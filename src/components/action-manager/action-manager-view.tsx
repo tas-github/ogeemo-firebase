@@ -46,6 +46,7 @@ export function ActionManagerView() {
 
   const {
     status,
+    isListening,
     startListening,
     stopListening,
     isSupported,
@@ -81,7 +82,7 @@ export function ActionManagerView() {
     const currentInput = input.trim();
     if (!currentInput || isLoading) return;
 
-    if (status === 'listening') {
+    if (isListening) {
       stopListening();
     }
 
@@ -113,7 +114,7 @@ export function ActionManagerView() {
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, status, stopListening]);
+  }, [input, isLoading, isListening, stopListening]);
 
   useEffect(() => {
     if (status === 'idle' && shouldSubmitOnMicStop) {
@@ -128,7 +129,7 @@ export function ActionManagerView() {
   };
 
   const handleMicClick = () => {
-    if (status === 'listening') {
+    if (isListening) {
       stopListening();
       setShouldSubmitOnMicStop(true);
     } else {
@@ -235,7 +236,7 @@ export function ActionManagerView() {
                     size="icon"
                     className={cn(
                       "flex-shrink-0",
-                      status === 'listening' && "text-destructive"
+                      isListening && "text-destructive"
                     )}
                     onClick={handleMicClick}
                     disabled={isSupported === false || isLoading || status === 'activating'}

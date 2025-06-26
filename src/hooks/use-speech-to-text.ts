@@ -35,14 +35,12 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
   const [status, setStatus] = useState<SpeechRecognitionStatus>('idle');
   const [isSupported, setIsSupported] = useState<boolean | undefined>(undefined);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null); // New ref for AudioContext
+  const audioContextRef = useRef<AudioContext | null>(null);
 
-  // Function to play a start sound
   const playStartSound = useCallback(() => {
     if (!isSupported) return;
     if (!audioContextRef.current) {
       try {
-        // Create AudioContext on first use
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       } catch (e) {
         console.error("Web Audio API is not supported in this browser.", e);
@@ -51,8 +49,6 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
     }
     const audioContext = audioContextRef.current;
     
-    // In some browsers, the AudioContext starts in a 'suspended' state
-    // and must be resumed by a user gesture. The mic click is that gesture.
     if (audioContext.state === 'suspended') {
       audioContext.resume();
     }
@@ -64,11 +60,11 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
     gainNode.connect(audioContext.destination);
 
     oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A higher pitch 'beep'
-    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime); // Low volume to not be jarring
+    oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
 
     oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.1); // Play for 100ms
+    oscillator.stop(audioContext.currentTime + 0.1);
   }, [isSupported]);
 
 
@@ -95,7 +91,7 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
     recognition.continuous = true;
 
     recognition.onstart = () => {
-      playStartSound(); // Play the sound when recognition starts
+      playStartSound();
       setStatus('listening');
     };
 
@@ -106,7 +102,7 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
 
     recognition.onerror = (event: any) => {
       if (event.error === 'no-speech') {
-        // Don't log this as a critical error, it's common.
+        // This is a common event, no need to log it as a critical error.
       } else {
          console.error('Speech recognition error:', event.error);
       }
@@ -118,16 +114,6 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
         .map((result: any) => result[0])
         .map((result) => result.transcript)
         .join('');
-      
-      // Replace spoken punctuation
-      transcript = transcript
-        .replace(/\s*\bperiod\b/gi, '.')
-        .replace(/\s*\bcomma\b/gi, ',');
-      
-      // Capitalize the first letter of the new transcript segment.
-      if (transcript.length > 0) {
-        transcript = transcript.charAt(0).toUpperCase() + transcript.slice(1);
-      }
       
       onTranscript(transcript);
       
@@ -155,6 +141,7 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
   }, []);
 
   return {
+    isListening: status === 'listening',
     status,
     startListening,
     stopListening,
