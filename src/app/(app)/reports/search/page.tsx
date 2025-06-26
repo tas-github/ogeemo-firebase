@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import { Plus, X } from 'lucide-react';
+import { format } from 'date-fns';
 
 import { ReportsPageHeader } from "@/components/reports/page-header";
 import { Button } from '@/components/ui/button';
@@ -24,8 +25,9 @@ import { initialProjects, type Project } from '@/data/projects';
 import { getInitialEvents } from '@/data/events';
 import { type Event } from '@/types/calendar';
 import { mockFiles, mockFolders as mockFileFolders, type FileItem } from '@/data/files';
+import { type Email, mockEmails } from '@/data/emails';
 
-type DataSource = 'contacts' | 'projects' | 'tasks' | 'files';
+type DataSource = 'contacts' | 'projects' | 'tasks' | 'files' | 'emails';
 
 interface Condition {
   id: number;
@@ -39,6 +41,7 @@ const dataSources: { value: DataSource; label: string }[] = [
   { value: 'projects', label: 'Projects' },
   { value: 'tasks', label: 'Tasks' },
   { value: 'files', label: 'Files' },
+  { value: 'emails', label: 'Emails' },
 ];
 
 const fieldOptions: Record<DataSource, { value: string; label: string }[]> = {
@@ -59,6 +62,11 @@ const fieldOptions: Record<DataSource, { value: string; label: string }[]> = {
   files: [
     { value: 'name', label: 'File Name' },
     { value: 'type', label: 'File Type' },
+  ],
+  emails: [
+    { value: 'from', label: 'From' },
+    { value: 'subject', label: 'Subject' },
+    { value: 'text', label: 'Body' },
   ],
 };
 
@@ -125,6 +133,21 @@ const FilesTable = ({ items }: { items: FileItem[] }) => (
           <TableCell>{file.name}</TableCell>
           <TableCell>{file.type}</TableCell>
           <TableCell>{mockFileFolders.find(f => f.id === file.folderId)?.name || 'N/A'}</TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
+  </Table>
+);
+
+const EmailsTable = ({ items }: { items: Email[] }) => (
+  <Table>
+    <TableHeader><TableRow><TableHead>From</TableHead><TableHead>Subject</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
+    <TableBody>
+      {items.map((email) => (
+        <TableRow key={email.id}>
+          <TableCell>{email.from}</TableCell>
+          <TableCell>{email.subject}</TableCell>
+          <TableCell>{format(new Date(email.date), 'PP')}</TableCell>
         </TableRow>
       ))}
     </TableBody>
@@ -212,6 +235,7 @@ export default function AdvancedSearchPage() {
       projects: initialProjects,
       tasks: allTasks,
       files: allFiles,
+      emails: mockEmails,
     };
     
     const results: Partial<Record<DataSource, any[]>> = {};
@@ -274,6 +298,7 @@ export default function AdvancedSearchPage() {
                     {source === 'projects' && <ProjectsTable items={items as Project[]} />}
                     {source === 'tasks' && <TasksTable items={items as Event[]} />}
                     {source === 'files' && <FilesTable items={items as FileItem[]} />}
+                    {source === 'emails' && <EmailsTable items={items as Email[]} />}
                 </div>
             ))}
         </div>
