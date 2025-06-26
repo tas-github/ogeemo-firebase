@@ -245,7 +245,7 @@ export default function ReportTemplatesPage() {
                 <Quote className="h-4 w-4" />
             </Button>
             <Separator orientation="vertical" className="h-6 mx-1" />
-            <Button variant="ghost" size="icon" title="Insert Link" onMouseDown={preventDefault} onClick={() => handleFormat('createLink')}>
+            <Button variant="ghost" size="icon" title="Insert Link" onMouseDown={preventDefault} onClick={() => { const url = prompt('Enter a URL:'); if (url) handleFormat('createLink', url); }}>
                 <LinkIcon className="h-4 w-4" />
             </Button>
             <Separator orientation="vertical" className="h-6 mx-1" />
