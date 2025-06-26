@@ -12,15 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Plus, ChevronDown, Info, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Quote, Link as LinkIcon, Save, Mic, Square } from "lucide-react";
+import { Plus, Info, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Quote, Link as LinkIcon, Save, Mic, Square, Pencil, FilePenLine, Copy, Trash2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +22,7 @@ import { Label } from "@/components/ui/label";
 
 export default function ReportTemplatesPage() {
   const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [isManageTemplatesOpen, setIsManageTemplatesOpen] = useState(false);
   const mockTemplates = ["Monthly Financial Summary", "Client Activity Log", "Project Progress Report"];
   const editorRef = useRef<HTMLDivElement>(null);
   const [body, setBody] = useState('');
@@ -146,21 +139,46 @@ export default function ReportTemplatesPage() {
           <Plus className="mr-2 h-4 w-4" />
           Create a Report Template
         </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button className="bg-orange-500 hover:bg-orange-600 text-white">
-              Templates
-              <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuLabel>Existing Templates</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {mockTemplates.map((template) => (
-              <DropdownMenuItem key={template}>{template}</DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        
+        <Dialog open={isManageTemplatesOpen} onOpenChange={setIsManageTemplatesOpen}>
+            <DialogTrigger asChild>
+                <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+                Manage Templates
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                    <DialogTitle>Manage Report Templates</DialogTitle>
+                    <DialogDescription>
+                        Edit, rename, copy, or delete your existing report templates.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4 space-y-2 max-h-[60vh] overflow-y-auto">
+                    {mockTemplates.map((template) => (
+                        <div key={template} className="flex items-center justify-between p-2 rounded-lg border hover:bg-accent/50">
+                            <span className="font-medium">{template}</span>
+                            <div className="flex items-center gap-1">
+                                <Button variant="ghost" size="icon" title="Edit Template Content">
+                                    <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" title="Rename Template">
+                                    <FilePenLine className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" title="Copy Template">
+                                    <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" title="Delete Template" className="text-destructive hover:text-destructive">
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <DialogFooter>
+                    <Button onClick={() => setIsManageTemplatesOpen(false)}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
         <Dialog open={isInfoOpen} onOpenChange={setIsInfoOpen}>
             <DialogTrigger asChild>
