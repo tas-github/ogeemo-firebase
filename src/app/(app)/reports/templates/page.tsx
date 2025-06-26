@@ -25,6 +25,8 @@ import { Separator } from "@/components/ui/separator";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function ReportTemplatesPage() {
   const [isInfoOpen, setIsInfoOpen] = useState(false);
@@ -33,6 +35,8 @@ export default function ReportTemplatesPage() {
   const [body, setBody] = useState('');
   const baseTextRef = useRef('');
   const { toast } = useToast();
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [templateName, setTemplateName] = useState("");
 
   const {
     status,
@@ -75,11 +79,47 @@ export default function ReportTemplatesPage() {
   const handleMicClick = () => {
     if (status === 'listening') {
       stopListening();
+      const editor = editorRef.current;
+      if (editor) {
+        editor.focus();
+        const selection = window.getSelection();
+        if (selection) {
+          const range = document.createRange();
+          range.selectNodeContents(editor);
+          range.collapse(false); // to the end
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+
+        const textContent = (editor.textContent || "").trim();
+        const lastChar = textContent.slice(-1);
+        if (textContent && !['.', '!', '?'].includes(lastChar)) {
+          document.execCommand('insertText', false, '.');
+        }
+      }
     } else {
       baseTextRef.current = body;
       startListening();
       editorRef.current?.focus();
     }
+  };
+  
+  const handleSaveTemplate = () => {
+    if (!templateName.trim()) {
+        toast({
+            variant: 'destructive',
+            title: 'Template name is required.'
+        });
+        return;
+    }
+    // In a real app, this would save to a database.
+    console.log('Saving template:', templateName, 'Content:', body);
+    toast({
+        title: 'Template Saved!',
+        description: `"${templateName}" has been saved.`
+    });
+    setIsSaveDialogOpen(false);
+    setTemplateName('');
   };
 
   const handleFormat = (command: string, value?: string) => {
@@ -208,12 +248,42 @@ export default function ReportTemplatesPage() {
             />
         </div>
         <div className="border-t p-3 flex justify-end">
-            <Button>
+            <Button onClick={() => setIsSaveDialogOpen(true)}>
                 <Save className="mr-2 h-4 w-4" />
                 Save Template
             </Button>
         </div>
       </div>
+
+      <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Report Template</DialogTitle>
+            <DialogDescription>
+              Give your new template a name. This will save the current content of the editor.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-2">
+            <Label htmlFor="template-name">Template Name</Label>
+            <Input
+              id="template-name"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="e.g., Monthly Client Summary"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSaveTemplate();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsSaveDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveTemplate}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
