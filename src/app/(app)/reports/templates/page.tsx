@@ -41,7 +41,6 @@ export default function ReportTemplatesPage() {
       const newText = notesBeforeSpeech
         ? `${notesBeforeSpeech} ${transcript}`
         : transcript;
-      setBody(newText);
       if (editorRef.current) {
         editorRef.current.innerHTML = newText;
         // Move cursor to the end
@@ -72,6 +71,7 @@ export default function ReportTemplatesPage() {
       stopListening();
       const editor = editorRef.current;
       if (editor) {
+        setBody(editor.innerHTML);
         editor.focus();
         const selection = window.getSelection();
         if (selection) {
