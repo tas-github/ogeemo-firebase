@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -215,8 +214,8 @@ export default function AdvancedSearchPage() {
     if (conditions.some(c => !c.value.trim())) {
       toast({
         variant: 'destructive',
-        title: 'Empty search value',
-        description: 'Please ensure all filters have a value before searching.',
+        title: 'Missing search text',
+        description: 'Please provide text for all search rules.',
       });
       return;
     }
@@ -360,7 +359,7 @@ export default function AdvancedSearchPage() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-base font-semibold">2. Add your filters</Label>
+                <Label className="text-base font-semibold">2. Add Search Rules</Label>
                 <RadioGroup
                   value={logic}
                   onValueChange={(value) => setLogic(value as 'AND' | 'OR')}
@@ -368,11 +367,11 @@ export default function AdvancedSearchPage() {
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="AND" id="and" />
-                    <Label htmlFor="and" className="font-normal">Match all filters</Label>
+                    <Label htmlFor="and" className="font-normal">Results must match all rules</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="OR" id="or" />
-                    <Label htmlFor="or" className="font-normal">Match any filter</Label>
+                    <Label htmlFor="or" className="font-normal">Results can match any rule</Label>
                   </div>
                 </RadioGroup>
               </div>
@@ -385,7 +384,7 @@ export default function AdvancedSearchPage() {
                         value={condition.field}
                         onValueChange={(value) => handleUpdateCondition(condition.id, { field: value })}
                       >
-                        <SelectTrigger><SelectValue placeholder="Select a field..." /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Search in..." /></SelectTrigger>
                         <SelectContent>
                           {allFieldOptions.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
@@ -396,7 +395,7 @@ export default function AdvancedSearchPage() {
                         value={condition.operator}
                         onValueChange={(value) => handleUpdateCondition(condition.id, { operator: value as Condition['operator'] })}
                       >
-                        <SelectTrigger><SelectValue placeholder="Select an operator..." /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Match type..." /></SelectTrigger>
                         <SelectContent>
                           {operatorOptions.map((opt) => (
                             <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
@@ -405,7 +404,7 @@ export default function AdvancedSearchPage() {
                       </Select>
                     </div>
                     <Input
-                      placeholder="Enter a value..."
+                      placeholder="Enter words to search for..."
                       value={condition.value}
                       onChange={(e) => handleUpdateCondition(condition.id, { value: e.target.value })}
                     />
@@ -417,14 +416,14 @@ export default function AdvancedSearchPage() {
                         onClick={() => handleRemoveCondition(condition.id)}
                       >
                         <X className="h-4 w-4" />
-                        <span className="sr-only">Remove filter</span>
+                        <span className="sr-only">Remove rule</span>
                       </Button>
                     )}
                   </div>
                 ))}
               </div>
               <Button variant="outline" size="sm" onClick={handleAddCondition}>
-                <Plus className="mr-2 h-4 w-4" /> Add Filter
+                <Plus className="mr-2 h-4 w-4" /> Add Rule
               </Button>
             </div>
           </CardContent>
