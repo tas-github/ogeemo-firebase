@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ReportsPageHeader } from "@/components/reports/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,11 +20,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, ChevronDown, Info } from "lucide-react";
+import { Plus, ChevronDown, Info, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Quote, Link as LinkIcon, Save } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 export default function ReportTemplatesPage() {
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const mockTemplates = ["Monthly Financial Summary", "Client Activity Log", "Project Progress Report"];
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [body, setBody] = useState('');
+
+  const handleFormat = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+  };
+
+  const preventDefault = (e: React.MouseEvent) => e.preventDefault();
 
   return (
     <div className="p-4 sm:p-6 flex flex-col h-full space-y-6">
@@ -94,8 +103,51 @@ export default function ReportTemplatesPage() {
         </Dialog>
       </div>
 
-      <div className="flex-1 flex items-center justify-center rounded-lg border-2 border-dashed">
-        <p className="text-2xl text-muted-foreground">Template editor will be here.</p>
+      <div className="flex-1 flex flex-col rounded-lg border min-h-0">
+        <div className="p-2 border-b flex items-center gap-1 flex-wrap">
+            <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}>
+                <Bold className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" title="Italic" onMouseDown={preventDefault} onClick={() => handleFormat('italic')}>
+                <Italic className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}>
+                <Underline className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" title="Strikethrough" onMouseDown={preventDefault} onClick={() => handleFormat('strikeThrough')}>
+                <Strikethrough className="h-4 w-4" />
+            </Button>
+            <Separator orientation="vertical" className="h-6 mx-1" />
+            <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}>
+                <List className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}>
+                <ListOrdered className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" title="Blockquote" onMouseDown={preventDefault} onClick={() => handleFormat('formatBlock', 'blockquote')}>
+                <Quote className="h-4 w-4" />
+            </Button>
+            <Separator orientation="vertical" className="h-6 mx-1" />
+            <Button variant="ghost" size="icon" title="Insert Link" onMouseDown={preventDefault} onClick={() => handleFormat('createLink')}>
+                <LinkIcon className="h-4 w-4" />
+            </Button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+            <div
+                ref={editorRef}
+                className="prose dark:prose-invert max-w-none focus:outline-none min-h-full"
+                contentEditable={true}
+                onInput={(e) => setBody(e.currentTarget.innerHTML)}
+                dangerouslySetInnerHTML={{ __html: body }}
+                placeholder="Start designing your report template here..."
+            />
+        </div>
+        <div className="border-t p-3 flex justify-end">
+            <Button>
+                <Save className="mr-2 h-4 w-4" />
+                Save Template
+            </Button>
+        </div>
       </div>
     </div>
   );
