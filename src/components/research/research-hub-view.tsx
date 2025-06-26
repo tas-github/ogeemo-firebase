@@ -1,37 +1,11 @@
-
 "use client";
 
 import * as React from 'react';
-import {
-  UploadCloud,
-  Link as LinkIcon,
-  FileText,
-  Bot,
-  User,
-  Send,
-  Sparkles,
-  LoaderCircle,
-  Pin,
-  Bold,
-  Italic,
-  Underline,
-  List,
-  ListOrdered,
-  Mic,
-  Square,
-  ArrowLeft,
-  Pencil,
-  Info,
-  Search,
-} from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import dynamic from 'next/dynamic';
+
 import { useToast } from '@/hooks/use-toast';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
-import { cn } from '@/lib/utils';
+import { mockSources, initialChatMessages, type Source, type ChatMessage } from '@/data/research';
 import {
   Dialog,
   DialogContent,
@@ -40,252 +14,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { LoaderCircle, Search } from 'lucide-react';
 
+// Dynamically import the views for code-splitting
+const HubView = dynamic(() => import('./hub-view').then(mod => mod.HubView), { ssr: false, loading: () => <LoaderCircle className="h-8 w-8 animate-spin mx-auto mt-10" /> });
+const SourcesView = dynamic(() => import('./sources-view').then(mod => mod.SourcesView), { ssr: false, loading: () => <LoaderCircle className="h-8 w-8 animate-spin mx-auto mt-10" /> });
+const NotepadView = dynamic(() => import('./notepad-view').then(mod => mod.NotepadView), { ssr: false, loading: () => <LoaderCircle className="h-8 w-8 animate-spin mx-auto mt-10" /> });
+const AssistantView = dynamic(() => import('./assistant-view').then(mod => mod.AssistantView), { ssr: false, loading: () => <LoaderCircle className="h-8 w-8 animate-spin mx-auto mt-10" /> });
 
-// Mock data for sources
-const mockSources = [
-  { id: 'src-1', type: 'pdf', title: 'Q3_Market_Analysis.pdf', summary: 'Analysis of market trends and competitor performance for the third quarter.' },
-  { id: 'src-2', type: 'web', title: 'TechCrunch Article on AI Startups', url: 'https://techcrunch.com/2024/01/01/ai-startups-2024/', summary: 'An overview of the most promising Ogeemo startups to watch this year.' },
-  { id: 'src-3', type: 'pdf', title: 'Project_Phoenix_Brief.pdf', summary: 'Initial project brief outlining goals, scope, and key deliverables for Project Phoenix.' },
-];
-
-// Mock data for Ogeemo Chat
-const initialChatMessages = [
-  { sender: 'ogeemo', text: 'Hi! I am your Ogeemo research assistant. Ask me anything about your sources, or select one to get a summary.' },
-];
-
-type ChatMessage = {
-  sender: 'user' | 'ogeemo';
-  text: React.ReactNode;
-};
-
-type View = 'hub' | 'sources' | 'notepad' | 'assistant';
-
-// --- Sub-Components for each View ---
-
-const HubView = ({ setView }: { setView: (view: View) => void }) => {
-  const [infoContent, setInfoContent] = React.useState<{ title: string; details: string; } | null>(null);
-
-  const features = [
-    {
-      view: 'sources' as View,
-      icon: UploadCloud,
-      title: 'Manage Sources',
-      description: "Upload documents, add web links, and manage the knowledge base for your research.",
-      cta: 'Go to Sources',
-      details: "Think of the Sources manager as the brainpower behind your Ogeemo Assistant. It's where you provide the specific documents, articles, and data that you want the assistant to use for its research. By grounding the assistant in your specific information, it can provide highly relevant and accurate answers instead of generic ones."
-    },
-    {
-      view: 'notepad' as View,
-      icon: Pencil,
-      title: 'My Notepad',
-      description: "A space to draft notes, synthesize information, and pin key insights from your research.",
-      cta: 'Open Notepad',
-      details: "The Notepad is your central workspace for thinking and writing. You can draft notes, organize your thoughts, and synthesize information from your research. It's also where you can 'pin' key insights and summaries directly from the Ogeemo Assistant, creating a persistent record of your most important findings."
-    },
-    {
-      view: 'assistant' as View,
-      icon: Bot,
-      title: 'Ogeemo Assistant',
-      description: "Chat with your assistant to get summaries, ask questions, and generate ideas based on your sources.",
-      cta: 'Start Chat',
-      details: "The Ogeemo Assistant is a powerful chat interface that helps you interact with your research sources. You can ask it to summarize documents, find key points, answer specific questions about the content, and even brainstorm new ideas. The assistant's knowledge is based on the files and links you provide in the Sources manager, making it an expert on your specific topic."
-    },
-  ];
-
-  const handleInfoClick = (e: React.MouseEvent, feature: (typeof features)[0]) => {
-      e.stopPropagation(); // Prevent card's onClick from firing
-      setInfoContent({ title: feature.title, details: feature.details });
-  };
-
-  return (
-     <>
-        <div className="p-4 sm:p-6 space-y-6">
-            <header className="text-center">
-                <h1 className="text-3xl font-bold font-headline text-primary">
-                Research Hub
-                </h1>
-                <p className="text-muted-foreground max-w-2xl mx-auto">
-                Your intelligent workspace for synthesizing information. Select a tool to get started.
-                </p>
-            </header>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-                {features.map((feature) => (
-                <Card key={feature.view} className="flex flex-col hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setView(feature.view)}>
-                    <CardHeader>
-                        <div className="flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-primary/10 rounded-lg">
-                                <feature.icon className="h-6 w-6 text-primary" />
-                                </div>
-                                <CardTitle>{feature.title}</CardTitle>
-                            </div>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={(e) => handleInfoClick(e, feature)}>
-                                <Info className="h-4 w-4" />
-                                <span className="sr-only">More info about {feature.title}</span>
-                            </Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="flex-1">
-                        <CardDescription>{feature.description}</CardDescription>
-                    </CardContent>
-                    <CardFooter>
-                        <div className="text-sm font-semibold text-primary">{feature.cta} &rarr;</div>
-                    </CardFooter>
-                </Card>
-                ))}
-            </div>
-        </div>
-
-        <Dialog open={!!infoContent} onOpenChange={(open) => !open && setInfoContent(null)}>
-            <DialogContent>
-            <DialogHeader>
-                <DialogTitle>{infoContent?.title}</DialogTitle>
-            </DialogHeader>
-            <div className="py-4 prose prose-sm dark:prose-invert max-w-none">
-                <p>{infoContent?.details}</p>
-            </div>
-            <DialogFooter>
-                <Button onClick={() => setInfoContent(null)}>Close</Button>
-            </DialogFooter>
-            </DialogContent>
-        </Dialog>
-     </>
-  )
-};
-
-const SourcesView = ({ setView, sources, selectedSourceId, handleSourceSelect, onSearchClick }: { setView: (view: View) => void, sources: typeof mockSources, selectedSourceId: string | null, handleSourceSelect: (id: string) => void, onSearchClick: () => void }) => (
-  <div className="h-full flex flex-col p-4 sm:p-6">
-    <div className="flex items-center gap-4 mb-4">
-        <Button variant="outline" onClick={() => setView('hub')}><ArrowLeft className="mr-2 h-4 w-4"/> Back to Hub</Button>
-        <h2 className="text-2xl font-bold font-headline">Sources</h2>
-    </div>
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
-      <Button><UploadCloud className="mr-2 h-4 w-4" /> Upload File</Button>
-      <Button><LinkIcon className="mr-2 h-4 w-4" /> Add Web Link</Button>
-      <Button onClick={onSearchClick}><Search className="mr-2 h-4 w-4" /> Search Internet</Button>
-    </div>
-    <ScrollArea className="flex-1 border rounded-lg">
-      <div className="p-4 space-y-2">
-        {sources.map(source => (
-          <div
-            key={source.id}
-            className={cn(
-              "p-3 rounded-lg border cursor-pointer transition-colors",
-              selectedSourceId === source.id ? "bg-primary/10 border-primary" : "hover:bg-muted/50"
-            )}
-            onClick={() => handleSourceSelect(source.id)}
-          >
-            <div className="flex items-start gap-3">
-              {source.type === 'pdf' ? <FileText className="h-5 w-5 mt-0.5 text-primary" /> : <LinkIcon className="h-5 w-5 mt-0.5 text-primary" />}
-              <p className="font-semibold text-sm truncate flex-1">{source.title}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </ScrollArea>
-  </div>
-);
-
-const NotepadView = ({ setView, editorRef, handleFormat, handleNotepadMicClick, isNotepadListening, isSttSupported }: any) => {
-    const preventDefault = (e: React.MouseEvent) => e.preventDefault();
-    return (
-        <div className="h-full flex flex-col p-4 sm:p-6">
-            <div className="flex items-center gap-4 mb-4">
-                <Button variant="outline" onClick={() => setView('hub')}><ArrowLeft className="mr-2 h-4 w-4"/> Back to Hub</Button>
-                <h2 className="text-2xl font-bold font-headline">Notepad</h2>
-            </div>
-            <div className="p-2 border rounded-t-lg flex items-center gap-1 flex-wrap">
-                <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Italic" onMouseDown={preventDefault} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Dictate Notes" onMouseDown={preventDefault} onClick={handleNotepadMicClick} disabled={!isSttSupported} className={cn(isNotepadListening && "text-destructive")}>
-                    {isNotepadListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                </Button>
-            </div>
-            <ScrollArea className="flex-1 border-x border-b rounded-b-lg">
-              <div
-                ref={editorRef}
-                contentEditable
-                className="prose dark:prose-invert max-w-none p-6 focus:outline-none h-full"
-                placeholder="Start writing your notes here..."
-              />
-            </ScrollArea>
-        </div>
-    );
-};
-
-const AssistantView = ({ setView, chatMessages, handleAddToNotepad, isLoading, userInput, setUserInput, handleSendMessage, handleAssistantMicClick, isAssistantListening, isSttSupported, chatInputRef }: any) => (
-    <div className="h-full flex flex-col p-4 sm:p-6">
-        <div className="flex items-center gap-4 mb-4">
-            <Button variant="outline" onClick={() => setView('hub')}><ArrowLeft className="mr-2 h-4 w-4"/> Back to Hub</Button>
-            <h2 className="text-2xl font-bold font-headline">Ogeemo Assistant</h2>
-        </div>
-        <Card className="flex-1 flex flex-col">
-            <ScrollArea className="flex-1 p-4">
-                <div className="space-y-4">
-                {chatMessages.map((msg: any, index: number) => (
-                    <div key={index} className={cn("flex items-start gap-3", msg.sender === 'user' ? "justify-end" : "justify-start")}>
-                        {msg.sender === 'ogeemo' && <Avatar className="h-8 w-8"><AvatarFallback><Bot/></AvatarFallback></Avatar>}
-                        <div className={cn(
-                            "max-w-md rounded-lg px-4 py-2 text-sm relative group",
-                             msg.sender === 'user' ? "bg-primary text-primary-foreground" : "bg-muted"
-                        )}>
-                            <div className="prose prose-sm dark:prose-invert max-w-none">{msg.text}</div>
-                            {msg.sender === 'ogeemo' && (
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="absolute -top-2 -right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={() => handleAddToNotepad(msg.text)}
-                                >
-                                    <Pin className="h-4 w-4" />
-                                </Button>
-                            )}
-                        </div>
-                        {msg.sender === 'user' && <Avatar className="h-8 w-8"><AvatarFallback><User/></AvatarFallback></Avatar>}
-                    </div>
-                ))}
-                {isLoading && (
-                    <div className="flex items-start gap-3 justify-start">
-                        <Avatar className="h-8 w-8"><AvatarFallback><Bot/></AvatarFallback></Avatar>
-                        <div className="bg-muted rounded-lg px-4 py-2 text-sm flex items-center">
-                            <LoaderCircle className="h-4 w-4 animate-spin" />
-                        </div>
-                    </div>
-                )}
-                </div>
-            </ScrollArea>
-            <div className="p-4 border-t">
-              <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                <Input
-                  ref={chatInputRef}
-                  value={userInput}
-                  onChange={(e: any) => setUserInput(e.target.value)}
-                  placeholder="Ask a follow-up question..."
-                  disabled={isLoading}
-                />
-                <Button type="button" variant="ghost" size="icon" onClick={handleAssistantMicClick} disabled={!isSttSupported || isLoading} className={cn(isAssistantListening && "text-destructive")}>
-                  {isAssistantListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                </Button>
-                <Button type="submit" size="icon" disabled={isLoading || !userInput.trim()}>
-                  <Send className="h-4 w-4" />
-                </Button>
-              </form>
-            </div>
-        </Card>
-    </div>
-);
-
-
-// --- Main Component ---
+export type View = 'hub' | 'sources' | 'notepad' | 'assistant';
 
 export function ResearchHubView() {
   const [view, setView] = React.useState<View>('hub');
-  const [sources, setSources] = React.useState(mockSources);
+  const [sources, setSources] = React.useState<Source[]>(mockSources);
   const [selectedSourceId, setSelectedSourceId] = React.useState<string | null>(null);
   const [chatMessages, setChatMessages] = React.useState<ChatMessage[]>(initialChatMessages);
   const [userInput, setUserInput] = React.useState('');
@@ -350,8 +94,6 @@ export function ResearchHubView() {
     }
   };
 
-  const selectedSource = sources.find(s => s.id === selectedSourceId);
-  
   const handleFormat = (command: string, value?: string) => {
     document.execCommand(command, false, value);
     editorRef.current?.focus();
@@ -372,6 +114,8 @@ export function ResearchHubView() {
 
     setChatMessages(prev => [...prev, { sender: 'user', text: userInput }]);
     setIsLoading(true);
+    
+    const selectedSource = sources.find(s => s.id === selectedSourceId);
 
     setTimeout(() => {
       let ogeemoResponse: React.ReactNode = "I'm not sure how to answer that. Try selecting a source first.";
@@ -413,7 +157,7 @@ export function ResearchHubView() {
     if (!searchQuery.trim()) return;
     setIsSearching(true);
     setTimeout(() => {
-      const newSource = {
+      const newSource: Source = {
         id: `src-${Date.now()}`,
         type: 'web' as const,
         title: `Web Search: "${searchQuery}"`,
@@ -432,24 +176,22 @@ export function ResearchHubView() {
     }, 2000);
   };
 
-
-  const handleAddToNotepad = (content: React.ReactNode) => {
+  const handleAddToNotepad = async (content: React.ReactNode) => {
     if (editorRef.current) {
-        let textContent = '';
-        if (typeof content === 'string') {
-            textContent = content;
-        } else if (React.isValidElement(content)) {
-            // A simple way to extract text from the React node structure we're using
-            const tempDiv = document.createElement('div');
-            const root = require('react-dom/client').createRoot(tempDiv);
-            root.render(content);
-            textContent = tempDiv.innerText || '';
-        }
-        
+      if (typeof content === 'string') {
+        editorRef.current.innerHTML += content;
+      } else if (React.isValidElement(content)) {
+        const { createRoot } = await import('react-dom/client');
+        const tempDiv = document.createElement('div');
+        const root = createRoot(tempDiv);
+        root.render(<>{content}</>);
+        const htmlContent = tempDiv.innerHTML;
         const separator = editorRef.current.innerHTML.trim() ? '<hr class="my-4">' : '';
-        editorRef.current.innerHTML += `${separator}<blockquote>${textContent.replace(/\n/g, '<br>')}</blockquote><p><br></p>`;
-        toast({ title: "Added to Notepad", description: "The content has been pinned to your notes." });
-        setView('notepad');
+        editorRef.current.innerHTML += `${separator}<blockquote>${htmlContent}</blockquote><p><br></p>`;
+      }
+      
+      toast({ title: "Added to Notepad", description: "The content has been pinned to your notes." });
+      setView('notepad');
     }
   };
 
