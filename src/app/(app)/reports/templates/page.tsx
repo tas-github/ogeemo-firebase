@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ReportsPageHeader } from "@/components/reports/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,14 +20,67 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, ChevronDown, Info, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Quote, Link as LinkIcon, Save } from "lucide-react";
+import { Plus, ChevronDown, Info, Bold, Italic, Underline, Strikethrough, List, ListOrdered, Quote, Link as LinkIcon, Save, Mic, Square } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { useSpeechToText } from "@/hooks/use-speech-to-text";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 export default function ReportTemplatesPage() {
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const mockTemplates = ["Monthly Financial Summary", "Client Activity Log", "Project Progress Report"];
   const editorRef = useRef<HTMLDivElement>(null);
   const [body, setBody] = useState('');
+  const baseTextRef = useRef('');
+  const { toast } = useToast();
+
+  const {
+    status,
+    startListening,
+    stopListening,
+    isSupported,
+  } = useSpeechToText({
+    onTranscript: (transcript) => {
+      const newText = baseTextRef.current
+        ? `${baseTextRef.current} ${transcript}`
+        : transcript;
+      setBody(newText);
+    },
+  });
+
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.innerHTML !== body) {
+      editorRef.current.innerHTML = body;
+      const range = document.createRange();
+      const sel = window.getSelection();
+      if (sel) {
+        range.selectNodeContents(editorRef.current);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }
+  }, [body]);
+
+  useEffect(() => {
+    if (isSupported === false) {
+      toast({
+        variant: 'destructive',
+        title: 'Voice Input Not Supported',
+        description: 'Your browser does not support the Web Speech API.',
+      });
+    }
+  }, [isSupported, toast]);
+
+  const handleMicClick = () => {
+    if (status === 'listening') {
+      stopListening();
+    } else {
+      baseTextRef.current = body;
+      startListening();
+      editorRef.current?.focus();
+    }
+  };
 
   const handleFormat = (command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -130,6 +183,18 @@ export default function ReportTemplatesPage() {
             <Separator orientation="vertical" className="h-6 mx-1" />
             <Button variant="ghost" size="icon" title="Insert Link" onMouseDown={preventDefault} onClick={() => handleFormat('createLink')}>
                 <LinkIcon className="h-4 w-4" />
+            </Button>
+            <Separator orientation="vertical" className="h-6 mx-1" />
+            <Button
+              variant="ghost"
+              size="icon"
+              title={status === 'listening' ? "Stop dictation" : "Dictate notes"}
+              onMouseDown={preventDefault}
+              onClick={handleMicClick}
+              disabled={isSupported === false}
+              className={cn(status === 'listening' && "text-destructive")}
+            >
+              {status === 'listening' ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
             </Button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
