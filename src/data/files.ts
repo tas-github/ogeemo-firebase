@@ -109,4 +109,73 @@ export const mockFiles: FileItem[] = [
     modifiedAt: new Date('2024-07-25T15:20:00Z'),
     folderId: 'folder-6',
   },
+  {
+    id: 'file-11',
+    name: 'How to create voice to text in a manager.',
+    type: REPORT_TEMPLATE_MIMETYPE,
+    size: 2800,
+    modifiedAt: new Date(),
+    folderId: 'folder-reports',
+    content: `<h3>How to Create a Voice-to-Text Feature</h3>
+<p>This report outlines the standard procedure for integrating voice-to-text functionality into a component within the Ogeemo platform. The process leverages the custom <code>useSpeechToText</code> hook, which abstracts the browser's Web Speech API.</p>
+<h4>Step 1: Import the Hook</h4>
+<p>In your component file, import the <code>useSpeechToText</code> hook and any necessary UI components like <code>Button</code>, <code>Input</code>, and icons from <code>lucide-react</code>.</p>
+<pre><code class="language-tsx">import { useSpeechToText } from '@/hooks/use-speech-to-text';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Mic, Square } from 'lucide-react';
+import { useState, useRef } from 'react';</code></pre>
+<h4>Step 2: Initialize State and the Hook</h4>
+<p>Set up state variables to hold the input text and a ref to store text content before dictation begins. Then, initialize the hook, providing a function to handle the incoming transcript.</p>
+<pre><code class="language-tsx">const [inputValue, setInputValue] = useState('');
+const baseTextRef = useRef('');
+
+const {
+  isListening,
+  startListening,
+  stopListening,
+  isSupported
+} = useSpeechToText({
+  onTranscript: (transcript) => {
+    // Combine base text with new transcript
+    const newText = baseTextRef.current
+      ? \`\${baseTextRef.current} \${transcript}\`
+      : transcript;
+    setInputValue(newText);
+  }
+});</code></pre>
+<h4>Step 3: Create the UI Elements</h4>
+<p>Add an input field and a microphone button to your component's JSX. The button's appearance and behavior should change based on the <code>isListening</code> and <code>isSupported</code> states from the hook.</p>
+<pre><code class="language-jsx">&lt;div className="relative"&gt;
+  &lt;Input
+    value={inputValue}
+    onChange={(e) => setInputValue(e.target.value)}
+    placeholder="Type or click the mic to speak..."
+  /&gt;
+  &lt;Button
+    type="button"
+    variant={isListening ? 'destructive' : 'ghost'}
+    size="icon"
+    className="absolute right-2 top-2 h-7 w-7"
+    onClick={handleMicClick}
+    disabled={isSupported === false}
+    title={isListening ? 'Stop dictation' : 'Dictate text'}
+  &gt;
+    {isListening ? &lt;Square className="h-4 w-4" /&gt; : &lt;Mic className="h-4 w-4" /&gt;}
+  &lt;/Button&gt;
+&lt;/div&gt;</code></pre>
+<h4>Step 4: Implement the Click Handler</h4>
+<p>Create the function that will be called when the microphone button is clicked. This function toggles the listening state and saves the current input value before starting a new dictation.</p>
+<pre><code class="language-tsx">const handleMicClick = () => {
+  if (isListening) {
+    stopListening();
+  } else {
+    // Save current text to prepend to transcript
+    baseTextRef.current = inputValue.trim();
+    startListening();
+  }
+};</code></pre>
+<p>By following these steps, you can consistently and reliably add voice-to-text capabilities to any manager or component in the application.</p>
+`,
+  },
 ];
