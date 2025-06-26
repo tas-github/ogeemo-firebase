@@ -114,10 +114,16 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
     };
 
     recognition.onresult = (event: any) => {
-      const transcript = Array.from(event.results)
+      let transcript = Array.from(event.results)
         .map((result: any) => result[0])
         .map((result) => result.transcript)
         .join('');
+      
+      // Replace spoken punctuation
+      transcript = transcript
+        .replace(/\speriod/gi, '.')
+        .replace(/\scomma/gi, ',');
+      
       onTranscript(transcript);
       
       const lastResult = event.results[event.results.length - 1];
