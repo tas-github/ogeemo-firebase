@@ -121,8 +121,8 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
       
       // Replace spoken punctuation
       transcript = transcript
-        .replace(/\speriod/gi, '.')
-        .replace(/\scomma/gi, ',');
+        .replace(/\s*\bperiod\b/gi, '.')
+        .replace(/\s*\bcomma\b/gi, ',');
       
       onTranscript(transcript);
       
