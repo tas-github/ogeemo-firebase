@@ -19,17 +19,74 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { type FileItem, type FolderItem, mockFiles, mockFolders, REPORT_TEMPLATE_MIMETYPE } from "@/data/files";
+
+const REPORT_TEMPLATES_FOLDER_ID = 'folder-reports';
 
 export default function ReportTemplatesPage() {
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [isManageTemplatesOpen, setIsManageTemplatesOpen] = useState(false);
-  const mockTemplates = ["Monthly Financial Summary", "Client Activity Log", "Project Progress Report"];
   const editorRef = useRef<HTMLDivElement>(null);
   const [body, setBody] = useState('');
   const [notesBeforeSpeech, setNotesBeforeSpeech] = useState('');
   const { toast } = useToast();
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
+
+  const [files, setFiles] = useState<FileItem[]>([]);
+  const [folders, setFolders] = useState<FolderItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let loadedFolders = mockFolders;
+    let loadedFiles = mockFiles;
+    try {
+      const storedFolders = localStorage.getItem('fileManagerFolders');
+      if (storedFolders) loadedFolders = JSON.parse(storedFolders);
+
+      const storedFiles = localStorage.getItem('fileManagerFiles');
+      if (storedFiles) {
+        loadedFiles = JSON.parse(storedFiles).map((file: any) => ({
+          ...file,
+          modifiedAt: new Date(file.modifiedAt),
+        }));
+      }
+      
+      if (!loadedFolders.some(f => f.id === REPORT_TEMPLATES_FOLDER_ID)) {
+          const reportsFolder = { id: REPORT_TEMPLATES_FOLDER_ID, name: 'Report Templates', parentId: null };
+          loadedFolders = [reportsFolder, ...loadedFolders];
+      }
+
+    } catch (error) {
+      console.error("Failed to parse from localStorage, using mock data.", error);
+    } finally {
+      setFolders(loadedFolders);
+      setFiles(loadedFiles);
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      try {
+        localStorage.setItem('fileManagerFolders', JSON.stringify(folders));
+      } catch (error) {
+        console.error("Failed to save folders to localStorage", error);
+      }
+    }
+  }, [folders, isLoading]);
+
+  useEffect(() => {
+    if (!isLoading) {
+      try {
+        localStorage.setItem('fileManagerFiles', JSON.stringify(files));
+      } catch (error) {
+        console.error("Failed to save files to localStorage", error);
+      }
+    }
+  }, [files, isLoading]);
+
+  const reportTemplates = files.filter(f => f.folderId === REPORT_TEMPLATES_FOLDER_ID);
 
   const {
     isListening,
@@ -56,38 +113,9 @@ export default function ReportTemplatesPage() {
     },
   });
 
-  useEffect(() => {
-    if (isSupported === false) {
-      toast({
-        variant: 'destructive',
-        title: 'Voice Input Not Supported',
-        description: 'Your browser does not support the Web Speech API.',
-      });
-    }
-  }, [isSupported, toast]);
-
   const handleMicClick = () => {
     if (isListening) {
       stopListening();
-      const editor = editorRef.current;
-      if (editor) {
-        setBody(editor.innerHTML);
-        editor.focus();
-        const selection = window.getSelection();
-        if (selection) {
-          const range = document.createRange();
-          range.selectNodeContents(editor);
-          range.collapse(false); // to the end
-          selection.removeAllRanges();
-          selection.addRange(range);
-        }
-        
-        const textContent = (editor.textContent || "").trim();
-        const lastChar = textContent.slice(-1);
-        if (textContent && !['.', '!', '?'].includes(lastChar)) {
-          document.execCommand('insertText', false, '.');
-        }
-      }
     } else {
       setNotesBeforeSpeech(editorRef.current?.innerHTML || '');
       startListening();
@@ -103,11 +131,19 @@ export default function ReportTemplatesPage() {
         });
         return;
     }
-    // In a real app, this would save to a database.
-    console.log('Saving template:', templateName, 'Content:', body);
+    const newFile: FileItem = {
+        id: `template-${Date.now()}`,
+        name: templateName.trim(),
+        folderId: REPORT_TEMPLATES_FOLDER_ID,
+        type: REPORT_TEMPLATE_MIMETYPE,
+        content: body,
+        size: body.length,
+        modifiedAt: new Date(),
+    };
+    setFiles(prev => [...prev, newFile]);
     toast({
         title: 'Template Saved!',
-        description: `"${templateName}" has been saved.`
+        description: `"${templateName}" has been saved to your File Manager.`
     });
     setIsSaveDialogOpen(false);
     setTemplateName('');
@@ -121,10 +157,52 @@ export default function ReportTemplatesPage() {
   const preventDefault = (e: React.MouseEvent) => e.preventDefault();
   
   const handleEditorInput = (e: React.FormEvent<HTMLDivElement>) => {
-    // Only update state if not currently listening to voice input
-    // to prevent cursor jumps.
     if (!isListening) {
         setBody(e.currentTarget.innerHTML);
+    }
+  };
+
+  const handleCreateNew = () => {
+    setBody('');
+    if (editorRef.current) {
+        editorRef.current.innerHTML = '';
+    }
+    editorRef.current?.focus();
+    toast({ title: "New Template Started", description: "The editor has been cleared." });
+  };
+  
+  const handleLoadTemplate = (template: FileItem) => {
+    setBody(template.content || '');
+    if (editorRef.current) {
+      editorRef.current.innerHTML = template.content || '';
+    }
+    setIsManageTemplatesOpen(false);
+    toast({ title: "Template Loaded", description: `Loaded "${template.name}" into the editor.` });
+  };
+  
+  const handleRenameTemplate = (template: FileItem) => {
+    const newName = window.prompt("Enter new name for the template:", template.name);
+    if (newName && newName.trim() !== "") {
+        setFiles(prev => prev.map(f => f.id === template.id ? {...f, name: newName.trim(), modifiedAt: new Date()} : f));
+        toast({ title: "Template Renamed" });
+    }
+  };
+
+  const handleCopyTemplate = (template: FileItem) => {
+    const newFile: FileItem = {
+      ...template,
+      id: `template-${Date.now()}`,
+      name: `${template.name} (Copy)`,
+      modifiedAt: new Date(),
+    };
+    setFiles(prev => [...prev, newFile]);
+    toast({ title: "Template Copied" });
+  };
+
+  const handleDeleteTemplate = (template: FileItem) => {
+    if (window.confirm(`Are you sure you want to delete "${template.name}"?`)) {
+        setFiles(prev => prev.filter(f => f.id !== template.id));
+        toast({ title: "Template Deleted", variant: 'destructive' });
     }
   };
 
@@ -141,7 +219,7 @@ export default function ReportTemplatesPage() {
       </header>
       
       <div className="flex justify-center gap-4">
-        <Button>
+        <Button onClick={handleCreateNew}>
           <Plus className="mr-2 h-4 w-4" />
           Create a Report Template
         </Button>
@@ -160,20 +238,20 @@ export default function ReportTemplatesPage() {
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4 space-y-2 max-h-[60vh] overflow-y-auto">
-                    {mockTemplates.map((template) => (
-                        <div key={template} className="flex items-center justify-between p-2 rounded-lg border hover:bg-accent/50">
-                            <span className="font-medium">{template}</span>
+                    {reportTemplates.map((template) => (
+                        <div key={template.id} className="flex items-center justify-between p-2 rounded-lg border hover:bg-accent/50">
+                            <span className="font-medium">{template.name}</span>
                             <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="icon" title="Edit Template Content">
+                                <Button variant="ghost" size="icon" title="Edit Template Content" onClick={() => handleLoadTemplate(template)}>
                                     <Pencil className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" title="Rename Template">
+                                <Button variant="ghost" size="icon" title="Rename Template" onClick={() => handleRenameTemplate(template)}>
                                     <FilePenLine className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" title="Copy Template">
+                                <Button variant="ghost" size="icon" title="Copy Template" onClick={() => handleCopyTemplate(template)}>
                                     <Copy className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" title="Delete Template" className="text-destructive hover:text-destructive">
+                                <Button variant="ghost" size="icon" title="Delete Template" className="text-destructive hover:text-destructive" onClick={() => handleDeleteTemplate(template)}>
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
@@ -284,7 +362,7 @@ export default function ReportTemplatesPage() {
           <DialogHeader>
             <DialogTitle>Save Report Template</DialogTitle>
             <DialogDescription>
-              Give your new template a name. This will save the current content of the editor.
+              Give your new template a name. This will save it to the File Manager.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-2">

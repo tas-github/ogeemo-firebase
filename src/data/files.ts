@@ -1,4 +1,6 @@
 
+export const REPORT_TEMPLATE_MIMETYPE = 'application/vnd.og-report-template+html';
+
 export interface FileItem {
   id: string;
   name: string;
@@ -6,6 +8,7 @@ export interface FileItem {
   size: number; // in bytes
   modifiedAt: Date;
   folderId: string;
+  content?: string;
 }
 
 export interface FolderItem {
@@ -15,6 +18,7 @@ export interface FolderItem {
 }
 
 export const mockFolders: FolderItem[] = [
+  { id: 'folder-reports', name: 'Report Templates', parentId: null },
   { id: 'folder-1', name: 'Client Documents', parentId: null },
   { id: 'folder-2', name: 'Invoices', parentId: 'folder-1' },
   { id: 'folder-3', name: 'Marketing Assets', parentId: 'folder-1' },
