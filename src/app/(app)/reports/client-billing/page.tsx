@@ -1,3 +1,4 @@
+
 import { ReportsPageHeader } from "@/components/reports/page-header";
 
 export default function ClientBillingReportPage() {
