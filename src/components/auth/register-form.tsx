@@ -54,14 +54,20 @@ export function RegisterForm() {
       if (!auth) {
         throw new Error("Firebase Auth is not initialized.");
       }
-      const userCredential = await createUserWithEmailAndPassword(
+      await createUserWithEmailAndPassword(
         auth,
         values.email,
         values.password
       );
       
+      // After creation, the user is signed in, so auth.currentUser will be populated.
+      // This is a more robust way to get the user object for profile updates.
+      if (!auth.currentUser) {
+        throw new Error("User created, but currentUser is not available.");
+      }
+
       // Update the user's profile with their name
-      await updateProfile(userCredential.user, {
+      await updateProfile(auth.currentUser, {
         displayName: values.name,
       });
 
