@@ -310,87 +310,12 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
                 <Textarea
                   id="task-description"
                   placeholder="Provide a detailed description of the task..."
-                  rows={8}
+                  rows={5}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                <div className="flex items-center space-x-2 pt-4">
-                  <Checkbox
-                    id="billable"
-                    checked={isBillable}
-                    onCheckedChange={(checked) => {
-                      const isChecked = Boolean(checked);
-                      setIsBillable(isChecked);
-                      if (!isChecked) {
-                        setBillableRate(undefined);
-                      }
-                    }}
-                  />
-                  <Label
-                    htmlFor="billable"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    This task is billable
-                  </Label>
-                </div>
-                {isBillable && (
-                  <div className="space-y-2">
-                    <Label htmlFor="billing-rate">Billing Rate ($/hr)</Label>
-                    <Input
-                      id="billing-rate"
-                      type="number"
-                      placeholder="e.g., 150"
-                      value={billableRate || ''}
-                      onChange={(e) => setBillableRate(e.target.value ? Number(e.target.value) : undefined)}
-                    />
-                  </div>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="task-status">Status</Label>
-                  <Select value={status} onValueChange={(value) => setStatus(value as 'todo' | 'inProgress' | 'done')}>
-                    <SelectTrigger id="task-status">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todo">To Do</SelectItem>
-                      <SelectItem value="inProgress">In Progress</SelectItem>
-                      <SelectItem value="done">Done</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="task-priority">Priority</Label>
-                  <Select value={priority} onValueChange={setPriority}>
-                    <SelectTrigger id="task-priority">
-                      <SelectValue placeholder="Select priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="task-urgency">Urgency</Label>
-                  <Select value={urgency} onValueChange={setUrgency}>
-                    <SelectTrigger id="task-urgency">
-                      <SelectValue placeholder="Select urgency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label>Start Date & Time</Label>
@@ -508,7 +433,47 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="task-status">Status</Label>
+                  <Select value={status} onValueChange={(value) => setStatus(value as 'todo' | 'inProgress' | 'done')}>
+                    <SelectTrigger id="task-status">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todo">To Do</SelectItem>
+                      <SelectItem value="inProgress">In Progress</SelectItem>
+                      <SelectItem value="done">Done</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="task-priority">Priority</Label>
+                  <Select value={priority} onValueChange={setPriority}>
+                    <SelectTrigger id="task-priority">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="task-urgency">Urgency</Label>
+                  <Select value={urgency} onValueChange={setUrgency}>
+                    <SelectTrigger id="task-urgency">
+                      <SelectValue placeholder="Select urgency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="task-contact">Contact</Label>
                   <div className="flex items-center gap-2">
@@ -532,12 +497,48 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
                     </Button>
                   </div>
                 </div>
-                 <div className="space-y-2">
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                <div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox
+                            id="billable"
+                            checked={isBillable}
+                            onCheckedChange={(checked) => {
+                            const isChecked = Boolean(checked);
+                            setIsBillable(isChecked);
+                            if (!isChecked) {
+                                setBillableRate(undefined);
+                            }
+                            }}
+                        />
+                        <Label
+                            htmlFor="billable"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                            This task is billable
+                        </Label>
+                    </div>
+                    {isBillable && (
+                    <div className="space-y-2 mt-2">
+                        <Label htmlFor="billing-rate">Billing Rate ($/hr)</Label>
+                        <Input
+                        id="billing-rate"
+                        type="number"
+                        placeholder="e.g., 150"
+                        value={billableRate || ''}
+                        onChange={(e) => setBillableRate(e.target.value ? Number(e.target.value) : undefined)}
+                        />
+                    </div>
+                    )}
+                </div>
+                <div className="space-y-2">
                     <Button type="button" variant="outline" className="w-full" onClick={() => setIsTimeClockOpen(true)}>
                         <Clock className="mr-2 h-4 w-4" />
                         Time Clock
                     </Button>
-                 </div>
+                </div>
               </div>
             </div>
           </ScrollArea>
