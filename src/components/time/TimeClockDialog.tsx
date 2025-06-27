@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Play, Pause, Square } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
 
 interface TimeClockDialogProps {
   isOpen: boolean;
@@ -41,7 +42,9 @@ export function TimeClockDialog({ isOpen, onOpenChange, onLogTime }: TimeClockDi
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [keepRunning, setKeepRunning] = useState(false);
+  const [saveToClientFile, setSaveToClientFile] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const { toast } = useToast();
 
   // Main timer logic
   useEffect(() => {
@@ -63,6 +66,7 @@ export function TimeClockDialog({ isOpen, onOpenChange, onLogTime }: TimeClockDi
       setIsActive(false);
       setElapsedSeconds(0);
       setKeepRunning(false);
+      setSaveToClientFile(false);
       localStorage.removeItem(TIMER_STORAGE_KEY);
   }, []);
   
@@ -109,6 +113,13 @@ export function TimeClockDialog({ isOpen, onOpenChange, onLogTime }: TimeClockDi
   };
 
   const handleStop = () => {
+    if (saveToClientFile) {
+        // Simulate saving to client file
+        toast({
+            title: "Time Saved to Client File",
+            description: `${formatTime(elapsedSeconds)} has been logged to the client file.`
+        });
+    }
     onLogTime(elapsedSeconds);
     resetTimerState();
     onOpenChange(false);
@@ -144,16 +155,26 @@ export function TimeClockDialog({ isOpen, onOpenChange, onLogTime }: TimeClockDi
             </Button>
             <Button onClick={handleStop} variant="destructive" size="lg" disabled={!isActive && elapsedSeconds === 0}>
                 <Square className="mr-2 h-5 w-5" />
-                Stop & Log
+                {saveToClientFile ? "Save time to client file" : "Stop & Log"}
             </Button>
         </div>
-        <div className="flex items-center space-x-2 pt-4 justify-center">
-            <Checkbox
-              id="keep-running"
-              checked={keepRunning}
-              onCheckedChange={handleKeepRunningChange}
-            />
-            <Label htmlFor="keep-running" className="cursor-pointer">Keep timer running until stopped</Label>
+        <div className="flex flex-col items-center space-y-2 pt-4 justify-center">
+            <div className="flex items-center space-x-2">
+                <Checkbox
+                id="keep-running"
+                checked={keepRunning}
+                onCheckedChange={handleKeepRunningChange}
+                />
+                <Label htmlFor="keep-running" className="cursor-pointer">Keep timer running until stopped</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+                <Checkbox
+                    id="save-to-client"
+                    checked={saveToClientFile}
+                    onCheckedChange={(checked) => setSaveToClientFile(!!checked)}
+                />
+                <Label htmlFor="save-to-client" className="cursor-pointer">Log time to client's file</Label>
+            </div>
         </div>
         <DialogFooter>
             <Button variant="ghost" onClick={() => handleOpenChange(false)}>Close</Button>
