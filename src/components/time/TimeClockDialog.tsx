@@ -34,6 +34,7 @@ const TIMER_STORAGE_KEY = 'timeClockDialogState';
 interface StoredTimerState {
     elapsedSeconds: number;
     isActive: boolean;
+    isPaused: boolean;
     lastTickTimestamp: number;
 }
 
@@ -41,14 +42,15 @@ interface StoredTimerState {
 export function TimeClockDialog({ isOpen, onOpenChange, onLogTime }: TimeClockDialogProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isActive, setIsActive] = useState(false);
+  const [isPaused, setIsPaused] = useState(true);
   const [keepRunning, setKeepRunning] = useState(false);
   const [saveToClientFile, setSaveToClientFile] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
-  // Main timer logic
+  // Timer logic
   useEffect(() => {
-    if (isActive) {
+    if (isActive && !isPaused) {
       intervalRef.current = setInterval(() => {
         setElapsedSeconds(prev => prev + 1);
       }, 1000);
@@ -60,10 +62,11 @@ export function TimeClockDialog({ isOpen, onOpenChange, onLogTime }: TimeClockDi
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isActive]);
+  }, [isActive, isPaused]);
 
   const resetTimerState = useCallback(() => {
       setIsActive(false);
+      setIsPaused(true);
       setElapsedSeconds(0);
       setKeepRunning(false);
       setSaveToClientFile(false);
@@ -77,10 +80,11 @@ export function TimeClockDialog({ isOpen, onOpenChange, onLogTime }: TimeClockDi
             const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
             if (savedStateRaw) {
                 const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-                const timeSinceLastTick = savedState.isActive ? Math.floor((Date.now() - savedState.lastTickTimestamp) / 1000) : 0;
+                const timeSinceLastTick = !savedState.isPaused && savedState.isActive ? Math.floor((Date.now() - savedState.lastTickTimestamp) / 1000) : 0;
                 
                 setElapsedSeconds(savedState.elapsedSeconds + timeSinceLastTick);
                 setIsActive(savedState.isActive);
+                setIsPaused(savedState.isPaused);
                 setKeepRunning(true);
             }
         } catch (error) {
@@ -92,11 +96,12 @@ export function TimeClockDialog({ isOpen, onOpenChange, onLogTime }: TimeClockDi
   
   const handleOpenChange = (open: boolean) => {
     if (!open) { // Dialog is closing
-      if (keepRunning && (isActive || elapsedSeconds > 0)) {
+      if (keepRunning && isActive) {
         // Save state to localStorage
         const stateToStore: StoredTimerState = {
             elapsedSeconds,
             isActive,
+            isPaused,
             lastTickTimestamp: Date.now(),
         };
         localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(stateToStore));
@@ -108,8 +113,14 @@ export function TimeClockDialog({ isOpen, onOpenChange, onLogTime }: TimeClockDi
     onOpenChange(open);
   };
 
-  const handleStartPause = () => {
-    setIsActive(!isActive);
+  const handleStart = () => {
+    setIsActive(true);
+    setIsPaused(false);
+    setElapsedSeconds(0);
+  };
+
+  const handlePauseResume = () => {
+      setIsPaused(!isPaused);
   };
 
   const handleStop = () => {
@@ -128,8 +139,7 @@ export function TimeClockDialog({ isOpen, onOpenChange, onLogTime }: TimeClockDi
   const handleKeepRunningChange = (checked: boolean | 'indeterminate') => {
     const isChecked = !!checked;
     setKeepRunning(isChecked);
-    if (!isChecked) {
-        // If user unchecks it, we should clear any persistent state
+    if (!isChecked && !isActive) {
         localStorage.removeItem(TIMER_STORAGE_KEY);
     }
   }
@@ -149,14 +159,22 @@ export function TimeClockDialog({ isOpen, onOpenChange, onLogTime }: TimeClockDi
           </p>
         </div>
         <div className="flex items-center justify-center space-x-2">
-            <Button onClick={handleStartPause} variant="outline" size="lg">
-                {isActive ? <Pause className="mr-2 h-5 w-5" /> : <Play className="mr-2 h-5 w-5" />}
-                {isActive ? 'Pause' : 'Start'}
-            </Button>
-            <Button onClick={handleStop} variant="destructive" size="lg" disabled={!isActive && elapsedSeconds === 0}>
-                <Square className="mr-2 h-5 w-5" />
-                {saveToClientFile ? "Save time to client file" : "Stop & Log"}
-            </Button>
+            {!isActive ? (
+                 <Button onClick={handleStart} variant="outline" size="lg" className="w-48">
+                    <Play className="mr-2 h-5 w-5" /> Start
+                </Button>
+            ) : (
+                <>
+                    <Button onClick={handlePauseResume} variant="outline" size="lg" className="w-48">
+                        {isPaused ? <Play className="mr-2 h-5 w-5" /> : <Pause className="mr-2 h-5 w-5" />}
+                        {isPaused ? 'Resume' : 'Pause'}
+                    </Button>
+                    <Button onClick={handleStop} variant="destructive" size="lg" className="w-48">
+                        <Square className="mr-2 h-5 w-5" />
+                        {saveToClientFile ? "Save time to client file" : "Stop & Log"}
+                    </Button>
+                </>
+            )}
         </div>
         <div className="flex flex-col items-center space-y-2 pt-4 justify-center">
             <div className="flex items-center space-x-2">
