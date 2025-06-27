@@ -266,7 +266,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-        <DialogHeader className="p-6 pb-4 border-b text-center">
+        <DialogHeader className="p-6 pb-4 border-b text-center sm:text-center">
           <DialogTitle className="text-2xl font-bold font-headline text-primary">{isEditMode ? "Edit Task" : "Create a New Task"}</DialogTitle>
           <DialogDescription>
             {isEditMode ? "Update the details for your task." : "Fill out the details below to add a new task to your board."}
