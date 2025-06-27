@@ -97,7 +97,7 @@ export function ContactsView() {
   }, [toast]);
 
   const selectedFolder = useMemo(
-    () => folders.find((f) => f.id === selectedFolderId),
+    () => folders.find((f) => f && f.id === selectedFolderId),
     [folders, selectedFolderId]
   );
 
