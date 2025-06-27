@@ -2,9 +2,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { LogOut, Settings, User, MoreHorizontal } from "lucide-react";
+import { LogOut, Settings, User as UserIcon, MoreHorizontal } from "lucide-react";
+import { signOut } from "firebase/auth";
 
+import { auth } from "@/lib/firebase";
+import { useAuth } from "@/context/auth-context";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -19,23 +21,34 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function UserNav() {
-  const router = useRouter();
   const { state: sidebarState } = useSidebar();
+  const { user } = useAuth();
 
-  const handleLogout = () => {
-    // Perform a systematic shutdown by clearing session data from the browser
-    localStorage.clear();
-    // Redirect to the login page for a fresh start
-    router.push("/login");
+  const handleLogout = async () => {
+    if (auth) {
+      await signOut(auth);
+    }
+    // The redirect to /login is handled by the listener in ClientLayout
+  };
+
+  // If there's no user, don't render anything.
+  // The layout will redirect to login page.
+  if (!user) {
+    return null;
+  }
+  
+  const getInitials = (name?: string | null) => {
+    if (!name) return "U";
+    return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
   };
 
   const dropdownContent = (
     <DropdownMenuContent className="w-56" align="end" forceMount>
       <DropdownMenuLabel className="font-normal">
         <div className="flex flex-col space-y-1">
-          <p className="text-sm font-medium leading-none">User</p>
+          <p className="text-sm font-medium leading-none">{user.displayName || "User"}</p>
           <p className="text-xs leading-none text-muted-foreground">
-            user@example.com
+            {user.email}
           </p>
         </div>
       </DropdownMenuLabel>
@@ -43,7 +56,7 @@ export function UserNav() {
       <DropdownMenuGroup>
         <DropdownMenuItem asChild>
           <Link href="/settings">
-            <User className="mr-2 h-4 w-4" />
+            <UserIcon className="mr-2 h-4 w-4" />
             <span>Profile</span>
           </Link>
         </DropdownMenuItem>
@@ -69,10 +82,10 @@ export function UserNav() {
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
             <Avatar className="h-8 w-8">
               <AvatarImage
-                src="https://i.pravatar.cc/150?u=a042581f4e29026704d"
-                alt="@user"
+                src={user.photoURL || undefined}
+                alt={user.displayName || 'User avatar'}
               />
-              <AvatarFallback>U</AvatarFallback>
+              <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
@@ -85,16 +98,16 @@ export function UserNav() {
     <DropdownMenu>
       <div className="flex w-full items-center gap-2">
         <Avatar className="h-8 w-8">
-          <AvatarImage
-            src="https://i.pravatar.cc/150?u=a042581f4e29026704d"
-            alt="@user"
-          />
-          <AvatarFallback>U</AvatarFallback>
+           <AvatarImage
+              src={user.photoURL || undefined}
+              alt={user.displayName || 'User avatar'}
+            />
+           <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
         </Avatar>
         <div className="flex-1 truncate">
-          <p className="truncate text-sm font-medium leading-none">User</p>
+          <p className="truncate text-sm font-medium leading-none">{user.displayName || 'User'}</p>
           <p className="truncate text-xs leading-none text-muted-foreground">
-            user@example.com
+            {user.email}
           </p>
         </div>
         <DropdownMenuTrigger asChild>

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LoaderCircle } from "lucide-react";
 
@@ -17,14 +17,36 @@ import { Logo } from "@/components/logo";
 import { UserNav } from "@/components/user-nav";
 import { MainMenu } from "@/components/layout/main-menu";
 import { useNavigation } from "@/context/navigation-context";
+import { useAuth } from "@/context/auth-context";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { isNavigating, setIsNavigating } = useNavigation();
+  const { user, isLoading } = useAuth();
+
+  useEffect(() => {
+    // If the auth state is done loading and there's no user,
+    // redirect them to the login page.
+    if (!isLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, isLoading, router]);
 
   useEffect(() => {
     setIsNavigating(false);
   }, [pathname, setIsNavigating]);
+
+  // While the auth state is loading, or if there's no user yet,
+  // show a full-screen loader. This prevents a flash of the dashboard
+  // for unauthenticated users.
+  if (isLoading || !user) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center">
+        <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>
