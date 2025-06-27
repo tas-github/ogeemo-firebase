@@ -136,6 +136,21 @@ export function ComposeEmailView() {
     defaultValues: { name: "", email: "", phone: "", folderId: "" },
   });
 
+  const formatRecipientString = (value: string): string => {
+    if (!value.trim()) return "";
+    const recipients = value.split(/[,;]/).map(r => r.trim()).filter(Boolean);
+    const formatted = recipients.map(rec => {
+        const emailMatch = rec.match(/<(.+)>/);
+        if (emailMatch) {
+            return rec;
+        }
+        
+        const contact = allContacts.find(c => c.email.toLowerCase() === rec.toLowerCase());
+        return contact ? `"${contact.name}" <${contact.email}>` : rec;
+    });
+    return formatted.join(', ');
+  }
+
   const handleFormat = (command: string, value?: string) => {
     document.execCommand(command, false, value);
     editorRef.current?.focus();
@@ -238,7 +253,11 @@ export function ComposeEmailView() {
           if (target === 'bcc') return bcc;
           return '';
       };
-      const currentValues = getTargetState().split(',').map(e => e.trim()).filter(Boolean);
+      const currentValues = getTargetState().split(/[,;]/).map(e => {
+        const match = e.trim().match(/<(.+)>/);
+        return match ? match[1] : e.trim();
+      }).filter(Boolean);
+
       setSelectedDialogContacts(currentValues);
       setContactSearch('');
       setFilteredContacts(allContacts);
@@ -247,7 +266,14 @@ export function ComposeEmailView() {
 
   const handleAddContacts = () => {
       if (!contactPickerTarget) return;
-      const emailsString = selectedDialogContacts.join(', ');
+      
+      const contactsInfo = selectedDialogContacts.map(email => {
+        const contact = allContacts.find(c => c.email.toLowerCase() === email.toLowerCase());
+        return contact ? `"${contact.name}" <${contact.email}>` : email;
+      });
+
+      const emailsString = contactsInfo.join(', ');
+
       if (contactPickerTarget === 'recipient') setRecipient(emailsString);
       if (contactPickerTarget === 'cc') setCc(emailsString);
       if (contactPickerTarget === 'bcc') setBcc(emailsString);
@@ -506,6 +532,7 @@ export function ComposeEmailView() {
                     placeholder="recipient@example.com"
                     value={recipient}
                     onChange={(e) => setRecipient(e.target.value)}
+                    onBlur={() => setRecipient(formatRecipientString(recipient))}
                   />
                   <Button variant="ghost" size="icon" type="button" onClick={() => openContactPicker('recipient')} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
                       <BookUser className="h-4 w-4" />
@@ -532,6 +559,7 @@ export function ComposeEmailView() {
                               placeholder="cc@example.com"
                               value={cc}
                               onChange={(e) => setCc(e.target.value)}
+                              onBlur={() => setCc(formatRecipientString(cc))}
                           />
                           <Button variant="ghost" size="icon" type="button" onClick={() => openContactPicker('cc')} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
                               <BookUser className="h-4 w-4" />
@@ -553,6 +581,7 @@ export function ComposeEmailView() {
                                 placeholder="bcc@example.com"
                                 value={bcc}
                                 onChange={(e) => setBcc(e.target.value)}
+                                onBlur={() => setBcc(formatRecipientString(bcc))}
                             />
                             <Button variant="ghost" size="icon" type="button" onClick={() => openContactPicker('bcc')} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
                                 <BookUser className="h-4 w-4" />
