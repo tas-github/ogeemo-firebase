@@ -34,6 +34,8 @@ export const getInitialEvents = (): Event[] => {
       attendees: ['You', 'Frank White'],
       status: 'todo',
       projectId: 'proj-1',
+      isBillable: true,
+      billableRate: 150,
     },
     {
       id: '4',

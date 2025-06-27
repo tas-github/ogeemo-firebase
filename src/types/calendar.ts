@@ -8,4 +8,6 @@ export type Event = {
   attendees: string[];
   status: 'todo' | 'inProgress' | 'done';
   projectId?: string;
+  isBillable?: boolean;
+  billableRate?: number;
 };

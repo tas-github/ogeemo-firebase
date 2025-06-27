@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Calendar as CalendarIcon, Plus } from "lucide-react";
 import { format, set } from "date-fns";
@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { mockContacts, type Contact } from "@/data/contacts";
 import { type Event } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface NewTaskDialogProps {
   isOpen: boolean;
@@ -80,18 +81,24 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
   const [dueHour, setDueHour] = useState<string | undefined>();
   const [dueMinute, setDueMinute] = useState<string | undefined>();
 
+  const [isBillable, setIsBillable] = useState(false);
+  const [billableRate, setBillableRate] = useState<number | undefined>();
+
   const [contacts, setContacts] = useState<Contact[]>([]);
   const { toast } = useToast();
   
   const isEditMode = !!eventToEdit;
 
-  const resetForm = (date = defaultStartDate) => {
+  const resetForm = useCallback((date = defaultStartDate) => {
     setTitle("");
     setDescription("");
     setStatus('todo');
     setPriority(undefined);
     setUrgency(undefined);
     setAssigneeId(undefined);
+    setIsBillable(false);
+    setBillableRate(undefined);
+
     setStartDate(date);
     if (date) {
       setStartHour(String(date.getHours()));
@@ -104,7 +111,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
     setDueDate(undefined);
     setDueHour(undefined);
     setDueMinute(undefined);
-  };
+  }, [defaultStartDate]);
 
   useEffect(() => {
     // In a real app, you might fetch this data.
@@ -119,6 +126,8 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
           setStatus(eventToEdit.status);
           setPriority(undefined);
           setUrgency(undefined);
+          setIsBillable(eventToEdit.isBillable || false);
+          setBillableRate(eventToEdit.billableRate);
 
           const start = eventToEdit.start;
           const end = eventToEdit.end;
@@ -144,7 +153,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
         resetForm(defaultStartDate);
       }
     }
-  }, [isOpen, eventToEdit, defaultStartDate, isEditMode]);
+  }, [isOpen, eventToEdit, defaultStartDate, isEditMode, resetForm]);
 
   const handleSaveTask = () => {
     if (!title.trim()) {
@@ -211,6 +220,8 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
             end: endDateTime,
             attendees: assignee ? ['You', assignee.name] : ['You'],
             status,
+            isBillable,
+            billableRate,
         };
         onTaskUpdate?.(updatedEvent);
         toast({
@@ -227,6 +238,8 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
             attendees: assignee ? ['You', assignee.name] : ['You'],
             status,
             projectId: projectId!,
+            isBillable,
+            billableRate,
         };
         onTaskCreate?.(newEvent);
         toast({
@@ -253,9 +266,9 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-        <DialogHeader className="p-6 pb-4 border-b">
-          <DialogTitle className="text-center text-2xl font-bold font-headline text-primary">{isEditMode ? "Edit Task" : "Create a New Task"}</DialogTitle>
-          <DialogDescription className="text-center">
+        <DialogHeader className="p-6 pb-4 border-b text-center">
+          <DialogTitle className="text-2xl font-bold font-headline text-primary">{isEditMode ? "Edit Task" : "Create a New Task"}</DialogTitle>
+          <DialogDescription>
             {isEditMode ? "Update the details for your task." : "Fill out the details below to add a new task to your board."}
           </DialogDescription>
         </DialogHeader>
@@ -280,6 +293,41 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+              <div className="flex items-center space-x-2 pt-4">
+                <Checkbox
+                  id="billable"
+                  checked={isBillable}
+                  onCheckedChange={(checked) => {
+                    const isChecked = Boolean(checked);
+                    setIsBillable(isChecked);
+                    if (!isChecked) {
+                      setBillableRate(undefined);
+                    }
+                  }}
+                />
+                <Label
+                  htmlFor="billable"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  This task is billable
+                </Label>
+              </div>
+              {isBillable && (
+                <div className="space-y-2">
+                  <Label htmlFor="billing-rate">Billing Rate ($/hr)</Label>
+                  <Input
+                    id="billing-rate"
+                    type="number"
+                    placeholder="e.g., 150"
+                    value={billableRate || ''}
+                    onChange={(e) => setBillableRate(e.target.value ? Number(e.target.value) : undefined)}
+                  />
+                </div>
+              )}
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="task-status">Status</Label>
