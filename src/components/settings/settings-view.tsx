@@ -78,27 +78,6 @@ export function SettingsView() {
             </div>
           </CardContent>
         </Card>
-
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Project Settings</CardTitle>
-            <CardDescription>Manage your project configurations.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="project-id">Project ID</Label>
-              <Input id="project-id" defaultValue="ogeemo-firebase-prod" readOnly />
-            </div>
-            <Separator />
-            <div>
-              <h3 className="text-lg font-medium">Data Deletion</h3>
-              <p className="text-sm text-muted-foreground">
-                Permanently delete your project and all of its data. This action is not reversible.
-              </p>
-            </div>
-             <Button variant="destructive">Delete Project</Button>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )
