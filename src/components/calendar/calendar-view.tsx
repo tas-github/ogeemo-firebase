@@ -497,6 +497,11 @@ function CalendarPageContent() {
             </Dialog>
 
             <div className="flex items-center gap-2">
+              <Button onClick={() => {
+                  setNewTaskDefaultDate(new Date());
+                  setEventToEdit(null);
+                  setIsNewTaskDialogOpen(true);
+              }}>+New Event</Button>
               <Button
                   variant="outline"
                   size="sm"
