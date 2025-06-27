@@ -1,20 +1,20 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import {
   collection,
   getDocs,
   doc,
   addDoc,
   updateDoc,
-  deleteDoc,
   writeBatch,
   query,
   where,
   DocumentData,
   QueryDocumentSnapshot,
 } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import type { FileItem, FolderItem } from '@/data/files';
 
 const FOLDERS_COLLECTION = 'fileFolders';
@@ -23,6 +23,12 @@ const FILES_COLLECTION = 'files';
 function checkDb() {
   if (!db) {
     throw new Error("Firestore is not initialized. Please check your Firebase configuration.");
+  }
+}
+
+function checkStorage() {
+  if (!storage) {
+    throw new Error("Firebase Storage is not initialized. Please check your Firebase configuration.");
   }
 }
 
@@ -40,10 +46,10 @@ const docToFile = (doc: QueryDocumentSnapshot<DocumentData>): FileItem => {
 
 // --- Folder Functions ---
 
-export async function getFolders(): Promise<FolderItem[]> {
+export async function getFolders(userId: string): Promise<FolderItem[]> {
   checkDb();
-  const foldersCol = collection(db, FOLDERS_COLLECTION);
-  const snapshot = await getDocs(foldersCol);
+  const q = query(collection(db, FOLDERS_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
   return snapshot.docs.map(docToFolder);
 }
 
@@ -59,10 +65,10 @@ export async function updateFolder(folderId: string, folderData: Partial<Omit<Fo
     await updateDoc(folderRef, folderData);
 }
 
-export async function deleteFolderAndContents(folderId: string): Promise<void> {
+export async function deleteFolderAndContents(userId: string, folderId: string): Promise<void> {
     checkDb();
     const batch = writeBatch(db!);
-    const allFoldersSnapshot = await getDocs(collection(db, FOLDERS_COLLECTION));
+    const allFoldersSnapshot = await getDocs(query(collection(db, FOLDERS_COLLECTION), where("userId", "==", userId)));
     const allFolders = allFoldersSnapshot.docs.map(docToFolder);
     
     const folderIdsToDelete = new Set<string>([folderId]);
@@ -80,9 +86,14 @@ export async function deleteFolderAndContents(folderId: string): Promise<void> {
     if (folderIdsToDelete.size > 0) {
         const filesQuery = query(collection(db, FILES_COLLECTION), where('folderId', 'in', Array.from(folderIdsToDelete)));
         const filesSnapshot = await getDocs(filesQuery);
-        filesSnapshot.forEach(fileDoc => {
+        for (const fileDoc of filesSnapshot.docs) {
+            const fileData = docToFile(fileDoc);
+            if (fileData.storagePath) {
+                const fileStorageRef = ref(storage, fileData.storagePath);
+                await deleteObject(fileStorageRef);
+            }
             batch.delete(fileDoc.ref);
-        });
+        }
     }
 
     // Delete all the folders
@@ -97,33 +108,77 @@ export async function deleteFolderAndContents(folderId: string): Promise<void> {
 
 // --- File Functions ---
 
-export async function getFiles(): Promise<FileItem[]> {
+export async function getFiles(userId: string): Promise<FileItem[]> {
   checkDb();
-  const filesCol = collection(db, FILES_COLLECTION);
-  const snapshot = await getDocs(filesCol);
+  const q = query(collection(db, FILES_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
   return snapshot.docs.map(docToFile);
 }
 
-export async function addFile(fileData: Omit<FileItem, 'id'>): Promise<FileItem> {
+async function _addFileDoc(fileData: Omit<FileItem, 'id'>): Promise<FileItem> {
   checkDb();
-  // Firestore handles Date objects correctly, they become Timestamps.
   const docRef = await addDoc(collection(db, FILES_COLLECTION), fileData);
   return { id: docRef.id, ...fileData };
 }
 
-export async function updateFile(fileId: string, fileData: Partial<FileItem>): Promise<void> {
+export async function uploadFiles(userId: string, folderId: string, files: File[]): Promise<FileItem[]> {
+  checkDb();
+  checkStorage();
+
+  const uploadedFileItems: FileItem[] = [];
+
+  for (const file of files) {
+    const storagePath = `uploads/${userId}/${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, storagePath);
+    await uploadBytes(storageRef, file);
+
+    const fileData: Omit<FileItem, 'id'> = {
+        name: file.name,
+        type: file.type || 'application/octet-stream',
+        size: file.size,
+        modifiedAt: new Date(),
+        folderId: folderId,
+        userId: userId,
+        storagePath: storagePath,
+    };
+    
+    const newFileItem = await _addFileDoc(fileData);
+    uploadedFileItems.push(newFileItem);
+  }
+
+  return uploadedFileItems;
+}
+
+export async function getFileDownloadUrl(storagePath: string): Promise<string> {
+    checkStorage();
+    const storageRef = ref(storage, storagePath);
+    return await getDownloadURL(storageRef);
+}
+
+export async function updateFile(fileId: string, fileData: Partial<Omit<FileItem, 'id' | 'userId'>>): Promise<void> {
     checkDb();
     const fileRef = doc(db, FILES_COLLECTION, fileId);
     await updateDoc(fileRef, fileData);
 }
 
-export async function deleteFiles(fileIds: string[]): Promise<void> {
+export async function deleteFiles(files: FileItem[]): Promise<void> {
     checkDb();
-    if (fileIds.length === 0) return;
+    checkStorage();
+    if (files.length === 0) return;
+
     const batch = writeBatch(db);
-    fileIds.forEach(id => {
-        const fileRef = doc(db, FILES_COLLECTION, id);
-        batch.delete(fileRef);
-    });
+
+    for (const file of files) {
+        // Delete from Storage
+        if(file.storagePath) {
+            const fileRef = ref(storage, file.storagePath);
+            await deleteObject(fileRef);
+        }
+        
+        // Batch delete from Firestore
+        const docRef = doc(db, FILES_COLLECTION, file.id);
+        batch.delete(docRef);
+    }
+    
     await batch.commit();
 }
