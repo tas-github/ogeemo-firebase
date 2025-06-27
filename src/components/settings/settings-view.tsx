@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -16,6 +17,13 @@ import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 
 export function SettingsView() {
+  const { user } = useAuth();
+
+  // The main layout already handles the loading state, but this is a good safeguard.
+  if (!user) {
+    return null;
+  }
+
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <h1 className="text-3xl font-bold font-headline text-primary">Settings</h1>
@@ -30,11 +38,11 @@ export function SettingsView() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" defaultValue="Current User" />
+              <Input id="name" defaultValue={user.displayName || ""} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" defaultValue="user@example.com" />
+              <Input id="email" type="email" defaultValue={user.email || ""} readOnly />
             </div>
           </CardContent>
           <CardFooter className="border-t px-6 py-4">
