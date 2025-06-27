@@ -50,11 +50,12 @@ import {
     getFiles, 
     getFolders, 
     addFolder, 
-    addFile, 
     updateFolder, 
     updateFile, 
     deleteFiles, 
-    deleteFolderAndContents 
+    deleteFolderAndContents,
+    uploadFiles,
+    getFileDownloadUrl,
 } from '@/services/file-service';
 
 
@@ -93,15 +94,15 @@ function FilesViewContent() {
   
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const { accessToken } = useAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
-    async function loadData() {
+    async function loadData(userId: string) {
         setIsLoading(true);
         try {
             const [fetchedFolders, fetchedFiles] = await Promise.all([
-                getFolders(),
-                getFiles()
+                getFolders(userId),
+                getFiles(userId)
             ]);
             setFolders(fetchedFolders);
             setFiles(fetchedFiles);
@@ -122,8 +123,12 @@ function FilesViewContent() {
             setIsLoading(false);
         }
     }
-    loadData();
-  }, [toast]);
+    if (user) {
+        loadData(user.uid);
+    } else {
+        setIsLoading(false); // If no user, stop loading
+    }
+  }, [toast, user]);
   
   const openNewFolderDialog = (options: { parentId?: string | null } = {}) => {
     const { parentId = selectedFolderId } = options;
@@ -131,9 +136,14 @@ function FilesViewContent() {
     setIsNewFolderDialogOpen(true);
   };
 
-  const handleCreateFolder = async (folderData: Omit<FolderItem, 'id'>) => {
+  const handleCreateFolder = async (folderData: Omit<FolderItem, 'id' | 'userId'>) => {
+    if (!user) {
+        toast({ variant: "destructive", title: "Authentication Error", description: "You must be logged in to create a folder." });
+        return;
+    }
     try {
-        const newFolder = await addFolder(folderData);
+        const folderPayload = { ...folderData, userId: user.uid };
+        const newFolder = await addFolder(folderPayload);
         setFolders(prev => [...prev, newFolder]);
         if (newFolder.parentId) {
             setExpandedFolders(prev => new Set(prev).add(newFolder.parentId!));
@@ -186,8 +196,11 @@ function FilesViewContent() {
   };
   
   const handleDeleteSelected = async () => {
+    const filesToDelete = files.filter(file => selectedFileIds.includes(file.id));
+    if (filesToDelete.length === 0) return;
+
     try {
-        await deleteFiles(selectedFileIds);
+        await deleteFiles(filesToDelete);
         setFiles(prevFiles => prevFiles.filter(file => !selectedFileIds.includes(file.id)));
         toast({
             title: `${selectedFileIds.length} file(s) deleted`,
@@ -205,15 +218,17 @@ function FilesViewContent() {
   };
   
   const handleConfirmDeleteFolder = async () => {
-      if (!folderToDelete) return;
+      if (!folderToDelete || !user) return;
 
       try {
-        await deleteFolderAndContents(folderToDelete.id);
+        await deleteFolderAndContents(user.uid, folderToDelete.id);
 
-        const allFolders = await getFolders();
-        const allFiles = await getFiles();
-        setFolders(allFolders);
-        setFiles(allFiles);
+        const [refetchedFolders, refetchedFiles] = await Promise.all([
+            getFolders(user.uid),
+            getFiles(user.uid)
+        ]);
+        setFolders(refetchedFolders);
+        setFiles(refetchedFiles);
 
         if (selectedFolderId === folderToDelete.id) {
             setSelectedFolderId(null);
@@ -234,6 +249,10 @@ function FilesViewContent() {
   const selectedFolder = useMemo(() => folders.find(f => f.id === selectedFolderId), [folders, selectedFolderId]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to upload files.'});
+        return;
+    }
     if (!event.target.files || !selectedFolderId) {
       toast({
         variant: 'destructive',
@@ -243,16 +262,10 @@ function FilesViewContent() {
       return;
     }
 
-    const uploadedFilesData: Omit<FileItem, 'id'>[] = Array.from(event.target.files).map((file) => ({
-      name: file.name,
-      type: file.type || 'application/octet-stream',
-      size: file.size,
-      modifiedAt: new Date(),
-      folderId: selectedFolderId,
-    }));
+    const filesToUpload = Array.from(event.target.files);
 
     try {
-        const addedFiles = await Promise.all(uploadedFilesData.map(fileData => addFile(fileData)));
+        const addedFiles = await uploadFiles(user.uid, selectedFolderId, filesToUpload);
         setFiles((prev) => [...prev, ...addedFiles]);
         toast({
             title: `${addedFiles.length} file(s) uploaded successfully!`,
@@ -269,53 +282,26 @@ function FilesViewContent() {
     }
   };
 
-  const handleDownloadToDrive = async () => {
-    if (selectedFileIds.length !== 1) return;
-    if (!accessToken) {
-        toast({
-            variant: 'destructive',
-            title: 'Not Authenticated',
-            description: 'Please connect your Google account on the Google page to download files.',
-        });
-        return;
-    }
-
+  const handleDownload = async () => {
+    if (selectedFileIds.length === 0) return;
     setIsDownloading(true);
     try {
-        const fileToDownload = files.find(f => f.id === selectedFileIds[0]);
-        if (!fileToDownload) throw new Error("File not found.");
+        for (const fileId of selectedFileIds) {
+            const fileToDownload = files.find(f => f.id === fileId);
+            if (!fileToDownload) continue;
 
-        const simulatedContent = `This is the content for the file "${fileToDownload.name}" downloaded from Ogeemo.`;
-        const fileBlob = new Blob([simulatedContent], { type: 'text/plain' });
-
-        const metadata = {
-            name: fileToDownload.name,
-            parents: ['root'],
-        };
-
-        const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-        form.append('file', fileBlob);
-
-        const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-            },
-            body: form,
-        });
-
-        if (response.ok) {
-            toast({
-                title: 'Download Successful',
-                description: `"${fileToDownload.name}" has been saved to your Google Drive.`,
-            });
-        } else {
-            const errorData = await response.json();
-            console.error('Google Drive API Error:', errorData);
-            throw new Error(errorData.error?.message || 'Failed to upload to Google Drive.');
+            const url = await getFileDownloadUrl(fileToDownload.storagePath);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', fileToDownload.name);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
-
+        toast({
+            title: 'Download Started',
+            description: `Your file(s) are being downloaded.`,
+        });
     } catch (error) {
         console.error(error);
         toast({
@@ -530,6 +516,16 @@ function FilesViewContent() {
     );
   }
 
+  if (!user) {
+    return (
+        <div className="flex h-full w-full items-center justify-center p-4">
+            <div className="flex flex-col items-center gap-4">
+                <p className="text-muted-foreground">Please log in to use the File Manager.</p>
+            </div>
+        </div>
+    );
+  }
+
   return (
     <>
       <input
@@ -597,15 +593,15 @@ function FilesViewContent() {
                             {selectedFileIds.length > 0 ? (
                                 <>
                                     <Button
-                                      onClick={handleDownloadToDrive}
-                                      disabled={selectedFileIds.length !== 1 || isDownloading}
+                                      onClick={handleDownload}
+                                      disabled={isDownloading}
                                     >
                                       {isDownloading ? (
                                         <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
                                       ) : (
                                         <Download className="mr-2 h-4 w-4" />
                                       )}
-                                      + Download
+                                      Download
                                     </Button>
                                     <Button variant="destructive" onClick={handleDeleteSelected}>
                                         <Trash2 className="mr-2 h-4 w-4" />

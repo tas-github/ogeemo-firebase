@@ -8,6 +8,8 @@ export interface FileItem {
   size: number; // in bytes
   modifiedAt: Date;
   folderId: string;
+  userId: string;
+  storagePath: string;
   content?: string;
 }
 
@@ -15,17 +17,22 @@ export interface FolderItem {
   id: string;
   name: string;
   parentId?: string | null;
+  userId: string;
 }
 
+// NOTE: Mock data below is for demonstration in other components
+// and is NOT used by the main Files Manager view.
+// A 'userId' of 'mock-user' is used as a placeholder.
+
 export const mockFolders: FolderItem[] = [
-  { id: 'folder-reports', name: 'Report Templates', parentId: null },
-  { id: 'folder-1', name: 'Client Documents', parentId: null },
-  { id: 'folder-2', name: 'Invoices', parentId: 'folder-1' },
-  { id: 'folder-3', name: 'Marketing Assets', parentId: 'folder-1' },
-  { id: 'folder-4', name: 'Internal Projects', parentId: null },
-  { id: 'folder-5', name: 'Website V2', parentId: 'folder-4' },
-  { id: 'folder-6', name: 'Design', parentId: 'folder-5' },
-  { id: 'folder-7', name: 'Development', parentId: 'folder-5' },
+  { id: 'folder-reports', name: 'Report Templates', parentId: null, userId: 'mock-user' },
+  { id: 'folder-1', name: 'Client Documents', parentId: null, userId: 'mock-user' },
+  { id: 'folder-2', name: 'Invoices', parentId: 'folder-1', userId: 'mock-user' },
+  { id: 'folder-3', name: 'Marketing Assets', parentId: 'folder-1', userId: 'mock-user' },
+  { id: 'folder-4', name: 'Internal Projects', parentId: null, userId: 'mock-user' },
+  { id: 'folder-5', name: 'Website V2', parentId: 'folder-4', userId: 'mock-user' },
+  { id: 'folder-6', name: 'Design', parentId: 'folder-5', userId: 'mock-user' },
+  { id: 'folder-7', name: 'Development', parentId: 'folder-5', userId: 'mock-user' },
 ];
 
 export const mockFiles: FileItem[] = [
@@ -36,6 +43,8 @@ export const mockFiles: FileItem[] = [
     size: 1204857,
     modifiedAt: new Date('2024-07-20T10:00:00Z'),
     folderId: 'folder-6',
+    userId: 'mock-user',
+    storagePath: 'mock/path/file-1.pdf',
   },
   {
     id: 'file-2',
@@ -44,6 +53,8 @@ export const mockFiles: FileItem[] = [
     size: 34567,
     modifiedAt: new Date('2024-07-21T14:30:00Z'),
     folderId: 'folder-1',
+    userId: 'mock-user',
+    storagePath: 'mock/path/file-2.xlsx',
   },
   {
     id: 'file-3',
@@ -52,6 +63,8 @@ export const mockFiles: FileItem[] = [
     size: 78234,
     modifiedAt: new Date('2024-07-22T09:00:00Z'),
     folderId: 'folder-2',
+    userId: 'mock-user',
+    storagePath: 'mock/path/file-3.pdf',
   },
   {
     id: 'file-4',
@@ -60,6 +73,8 @@ export const mockFiles: FileItem[] = [
     size: 81234,
     modifiedAt: new Date('2024-07-25T11:00:00Z'),
     folderId: 'folder-2',
+    userId: 'mock-user',
+    storagePath: 'mock/path/file-4.pdf',
   },
   {
     id: 'file-5',
@@ -68,6 +83,8 @@ export const mockFiles: FileItem[] = [
     size: 56345,
     modifiedAt: new Date('2024-07-19T18:00:00Z'),
     folderId: 'folder-3',
+    userId: 'mock-user',
+    storagePath: 'mock/path/file-5.png',
   },
   {
     id: 'file-6',
@@ -76,6 +93,8 @@ export const mockFiles: FileItem[] = [
     size: 980432,
     modifiedAt: new Date('2024-07-23T16:45:00Z'),
     folderId: 'folder-3',
+    userId: 'mock-user',
+    storagePath: 'mock/path/file-6.jpg',
   },
   {
     id: 'file-7',
@@ -84,6 +103,8 @@ export const mockFiles: FileItem[] = [
     size: 1234,
     modifiedAt: new Date('2024-07-26T10:15:00Z'),
     folderId: 'folder-7',
+    userId: 'mock-user',
+    storagePath: 'mock/path/file-7.json',
   },
   {
     id: 'file-8',
@@ -92,6 +113,8 @@ export const mockFiles: FileItem[] = [
     size: 2456,
     modifiedAt: new Date('2024-07-26T11:30:00Z'),
     folderId: 'folder-7',
+    userId: 'mock-user',
+    storagePath: 'mock/path/file-8.tsx',
   },
   {
     id: 'file-9',
@@ -100,6 +123,8 @@ export const mockFiles: FileItem[] = [
     size: 4500123,
     modifiedAt: new Date('2024-07-24T09:00:00Z'),
     folderId: 'folder-6',
+    userId: 'mock-user',
+    storagePath: 'mock/path/file-9.fig',
   },
   {
     id: 'file-10',
@@ -108,6 +133,8 @@ export const mockFiles: FileItem[] = [
     size: 5100234,
     modifiedAt: new Date('2024-07-25T15:20:00Z'),
     folderId: 'folder-6',
+    userId: 'mock-user',
+    storagePath: 'mock/path/file-10.fig',
   },
   {
     id: 'file-11',
@@ -116,66 +143,8 @@ export const mockFiles: FileItem[] = [
     size: 2800,
     modifiedAt: new Date(),
     folderId: 'folder-reports',
-    content: `<h3>How to Create a Voice-to-Text Feature</h3>
-<p>This report outlines the standard procedure for integrating voice-to-text functionality into a component within the Ogeemo platform. The process leverages the custom <code>useSpeechToText</code> hook, which abstracts the browser's Web Speech API.</p>
-<h4>Step 1: Import the Hook</h4>
-<p>In your component file, import the <code>useSpeechToText</code> hook and any necessary UI components like <code>Button</code>, <code>Input</code>, and icons from <code>lucide-react</code>.</p>
-<pre><code class="language-tsx">import { useSpeechToText } from '@/hooks/use-speech-to-text';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Mic, Square } from 'lucide-react';
-import { useState, useRef } from 'react';</code></pre>
-<h4>Step 2: Initialize State and the Hook</h4>
-<p>Set up state variables to hold the input text and a ref to store text content before dictation begins. Then, initialize the hook, providing a function to handle the incoming transcript.</p>
-<pre><code class="language-tsx">const [inputValue, setInputValue] = useState('');
-const baseTextRef = useRef('');
-
-const {
-  isListening,
-  startListening,
-  stopListening,
-  isSupported
-} = useSpeechToText({
-  onTranscript: (transcript) => {
-    // Combine base text with new transcript
-    const newText = baseTextRef.current
-      ? \`\${baseTextRef.current} \${transcript}\`
-      : transcript;
-    setInputValue(newText);
-  }
-});</code></pre>
-<h4>Step 3: Create the UI Elements</h4>
-<p>Add an input field and a microphone button to your component's JSX. The button's appearance and behavior should change based on the <code>isListening</code> and <code>isSupported</code> states from the hook.</p>
-<pre><code class="language-jsx">&lt;div className="relative"&gt;
-  &lt;Input
-    value={inputValue}
-    onChange={(e) => setInputValue(e.target.value)}
-    placeholder="Type or click the mic to speak..."
-  /&gt;
-  &lt;Button
-    type="button"
-    variant={isListening ? 'destructive' : 'ghost'}
-    size="icon"
-    className="absolute right-2 top-2 h-7 w-7"
-    onClick={handleMicClick}
-    disabled={isSupported === false}
-    title={isListening ? 'Stop dictation' : 'Dictate text'}
-  &gt;
-    {isListening ? &lt;Square className="h-4 w-4" /&gt; : &lt;Mic className="h-4 w-4" /&gt;}
-  &lt;/Button&gt;
-&lt;/div&gt;</code></pre>
-<h4>Step 4: Implement the Click Handler</h4>
-<p>Create the function that will be called when the microphone button is clicked. This function toggles the listening state and saves the current input value before starting a new dictation.</p>
-<pre><code class="language-tsx">const handleMicClick = () => {
-  if (isListening) {
-    stopListening();
-  } else {
-    // Save current text to prepend to transcript
-    baseTextRef.current = inputValue.trim();
-    startListening();
-  }
-};</code></pre>
-<p>By following these steps, you can consistently and reliably add voice-to-text capabilities to any manager or component in the application.</p>
-`
+    userId: 'mock-user',
+    storagePath: 'mock/path/file-11.html',
+    content: `<h3>How to Create a Voice-to-Text Feature</h3>...`
   },
 ];
