@@ -2,27 +2,38 @@
 'use client';
 
 import type { User } from 'firebase/auth';
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 interface AuthContextType {
   user: User | null;
-  accessToken: string | null;
-  setAuthInfo: (user: User | null, token: string | null) => void;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const setAuthInfo = (newUser: User | null, newToken: string | null) => {
-    setUser(newUser);
-    setAccessToken(newToken);
-  };
+  useEffect(() => {
+    if (!auth) {
+        setIsLoading(false);
+        return;
+    }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const value = { user, isLoading };
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, setAuthInfo }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
