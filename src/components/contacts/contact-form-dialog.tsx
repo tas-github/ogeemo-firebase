@@ -24,7 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { useToast } from '@/hooks/use-toast';
 import { type Contact, type FolderData } from '@/data/contacts';
-import { cn } from '@/lib/utils';
+import { addContact, updateContact } from '@/services/contact-service';
 
 const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -93,25 +93,35 @@ export default function ContactFormDialog({
         }
     };
     
-    function onSubmit(values: ContactFormData) {
-        if (contactToEdit) {
-            const updatedContact = { ...contactToEdit, ...values };
-            onSave(updatedContact);
-            toast({ title: "Contact Updated", description: `Details for ${values.name} have been updated.` });
-        } else {
-            if (selectedFolderId === 'all') {
-                toast({ variant: "destructive", title: "Cannot Add Contact", description: "Please select a specific folder before adding a new contact." });
-                return;
+    async function onSubmit(values: ContactFormData) {
+        try {
+            if (contactToEdit) {
+                const updatedContact = { ...contactToEdit, ...values };
+                await updateContact(contactToEdit.id, values);
+                onSave(updatedContact);
+                toast({ title: "Contact Updated", description: `Details for ${values.name} have been updated.` });
+            } else {
+                if (selectedFolderId === 'all') {
+                    toast({ variant: "destructive", title: "Cannot Add Contact", description: "Please select a specific folder before adding a new contact." });
+                    return;
+                }
+                const newContactData: Omit<Contact, 'id'> = {
+                    ...values,
+                    folderId: selectedFolderId
+                };
+                const newContact = await addContact(newContactData);
+                onSave(newContact);
+                toast({ title: "Contact Created", description: `${values.name} has been added.` });
             }
-            const newContact: Contact = {
-                id: `c-${Date.now()}`,
-                folderId: selectedFolderId,
-                ...values
-            };
-            onSave(newContact);
-            toast({ title: "Contact Created", description: `${values.name} has been added.` });
+            onOpenChange(false);
+        } catch (error: any) {
+            console.error("Failed to save contact:", error);
+            toast({
+                variant: "destructive",
+                title: "Save Failed",
+                description: error.message || "Could not save the contact to the database.",
+            });
         }
-        onOpenChange(false);
     }
     
     const selectedFolder = folders.find(f => f.id === (contactToEdit?.folderId || selectedFolderId));
