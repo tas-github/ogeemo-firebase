@@ -41,7 +41,7 @@ import { type Event } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { getInitialEvents } from "@/data/events";
 
-const NewTaskDialog = dynamic(() => import('@/components/tasks/NewTaskDialog'), {
+const NewTaskDialog = dynamic(() => import('@/components/tasks/NewTaskDialog').then((mod) => mod.NewTaskDialog), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
 });
 
