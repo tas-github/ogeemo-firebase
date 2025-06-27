@@ -26,7 +26,7 @@ import { type FolderItem } from "@/data/files";
 interface NewFolderDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onFolderCreated: (newFolder: FolderItem) => void;
+  onFolderCreated: (newFolderData: Omit<FolderItem, 'id'>) => void;
   folders: FolderItem[];
   initialParentId?: string | null;
 }
@@ -54,13 +54,10 @@ export default function NewFolderDialog({
       toast({ variant: "destructive", title: "Folder Name Required" });
       return;
     }
-
-    const newFolder: FolderItem = {
-      id: `folder-${Date.now()}`,
-      name: newFolderName.trim(),
-      parentId: selectedParentId,
-    };
-    onFolderCreated(newFolder);
+    onFolderCreated({ 
+        name: newFolderName.trim(), 
+        parentId: selectedParentId 
+    });
     onOpenChange(false);
   };
 
@@ -120,5 +117,3 @@ export default function NewFolderDialog({
     </Dialog>
   );
 }
-
-      

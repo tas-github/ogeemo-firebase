@@ -22,6 +22,7 @@ import {
   Save,
   FileText,
   Pencil,
+  LoaderCircle,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
@@ -29,7 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { type FileItem, type FolderItem, mockFiles, mockFolders, REPORT_TEMPLATE_MIMETYPE } from "@/data/files";
+import { type FileItem, REPORT_TEMPLATE_MIMETYPE } from "@/data/files";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -41,12 +42,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { getFiles, addFile, updateFile, deleteFiles } from "@/services/file-service";
 
 const REPORT_TEMPLATES_FOLDER_ID = 'folder-reports';
 
 export default function ReportTemplatesPage() {
-    const [files, setFiles] = useState<FileItem[]>([]);
-    const [folders, setFolders] = useState<FolderItem[]>([]);
+    const [allFiles, setAllFiles] = useState<FileItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -60,56 +61,35 @@ export default function ReportTemplatesPage() {
     const { toast } = useToast();
     const [notesBeforeSpeech, setNotesBeforeSpeech] = useState('');
 
-    // Load data from localStorage on mount
     useEffect(() => {
-        let loadedFolders = mockFolders;
-        let loadedFiles = mockFiles;
-        try {
-            const storedFolders = localStorage.getItem('fileManagerFolders');
-            if (storedFolders) loadedFolders = JSON.parse(storedFolders);
-
-            const storedFiles = localStorage.getItem('fileManagerFiles');
-            if (storedFiles) {
-                loadedFiles = JSON.parse(storedFiles).map((file: any) => ({
-                ...file,
-                modifiedAt: new Date(file.modifiedAt),
-                }));
-            }
-            
-            if (!loadedFolders.some(f => f.id === REPORT_TEMPLATES_FOLDER_ID)) {
-                const reportsFolder = { id: REPORT_TEMPLATES_FOLDER_ID, name: 'Report Templates', parentId: null };
-                loadedFolders = [reportsFolder, ...loadedFolders];
-            }
-        } catch (error) {
-            console.error("Failed to parse from localStorage, using mock data.", error);
-        } finally {
-            setFolders(loadedFolders);
-            setFiles(loadedFiles);
-            setIsLoading(false);
-        }
-    }, []);
-
-    // Save data to localStorage on change
-    useEffect(() => {
-        if (!isLoading) {
+        async function loadData() {
+            setIsLoading(true);
             try {
-                localStorage.setItem('fileManagerFolders', JSON.stringify(folders));
-                localStorage.setItem('fileManagerFiles', JSON.stringify(files));
-            } catch (error) {
-                console.error("Failed to save to localStorage", error);
+                const fetchedFiles = await getFiles();
+                setAllFiles(fetchedFiles);
+            } catch (error: any) {
+                console.error("Failed to load templates:", error);
+                toast({
+                    variant: "destructive",
+                    title: "Failed to load templates",
+                    description: error.message || "Could not retrieve templates from the database.",
+                });
+            } finally {
+                setIsLoading(false);
             }
         }
-    }, [files, folders, isLoading]);
+        loadData();
+    }, [toast]);
     
     // Effect to update the active template when selection changes
     useEffect(() => {
       if (selectedTemplateId) {
-        const foundTemplate = files.find(f => f.id === selectedTemplateId);
+        const foundTemplate = allFiles.find(f => f.id === selectedTemplateId);
         setActiveTemplate(foundTemplate || null);
       } else {
         setActiveTemplate(null);
       }
-    }, [selectedTemplateId, files]);
+    }, [selectedTemplateId, allFiles]);
 
     // Update editor when active template changes
     useEffect(() => {
@@ -118,7 +98,7 @@ export default function ReportTemplatesPage() {
         }
     }, [activeTemplate]);
 
-    const reportTemplates = files.filter(f => f.folderId === REPORT_TEMPLATES_FOLDER_ID);
+    const reportTemplates = allFiles.filter(f => f.folderId === REPORT_TEMPLATES_FOLDER_ID);
 
     const {
         isListening,
@@ -155,14 +135,13 @@ export default function ReportTemplatesPage() {
         }
     };
     
-    const handleConfirmNewTemplate = () => {
+    const handleConfirmNewTemplate = async () => {
         if (!newTemplateName.trim()) {
             toast({ variant: 'destructive', title: 'Template name is required.' });
             return;
         }
 
-        const newTemplate: FileItem = {
-            id: `template-${Date.now()}`,
+        const newTemplateData: Omit<FileItem, 'id'> = {
             name: newTemplateName.trim(),
             folderId: REPORT_TEMPLATES_FOLDER_ID,
             type: REPORT_TEMPLATE_MIMETYPE,
@@ -171,65 +150,87 @@ export default function ReportTemplatesPage() {
             modifiedAt: new Date(),
         };
 
-        setFiles(prev => [...prev, newTemplate]);
-        setSelectedTemplateId(newTemplate.id); // Select the new template
-        setIsNewTemplateDialogOpen(false); // Close the dialog
-        setNewTemplateName(""); // Reset the input
-        
-        toast({
-            title: "Template Created",
-            description: `"${newTemplate.name}" is ready for editing.`,
-        });
+        try {
+            const newTemplate = await addFile(newTemplateData);
+            setAllFiles(prev => [...prev, newTemplate]);
+            setSelectedTemplateId(newTemplate.id); // Select the new template
+            setIsNewTemplateDialogOpen(false); // Close the dialog
+            setNewTemplateName(""); // Reset the input
+            
+            toast({
+                title: "Template Created",
+                description: `"${newTemplate.name}" is ready for editing.`,
+            });
+        } catch (error: any) {
+             console.error("Failed to create template:", error);
+             toast({ variant: 'destructive', title: 'Create Failed', description: error.message });
+        }
     };
   
-    const handleSaveTemplate = () => {
+    const handleSaveTemplate = async () => {
         if (!activeTemplate || !activeTemplate.name?.trim() || !activeTemplate.id) {
             toast({ variant: 'destructive', title: 'Cannot save template.', description: 'The template must have a name and ID.' });
             return;
         }
 
-        const templateToSave: FileItem = {
-            id: activeTemplate.id,
+        const templateToSave: Partial<FileItem> = {
             name: activeTemplate.name.trim(),
-            folderId: REPORT_TEMPLATES_FOLDER_ID,
-            type: REPORT_TEMPLATE_MIMETYPE,
             content: activeTemplate.content || '',
             size: (activeTemplate.content || '').length,
             modifiedAt: new Date(),
         };
         
-        setFiles(prev => prev.map(f => f.id === templateToSave.id ? templateToSave : f));
-        toast({ title: 'Template Saved!', description: `Changes to "${templateToSave.name}" have been saved.` });
+        try {
+            await updateFile(activeTemplate.id, templateToSave);
+            setAllFiles(prev => prev.map(f => f.id === activeTemplate.id ? { ...f, ...templateToSave, modifiedAt: templateToSave.modifiedAt! } as FileItem : f));
+            toast({ title: 'Template Saved!', description: `Changes to "${templateToSave.name}" have been saved.` });
+        } catch (error: any) {
+            console.error("Failed to save template:", error);
+            toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+        }
     };
 
-    const handleCopyActiveTemplate = () => {
+    const handleCopyActiveTemplate = async () => {
         if (!activeTemplate) return;
         
-        const templateToCopy = files.find(f => f.id === activeTemplate.id);
+        const templateToCopy = allFiles.find(f => f.id === activeTemplate.id);
         if (!templateToCopy) return;
 
-        const newFile: FileItem = {
+        const newFileData: Omit<FileItem, 'id'> = {
             ...templateToCopy,
-            id: `template-${Date.now()}`,
             name: `${templateToCopy.name} (Copy)`,
             modifiedAt: new Date(),
         };
-        setFiles(prev => [...prev, newFile]);
-        setSelectedTemplateId(newFile.id);
-        toast({ title: "Template Copied" });
+        delete (newFileData as any).id;
+        
+        try {
+            const newFile = await addFile(newFileData);
+            setAllFiles(prev => [...prev, newFile]);
+            setSelectedTemplateId(newFile.id);
+            toast({ title: "Template Copied" });
+        } catch (error: any) {
+            console.error("Failed to copy template:", error);
+            toast({ variant: 'destructive', title: 'Copy Failed', description: error.message });
+        }
     };
 
-    const handleDeleteActiveTemplate = () => {
+    const handleDeleteActiveTemplate = async () => {
         if (!activeTemplate || !activeTemplate.id) return;
         const templateId = activeTemplate.id;
 
-        const template = files.find(f => f.id === templateId);
+        const template = allFiles.find(f => f.id === templateId);
         if (template && window.confirm(`Are you sure you want to delete "${template.name}"?`)) {
-            setFiles(prev => prev.filter(f => f.id !== templateId));
-            if (selectedTemplateId === templateId) {
-                setSelectedTemplateId(null);
+            try {
+                await deleteFiles([templateId]);
+                setAllFiles(prev => prev.filter(f => f.id !== templateId));
+                if (selectedTemplateId === templateId) {
+                    setSelectedTemplateId(null);
+                }
+                toast({ title: "Template Deleted", variant: 'destructive' });
+            } catch (error: any) {
+                console.error("Failed to delete template:", error);
+                toast({ variant: 'destructive', title: 'Delete Failed', description: error.message });
             }
-            toast({ title: "Template Deleted", variant: 'destructive' });
         }
     };
 
@@ -247,6 +248,14 @@ export default function ReportTemplatesPage() {
 
     const preventDefault = (e: React.MouseEvent) => e.preventDefault();
     
+    if (isLoading) {
+      return (
+        <div className="flex h-full w-full items-center justify-center p-4">
+            <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      );
+    }
+
     const renderTemplateList = () => (
       <div className="p-2">
         <Dialog open={isNewTemplateDialogOpen} onOpenChange={(open) => {
@@ -297,7 +306,7 @@ export default function ReportTemplatesPage() {
                     onClick={() => setSelectedTemplateId(template.id)}
                 >
                     <p className="font-semibold truncate">{template.name}</p>
-                    <p className="text-xs text-muted-foreground">{format(template.modifiedAt, 'MMM d, yyyy')}</p>
+                    <p className="text-xs text-muted-foreground">{format(new Date(template.modifiedAt), 'MMM d, yyyy')}</p>
                 </Button>
             ))}
             </div>
