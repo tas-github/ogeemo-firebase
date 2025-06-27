@@ -432,7 +432,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
                         <SelectContent>
                            {minuteOptions.map((option) => (
                                 <SelectItem key={`due-minute-${option.value}`} value={option.value}>{option.label}</SelectItem>
-                            ))}
+                           ))}
                         </SelectContent>
                     </Select>
                 </div>
