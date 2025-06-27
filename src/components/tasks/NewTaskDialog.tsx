@@ -67,6 +67,7 @@ const minuteOptions = Array.from({ length: 12 }, (_, i) => {
 export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToEdit, onTaskCreate, onTaskUpdate, projectId }: NewTaskDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [status, setStatus] = useState<'todo' | 'inProgress' | 'done'>('todo');
   const [priority, setPriority] = useState<string | undefined>();
   const [urgency, setUrgency] = useState<string | undefined>();
   const [assigneeId, setAssigneeId] = useState<string | undefined>();
@@ -87,6 +88,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
   const resetForm = (date = defaultStartDate) => {
     setTitle("");
     setDescription("");
+    setStatus('todo');
     setPriority(undefined);
     setUrgency(undefined);
     setAssigneeId(undefined);
@@ -114,6 +116,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
       if (isEditMode && eventToEdit) {
           setTitle(eventToEdit.title);
           setDescription(eventToEdit.description);
+          setStatus(eventToEdit.status);
           setPriority(undefined);
           setUrgency(undefined);
 
@@ -207,6 +210,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
             start: startDateTime,
             end: endDateTime,
             attendees: assignee ? ['You', assignee.name] : ['You'],
+            status,
         };
         onTaskUpdate?.(updatedEvent);
         toast({
@@ -221,7 +225,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
             start: startDateTime,
             end: endDateTime,
             attendees: assignee ? ['You', assignee.name] : ['You'],
-            status: 'todo',
+            status,
             projectId: projectId!,
         };
         onTaskCreate?.(newEvent);
@@ -276,7 +280,20 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="task-status">Status</Label>
+                <Select value={status} onValueChange={(value) => setStatus(value as 'todo' | 'inProgress' | 'done')}>
+                  <SelectTrigger id="task-status">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todo">To Do</SelectItem>
+                    <SelectItem value="inProgress">In Progress</SelectItem>
+                    <SelectItem value="done">Done</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="task-priority">Priority</Label>
                 <Select value={priority} onValueChange={setPriority}>
