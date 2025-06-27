@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Calendar as CalendarIcon, Plus } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Clock } from "lucide-react";
 import { format, set } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,7 @@ import { mockContacts, type Contact } from "@/data/contacts";
 import { type Event } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import { TimeClockDialog } from "@/components/time/TimeClockDialog";
 
 interface NewTaskDialogProps {
   isOpen: boolean;
@@ -64,6 +65,13 @@ const minuteOptions = Array.from({ length: 12 }, (_, i) => {
     };
 });
 
+const formatTime = (totalSeconds: number) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};
+
 
 export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToEdit, onTaskCreate, onTaskUpdate, projectId }: NewTaskDialogProps) {
   const [title, setTitle] = useState("");
@@ -88,6 +96,8 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
   const { toast } = useToast();
   
   const isEditMode = !!eventToEdit;
+
+  const [isTimeClockOpen, setIsTimeClockOpen] = useState(false);
 
   const resetForm = useCallback((date = defaultStartDate) => {
     setTitle("");
@@ -154,6 +164,17 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
       }
     }
   }, [isOpen, eventToEdit, defaultStartDate, isEditMode, resetForm]);
+  
+  const handleLogTime = (seconds: number) => {
+    const timeString = formatTime(seconds);
+    const currentDescription = description ? `${description.trim()}\n\n` : "";
+    const newDescription = `${currentDescription}Time Logged: ${timeString}`;
+    setDescription(newDescription);
+    toast({
+        title: "Time Logged",
+        description: `${timeString} has been added to the task description.`
+    })
+  };
 
   const handleSaveTask = () => {
     if (!title.trim()) {
@@ -264,262 +285,277 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-        <DialogHeader className="p-6 pb-4 border-b text-center sm:text-center">
-          <DialogTitle className="text-2xl font-bold font-headline text-primary">{isEditMode ? "Edit Task" : "Create a New Task"}</DialogTitle>
-          <DialogDescription>
-            {isEditMode ? "Update the details for your task." : "Fill out the details below to add a new task to your board."}
-          </DialogDescription>
-        </DialogHeader>
-        <ScrollArea className="flex-1">
-          <div className="p-6 space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="task-title">Task Title</Label>
-              <Input
-                id="task-title"
-                placeholder="e.g., Deploy the new feature"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="task-description">Description</Label>
-              <Textarea
-                id="task-description"
-                placeholder="Provide a detailed description of the task..."
-                rows={8}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-              <div className="flex items-center space-x-2 pt-4">
-                <Checkbox
-                  id="billable"
-                  checked={isBillable}
-                  onCheckedChange={(checked) => {
-                    const isChecked = Boolean(checked);
-                    setIsBillable(isChecked);
-                    if (!isChecked) {
-                      setBillableRate(undefined);
-                    }
-                  }}
+    <>
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
+          <DialogHeader className="p-6 pb-4 border-b text-center sm:text-center">
+            <DialogTitle className="text-2xl font-bold font-headline text-primary">{isEditMode ? "Edit Task" : "Create a New Task"}</DialogTitle>
+            <DialogDescription>
+              {isEditMode ? "Update the details for your task." : "Fill out the details below to add a new task to your board."}
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="flex-1">
+            <div className="p-6 space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="task-title">Task Title</Label>
+                <Input
+                  id="task-title"
+                  placeholder="e.g., Deploy the new feature"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
                 />
-                <Label
-                  htmlFor="billable"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  This task is billable
-                </Label>
               </div>
-              {isBillable && (
-                <div className="space-y-2">
-                  <Label htmlFor="billing-rate">Billing Rate ($/hr)</Label>
-                  <Input
-                    id="billing-rate"
-                    type="number"
-                    placeholder="e.g., 150"
-                    value={billableRate || ''}
-                    onChange={(e) => setBillableRate(e.target.value ? Number(e.target.value) : undefined)}
+              <div className="space-y-2">
+                <Label htmlFor="task-description">Description</Label>
+                <Textarea
+                  id="task-description"
+                  placeholder="Provide a detailed description of the task..."
+                  rows={8}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                <div className="flex items-center space-x-2 pt-4">
+                  <Checkbox
+                    id="billable"
+                    checked={isBillable}
+                    onCheckedChange={(checked) => {
+                      const isChecked = Boolean(checked);
+                      setIsBillable(isChecked);
+                      if (!isChecked) {
+                        setBillableRate(undefined);
+                      }
+                    }}
                   />
+                  <Label
+                    htmlFor="billable"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    This task is billable
+                  </Label>
                 </div>
-              )}
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="task-status">Status</Label>
-                <Select value={status} onValueChange={(value) => setStatus(value as 'todo' | 'inProgress' | 'done')}>
-                  <SelectTrigger id="task-status">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todo">To Do</SelectItem>
-                    <SelectItem value="inProgress">In Progress</SelectItem>
-                    <SelectItem value="done">Done</SelectItem>
-                  </SelectContent>
-                </Select>
+                {isBillable && (
+                  <div className="space-y-2">
+                    <Label htmlFor="billing-rate">Billing Rate ($/hr)</Label>
+                    <Input
+                      id="billing-rate"
+                      type="number"
+                      placeholder="e.g., 150"
+                      value={billableRate || ''}
+                      onChange={(e) => setBillableRate(e.target.value ? Number(e.target.value) : undefined)}
+                    />
+                  </div>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="task-priority">Priority</Label>
-                <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger id="task-priority">
-                    <SelectValue placeholder="Select priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="task-urgency">Urgency</Label>
-                <Select value={urgency} onValueChange={setUrgency}>
-                  <SelectTrigger id="task-urgency">
-                    <SelectValue placeholder="Select urgency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>Start Date & Time</Label>
-                <div className="flex items-center gap-2">
-                    <Popover>
-                    <PopoverTrigger asChild>
-                        <Button
-                        variant={"outline"}
-                        className={cn(
-                            "w-[160px] justify-start text-left font-normal",
-                            !startDate && "text-muted-foreground"
-                        )}
-                        >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {startDate ? (
-                            format(startDate, "PPP")
-                        ) : (
-                            <span>Pick a date</span>
-                        )}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                        <Calendar
-                        mode="single"
-                        selected={startDate}
-                        onSelect={setStartDate}
-                        initialFocus
-                        />
-                    </PopoverContent>
-                    </Popover>
-                    <Select
-                        value={startHour}
-                        onValueChange={setStartHour}
-                    >
-                        <SelectTrigger className="w-[100px]">
-                            <SelectValue placeholder="Hour" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {hourOptions.map((option) => (
-                              <SelectItem key={`start-hour-${option.value}`} value={option.value}>{option.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                    </Select>
-                     <Select
-                        value={startMinute}
-                        onValueChange={setStartMinute}
-                    >
-                        <SelectTrigger className="w-[100px]">
-                            <SelectValue placeholder="Minute" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {minuteOptions.map((option) => (
-                              <SelectItem key={`start-minute-${option.value}`} value={option.value}>{option.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                    </Select>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="task-status">Status</Label>
+                  <Select value={status} onValueChange={(value) => setStatus(value as 'todo' | 'inProgress' | 'done')}>
+                    <SelectTrigger id="task-status">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todo">To Do</SelectItem>
+                      <SelectItem value="inProgress">In Progress</SelectItem>
+                      <SelectItem value="done">Done</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="task-priority">Priority</Label>
+                  <Select value={priority} onValueChange={setPriority}>
+                    <SelectTrigger id="task-priority">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="task-urgency">Urgency</Label>
+                  <Select value={urgency} onValueChange={setUrgency}>
+                    <SelectTrigger id="task-urgency">
+                      <SelectValue placeholder="Select urgency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Due Date & Time</Label>
-                 <div className="flex items-center gap-2">
-                    <Popover>
-                    <PopoverTrigger asChild>
-                        <Button
-                        variant={"outline"}
-                        className={cn(
-                            "w-[160px] justify-start text-left font-normal",
-                            !dueDate && "text-muted-foreground"
-                        )}
-                        >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dueDate ? (
-                            format(dueDate, "PPP")
-                        ) : (
-                            <span>Pick a date</span>
-                        )}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                        <Calendar
-                        mode="single"
-                        selected={dueDate}
-                        onSelect={setDueDate}
-                        disabled={(date) => startDate ? date < startDate : false}
-                        initialFocus
-                        />
-                    </PopoverContent>
-                    </Popover>
-                    <Select
-                        value={dueHour}
-                        onValueChange={setDueHour}
-                    >
-                        <SelectTrigger className="w-[100px]">
-                            <SelectValue placeholder="Hour" />
-                        </SelectTrigger>
-                        <SelectContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Start Date & Time</Label>
+                  <div className="flex items-center gap-2">
+                      <Popover>
+                      <PopoverTrigger asChild>
+                          <Button
+                          variant={"outline"}
+                          className={cn(
+                              "w-[160px] justify-start text-left font-normal",
+                              !startDate && "text-muted-foreground"
+                          )}
+                          >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {startDate ? (
+                              format(startDate, "PPP")
+                          ) : (
+                              <span>Pick a date</span>
+                          )}
+                          </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                          <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={setStartDate}
+                          initialFocus
+                          />
+                      </PopoverContent>
+                      </Popover>
+                      <Select
+                          value={startHour}
+                          onValueChange={setStartHour}
+                      >
+                          <SelectTrigger className="w-[100px]">
+                              <SelectValue placeholder="Hour" />
+                          </SelectTrigger>
+                          <SelectContent>
                             {hourOptions.map((option) => (
-                                <SelectItem key={`due-hour-${option.value}`} value={option.value}>{option.label}</SelectItem>
+                                <SelectItem key={`start-hour-${option.value}`} value={option.value}>{option.label}</SelectItem>
                             ))}
-                        </SelectContent>
-                    </Select>
-                     <Select
-                        value={dueMinute}
-                        onValueChange={setDueMinute}
-                    >
-                        <SelectTrigger className="w-[100px]">
-                            <SelectValue placeholder="Minute" />
-                        </SelectTrigger>
-                        <SelectContent>
-                           {minuteOptions.map((option) => (
-                                <SelectItem key={`due-minute-${option.value}`} value={option.value}>{option.label}</SelectItem>
-                           ))}
-                        </SelectContent>
-                    </Select>
+                          </SelectContent>
+                      </Select>
+                       <Select
+                          value={startMinute}
+                          onValueChange={setStartMinute}
+                      >
+                          <SelectTrigger className="w-[100px]">
+                              <SelectValue placeholder="Minute" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {minuteOptions.map((option) => (
+                                <SelectItem key={`start-minute-${option.value}`} value={option.value}>{option.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                      </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Due Date & Time</Label>
+                   <div className="flex items-center gap-2">
+                      <Popover>
+                      <PopoverTrigger asChild>
+                          <Button
+                          variant={"outline"}
+                          className={cn(
+                              "w-[160px] justify-start text-left font-normal",
+                              !dueDate && "text-muted-foreground"
+                          )}
+                          >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dueDate ? (
+                              format(dueDate, "PPP")
+                          ) : (
+                              <span>Pick a date</span>
+                          )}
+                          </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                          <Calendar
+                          mode="single"
+                          selected={dueDate}
+                          onSelect={setDueDate}
+                          disabled={(date) => startDate ? date < startDate : false}
+                          initialFocus
+                          />
+                      </PopoverContent>
+                      </Popover>
+                      <Select
+                          value={dueHour}
+                          onValueChange={setDueHour}
+                      >
+                          <SelectTrigger className="w-[100px]">
+                              <SelectValue placeholder="Hour" />
+                          </SelectTrigger>
+                          <SelectContent>
+                              {hourOptions.map((option) => (
+                                  <SelectItem key={`due-hour-${option.value}`} value={option.value}>{option.label}</SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
+                       <Select
+                          value={dueMinute}
+                          onValueChange={setDueMinute}
+                      >
+                          <SelectTrigger className="w-[100px]">
+                              <SelectValue placeholder="Minute" />
+                          </SelectTrigger>
+                          <SelectContent>
+                             {minuteOptions.map((option) => (
+                                  <SelectItem key={`due-minute-${option.value}`} value={option.value}>{option.label}</SelectItem>
+                             ))}
+                          </SelectContent>
+                      </Select>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="task-contact">Contact</Label>
-              <div className="flex items-center gap-2">
-                <Select value={assigneeId} onValueChange={setAssigneeId}>
-                  <SelectTrigger id="task-contact">
-                    <SelectValue placeholder="Select a contact" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contacts.map((contact) => (
-                      <SelectItem key={contact.id} value={contact.id}>
-                        {contact.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" size="icon" asChild>
-                  <Link href="/contacts" target="_blank" rel="noopener noreferrer">
-                    <Plus className="h-4 w-4" />
-                    <span className="sr-only">Add New Contact</span>
-                  </Link>
-                </Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="task-contact">Contact</Label>
+                  <div className="flex items-center gap-2">
+                    <Select value={assigneeId} onValueChange={setAssigneeId}>
+                      <SelectTrigger id="task-contact">
+                        <SelectValue placeholder="Select a contact" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {contacts.map((contact) => (
+                          <SelectItem key={contact.id} value={contact.id}>
+                            {contact.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button variant="outline" size="icon" asChild>
+                      <Link href="/contacts" target="_blank" rel="noopener noreferrer">
+                        <Plus className="h-4 w-4" />
+                        <span className="sr-only">Add New Contact</span>
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+                 <div className="space-y-2">
+                    <Button type="button" variant="outline" className="w-full" onClick={() => setIsTimeClockOpen(true)}>
+                        <Clock className="mr-2 h-4 w-4" />
+                        Time Clock
+                    </Button>
+                 </div>
               </div>
             </div>
-          </div>
-        </ScrollArea>
-        <DialogFooter className="p-6 pt-4 border-t flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button variant="outline" onClick={handleSaveToCalendar}>Save to Calendar</Button>
-          <Button onClick={handleSaveTask}>{isEditMode ? "Save Changes" : "Create Task"}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </ScrollArea>
+          <DialogFooter className="p-6 pt-4 border-t flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button variant="outline" onClick={handleSaveToCalendar}>Save to Calendar</Button>
+            <Button onClick={handleSaveTask}>{isEditMode ? "Save Changes" : "Create Task"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <TimeClockDialog
+        isOpen={isTimeClockOpen}
+        onOpenChange={setIsTimeClockOpen}
+        onLogTime={handleLogTime}
+       />
+    </>
   );
 }
 
