@@ -16,10 +16,6 @@ import {
 
 import { Button } from '@/components/ui/button';
 import {
-  Card,
-  CardContent,
-} from '@/components/ui/card';
-import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -49,8 +45,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { type Contact, type FolderData, mockContacts, mockFolders } from '@/data/contacts';
+import { type Contact, type FolderData } from '@/data/contacts';
 import { useToast } from '@/hooks/use-toast';
+import { addFolder, getContacts, getFolders, deleteContacts } from '@/services/contact-service';
 
 const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-form-dialog'), {
   loading: () => (
@@ -76,44 +73,28 @@ export function ContactsView() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // This effect runs only once on the client after initial render
-    let loadedFolders = mockFolders;
-    let loadedContacts = mockContacts;
-    try {
-      const storedFolders = localStorage.getItem('contactFolders');
-      const storedContacts = localStorage.getItem('contacts');
-      
-      if (storedFolders) loadedFolders = JSON.parse(storedFolders);
-      if (storedContacts) loadedContacts = JSON.parse(storedContacts);
-    } catch (error) {
-      console.error("Failed to parse from localStorage, using mock data.", error);
-      // Data is already set to mock data
-    } finally {
-      setFolders(loadedFolders);
-      setContacts(loadedContacts);
-      setIsLoading(false);
+    async function loadData() {
+        setIsLoading(true);
+        try {
+            const [fetchedFolders, fetchedContacts] = await Promise.all([
+                getFolders(),
+                getContacts(),
+            ]);
+            setFolders(fetchedFolders);
+            setContacts(fetchedContacts);
+        } catch (error: any) {
+            console.error("Failed to load contact data:", error);
+            toast({
+                variant: "destructive",
+                title: "Failed to load data",
+                description: error.message || "Could not retrieve contacts and folders from the database.",
+            });
+        } finally {
+            setIsLoading(false);
+        }
     }
-  }, []);
-
-  useEffect(() => {
-    if (!isLoading) {
-      try {
-          localStorage.setItem('contactFolders', JSON.stringify(folders));
-      } catch (error) {
-          console.error("Failed to save folders to localStorage", error);
-      }
-    }
-  }, [folders, isLoading]);
-
-  useEffect(() => {
-    if (!isLoading) {
-      try {
-          localStorage.setItem('contacts', JSON.stringify(contacts));
-      } catch (error) {
-          console.error("Failed to save contacts to localStorage", error);
-      }
-    }
-  }, [contacts, isLoading]);
+    loadData();
+  }, [toast]);
 
   const selectedFolder = useMemo(
     () => folders.find((f) => f.id === selectedFolderId),
@@ -172,30 +153,44 @@ export function ContactsView() {
   };
 
 
-  const handleDeleteContact = (contactId: string) => {
+  const handleDeleteContact = async (contactId: string) => {
     const contactToDelete = contacts.find(c => c.id === contactId);
     if (contactToDelete) {
-      setContacts(contacts.filter(c => c.id !== contactId));
-      setSelectedContactIds(prev => prev.filter(id => id !== contactId));
-      toast({ title: "Contact Deleted", description: `${contactToDelete.name} has been deleted.` });
+      try {
+        await deleteContacts([contactId]);
+        setContacts(contacts.filter(c => c.id !== contactId));
+        setSelectedContactIds(prev => prev.filter(id => id !== contactId));
+        toast({ title: "Contact Deleted", description: `${contactToDelete.name} has been deleted.` });
+      } catch (error: any) {
+        console.error("Failed to delete contact:", error);
+        toast({ variant: "destructive", title: "Failed to delete contact", description: error.message });
+      }
     }
   };
 
-  const handleDeleteSelected = () => {
-    setContacts(contacts.filter(c => !selectedContactIds.includes(c.id)));
-    toast({ title: `${selectedContactIds.length} Contacts Deleted`, description: `The selected contacts have been removed.` });
-    setSelectedContactIds([]);
+  const handleDeleteSelected = async () => {
+    try {
+      await deleteContacts(selectedContactIds);
+      setContacts(contacts.filter(c => !selectedContactIds.includes(c.id)));
+      toast({ title: `${selectedContactIds.length} Contacts Deleted`, description: `The selected contacts have been removed.` });
+      setSelectedContactIds([]);
+    } catch (error: any) {
+      console.error("Failed to delete selected contacts:", error);
+      toast({ variant: "destructive", title: "Failed to delete contacts", description: error.message });
+    }
   };
 
-  const handleCreateFolder = () => {
+  const handleCreateFolder = async () => {
     if (newFolderName.trim()) {
-      const newFolder: FolderData = {
-        id: `f-${Date.now()}`,
-        name: newFolderName.trim(),
-      };
-      setFolders([...folders, newFolder]);
-      setNewFolderName("");
-      setIsNewFolderDialogOpen(false);
+      try {
+        const newFolder = await addFolder(newFolderName.trim());
+        setFolders([...folders, newFolder]);
+        setNewFolderName("");
+        setIsNewFolderDialogOpen(false);
+      } catch (error: any) {
+        console.error("Failed to create folder:", error);
+        toast({ variant: "destructive", title: "Failed to create folder", description: error.message });
+      }
     }
   };
   
@@ -258,10 +253,10 @@ export function ContactsView() {
                                     />
                                 </div>
                             </div>
-                            <div className="p-6 pt-0 flex justify-end gap-2">
+                            <DialogFooter>
                                 <Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button>
                                 <Button onClick={handleCreateFolder}>Create Folder</Button>
-                            </div>
+                            </DialogFooter>
                         </DialogContent>
                         <Button className="w-full" onClick={() => setIsNewFolderDialogOpen(true)}>
                             <Plus className="mr-2 h-4 w-4" /> New Folder
