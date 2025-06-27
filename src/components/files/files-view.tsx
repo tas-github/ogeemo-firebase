@@ -20,7 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { type FolderItem, type FileItem, mockFolders, mockFiles } from '@/data/files';
+import { type FolderItem, type FileItem } from '@/data/files';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +46,16 @@ import {
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
+import { 
+    getFiles, 
+    getFolders, 
+    addFolder, 
+    addFile, 
+    updateFolder, 
+    updateFile, 
+    deleteFiles, 
+    deleteFolderAndContents 
+} from '@/services/file-service';
 
 
 const DialogLoader = () => (
@@ -86,53 +96,34 @@ function FilesViewContent() {
   const { accessToken } = useAuth();
 
   useEffect(() => {
-    let loadedFolders = mockFolders;
-    let loadedFiles = mockFiles;
-    try {
-      const storedFolders = localStorage.getItem('fileManagerFolders');
-      if (storedFolders) loadedFolders = JSON.parse(storedFolders);
-
-      const storedFiles = localStorage.getItem('fileManagerFiles');
-      if (storedFiles) {
-        loadedFiles = JSON.parse(storedFiles).map((file: any) => ({
-          ...file,
-          modifiedAt: new Date(file.modifiedAt),
-        }));
-      }
-    } catch (error) {
-      console.error("Failed to parse from localStorage, using mock data.", error);
-    } finally {
-      setFolders(loadedFolders);
-      setFiles(loadedFiles);
-      if (loadedFolders.length > 0) {
-        const rootFolder = loadedFolders.find(f => !f.parentId);
-        if (rootFolder) {
-            setExpandedFolders(new Set([rootFolder.id]));
+    async function loadData() {
+        setIsLoading(true);
+        try {
+            const [fetchedFolders, fetchedFiles] = await Promise.all([
+                getFolders(),
+                getFiles()
+            ]);
+            setFolders(fetchedFolders);
+            setFiles(fetchedFiles);
+             if (fetchedFolders.length > 0) {
+                const rootFolder = fetchedFolders.find(f => !f.parentId);
+                if (rootFolder) {
+                    setExpandedFolders(new Set([rootFolder.id]));
+                }
+            }
+        } catch (error: any) {
+            console.error("Failed to load file data:", error);
+            toast({
+                variant: "destructive",
+                title: "Failed to load data",
+                description: error.message || "Could not retrieve files and folders from the database.",
+            });
+        } finally {
+            setIsLoading(false);
         }
-      }
-      setIsLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    if (!isLoading) {
-      try {
-        localStorage.setItem('fileManagerFolders', JSON.stringify(folders));
-      } catch (error) {
-        console.error("Failed to save folders to localStorage", error);
-      }
-    }
-  }, [folders, isLoading]);
-
-  useEffect(() => {
-    if (!isLoading) {
-      try {
-        localStorage.setItem('fileManagerFiles', JSON.stringify(files));
-      } catch (error) {
-        console.error("Failed to save files to localStorage", error);
-      }
-    }
-  }, [files, isLoading]);
+    loadData();
+  }, [toast]);
   
   const openNewFolderDialog = (options: { parentId?: string | null } = {}) => {
     const { parentId = selectedFolderId } = options;
@@ -140,12 +131,18 @@ function FilesViewContent() {
     setIsNewFolderDialogOpen(true);
   };
 
-  const handleCreateFolder = (newFolder: FolderItem) => {
-    setFolders(prev => [...prev, newFolder]);
-    if (newFolder.parentId) {
-      setExpandedFolders(prev => new Set(prev).add(newFolder.parentId!));
+  const handleCreateFolder = async (folderData: Omit<FolderItem, 'id'>) => {
+    try {
+        const newFolder = await addFolder(folderData);
+        setFolders(prev => [...prev, newFolder]);
+        if (newFolder.parentId) {
+            setExpandedFolders(prev => new Set(prev).add(newFolder.parentId!));
+        }
+        toast({ title: "Folder Created", description: `Folder "${newFolder.name}" has been created.` });
+    } catch (error: any) {
+        console.error("Failed to create folder:", error);
+        toast({ variant: "destructive", title: "Folder Creation Failed", description: error.message });
     }
-    toast({ title: "Folder Created", description: `Folder "${newFolder.name}" has been created.` });
   };
   
   const handleSelectFolder = (folderId: string) => {
@@ -188,54 +185,55 @@ function FilesViewContent() {
     }
   };
   
-  const handleDeleteSelected = () => {
-    setFiles(prevFiles => prevFiles.filter(file => !selectedFileIds.includes(file.id)));
-    toast({
-        title: `${selectedFileIds.length} file(s) deleted`,
-        description: 'The selected files have been removed.',
-    });
-    setSelectedFileIds([]);
+  const handleDeleteSelected = async () => {
+    try {
+        await deleteFiles(selectedFileIds);
+        setFiles(prevFiles => prevFiles.filter(file => !selectedFileIds.includes(file.id)));
+        toast({
+            title: `${selectedFileIds.length} file(s) deleted`,
+            description: 'The selected files have been removed.',
+        });
+        setSelectedFileIds([]);
+    } catch (error: any) {
+        console.error("Failed to delete files:", error);
+        toast({ variant: "destructive", title: "Deletion Failed", description: error.message });
+    }
   };
 
   const handleDeleteFolder = (folder: FolderItem) => {
     setFolderToDelete(folder);
   };
   
-  const handleConfirmDeleteFolder = () => {
+  const handleConfirmDeleteFolder = async () => {
       if (!folderToDelete) return;
 
-      const folderIdsToDelete = new Set<string>([folderToDelete.id]);
-      const findDescendants = (parentId: string) => {
-          folders
-              .filter(f => f.parentId === parentId)
-              .forEach(child => {
-                  folderIdsToDelete.add(child.id);
-                  findDescendants(child.id);
-              });
-      };
-      findDescendants(folderToDelete.id);
+      try {
+        await deleteFolderAndContents(folderToDelete.id);
 
-      const newFolders = folders.filter(f => !folderIdsToDelete.has(f.id));
-      const newFiles = files.filter(f => f.folderId && !folderIdsToDelete.has(f.folderId));
+        const allFolders = await getFolders();
+        const allFiles = await getFiles();
+        setFolders(allFolders);
+        setFiles(allFiles);
 
-      setFolders(newFolders);
-      setFiles(newFiles);
+        if (selectedFolderId === folderToDelete.id) {
+            setSelectedFolderId(null);
+        }
 
-      if (selectedFolderId && folderIdsToDelete.has(selectedFolderId)) {
-          setSelectedFolderId(null);
+        toast({
+            title: "Folder Deleted",
+            description: `Folder "${folderToDelete.name}" and all its contents have been removed.`,
+        });
+      } catch (error: any) {
+        console.error("Failed to delete folder:", error);
+        toast({ variant: "destructive", title: "Deletion Failed", description: error.message });
+      } finally {
+        setFolderToDelete(null);
       }
-
-      toast({
-          title: "Folder Deleted",
-          description: `Folder "${folderToDelete.name}" and all its contents have been removed.`,
-      });
-
-      setFolderToDelete(null);
   };
   
   const selectedFolder = useMemo(() => folders.find(f => f.id === selectedFolderId), [folders, selectedFolderId]);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || !selectedFolderId) {
       toast({
         variant: 'destructive',
@@ -245,8 +243,7 @@ function FilesViewContent() {
       return;
     }
 
-    const newFiles: FileItem[] = Array.from(event.target.files).map((file) => ({
-      id: `file-${Date.now()}-${Math.random()}`,
+    const uploadedFilesData: Omit<FileItem, 'id'>[] = Array.from(event.target.files).map((file) => ({
       name: file.name,
       type: file.type || 'application/octet-stream',
       size: file.size,
@@ -254,11 +251,18 @@ function FilesViewContent() {
       folderId: selectedFolderId,
     }));
 
-    setFiles((prev) => [...prev, ...newFiles]);
-    toast({
-      title: `${newFiles.length} file(s) uploaded successfully!`,
-      description: `Added to "${selectedFolder?.name}".`,
-    });
+    try {
+        const addedFiles = await Promise.all(uploadedFilesData.map(fileData => addFile(fileData)));
+        setFiles((prev) => [...prev, ...addedFiles]);
+        toast({
+            title: `${addedFiles.length} file(s) uploaded successfully!`,
+            description: `Added to "${selectedFolder?.name}".`,
+        });
+    } catch (error: any) {
+        console.error("File upload failed:", error);
+        toast({ variant: "destructive", title: "Upload Failed", description: error.message });
+    }
+
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -339,22 +343,30 @@ function FilesViewContent() {
     setRenameInputValue("");
   };
   
-  const handleConfirmRename = () => {
+  const handleConfirmRename = async () => {
     if (!renamingFolder || !renameInputValue.trim() || renamingFolder.name === renameInputValue.trim()) {
         handleCancelRename();
         return;
     }
 
-    setFolders(prev =>
-        prev.map(f =>
-            f.id === renamingFolder.id ? { ...f, name: renameInputValue.trim() } : f
-        )
-    );
-    toast({
-        title: "Folder Renamed",
-        description: `"${renamingFolder.name}" was renamed to "${renameInputValue.trim()}".`,
-    });
-    handleCancelRename();
+    const newName = renameInputValue.trim();
+    try {
+        await updateFolder(renamingFolder.id, { name: newName });
+        setFolders(prev =>
+            prev.map(f =>
+                f.id === renamingFolder.id ? { ...f, name: newName } : f
+            )
+        );
+        toast({
+            title: "Folder Renamed",
+            description: `"${renamingFolder.name}" was renamed to "${newName}".`,
+        });
+    } catch (error: any) {
+        console.error("Failed to rename folder:", error);
+        toast({ variant: "destructive", title: "Rename Failed", description: error.message });
+    } finally {
+        handleCancelRename();
+    }
   };
 
   const handleRenameInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -365,20 +377,25 @@ function FilesViewContent() {
       }
   };
 
-  const handleFileDrop = (file: FileItem, newFolderId: string) => {
+  const handleFileDrop = async (file: FileItem, newFolderId: string) => {
     if (file.folderId === newFolderId) return;
 
-    setFiles((prevFiles) =>
-      prevFiles.map((f) =>
-        f.id === file.id ? { ...f, folderId: newFolderId } : f
-      )
-    );
-
-    const folder = folders.find((f) => f.id === newFolderId);
-    toast({
-      title: "File Moved",
-      description: `"${file.name}" was moved to "${folder?.name || 'new folder'}"`,
-    });
+    try {
+        await updateFile(file.id, { folderId: newFolderId });
+        setFiles((prevFiles) =>
+            prevFiles.map((f) =>
+                f.id === file.id ? { ...f, folderId: newFolderId } : f
+            )
+        );
+        const folder = folders.find((f) => f.id === newFolderId);
+        toast({
+            title: "File Moved",
+            description: `"${file.name}" was moved to "${folder?.name || 'new folder'}"`,
+        });
+    } catch (error: any) {
+        console.error("Failed to move file:", error);
+        toast({ variant: "destructive", title: "Move Failed", description: error.message });
+    }
   };
 
   const DraggableTableRow = ({ file, children }: { file: FileItem, children: React.ReactNode }) => {
@@ -404,6 +421,10 @@ function FilesViewContent() {
 
   const FolderTree = ({ parentId = null, level = 0 }: { parentId?: string | null, level?: number }) => {
     const children = folders.filter(f => f.parentId === parentId);
+    if (children.length === 0 && level === 0 && parentId === null) {
+        // Special case for when there are no folders at all
+        return <p className="p-4 text-center text-sm text-muted-foreground">No folders yet. Create one to get started.</p>;
+    }
     if (children.length === 0) return null;
 
     return (
