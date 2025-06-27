@@ -149,7 +149,20 @@ export function ComposeEmailView() {
         return contact ? `"${contact.name}" <${contact.email}>` : rec;
     });
     return formatted.join(', ');
-  }
+  };
+
+  const handleRecipientChange = (
+    currentValue: string,
+    newValue: string,
+    setter: React.Dispatch<React.SetStateAction<string>>
+  ) => {
+    if ((newValue.endsWith(',') || newValue.endsWith(';')) && newValue.length > currentValue.length) {
+        const formatted = formatRecipientString(newValue.slice(0, -1));
+        setter(formatted + newValue.slice(-1) + ' ');
+    } else {
+        setter(newValue);
+    }
+  };
 
   const handleFormat = (command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -531,7 +544,7 @@ export function ComposeEmailView() {
                     className="border-0 shadow-none focus-visible:ring-0 flex-1 pr-10"
                     placeholder="recipient@example.com"
                     value={recipient}
-                    onChange={(e) => setRecipient(e.target.value)}
+                    onChange={(e) => handleRecipientChange(recipient, e.target.value, setRecipient)}
                     onBlur={() => setRecipient(formatRecipientString(recipient))}
                   />
                   <Button variant="ghost" size="icon" type="button" onClick={() => openContactPicker('recipient')} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
@@ -558,7 +571,7 @@ export function ComposeEmailView() {
                               className="border-0 shadow-none focus-visible:ring-0 flex-1 pr-10"
                               placeholder="cc@example.com"
                               value={cc}
-                              onChange={(e) => setCc(e.target.value)}
+                              onChange={(e) => handleRecipientChange(cc, e.target.value, setCc)}
                               onBlur={() => setCc(formatRecipientString(cc))}
                           />
                           <Button variant="ghost" size="icon" type="button" onClick={() => openContactPicker('cc')} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
@@ -580,7 +593,7 @@ export function ComposeEmailView() {
                                 className="border-0 shadow-none focus-visible:ring-0 flex-1 pr-10"
                                 placeholder="bcc@example.com"
                                 value={bcc}
-                                onChange={(e) => setBcc(e.target.value)}
+                                onChange={(e) => handleRecipientChange(bcc, e.target.value, setBcc)}
                                 onBlur={() => setBcc(formatRecipientString(bcc))}
                             />
                             <Button variant="ghost" size="icon" type="button" onClick={() => openContactPicker('bcc')} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
