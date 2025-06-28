@@ -214,8 +214,22 @@ export function EventManagerView() {
 
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
-          <CardTitle>Event Logger</CardTitle>
-          <CardDescription>All fields are required to start the timer.</CardDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle>Event Logger</CardTitle>
+              <CardDescription>All fields are required to start the timer.</CardDescription>
+            </div>
+            <div className="text-right">
+              <div className="text-4xl font-mono font-bold text-primary tracking-tighter">
+                {formatTime(elapsedTime)}
+              </div>
+              {isActive && selectedContact && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Timing for <span className="font-semibold text-primary">{selectedContact.name}</span>
+                </p>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid md:grid-cols-2 gap-6">
@@ -253,17 +267,6 @@ export function EventManagerView() {
               disabled={isActive}
             />
           </div>
-
-          <Card className="bg-muted/50 text-center p-6">
-            <div className="text-6xl font-mono font-bold text-primary tracking-tighter">
-              {formatTime(elapsedTime)}
-            </div>
-            {isActive && selectedContact && (
-              <p className="text-muted-foreground mt-2">
-                Timer is running for <span className="font-semibold text-primary">{selectedContact.name}</span>
-              </p>
-            )}
-          </Card>
         </CardContent>
         <CardFooter className="flex justify-center gap-4">
           {!isActive ? (
