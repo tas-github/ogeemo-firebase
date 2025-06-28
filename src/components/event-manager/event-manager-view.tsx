@@ -203,6 +203,8 @@ export function EventManagerView() {
     return acc + (hours * entry.billableRate);
   }, 0).toFixed(2);
 
+  const currentBillableAmount = isActive ? (elapsedTime / 3600) * billableRate : 0;
+
   return (
     <>
       <div className="p-4 sm:p-6 space-y-6">
@@ -220,8 +222,13 @@ export function EventManagerView() {
               </div>
               <div className="flex items-center gap-2">
                  {isActive && (
-                    <div className="text-sm font-mono text-muted-foreground p-2 rounded-md border bg-muted">
-                    {formatTime(elapsedTime)}
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-mono text-muted-foreground p-2 rounded-md border bg-muted">
+                        {formatTime(elapsedTime)}
+                      </div>
+                       <div className="text-sm font-mono font-semibold text-primary">
+                        ${currentBillableAmount.toFixed(2)}
+                      </div>
                     </div>
                 )}
                 <Button onClick={() => setIsTimerOpen(true)}>
