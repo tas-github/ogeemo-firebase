@@ -73,15 +73,13 @@ export function GoogleIntegrationView() {
       return;
     }
     try {
-      // The redirect will navigate away from the page, so we don't need to handle success/error here.
-      // The useEffect hook will handle the result when the user is redirected back.
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
       console.error("Sign-in initiation failed:", error);
       toast({
         variant: "destructive",
         title: "Authentication Error",
-        description: `Could not initiate sign-in. This is likely an 'auth/unauthorized-domain' error. Please add your app's current domain to the Firebase Console's list of authorized domains to proceed.`,
+        description: `Could not initiate sign-in. This is likely an 'auth/unauthorized-domain' error. Please add your app's current domain to the Firebase Console's list of authorized domains to proceed. Error: ${error.code}`,
       });
     }
   };
