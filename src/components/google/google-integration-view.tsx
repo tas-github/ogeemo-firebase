@@ -16,7 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { LoaderCircle, CheckCircle2, XCircle } from "lucide-react";
+import { LoaderCircle, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 
@@ -85,6 +85,76 @@ export function GoogleIntegrationView() {
     </svg>
   );
 
+  const renderConnectedView = () => {
+    if (!user) return null;
+
+    if (accessToken) {
+      return (
+        <div className="flex flex-col items-center gap-6">
+          <div className="flex items-center gap-4">
+            <CheckCircle2 className="h-8 w-8 text-green-500" />
+            <p className="font-semibold text-lg">API Ready</p>
+          </div>
+          <div className="flex items-center gap-4 rounded-lg border p-4 w-full">
+            <Avatar className="h-12 w-12">
+              <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
+              <AvatarFallback>{user.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <div className="truncate">
+              <p className="font-semibold truncate">{user.displayName}</p>
+              <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+            </div>
+          </div>
+          <Button onClick={handleSignOut} variant="destructive">
+            Disconnect Account
+          </Button>
+        </div>
+      );
+    }
+    
+    // This is the state where user is logged in, but we need API access token.
+    return (
+        <div className="flex flex-col items-center gap-6">
+            <div className="flex items-center gap-4">
+                <AlertTriangle className="h-8 w-8 text-amber-500" />
+                <p className="font-semibold text-lg">API Access Required</p>
+            </div>
+            <div className="flex items-center gap-4 rounded-lg border p-4 w-full">
+                 <Avatar className="h-12 w-12">
+                    <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
+                    <AvatarFallback>{user.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="truncate">
+                    <p className="font-semibold truncate">{user.displayName}</p>
+                    <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                </div>
+            </div>
+            <p className="text-center text-sm text-muted-foreground">
+                Your Ogeemo account is connected to Google, but API access is needed for features like importing contacts. Click the button below to grant permissions.
+            </p>
+            <Button onClick={handleSignIn}>
+                Refresh API Connection
+            </Button>
+        </div>
+    );
+  };
+  
+  const renderDisconnectedView = () => (
+      <div className="flex flex-col items-center gap-6">
+        <div className="flex items-center gap-4">
+          <XCircle className="h-8 w-8 text-destructive" />
+          <p className="font-semibold text-lg">Not Connected</p>
+        </div>
+        <p className="text-center text-muted-foreground">
+          To continue, please sign in with your Google account. This will allow Ogeemo to access your Google services securely.
+        </p>
+        <Button onClick={handleSignIn} size="lg" className="w-full">
+          <GoogleIcon />
+          Connect with Google
+        </Button>
+      </div>
+  );
+
 
   if (isLoading) {
     return (
@@ -106,46 +176,7 @@ export function GoogleIntegrationView() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {user ? (
-            <div className="flex flex-col items-center gap-6">
-              <div className="flex items-center gap-4">
-                <CheckCircle2 className="h-8 w-8 text-green-500" />
-                <p className="font-semibold text-lg">{accessToken ? 'API Ready' : 'Account Connected'}</p>
-              </div>
-              <div className="flex items-center gap-4 rounded-lg border p-4 w-full">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
-                  <AvatarFallback>{user.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="truncate">
-                  <p className="font-semibold truncate">{user.displayName}</p>
-                  <p className="text-sm text-muted-foreground truncate">{user.email}</p>
-                </div>
-              </div>
-              {!accessToken && (
-                 <p className="text-center text-sm text-muted-foreground">
-                    Your account is connected, but to use API features like importing contacts, you need to re-authenticate to get a fresh API token.
-                </p>
-              )}
-              <Button onClick={accessToken ? handleSignOut : handleSignIn} variant={accessToken ? "destructive" : "default"}>
-                {accessToken ? 'Disconnect Account' : 'Connect for API Access'}
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-6">
-              <div className="flex items-center gap-4">
-                <XCircle className="h-8 w-8 text-destructive" />
-                <p className="font-semibold text-lg">Not Connected</p>
-              </div>
-              <p className="text-center text-muted-foreground">
-                To continue, please sign in with your Google account. This will allow Ogeemo to access your Google services securely.
-              </p>
-              <Button onClick={handleSignIn} size="lg" className="w-full">
-                <GoogleIcon />
-                Connect with Google
-              </Button>
-            </div>
-          )}
+            {user ? renderConnectedView() : renderDisconnectedView()}
         </CardContent>
       </Card>
     </div>
