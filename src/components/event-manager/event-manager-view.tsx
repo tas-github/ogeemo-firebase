@@ -2,22 +2,25 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
-import { Clock } from 'lucide-react';
+import { Clock, BookOpen, Bold, Italic, Underline, List, ListOrdered } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { type Contact, mockContacts } from "@/data/contacts";
 import { TimerDialog } from './timer-dialog';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '../ui/scroll-area';
 
 interface EventEntry {
   id: string;
   contactId: string;
   contactName: string;
-  description: string;
+  subject: string;
+  detailsHtml?: string;
   startTime: Date;
   endTime: Date;
   duration: number; // in seconds
@@ -26,7 +29,8 @@ interface EventEntry {
 
 interface StoredTimerState {
   contactId: string;
-  description: string;
+  subject: string;
+  detailsHtml?: string;
   billableRate: number;
   isPaused: boolean;
   elapsedTime: number; // elapsed seconds *before* the last active period started
@@ -44,14 +48,14 @@ export function EventManagerView() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [billableRate, setBillableRate] = useState<number>(100);
   const [subject, setSubject] = useState("");
+  const [detailsHtml, setDetailsHtml] = useState("");
   
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   
-  const [eventEntries, setEventEntries] = useState<EventEntry[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [isTimerOpen, setIsTimerOpen] = useState(false);
 
@@ -69,7 +73,11 @@ export function EventManagerView() {
       try {
         const state: StoredTimerState = JSON.parse(savedStateRaw);
         setSelectedContactId(state.contactId);
-        setSubject(state.description);
+        setSubject(state.subject);
+        setDetailsHtml(state.detailsHtml || "");
+        if (editorRef.current) {
+            editorRef.current.innerHTML = state.detailsHtml || "";
+        }
         setBillableRate(state.billableRate);
         setIsActive(true);
         setIsPaused(state.isPaused);
@@ -86,29 +94,7 @@ export function EventManagerView() {
         clearStateFromLocalStorage();
       }
     }
-
-    const savedEntriesRaw = localStorage.getItem('eventEntries');
-    if (savedEntriesRaw) {
-        try {
-            const savedEntries = JSON.parse(savedEntriesRaw).map((entry: any) => ({
-                ...entry,
-                startTime: new Date(entry.startTime),
-                endTime: new Date(entry.endTime),
-            }));
-            setEventEntries(savedEntries);
-        } catch (error) {
-            console.error("Failed to parse event entries:", error);
-            localStorage.removeItem('eventEntries');
-        }
-    }
-    setIsLoaded(true);
   }, [clearStateFromLocalStorage]);
-
-  useEffect(() => {
-    if (isLoaded) {
-        localStorage.setItem('eventEntries', JSON.stringify(eventEntries));
-    }
-  }, [eventEntries, isLoaded]);
   
   useEffect(() => {
     if (isActive && !isPaused) {
@@ -140,7 +126,8 @@ export function EventManagerView() {
 
     const state: StoredTimerState = {
         contactId: selectedContactId,
-        description: subject,
+        subject: subject,
+        detailsHtml: detailsHtml,
         billableRate,
         isPaused: false,
         elapsedTime: 0,
@@ -173,36 +160,46 @@ export function EventManagerView() {
 
     const contact = mockContacts.find(c => c.id === selectedContactId);
     if (!contact) return;
+    
+    const currentEditorContent = editorRef.current?.innerHTML || detailsHtml;
 
     const newEntry: EventEntry = {
       id: `entry-${Date.now()}`,
       contactId,
       contactName: contact.name,
-      description: subject,
+      subject: subject,
+      detailsHtml: currentEditorContent,
       startTime: new Date(Date.now() - elapsedTime * 1000),
       endTime: new Date(),
       duration: elapsedTime,
       billableRate,
     };
-
-    setEventEntries(prev => [newEntry, ...prev]);
+    
+    const existingEntriesRaw = localStorage.getItem('eventEntries');
+    const existingEntries = existingEntriesRaw ? JSON.parse(existingEntriesRaw) : [];
+    const updatedEntries = [newEntry, ...existingEntries];
+    localStorage.setItem('eventEntries', JSON.stringify(updatedEntries));
     
     setIsActive(false);
     setIsPaused(false);
     setElapsedTime(0);
     setSubject("");
+    setDetailsHtml("");
+    if (editorRef.current) editorRef.current.innerHTML = "";
     setSelectedContactId(null);
     clearStateFromLocalStorage();
 
     toast({ title: "Event Logged", description: `Logged ${formatTime(elapsedTime)} for ${contact.name}.` });
   };
   
+  const handleFormat = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+  };
+  
+  const preventDefault = (e: React.MouseEvent) => e.preventDefault();
+  
   const selectedContact = mockContacts.find(c => c.id === selectedContactId);
-  const totalBillable = eventEntries.reduce((acc, entry) => {
-    const hours = entry.duration / 3600;
-    return acc + (hours * entry.billableRate);
-  }, 0).toFixed(2);
-
   const currentBillableAmount = isActive ? (elapsedTime / 3600) * billableRate : 0;
 
   return (
@@ -278,46 +275,39 @@ export function EventManagerView() {
         </Card>
         
         <Card className="max-w-4xl mx-auto">
-          <CardHeader>
-              <div className="flex justify-between items-center">
-                  <div>
-                      <CardTitle>Logged Events</CardTitle>
-                      <CardDescription>A record of all your tracked time for clients.</CardDescription>
-                  </div>
-                  <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Total Billable</p>
-                      <p className="text-2xl font-bold text-primary">${totalBillable}</p>
-                  </div>
-              </div>
-          </CardHeader>
-          <CardContent>
-              <div className="border rounded-lg">
-                  <Table>
-                      <TableHeader>
-                          <TableRow>
-                              <TableHead>Client</TableHead>
-                              <TableHead>Subject</TableHead>
-                              <TableHead className="text-right">Duration</TableHead>
-                              <TableHead className="text-right">Total</TableHead>
-                          </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                          {eventEntries.length > 0 ? eventEntries.map(entry => (
-                               <TableRow key={entry.id}>
-                                  <TableCell className="font-medium">{entry.contactName}</TableCell>
-                                  <TableCell>{entry.description}</TableCell>
-                                  <TableCell className="text-right font-mono">{formatTime(entry.duration)}</TableCell>
-                                  <TableCell className="text-right font-mono">${((entry.duration / 3600) * entry.billableRate).toFixed(2)}</TableCell>
-                              </TableRow>
-                          )) : (
-                              <TableRow>
-                                  <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">No events logged yet.</TableCell>
-                              </TableRow>
-                          )}
-                      </TableBody>
-                  </Table>
-              </div>
-          </CardContent>
+            <CardHeader>
+                <CardTitle>Description</CardTitle>
+                <CardDescription>Add detailed, formatted notes about the event.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col p-0">
+                <div className="p-2 border-t border-b flex items-center gap-1 flex-wrap">
+                    <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" title="Italic" onMouseDown={preventDefault} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
+                    <Separator orientation="vertical" className="h-6 mx-1" />
+                    <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
+                </div>
+                <ScrollArea className="flex-1 min-h-[200px]">
+                    <div
+                        ref={editorRef}
+                        className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full"
+                        contentEditable={!isActive}
+                        onInput={(e) => setDetailsHtml(e.currentTarget.innerHTML)}
+                        dangerouslySetInnerHTML={{ __html: detailsHtml }}
+                        placeholder="Start writing your event details here..."
+                        dir="ltr"
+                    />
+                </ScrollArea>
+            </CardContent>
+            <CardFooter className="border-t p-4">
+                 <Button asChild variant="secondary">
+                    <Link href="/event-manager/logged-events">
+                        <BookOpen className="mr-2 h-4 w-4"/>
+                        View All Logged Events
+                    </Link>
+                </Button>
+            </CardFooter>
         </Card>
       </div>
 
