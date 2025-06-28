@@ -103,12 +103,12 @@ export function GoogleIntegrationView() {
         description: "Successfully disconnected from your Google Account.",
       });
     } catch (error: any) {
-      console.error("Google Sign-Out Error:", error);
-      toast({
-        variant: "destructive",
-        title: "Sign-Out Failed",
-        description: error.message || "Could not disconnect from Google.",
-      });
+       console.error("Google Sign-Out Error:", error);
+       toast({
+         variant: "destructive",
+         title: "Sign-Out Failed",
+         description: error.message || "Could not disconnect from Google.",
+       });
     }
   };
 
