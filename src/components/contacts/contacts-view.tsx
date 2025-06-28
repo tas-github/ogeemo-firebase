@@ -479,7 +479,7 @@ function ContactsViewContent() {
                   ) : (
                     <div className="w-4 h-4" />
                   )}
-                  <Folder className="h-4 w-4" />
+                  <Folder className={cn('h-4 w-4', folder.parentId ? 'text-green-500' : 'text-primary')} />
                   {isRenaming ? (
                     <Input autoFocus value={renameInputValue} onChange={e => setRenameInputValue(e.target.value)} onBlur={handleConfirmRename} onKeyDown={e => { if (e.key === 'Enter') handleConfirmRename(); if (e.key === 'Escape') handleCancelRename(); }} className="h-7" onClick={e => e.stopPropagation()} />
                   ) : (
@@ -506,7 +506,6 @@ function ContactsViewContent() {
     );
   };
 
-  // The isLoading check is moved here, after all hooks have been defined.
   if (isLoading) {
     return <div className="flex h-full w-full items-center justify-center p-4"><LoaderCircle className="h-10 w-10 animate-spin text-primary" /></div>;
   }
@@ -523,7 +522,7 @@ function ContactsViewContent() {
             <ResizablePanel defaultSize={25} minSize={20}>
               <div className="flex h-full flex-col p-2">
                   <div className="p-2">
-                    <Button className="w-full" onClick={() => handleOpenNewFolderDialog({ parentId: null })}>
+                    <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white" onClick={() => handleOpenNewFolderDialog({ parentId: null })}>
                         <Plus className="mr-2 h-4 w-4" /> New Folder
                     </Button>
                   </div>
@@ -554,7 +553,7 @@ function ContactsViewContent() {
                               </div>
                               <div className="flex items-center gap-2">
                                   <Button variant="outline" onClick={handleOpenImportDialog} disabled={!user}><GoogleIcon /> Import from Google</Button>
-                                  <Button onClick={handleNewContactClick}><Plus className="mr-2 h-4 w-4" /> Add Contact</Button>
+                                  <Button onClick={handleNewContactClick} className="bg-orange-500 hover:bg-orange-600 text-white"><Plus className="mr-2 h-4 w-4" /> Add Contact</Button>
                               </div>
                           </>
                       )}
