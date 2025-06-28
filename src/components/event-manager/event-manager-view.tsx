@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
-import { Play, Pause, Square } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { type Contact, mockContacts } from "@/data/contacts";
+import { TimerDialog } from './timer-dialog';
 
 interface EventEntry {
   id: string;
@@ -52,6 +53,7 @@ export function EventManagerView() {
   const [isLoaded, setIsLoaded] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+  const [isTimerOpen, setIsTimerOpen] = useState(false);
 
   const saveStateToLocalStorage = useCallback((state: StoredTimerState) => {
     localStorage.setItem('activeTimerState', JSON.stringify(state));
@@ -62,7 +64,6 @@ export function EventManagerView() {
   }, []);
 
   useEffect(() => {
-    // Load active timer state
     const savedStateRaw = localStorage.getItem('activeTimerState');
     if (savedStateRaw) {
       try {
@@ -86,7 +87,6 @@ export function EventManagerView() {
       }
     }
 
-    // Load logged entries
     const savedEntriesRaw = localStorage.getItem('eventEntries');
     if (savedEntriesRaw) {
         try {
@@ -104,7 +104,6 @@ export function EventManagerView() {
     setIsLoaded(true);
   }, [clearStateFromLocalStorage]);
 
-  // Save entries to localStorage whenever they change
   useEffect(() => {
     if (isLoaded) {
         localStorage.setItem('eventEntries', JSON.stringify(eventEntries));
@@ -159,9 +158,9 @@ export function EventManagerView() {
           try {
               const state: StoredTimerState = JSON.parse(savedStateRaw);
               state.isPaused = !wasPaused;
-              if (wasPaused) { // Resuming
+              if (wasPaused) { 
                   state.lastTickTimestamp = Date.now();
-              } else { // Pausing
+              } else { 
                   state.elapsedTime = elapsedTime;
               }
               saveStateToLocalStorage(state);
@@ -180,7 +179,7 @@ export function EventManagerView() {
       contactId,
       contactName: contact.name,
       description: subject,
-      startTime: new Date(Date.now() - elapsedTime * 1000), // Approximate start time
+      startTime: new Date(Date.now() - elapsedTime * 1000),
       endTime: new Date(),
       duration: elapsedTime,
       billableRate,
@@ -188,7 +187,6 @@ export function EventManagerView() {
 
     setEventEntries(prev => [newEntry, ...prev]);
     
-    // Reset state
     setIsActive(false);
     setIsPaused(false);
     setElapsedTime(0);
@@ -206,129 +204,130 @@ export function EventManagerView() {
   }, 0).toFixed(2);
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <header className="text-center mb-6">
-        <h1 className="text-3xl font-bold font-headline text-primary">Event Manager</h1>
-        <p className="text-muted-foreground">Select a client to manage their events and track time.</p>
-      </header>
+    <>
+      <div className="p-4 sm:p-6 space-y-6">
+        <header className="text-center mb-6">
+          <h1 className="text-3xl font-bold font-headline text-primary">Event Manager</h1>
+          <p className="text-muted-foreground">Select a client to manage their events and track time.</p>
+        </header>
 
-      <Card className="max-w-4xl mx-auto">
-        <CardHeader>
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle>Event Logger</CardTitle>
-              <CardDescription>All fields are required to start the timer.</CardDescription>
-            </div>
-            <div className="text-right">
-              <div className="text-4xl font-mono font-bold text-primary tracking-tighter">
-                {formatTime(elapsedTime)}
+        <Card className="max-w-4xl mx-auto">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Event Logger</CardTitle>
+                <CardDescription>All fields are required to start the timer.</CardDescription>
               </div>
-              {isActive && selectedContact && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Timing for <span className="font-semibold text-primary">{selectedContact.name}</span>
-                </p>
-              )}
+              <div className="flex items-center gap-2">
+                 {isActive && (
+                    <div className="text-sm font-mono text-muted-foreground p-2 rounded-md border bg-muted">
+                    {formatTime(elapsedTime)}
+                    </div>
+                )}
+                <Button onClick={() => setIsTimerOpen(true)}>
+                  <Clock className="mr-2 h-4 w-4" />
+                  {isActive ? "Manage Timer" : "Open Timer"}
+                </Button>
+              </div>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid md:grid-cols-2 gap-6">
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="client-select">Client</Label>
+                <Select value={selectedContactId ?? ''} onValueChange={setSelectedContactId} disabled={isActive}>
+                  <SelectTrigger id="client-select">
+                    <SelectValue placeholder="Select a client..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mockContacts.map((contact) => (
+                      <SelectItem key={contact.id} value={contact.id}>{contact.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+               <div className="space-y-2">
+                <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
+                <Input
+                  id="billable-rate"
+                  type="number"
+                  value={billableRate}
+                  onChange={(e) => setBillableRate(Number(e.target.value))}
+                  disabled={isActive}
+                />
+              </div>
+            </div>
             <div className="space-y-2">
-              <Label htmlFor="client-select">Client</Label>
-              <Select value={selectedContactId ?? ''} onValueChange={setSelectedContactId} disabled={isActive}>
-                <SelectTrigger id="client-select">
-                  <SelectValue placeholder="Select a client..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {mockContacts.map((contact) => (
-                    <SelectItem key={contact.id} value={contact.id}>{contact.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-             <div className="space-y-2">
-              <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
+              <Label htmlFor="subject">Subject</Label>
               <Input
-                id="billable-rate"
-                type="number"
-                value={billableRate}
-                onChange={(e) => setBillableRate(Number(e.target.value))}
+                id="subject"
+                placeholder="Enter a subject..."
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
                 disabled={isActive}
               />
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="subject">Subject</Label>
-            <Input
-              id="subject"
-              placeholder="Enter a subject..."
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              disabled={isActive}
-            />
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-center gap-4">
-          {!isActive ? (
-            <Button size="lg" onClick={handleStart} className="w-48">
-              <Play className="mr-2 h-5 w-5" /> Start Timer
-            </Button>
-          ) : (
-            <>
-              <Button size="lg" variant="outline" onClick={handlePauseResume} className="w-48">
-                {isPaused ? <Play className="mr-2 h-5 w-5" /> : <Pause className="mr-2 h-5 w-5" />}
-                {isPaused ? 'Resume' : 'Pause'}
-              </Button>
-              <Button size="lg" variant="destructive" onClick={handleStop} className="w-48">
-                <Square className="mr-2 h-5 w-5" /> Stop & Log
-              </Button>
-            </>
-          )}
-        </CardFooter>
-      </Card>
-      
-      <Card className="max-w-4xl mx-auto">
-        <CardHeader>
-            <div className="flex justify-between items-center">
-                <div>
-                    <CardTitle>Logged Events</CardTitle>
-                    <CardDescription>A record of all your tracked time for clients.</CardDescription>
-                </div>
-                <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Total Billable</p>
-                    <p className="text-2xl font-bold text-primary">${totalBillable}</p>
-                </div>
-            </div>
-        </CardHeader>
-        <CardContent>
-            <div className="border rounded-lg">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Client</TableHead>
-                            <TableHead>Subject</TableHead>
-                            <TableHead className="text-right">Duration</TableHead>
-                            <TableHead className="text-right">Total</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {eventEntries.length > 0 ? eventEntries.map(entry => (
-                             <TableRow key={entry.id}>
-                                <TableCell className="font-medium">{entry.contactName}</TableCell>
-                                <TableCell>{entry.description}</TableCell>
-                                <TableCell className="text-right font-mono">{formatTime(entry.duration)}</TableCell>
-                                <TableCell className="text-right font-mono">${((entry.duration / 3600) * entry.billableRate).toFixed(2)}</TableCell>
-                            </TableRow>
-                        )) : (
-                            <TableRow>
-                                <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">No events logged yet.</TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="max-w-4xl mx-auto">
+          <CardHeader>
+              <div className="flex justify-between items-center">
+                  <div>
+                      <CardTitle>Logged Events</CardTitle>
+                      <CardDescription>A record of all your tracked time for clients.</CardDescription>
+                  </div>
+                  <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Total Billable</p>
+                      <p className="text-2xl font-bold text-primary">${totalBillable}</p>
+                  </div>
+              </div>
+          </CardHeader>
+          <CardContent>
+              <div className="border rounded-lg">
+                  <Table>
+                      <TableHeader>
+                          <TableRow>
+                              <TableHead>Client</TableHead>
+                              <TableHead>Subject</TableHead>
+                              <TableHead className="text-right">Duration</TableHead>
+                              <TableHead className="text-right">Total</TableHead>
+                          </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                          {eventEntries.length > 0 ? eventEntries.map(entry => (
+                               <TableRow key={entry.id}>
+                                  <TableCell className="font-medium">{entry.contactName}</TableCell>
+                                  <TableCell>{entry.description}</TableCell>
+                                  <TableCell className="text-right font-mono">{formatTime(entry.duration)}</TableCell>
+                                  <TableCell className="text-right font-mono">${((entry.duration / 3600) * entry.billableRate).toFixed(2)}</TableCell>
+                              </TableRow>
+                          )) : (
+                              <TableRow>
+                                  <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">No events logged yet.</TableCell>
+                              </TableRow>
+                          )}
+                      </TableBody>
+                  </Table>
+              </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <TimerDialog
+        isOpen={isTimerOpen}
+        onOpenChange={setIsTimerOpen}
+        elapsedTime={elapsedTime}
+        isActive={isActive}
+        isPaused={isPaused}
+        selectedContactName={selectedContact?.name}
+        handleStart={handleStart}
+        handlePauseResume={handlePauseResume}
+        handleStop={() => {
+            handleStop();
+            setIsTimerOpen(false);
+        }}
+      />
+    </>
   );
 }
