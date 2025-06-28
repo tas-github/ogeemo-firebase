@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -288,7 +288,7 @@ export function CreateEventView() {
           </Card>
 
           <Card className="max-w-4xl mx-auto">
-            <CardHeader className="flex flex-row items-baseline justify-between">
+            <CardHeader className="flex flex-row items-baseline justify-start gap-4">
               <CardTitle className="text-lg">Description</CardTitle>
               <CardDescription>Describe event actions performed</CardDescription>
             </CardHeader>
