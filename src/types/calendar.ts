@@ -10,4 +10,5 @@ export type Event = {
   projectId?: string;
   isBillable?: boolean;
   billableRate?: number;
+  userId: string;
 };

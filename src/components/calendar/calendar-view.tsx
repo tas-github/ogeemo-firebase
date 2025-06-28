@@ -39,7 +39,8 @@ import {
 } from "@/components/ui/select"
 import { type Event } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
-import { getInitialEvents } from "@/data/events";
+import { useAuth } from "@/context/auth-context";
+import * as ProjectService from "@/services/project-service";
 
 const NewTaskDialog = dynamic(() => import('@/components/tasks/NewTaskDialog').then((mod) => mod.NewTaskDialog), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
@@ -218,6 +219,7 @@ function CalendarPageContent() {
   const [today, setToday] = React.useState<Date | null>(null);
   const [view, setView] = React.useState<CalendarView>("day");
   const [events, setEvents] = React.useState<Event[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
   
   const [viewStartHour, setViewStartHour] = React.useState(9);
   const [viewEndHour, setViewEndHour] = React.useState(17);
@@ -231,6 +233,7 @@ function CalendarPageContent() {
   const [eventToEdit, setEventToEdit] = React.useState<Event | null>(null);
 
   const { toast } = useToast();
+  const { user } = useAuth();
 
   React.useEffect(() => {
     const now = new Date();
@@ -239,35 +242,28 @@ function CalendarPageContent() {
   }, []);
 
   React.useEffect(() => {
-    try {
-      const storedEvents = localStorage.getItem('calendarEvents');
-      if (storedEvents) {
-        const parsedEvents = JSON.parse(storedEvents).map((e: any) => ({
-          ...e,
-          start: new Date(e.start),
-          end: new Date(e.end),
-        }));
-        setEvents(parsedEvents);
-      } else {
-        const initial = getInitialEvents();
-        setEvents(initial);
-        localStorage.setItem('calendarEvents', JSON.stringify(initial));
-      }
-    } catch (error) {
-      console.error("Could not read calendar events from localStorage", error);
-      setEvents(getInitialEvents());
+    async function loadEvents(userId: string) {
+        setIsLoading(true);
+        try {
+            const fetchedEvents = await ProjectService.getTasks(userId);
+            setEvents(fetchedEvents);
+        } catch (error: any) {
+            console.error("Failed to load events:", error);
+            toast({
+                variant: "destructive",
+                title: "Failed to load events",
+                description: error.message || "Could not retrieve calendar events from the database.",
+            });
+        } finally {
+            setIsLoading(false);
+        }
     }
-  }, []);
-
-  React.useEffect(() => {
-    if (events.length > 0) {
-      try {
-        localStorage.setItem('calendarEvents', JSON.stringify(events));
-      } catch (error) {
-        console.error("Could not write calendar events to localStorage", error);
-      }
+    if (user) {
+        loadEvents(user.uid);
+    } else {
+        setIsLoading(false);
     }
-  }, [events]);
+  }, [user, toast]);
 
   React.useEffect(() => {
     try {
@@ -286,12 +282,26 @@ function CalendarPageContent() {
     }
   }, []);
 
-  const handleTaskCreate = (newEvent: Event) => {
-    setEvents(prevEvents => [...prevEvents, newEvent]);
+  const handleTaskCreate = async (taskData: Omit<Event, 'id' | 'userId'>) => {
+    if (!user) return;
+    try {
+      const newEvent = await ProjectService.addTask({ ...taskData, userId: user.uid });
+      setEvents(prev => [...prev, newEvent]);
+    } catch (error: any) {
+      console.error("Failed to create task:", error);
+      toast({ variant: "destructive", title: "Create Failed", description: error.message });
+    }
   };
 
-  const handleTaskUpdate = (updatedEvent: Event) => {
-    setEvents(prevEvents => prevEvents.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+  const handleTaskUpdate = async (updatedEventData: Omit<Event, 'userId'>) => {
+    try {
+      const { id, ...dataToUpdate } = updatedEventData;
+      await ProjectService.updateTask(id, dataToUpdate);
+      setEvents(prev => prev.map(e => e.id === id ? { ...e, ...dataToUpdate } : e));
+    } catch (error: any) {
+      console.error("Failed to update task:", error);
+      toast({ variant: "destructive", title: "Update Failed", description: error.message });
+    }
   };
 
   const handleEventClick = (event: Event) => {
@@ -346,19 +356,23 @@ function CalendarPageContent() {
     }));
   }, []);
 
-  const handleEventDrop = React.useCallback((eventId: string, newStart: Date) => {
-    setEvents(prevEvents => {
-      const eventToUpdate = prevEvents.find(e => e.id === eventId);
-      if (!eventToUpdate) return prevEvents;
+  const handleEventDrop = React.useCallback(async (eventId: string, newStart: Date) => {
+    const eventToUpdate = events.find(e => e.id === eventId);
+    if (!eventToUpdate) return;
 
-      const duration = eventToUpdate.end.getTime() - eventToUpdate.start.getTime();
-      const newEnd = new Date(newStart.getTime() + duration);
-
-      return prevEvents.map(e => 
-        e.id === eventId ? { ...e, start: newStart, end: newEnd } : e
-      );
-    });
-  }, []);
+    const duration = eventToUpdate.end.getTime() - eventToUpdate.start.getTime();
+    const newEnd = new Date(newStart.getTime() + duration);
+    
+    try {
+        await ProjectService.updateTask(eventId, { start: newStart, end: newEnd });
+        setEvents(prevEvents => prevEvents.map(e => 
+          e.id === eventId ? { ...e, start: newStart, end: newEnd } : e
+        ));
+    } catch(error: any) {
+        console.error("Failed to update task time:", error);
+        toast({ variant: "destructive", title: "Update Failed", description: error.message });
+    }
+  }, [events, toast]);
 
   const handleHourClick = (hour: number) => {
     if (!date) return;
@@ -443,6 +457,15 @@ function CalendarPageContent() {
 
   const renderViewContent = () => {
     if (!date) return null;
+
+    if (isLoading) {
+      return (
+        <div className="flex h-full items-center justify-center">
+            <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      )
+    }
+
     switch (view) {
       case "day":
         return renderTimelineView([date]);
@@ -639,7 +662,7 @@ function CalendarPageContent() {
                 eventToEdit={eventToEdit}
                 onTaskCreate={handleTaskCreate}
                 onTaskUpdate={handleTaskUpdate}
-                projectId="proj-1"
+                projectId={eventToEdit?.projectId || null}
             />
         )}
       </div>
