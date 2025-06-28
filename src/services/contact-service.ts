@@ -8,7 +8,6 @@ import {
   doc,
   addDoc,
   updateDoc,
-  deleteDoc,
   writeBatch,
   query,
   where,
@@ -40,8 +39,12 @@ export async function getFolders(userId: string): Promise<FolderData[]> {
 
 export async function addFolder(folderData: Omit<FolderData, 'id'>): Promise<FolderData> {
   checkDb();
-  const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), folderData);
-  return { id: docRef.id, ...folderData };
+  const dataToSave = {
+    ...folderData,
+    parentId: folderData.parentId || null,
+  };
+  const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), dataToSave);
+  return { id: docRef.id, ...dataToSave };
 }
 
 export async function updateFolder(folderId: string, folderData: Partial<Omit<FolderData, 'id' | 'userId'>>): Promise<void> {
@@ -50,19 +53,36 @@ export async function updateFolder(folderId: string, folderData: Partial<Omit<Fo
     await updateDoc(folderRef, folderData);
 }
 
-export async function deleteFolder(folderId: string): Promise<void> {
+export async function deleteFolderAndContents(userId: string, folderId: string): Promise<void> {
     checkDb();
-    const batch = writeBatch(db);
+    const batch = writeBatch(db!);
+    const allFoldersSnapshot = await getDocs(query(collection(db, FOLDERS_COLLECTION), where("userId", "==", userId)));
+    const allFolders = allFoldersSnapshot.docs.map(docToFolder);
+    
+    const folderIdsToDelete = new Set<string>([folderId]);
+    const findDescendants = (parentId: string) => {
+        allFolders
+            .filter(f => f.parentId === parentId)
+            .forEach(child => {
+                folderIdsToDelete.add(child.id);
+                findDescendants(child.id);
+            });
+    };
+    findDescendants(folderId);
 
-    // Delete folder itself
-    const folderRef = doc(db, FOLDERS_COLLECTION, folderId);
-    batch.delete(folderRef);
+    // Delete all contacts within these folders
+    if (folderIdsToDelete.size > 0) {
+        const contactsQuery = query(collection(db, CONTACTS_COLLECTION), where('folderId', 'in', Array.from(folderIdsToDelete)));
+        const contactsSnapshot = await getDocs(contactsQuery);
+        contactsSnapshot.forEach(contactDoc => {
+            batch.delete(contactDoc.ref);
+        });
+    }
 
-    // Query for contacts in that folder and delete them
-    const contactsQuery = query(collection(db, CONTACTS_COLLECTION), where("folderId", "==", folderId));
-    const contactsSnapshot = await getDocs(contactsQuery);
-    contactsSnapshot.forEach(contactDoc => {
-        batch.delete(contactDoc.ref);
+    // Delete all the folders
+    folderIdsToDelete.forEach(id => {
+        const folderRef = doc(db, FOLDERS_COLLECTION, id);
+        batch.delete(folderRef);
     });
 
     await batch.commit();

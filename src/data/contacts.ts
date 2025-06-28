@@ -16,6 +16,7 @@ export interface Contact {
 export interface FolderData {
   id: string;
   name: string;
+  parentId?: string | null;
   userId: string;
 }
 
@@ -24,9 +25,9 @@ export interface FolderData {
 // A 'userId' of 'mock-user' is used as a placeholder.
 
 export const mockFolders: Readonly<Omit<FolderData, 'userId'>[]> = [
-  { id: '1', name: 'Personal' },
-  { id: '2', name: 'Work' },
-  { id: '3', name: 'Leads' },
+  { id: '1', name: 'Personal', parentId: null },
+  { id: '2', name: 'Work', parentId: null },
+  { id: '3', name: 'Leads', parentId: '2' },
 ];
 
 export const mockContacts: Readonly<Omit<Contact, 'userId'>[]> = [
