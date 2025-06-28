@@ -1,14 +1,14 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Clock, Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Settings as SettingsIcon, Play, Pause, Square, Save, RotateCcw } from 'lucide-react';
+import { Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Settings as SettingsIcon, Play, Pause, Square, Save, RotateCcw } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { type Contact, mockContacts } from "@/data/contacts";
 import { Separator } from '@/components/ui/separator';
@@ -21,7 +21,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Checkbox } from '../ui/checkbox';
 
 interface EventEntry {
   id: string;
@@ -44,8 +43,6 @@ const formatTime = (totalSeconds: number) => {
 
 export function CreateEventView() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
-  const [isBillable, setIsBillable] = useState(false);
-  const [billableRate, setBillableRate] = useState<number>(100);
   const [subject, setSubject] = useState("");
   
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -89,9 +86,10 @@ export function CreateEventView() {
   };
 
   const handleStop = () => {
+    setIsActive(false);
     setIsPaused(true);
     // The "Save to Log" button is now the explicit action to log the time.
-    // This button just stops the clock.
+    // This button just stops the clock. The time is preserved until reset or a new timer is started.
     toast({ title: "Timer Stopped", description: `Final time: ${formatTime(elapsedTime)}` });
   }
   
@@ -119,6 +117,9 @@ export function CreateEventView() {
         }
         
         const currentEditorContent = editorRef.current?.innerHTML || '';
+        // In a real application, you would get the billable rate from state.
+        // For this mock, we'll use a default if it's not set.
+        const billableRateForEntry = 100;
 
         const newEntry: EventEntry = {
             id: `entry-${Date.now()}`,
@@ -129,7 +130,7 @@ export function CreateEventView() {
             startTime: new Date(Date.now() - elapsedTime * 1000),
             endTime: new Date(),
             duration: elapsedTime,
-            billableRate,
+            billableRate: billableRateForEntry,
         };
         
         const existingEntriesRaw = localStorage.getItem('eventEntries');
@@ -141,8 +142,6 @@ export function CreateEventView() {
         setSubject("");
         if (editorRef.current) editorRef.current.innerHTML = "";
         setSelectedContactId(null);
-        setIsBillable(false);
-        setBillableRate(100);
 
         toast({ title: "Event Logged", description: `Logged ${formatTime(newEntry.duration)} for ${contact.name}.` });
     } catch (error) {
@@ -208,26 +207,6 @@ export function CreateEventView() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-6">
-                        <div className="space-y-4 p-4 border rounded-lg">
-                            <h4 className="font-semibold">Billing</h4>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox id="is-billable" checked={isBillable} onCheckedChange={(checked) => setIsBillable(!!checked)} />
-                                <Label htmlFor="is-billable">This event is billable</Label>
-                            </div>
-                            {isBillable && (
-                                <div className="flex items-center gap-2 pl-6">
-                                    <Label htmlFor="billable-rate" className="whitespace-nowrap">Billable Rate ($/hr)</Label>
-                                    <Input
-                                        id="billable-rate"
-                                        type="number"
-                                        value={billableRate}
-                                        onChange={(e) => setBillableRate(Number(e.target.value))}
-                                        placeholder="100"
-                                        className="w-24"
-                                    />
-                                </div>
-                            )}
-                        </div>
                         <div className="space-y-4 p-4 border rounded-lg">
                             <h4 className="font-semibold">Time Clock</h4>
                             <div className="py-8 text-center">
