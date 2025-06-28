@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -8,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Clock, BookOpen, Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Play, Pause, Square as StopIcon } from 'lucide-react';
+import { Clock, BookOpen, Bold, Italic, Underline, List, ListOrdered, ArrowLeft } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { type Contact, mockContacts } from "@/data/contacts";
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
+import { TimerDialog } from './timer-dialog';
 
 interface EventEntry {
   id: string;
@@ -51,13 +51,14 @@ export function CreateEventView() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isTimerDialogOpen, setIsTimerDialogOpen] = useState(false);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const saveStateToLocalStorage = useCallback(() => {
-    if (!isActive || !selectedContactId) return;
+    if (!selectedContactId) return;
     const state: StoredTimerState = {
         contactId: selectedContactId,
         subject,
@@ -68,7 +69,7 @@ export function CreateEventView() {
         lastTickTimestamp: Date.now()
     };
     localStorage.setItem('activeTimerState', JSON.stringify(state));
-  }, [isActive, isPaused, selectedContactId, subject, billableRate, elapsedTime]);
+  }, [isPaused, selectedContactId, subject, billableRate, elapsedTime]);
 
   const clearStateFromLocalStorage = useCallback(() => {
     localStorage.removeItem('activeTimerState');
@@ -137,12 +138,12 @@ export function CreateEventView() {
       setIsPaused(!isPaused);
   };
 
-  // Save state to local storage when paused
+  // Save state to local storage when paused or active state changes
   useEffect(() => {
       if(isActive) {
         saveStateToLocalStorage();
       }
-  }, [isPaused, saveStateToLocalStorage, isActive]);
+  }, [isPaused, isActive, saveStateToLocalStorage]);
 
   const handleSaveEvent = () => {
     try {
@@ -185,6 +186,7 @@ export function CreateEventView() {
         clearStateFromLocalStorage();
 
         toast({ title: "Event Logged", description: `Logged ${formatTime(elapsedTime)} for ${contact.name}.` });
+        setIsTimerDialogOpen(false);
     } catch (error) {
         console.error("Error logging event:", error);
         toast({
@@ -195,6 +197,7 @@ export function CreateEventView() {
         setIsActive(false);
         setIsPaused(false);
         clearStateFromLocalStorage();
+        setIsTimerDialogOpen(false);
     }
   };
   
@@ -205,131 +208,119 @@ export function CreateEventView() {
   
   const preventDefault = (e: React.MouseEvent) => e.preventDefault();
   
-  const currentBillableAmount = isActive ? (elapsedTime / 3600) * billableRate : 0;
-
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-        <header className="flex items-center justify-between">
-            <div>
-                <h1 className="text-3xl font-bold font-headline text-primary">Create Event</h1>
-                <p className="text-muted-foreground">Select a client, track time, and describe the event.</p>
-            </div>
-            <Button asChild>
-                <Link href="/event-manager">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Event Hub
-                </Link>
-            </Button>
-        </header>
-
-        <Card className="max-w-4xl mx-auto">
-          <CardHeader>
-            <div className="flex justify-between items-start">
+    <>
+      <div className="p-4 sm:p-6 space-y-6">
+          <header className="flex items-center justify-between">
               <div>
-                <CardTitle>Event Details & Controls</CardTitle>
-                <CardDescription>Select client, subject, and rate to start tracking an event.</CardDescription>
+                  <h1 className="text-3xl font-bold font-headline text-primary">Create Event</h1>
+                  <p className="text-muted-foreground">Select a client, track time, and describe the event.</p>
               </div>
-              {isActive && (
-                  <div className="flex items-center gap-2 border rounded-lg p-2 bg-muted">
-                    <Clock className="h-5 w-5 text-primary"/>
-                    <div className="text-lg font-mono text-foreground font-semibold">
-                      {formatTime(elapsedTime)}
-                    </div>
-                    <div className="text-lg font-mono font-semibold text-primary">
-                      ${currentBillableAmount.toFixed(2)}
-                    </div>
-                  </div>
-                )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="client-select">Client</Label>
-                <Select value={selectedContactId ?? ''} onValueChange={setSelectedContactId} disabled={isActive}>
-                  <SelectTrigger id="client-select">
-                    <SelectValue placeholder="Select a client..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockContacts.map((contact) => (
-                      <SelectItem key={contact.id} value={contact.id}>{contact.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <Button asChild>
+                  <Link href="/event-manager">
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Back to Event Hub
+                  </Link>
+              </Button>
+          </header>
+
+          <Card className="max-w-4xl mx-auto">
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle>Event Details</CardTitle>
+                  <CardDescription>Select client, subject, and rate to start tracking an event.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="client-select">Client</Label>
+                  <Select value={selectedContactId ?? ''} onValueChange={setSelectedContactId} disabled={isActive}>
+                    <SelectTrigger id="client-select">
+                      <SelectValue placeholder="Select a client..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockContacts.map((contact) => (
+                        <SelectItem key={contact.id} value={contact.id}>{contact.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
+                  <Input
+                    id="billable-rate"
+                    type="number"
+                    value={billableRate}
+                    onChange={(e) => setBillableRate(Number(e.target.value))}
+                    disabled={isActive}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
+                <Label htmlFor="subject">Subject</Label>
                 <Input
-                  id="billable-rate"
-                  type="number"
-                  value={billableRate}
-                  onChange={(e) => setBillableRate(Number(e.target.value))}
+                  id="subject"
+                  placeholder="Enter a subject..."
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
                   disabled={isActive}
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="subject">Subject</Label>
-              <Input
-                id="subject"
-                placeholder="Enter a subject..."
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                disabled={isActive}
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-center gap-4">
-              {!isActive ? (
-                  <Button onClick={handleStart} size="lg">
-                      <Play className="mr-2 h-4 w-4" />
-                      Create Event
-                  </Button>
-              ) : (
-                  <>
-                  <Button onClick={handlePauseResume} variant="outline">
-                      {isPaused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
-                      {isPaused ? 'Resume' : 'Pause'}
-                  </Button>
-                  <Button onClick={handleSaveEvent} variant="destructive">
-                      <StopIcon className="mr-2 h-4 w-4" />
-                      Save Event
-                  </Button>
-                  </>
-              )}
-              <Button asChild variant="secondary">
-                <Link href="/event-manager/logged-events">
-                    <BookOpen className="mr-2 h-4 w-4"/>
-                    View Events
-                </Link>
-              </Button>
-          </CardFooter>
-        </Card>
+            </CardContent>
+            <CardFooter className="flex justify-start gap-4">
+                <Button onClick={() => setIsTimerDialogOpen(true)}>
+                    <Clock className="mr-2 h-4 w-4" />
+                    Time Clock
+                </Button>
+                <Button asChild variant="secondary">
+                  <Link href="/event-manager/logged-events">
+                      <BookOpen className="mr-2 h-4 w-4"/>
+                      View Events
+                  </Link>
+                </Button>
+            </CardFooter>
+          </Card>
 
-        <Card className="max-w-4xl mx-auto">
-          <CardHeader>
-            <CardTitle>Description</CardTitle>
-            <CardDescription>Add detailed, formatted notes about the event.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col p-0">
-              <div className="p-2 border-t border-b flex items-center gap-1 flex-wrap">
-                  <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" title="Italic" onMouseDown={preventDefault} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
-                  <Separator orientation="vertical" className="h-6 mx-1" />
-                  <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
-                  <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
-              </div>
-              <ScrollArea className="flex-1 min-h-[250px]">
-                  <div
-                      ref={editorRef}
-                      className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full text-left"
-                      contentEditable
-                      placeholder="Start writing your event details here..."
-                  />
-              </ScrollArea>
-          </CardContent>
-        </Card>
-    </div>
+          <Card className="max-w-4xl mx-auto">
+            <CardHeader>
+              <CardTitle>Description</CardTitle>
+              <CardDescription>Add detailed, formatted notes about the event.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col p-0">
+                <div className="p-2 border-t border-b flex items-center gap-1 flex-wrap">
+                    <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" title="Italic" onMouseDown={preventDefault} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
+                    <Separator orientation="vertical" className="h-6 mx-1" />
+                    <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
+                </div>
+                <ScrollArea className="flex-1 min-h-[250px]">
+                    <div
+                        ref={editorRef}
+                        className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full text-left"
+                        contentEditable
+                        placeholder="Start writing your event details here..."
+                        dir="ltr"
+                    />
+                </ScrollArea>
+            </CardContent>
+          </Card>
+      </div>
+      <TimerDialog
+        isOpen={isTimerDialogOpen}
+        onOpenChange={setIsTimerDialogOpen}
+        elapsedTime={elapsedTime}
+        isActive={isActive}
+        isPaused={isPaused}
+        selectedContactName={selectedContactId ? mockContacts.find(c => c.id === selectedContactId)?.name : undefined}
+        handleStart={handleStart}
+        handlePauseResume={handlePauseResume}
+        handleStop={handleSaveEvent}
+      />
+    </>
   );
 }
