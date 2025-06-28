@@ -15,7 +15,8 @@ import {
   Users,
   LoaderCircle,
   ChevronRight,
-  FolderPlus
+  FolderPlus,
+  Info
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -119,6 +120,7 @@ function ContactsViewContent() {
 
   const [showGoogleInstructions, setShowGoogleInstructions] = useState(true);
   const [isInstructionsDialogOpen, setIsInstructionsDialogOpen] = useState(false);
+  const [isInfoDialogOpen, setIsInfoDialogOpen] = React.useState(false);
 
   const { toast } = useToast();
   const { user, accessToken } = useAuth();
@@ -132,9 +134,19 @@ function ContactsViewContent() {
   const displayedContacts = useMemo(
     () => {
         if (selectedFolderId === 'all') return contacts;
-        return contacts.filter((c) => c.folderId === selectedFolderId);
+        const getDescendantFolderIds = (folderId: string): string[] => {
+            let ids = [folderId];
+            const children = folders.filter(f => f.parentId === folderId);
+            children.forEach(child => {
+                ids = [...ids, ...getDescendantFolderIds(child.id)];
+            });
+            return ids;
+        };
+
+        const folderIdsToDisplay = getDescendantFolderIds(selectedFolderId);
+        return contacts.filter((c) => folderIdsToDisplay.includes(c.folderId));
     },
-    [contacts, selectedFolderId]
+    [contacts, folders, selectedFolderId]
   );
   
   const allVisibleSelected = displayedContacts.length > 0 && selectedContactIds.length === displayedContacts.length;
@@ -192,6 +204,9 @@ function ContactsViewContent() {
     loadData();
   }, [toast, user]);
 
+  if (isLoading) {
+    return <div className="flex h-full w-full items-center justify-center p-4"><LoaderCircle className="h-10 w-10 animate-spin text-primary" /></div>;
+  }
   
   const handleToggleSelect = (contactId: string) => {
     setSelectedContactIds((prev) =>
@@ -207,7 +222,7 @@ function ContactsViewContent() {
   
   const handleNewContactClick = () => {
     if (selectedFolderId === 'all') {
-      toast({ variant: "destructive", title: "Folder Required", description: "Please select a specific folder before adding a contact." });
+      toast({ variant: "destructive", title: "Folder Required", description: "Please select a specific folder before adding a new contact." });
       return;
     }
     setContactToEdit(null);
@@ -430,6 +445,7 @@ function ContactsViewContent() {
     if (children.length === 0 && level === 0 && parentId === null) {
       return <p className="p-4 text-center text-sm text-muted-foreground">No folders yet. Create one to get started.</p>;
     }
+    
     if (children.length === 0) return null;
 
     return (
@@ -506,9 +522,6 @@ function ContactsViewContent() {
     );
   };
 
-  if (isLoading) {
-    return <div className="flex h-full w-full items-center justify-center p-4"><LoaderCircle className="h-10 w-10 animate-spin text-primary" /></div>;
-  }
 
   return (
     <>
@@ -552,6 +565,7 @@ function ContactsViewContent() {
                                   <p className="text-sm text-muted-foreground">{displayedContacts.length} contact(s)</p>
                               </div>
                               <div className="flex items-center gap-2">
+                                  <Button variant="outline" onClick={() => setIsInfoDialogOpen(true)}><Info className="mr-2 h-4 w-4" /> Info</Button>
                                   <Button variant="outline" onClick={handleOpenImportDialog} disabled={!user}><GoogleIcon /> Import from Google</Button>
                                   <Button onClick={handleNewContactClick} className="bg-orange-500 hover:bg-orange-600 text-white"><Plus className="mr-2 h-4 w-4" /> Add Contact</Button>
                               </div>
@@ -640,6 +654,20 @@ function ContactsViewContent() {
           onProceed={handleProceedFromInstructions}
         />
       )}
+      <Dialog open={isInfoDialogOpen} onOpenChange={setIsInfoDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>A Philosophy of Focus</DialogTitle>
+          </DialogHeader>
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <p>In a world of digital clutter, the Ogeemo Contact Manager embraces a philosophy of focus. Instead of importing thousands of contacts you rarely interact with, we encourage a deliberate approach.</p>
+            <p>By adding only the clients and contacts you're actively engaged with, you create a clean, efficient, and searchable workspace. This "just-in-time" method saves you time, reduces noise, and ensures the people you see are the people who matter right now.</p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsInfoDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
