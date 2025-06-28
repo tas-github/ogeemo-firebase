@@ -55,7 +55,6 @@ import {
     deleteFiles, 
     deleteFolderAndContents,
     uploadFiles,
-    getFileDownloadUrl,
 } from '@/services/file-service';
 
 
@@ -291,40 +290,47 @@ function FilesViewContent() {
     if (selectedFileIds.length === 0) return;
     setIsDownloading(true);
     try {
-        for (const fileId of selectedFileIds) {
-            const fileToDownload = files.find(f => f.id === fileId);
-            if (!fileToDownload) continue;
+      for (const fileId of selectedFileIds) {
+        const fileToDownload = files.find((f) => f.id === fileId);
+        if (!fileToDownload) continue;
 
-            const url = await getFileDownloadUrl(fileToDownload.storagePath);
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch file: ${response.statusText}`);
-            }
-            const blob = await response.blob();
-            const blobUrl = window.URL.createObjectURL(blob);
-            
-            const link = document.createElement('a');
-            link.href = blobUrl;
-            link.setAttribute('download', fileToDownload.name);
-            document.body.appendChild(link);
-            link.click();
-            
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(blobUrl);
+        const response = await fetch('/api/download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            storagePath: fileToDownload.storagePath,
+            fileName: fileToDownload.name,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Download failed: ${errorText}`);
         }
-        toast({
-            title: 'Download Started',
-            description: `Your file(s) are being downloaded.`,
-        });
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileToDownload.name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      }
+      toast({
+        title: 'Download Started',
+        description: `Your file(s) are being downloaded.`,
+      });
     } catch (error) {
-        console.error("Download failed:", error);
-        toast({
-            variant: 'destructive',
-            title: 'Download Failed',
-            description: error instanceof Error ? error.message : 'An unknown error occurred.',
-        });
+      console.error("Download failed:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Download Failed',
+        description: error instanceof Error ? error.message : 'An unknown error occurred.',
+      });
     } finally {
-        setIsDownloading(false);
+      setIsDownloading(false);
     }
   };
 
