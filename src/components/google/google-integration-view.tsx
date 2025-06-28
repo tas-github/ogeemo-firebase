@@ -18,7 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { LoaderCircle, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { LoaderCircle, CheckCircle2, XCircle, AlertTriangle, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 
@@ -48,7 +48,14 @@ export function GoogleIntegrationView() {
         }
       } catch (error: any) {
         console.error("Google Redirect Error:", error);
-        if (error.code !== 'auth/web-storage-unsupported') {
+        if (error.code === 'auth/unauthorized-domain') {
+            toast({
+              variant: "destructive",
+              title: "Authentication Domain Error",
+              description: "This app's domain is not authorized. Please add the exact domain (including www or subdomains) from your browser's address bar to the Firebase Console's list of authorized domains.",
+              duration: 10000,
+            });
+        } else if (error.code !== 'auth/web-storage-unsupported') {
             toast({
                 variant: "destructive",
                 title: "Authentication Failed",
@@ -80,7 +87,7 @@ export function GoogleIntegrationView() {
         toast({
           variant: "destructive",
           title: "Authentication Domain Error",
-          description: `This app's domain is not authorized. Please add the exact domain from your browser's address bar to the Firebase Console's list of authorized domains.`,
+          description: `This app's domain is not authorized. Please double-check that the exact domain from your browser's address bar (including 'www' if present) is added to the Firebase Console's list of authorized domains.`,
           duration: 10000,
         });
       } else {
@@ -148,28 +155,40 @@ export function GoogleIntegrationView() {
       );
     }
     
-    // This is the state where user is logged in, but we need API access token.
     return (
         <div className="flex flex-col items-center gap-6">
             <div className="flex items-center gap-4">
                 <AlertTriangle className="h-8 w-8 text-amber-500" />
-                <p className="font-semibold text-lg">API Access Required</p>
+                <p className="font-semibold text-lg text-center">One More Step: Grant API Access</p>
             </div>
-            <div className="flex items-center gap-4 rounded-lg border p-4 w-full">
-                 <Avatar className="h-12 w-12">
-                    <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
-                    <AvatarFallback>{user.displayName?.charAt(0) || user.email?.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="truncate">
-                    <p className="font-semibold truncate">{user.displayName}</p>
-                    <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+
+            <div className="space-y-4 text-sm text-muted-foreground w-full">
+                <div className="flex items-start gap-3 p-3 border rounded-lg">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold flex-shrink-0 mt-1">1</div>
+                    <div>
+                        <h4 className="font-semibold text-foreground">Sign In to Google</h4>
+                        <p>Clicking the button below will take you to Google's secure sign-in page.</p>
+                    </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 border rounded-lg">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold flex-shrink-0 mt-1">2</div>
+                    <div>
+                        <h4 className="font-semibold text-foreground">Grant Permissions</h4>
+                        <p>Google will ask you to approve access for Ogeemo to view services like your contacts. This is a secure, standard process.</p>
+                    </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 border rounded-lg">
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold flex-shrink-0 mt-1">3</div>
+                    <div>
+                        <h4 className="font-semibold text-foreground">Return to Ogeemo</h4>
+                        <p>After you approve, you'll be brought back here, and the integration will be fully active.</p>
+                    </div>
                 </div>
             </div>
-            <p className="text-center text-sm text-muted-foreground">
-                Your Ogeemo account is connected to Google, but API access is needed for features like importing contacts. Click the button below to grant permissions.
-            </p>
-            <Button onClick={handleSignIn}>
-                Refresh API Connection
+
+            <Button onClick={handleSignIn} size="lg" className="w-full">
+                <ShieldCheck className="mr-2 h-5 w-5" />
+                Proceed to Google & Grant Access
             </Button>
         </div>
     );
