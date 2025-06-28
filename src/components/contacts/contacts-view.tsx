@@ -16,7 +16,8 @@ import {
   LoaderCircle,
   ChevronRight,
   FolderPlus,
-  Info
+  Info,
+  Wand2,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -121,45 +122,11 @@ function ContactsViewContent() {
   const [showGoogleInstructions, setShowGoogleInstructions] = useState(true);
   const [isInstructionsDialogOpen, setIsInstructionsDialogOpen] = useState(false);
   const [isInfoDialogOpen, setIsInfoDialogOpen] = React.useState(false);
+  const [isActionInfoDialogOpen, setIsActionInfoDialogOpen] = React.useState(false);
 
   const { toast } = useToast();
   const { user, accessToken } = useAuth();
   const router = useRouter();
-
-  const selectedFolder = useMemo(
-    () => folders.find((f) => f && f.id === selectedFolderId),
-    [folders, selectedFolderId]
-  );
-
-  const displayedContacts = useMemo(
-    () => {
-        if (selectedFolderId === 'all') return contacts;
-        const getDescendantFolderIds = (folderId: string): string[] => {
-            let ids = [folderId];
-            const children = folders.filter(f => f.parentId === folderId);
-            children.forEach(child => {
-                ids = [...ids, ...getDescendantFolderIds(child.id)];
-            });
-            return ids;
-        };
-
-        const folderIdsToDisplay = getDescendantFolderIds(selectedFolderId);
-        return contacts.filter((c) => folderIdsToDisplay.includes(c.folderId));
-    },
-    [contacts, folders, selectedFolderId]
-  );
-  
-  const allVisibleSelected = displayedContacts.length > 0 && selectedContactIds.length === displayedContacts.length;
-  const someVisibleSelected = selectedContactIds.length > 0 && selectedContactIds.length < displayedContacts.length;
-  
-  const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
-      accept: ItemTypes.FOLDER,
-      drop: (item: FolderData) => handleFolderDrop(item, null),
-      collect: (monitor) => ({
-          isOverRoot: monitor.isOver(),
-          canDropToRoot: monitor.canDrop(),
-      }),
-  }));
   
   useEffect(() => {
     try {
@@ -203,6 +170,41 @@ function ContactsViewContent() {
     }
     loadData();
   }, [toast, user]);
+
+  const selectedFolder = useMemo(
+    () => folders.find((f) => f && f.id === selectedFolderId),
+    [folders, selectedFolderId]
+  );
+
+  const displayedContacts = useMemo(
+    () => {
+        if (selectedFolderId === 'all') return contacts;
+        const getDescendantFolderIds = (folderId: string): string[] => {
+            let ids = [folderId];
+            const children = folders.filter(f => f.parentId === folderId);
+            children.forEach(child => {
+                ids = [...ids, ...getDescendantFolderIds(child.id)];
+            });
+            return ids;
+        };
+
+        const folderIdsToDisplay = getDescendantFolderIds(selectedFolderId);
+        return contacts.filter((c) => folderIdsToDisplay.includes(c.folderId));
+    },
+    [contacts, folders, selectedFolderId]
+  );
+  
+  const allVisibleSelected = displayedContacts.length > 0 && selectedContactIds.length === displayedContacts.length;
+  const someVisibleSelected = selectedContactIds.length > 0 && selectedContactIds.length < displayedContacts.length;
+  
+  const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
+      accept: ItemTypes.FOLDER,
+      drop: (item: FolderData) => handleFolderDrop(item, null),
+      collect: (monitor) => ({
+          isOverRoot: monitor.isOver(),
+          canDropToRoot: monitor.canDrop(),
+      }),
+  }));
 
   if (isLoading) {
     return <div className="flex h-full w-full items-center justify-center p-4"><LoaderCircle className="h-10 w-10 animate-spin text-primary" /></div>;
@@ -600,6 +602,11 @@ function ContactsViewContent() {
                                               <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                               <DropdownMenuContent align="end">
                                                   <DropdownMenuItem onSelect={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}><Pencil className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
+                                                  <DropdownMenuItem onSelect={() => setIsActionInfoDialogOpen(true)}>
+                                                    <Wand2 className="mr-2 h-4 w-4" />
+                                                    Action
+                                                  </DropdownMenuItem>
+                                                  <DropdownMenuSeparator />
                                                   <DropdownMenuItem className="text-destructive" onSelect={async () => { await deleteContacts([contact.id]); setContacts(prev => prev.filter(c => c.id !== contact.id)); toast({ title: "Contact Deleted" }); }}> <Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
                                               </DropdownMenuContent>
                                           </DropdownMenu>
@@ -665,6 +672,19 @@ function ContactsViewContent() {
           </div>
           <DialogFooter>
             <Button onClick={() => setIsInfoDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isActionInfoDialogOpen} onOpenChange={setIsActionInfoDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Action Required</DialogTitle>
+            <DialogDescription>
+              Click the contact's checkbox and select an action to take from the Ogeemo Menu.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setIsActionInfoDialogOpen(false)}>OK</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
