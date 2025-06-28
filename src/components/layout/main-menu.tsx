@@ -166,10 +166,10 @@ export function MainMenu() {
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isActive("/time")} tooltip="Client Manager">
-          <Link href="/time" onClick={handleNavigate}>
+        <SidebarMenuButton asChild isActive={isActive("/event-manager")} tooltip="Event Manager">
+          <Link href="/event-manager" onClick={handleNavigate}>
             <Users />
-            <span>Client Manager</span>
+            <span>Event Manager</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
