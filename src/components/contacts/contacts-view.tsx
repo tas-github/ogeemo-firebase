@@ -433,7 +433,7 @@ function ContactsViewContent() {
     if (children.length === 0) return null;
 
     return (
-      <div style={{ marginLeft: level > 0 ? '0.5rem' : '0' }}>
+      <div style={{ marginLeft: level > 0 ? '1rem' : '0' }}>
         {children.map(folder => {
           const hasChildren = folders.some(f => f.parentId === folder.id);
           const isExpanded = expandedFolders.has(folder.id);
