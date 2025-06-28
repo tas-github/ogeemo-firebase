@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Clock, Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Settings as SettingsIcon, Play, Pause, Square } from 'lucide-react';
+import { Clock, Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Settings as SettingsIcon, Play, Pause, Square, Save } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { type Contact, mockContacts } from "@/data/contacts";
 import { Separator } from '@/components/ui/separator';
@@ -247,7 +247,7 @@ export function CreateEventView() {
           </header>
 
           <Card className="max-w-4xl mx-auto">
-            <CardContent className="p-4 flex items-end justify-between gap-4">
+            <CardContent className="p-4 flex items-center justify-between gap-4">
               <div className="space-y-2 flex-1">
                 <Label htmlFor="client-select">Client</Label>
                 <Select value={selectedContactId ?? ''} onValueChange={setSelectedContactId} disabled={isActive}>
@@ -322,8 +322,7 @@ export function CreateEventView() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="ghost" onClick={() => setIsSettingsDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleLogEvent}>Log Event</Button>
+                        <Button onClick={() => setIsSettingsDialogOpen(false)}>Done</Button>
                     </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -343,9 +342,15 @@ export function CreateEventView() {
           </Card>
 
           <Card className="max-w-4xl mx-auto">
-            <CardHeader className="flex flex-row items-baseline justify-start gap-4 p-4">
-              <h3 className="text-lg font-semibold">Description</h3>
-              <p className="text-sm text-muted-foreground">Describe event actions performed</p>
+            <CardHeader className="flex flex-row items-center justify-between p-4">
+              <div className="flex items-baseline gap-4">
+                <h3 className="text-lg font-semibold">Description</h3>
+                <p className="text-sm text-muted-foreground">Describe event actions performed</p>
+              </div>
+              <Button onClick={handleLogEvent}>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save to Log
+              </Button>
             </CardHeader>
             <CardContent className="flex flex-col p-0">
                 <div className="p-2 border-t border-b flex items-center gap-1 flex-wrap">
