@@ -166,7 +166,7 @@ export function MainMenu() {
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isActive("/event-manager")} tooltip="Event Manager">
+        <SidebarMenuButton asChild isActive={isActive("/event-manager...")} tooltip="Event Manager">
           <Link href="/event-manager" onClick={handleNavigate}>
             <Users />
             <span>Event Manager</span>
