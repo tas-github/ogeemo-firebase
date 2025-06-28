@@ -3,12 +3,12 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Clock, BookOpen, Bold, Italic, Underline, List, ListOrdered, ArrowRight } from 'lucide-react';
+import { Clock, BookOpen, Bold, Italic, Underline, List, ListOrdered } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { type Contact, mockContacts } from "@/data/contacts";
 import { TimerDialog } from './timer-dialog';
@@ -228,6 +228,12 @@ export function EventManagerView() {
                     </div>
                   </div>
                 )}
+                 <Button asChild variant="secondary">
+                   <Link href="/event-manager/logged-events">
+                       <BookOpen className="mr-2 h-4 w-4"/>
+                       View Events
+                   </Link>
+                </Button>
                 <Button onClick={() => setIsTimerOpen(true)}>
                   <Clock className="mr-2 h-4 w-4" />
                   {isActive ? "Manage Timer" : "Open Timer"}
@@ -298,15 +304,6 @@ export function EventManagerView() {
                   />
               </ScrollArea>
           </CardContent>
-          <CardFooter className="border-t p-4">
-               <Button asChild variant="secondary">
-                  <Link href="/event-manager/logged-events">
-                      <BookOpen className="mr-2 h-4 w-4"/>
-                      View Logged Events
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-              </Button>
-          </CardFooter>
         </Card>
       </div>
 
