@@ -345,11 +345,9 @@ export function CreateEventView() {
           </Card>
 
           <Card className="max-w-4xl mx-auto">
-            <CardHeader className="flex flex-row items-center justify-between p-4">
-              <div className="flex items-baseline gap-4">
-                <h3 className="text-lg font-semibold">Description</h3>
-                <p className="text-sm text-muted-foreground">Describe event actions performed</p>
-              </div>
+            <CardHeader className="flex flex-row items-baseline gap-4 p-4">
+              <h3 className="text-lg font-semibold">Description</h3>
+              <p className="text-sm text-muted-foreground">Describe event actions performed</p>
             </CardHeader>
             <CardContent className="flex flex-col p-0">
                 <div className="p-2 border-t border-b flex items-center gap-1 flex-wrap">
