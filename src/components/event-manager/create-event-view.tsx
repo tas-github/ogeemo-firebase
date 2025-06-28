@@ -8,11 +8,20 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Clock, Bold, Italic, Underline, List, ListOrdered, ArrowLeft } from 'lucide-react';
+import { Clock, Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Settings as SettingsIcon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { type Contact, mockContacts } from "@/data/contacts";
 import { Separator } from '@/components/ui/separator';
 import { TimerDialog } from './timer-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface EventEntry {
   id: string;
@@ -52,6 +61,7 @@ export function CreateEventView() {
   const [isActive, setIsActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isTimerDialogOpen, setIsTimerDialogOpen] = useState(false);
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -239,23 +249,42 @@ export function CreateEventView() {
                 <CardTitle>Event Details</CardTitle>
                 <CardDescription>Select a client to start tracking an event.</CardDescription>
               </div>
-              <div className="flex flex-col items-end gap-2">
-                <Label className="text-xs text-muted-foreground self-center">Settings</Label>
-                 <div className="w-[180px] space-y-1">
-                    <Label htmlFor="billable-rate" className="text-xs text-muted-foreground px-1">Billable Rate ($/hr)</Label>
-                    <Input
-                        id="billable-rate"
-                        type="number"
-                        value={billableRate}
-                        onChange={(e) => setBillableRate(Number(e.target.value))}
-                        disabled={isActive}
-                    />
-                 </div>
-                <Button variant="outline" onClick={() => setIsTimerDialogOpen(true)} className="w-[180px]">
-                    <Clock className="mr-2 h-4 w-4" />
-                    Time Clock
-                </Button>
-              </div>
+              <Dialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline">
+                        <SettingsIcon className="mr-2 h-4 w-4" />
+                        Settings
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Event Settings</DialogTitle>
+                        <DialogDescription>
+                            Configure settings for this event entry.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
+                            <Input
+                                id="billable-rate"
+                                type="number"
+                                value={billableRate}
+                                onChange={(e) => setBillableRate(Number(e.target.value))}
+                                disabled={isActive}
+                                placeholder="e.g. 100"
+                            />
+                        </div>
+                        <Button variant="outline" onClick={() => { setIsSettingsDialogOpen(false); setIsTimerDialogOpen(true); }} className="w-full">
+                            <Clock className="mr-2 h-4 w-4" />
+                            Time Clock
+                        </Button>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={() => setIsSettingsDialogOpen(false)}>Done</Button>
+                    </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </CardHeader>
             <CardContent>
                 <div className="space-y-2">
