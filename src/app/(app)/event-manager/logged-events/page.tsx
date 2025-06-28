@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from "react";
@@ -59,8 +58,8 @@ export default function LoggedEventsPage() {
         <div className="p-4 sm:p-6 space-y-6">
             <header className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold font-headline text-primary">Logged Events</h1>
-                    <p className="text-muted-foreground">A record of all your tracked time for clients.</p>
+                    <h1 className="text-3xl font-bold font-headline text-primary">Client Event Log</h1>
+                    <p className="text-muted-foreground">A detailed record of all tracked client events.</p>
                 </div>
                 <Button asChild>
                     <Link href="/event-manager">
