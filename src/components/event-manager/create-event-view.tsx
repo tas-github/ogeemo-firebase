@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Clock, BookOpen, Bold, Italic, Underline, List, ListOrdered, ArrowLeft } from 'lucide-react';
+import { Clock, Bold, Italic, Underline, List, ListOrdered, ArrowLeft } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { type Contact, mockContacts } from "@/data/contacts";
 import { Separator } from '@/components/ui/separator';
@@ -230,7 +230,7 @@ export function CreateEventView() {
                 </Button>
               </div>
               <h1 className="text-3xl font-bold font-headline text-primary">Create Event</h1>
-              <p className="text-muted-foreground">Select a client, track time, and describe the event.</p>
+              <p className="text-muted-foreground">Select a client, track time, and describe the action taken.</p>
           </header>
 
           <Card className="max-w-4xl mx-auto">
