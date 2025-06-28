@@ -222,7 +222,9 @@ export function ContactsView() {
     try {
         await deleteFolder(folderToDelete.id);
         const contactsInFolder = contacts.filter(c => c.folderId === folderToDelete.id).map(c => c.id);
-        await deleteContacts(contactsInFolder);
+        if (contactsInFolder.length > 0) {
+            await deleteContacts(contactsInFolder);
+        }
 
         setFolders(folders.filter(f => f.id !== folderToDelete.id));
         setContacts(contacts.filter(c => c.folderId !== folderToDelete.id));
@@ -400,7 +402,6 @@ export function ContactsView() {
         </div>
       </div>
       
-      {/* Dialogs */}
       {isContactFormOpen && <ContactFormDialog isOpen={isContactFormOpen} onOpenChange={setIsContactFormOpen} contactToEdit={contactToEdit} selectedFolderId={selectedFolderId} folders={folders} onSave={handleSaveContact} />}
 
       <Dialog open={isNewFolderDialogOpen} onOpenChange={(open) => { if(!open) { setFolderToEdit(null); setFolderName(''); } setIsNewFolderDialogOpen(open); }}>
@@ -427,3 +428,5 @@ export function ContactsView() {
     </>
   );
 }
+
+    

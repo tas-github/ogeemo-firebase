@@ -37,3 +37,5 @@ export const mockContacts: Readonly<Omit<Contact, 'userId'>[]> = [
   { id: 'c5', name: 'Eve Davis', email: 'eve@work.com', businessPhone: '567-890-1234', faxNumber: '567-890-9999', primaryPhoneType: 'businessPhone', folderId: '2', notes: 'Prefers communication via email.' },
   { id: 'c6', name: 'Frank White', email: 'frank.lead@example.com', cellPhone: '678-901-2345', primaryPhoneType: 'cellPhone', folderId: '3', notes: 'Follow up next week regarding the proposal.' },
 ];
+
+    
