@@ -17,8 +17,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { LoaderCircle, CheckCircle2, XCircle, AlertTriangle, ShieldCheck } from "lucide-react";
+import { LoaderCircle, CheckCircle2, XCircle, AlertTriangle, ShieldCheck, Terminal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 
@@ -26,6 +27,7 @@ export function GoogleIntegrationView() {
   const { user, accessToken, setAuthInfo, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
   const [isProcessingRedirect, setIsProcessingRedirect] = useState(true);
+  const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
 
   useEffect(() => {
     const processRedirectResult = async () => {
@@ -40,6 +42,7 @@ export function GoogleIntegrationView() {
           const token = credential?.accessToken;
           if (token) {
             setAuthInfo(result.user, token);
+            setUnauthorizedDomain(null); // Clear error on success
             toast({
               title: "Authentication Successful",
               description: "Successfully connected to your Google Account.",
@@ -49,12 +52,7 @@ export function GoogleIntegrationView() {
       } catch (error: any) {
         console.error("Google Redirect Error:", error);
         if (error.code === 'auth/unauthorized-domain') {
-            toast({
-              variant: "destructive",
-              title: "Authentication Domain Error",
-              description: "This app's domain is not authorized. Please add the exact domain (including www or subdomains) from your browser's address bar to the Firebase Console's list of authorized domains.",
-              duration: 10000,
-            });
+            setUnauthorizedDomain(window.location.hostname);
         } else if (error.code !== 'auth/web-storage-unsupported') {
             toast({
                 variant: "destructive",
@@ -82,15 +80,10 @@ export function GoogleIntegrationView() {
     try {
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
-      console.error("Sign-in initiation failed:", error);
       if (error.code === 'auth/unauthorized-domain') {
-        toast({
-          variant: "destructive",
-          title: "Authentication Domain Error",
-          description: `This app's domain is not authorized. Please double-check that the exact domain from your browser's address bar (including 'www' if present) is added to the Firebase Console's list of authorized domains.`,
-          duration: 10000,
-        });
+        setUnauthorizedDomain(window.location.hostname);
       } else {
+        console.error("Sign-in initiation failed:", error);
         toast({
           variant: "destructive",
           title: "Authentication Error",
@@ -126,6 +119,29 @@ export function GoogleIntegrationView() {
       <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.222 0-9.618-3.229-11.303-7.582l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
       <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.447-2.274 4.481-4.244 5.892l6.19 5.238C42.012 35.245 44 30.028 44 24c0-1.341-.138-2.65-.389-3.917z"/>
     </svg>
+  );
+
+  const renderUnauthorizedDomainError = () => (
+    <Alert variant="destructive" className="mt-6">
+        <Terminal className="h-4 w-4" />
+        <AlertTitle className="font-bold">Authentication Failed: Domain Not Authorized</AlertTitle>
+        <AlertDescription className="space-y-4 mt-2">
+            <p>
+                The domain <strong>{unauthorizedDomain}</strong> is not authorized to perform this action. To fix this, you must add it to your Firebase project's list of authorized domains.
+            </p>
+            <ol className="list-decimal list-inside space-y-2 text-sm">
+                <li>Open the <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="underline font-semibold">Firebase Console</a> and select your project.</li>
+                <li>In the left menu, go to <strong>Authentication</strong>, then click the <strong>Settings</strong> tab.</li>
+                <li>Scroll down to the <strong>Authorized domains</strong> section and click <strong>Add domain</strong>.</li>
+                <li>Enter the exact domain name shown above and click Add: <br />
+                    <code className="bg-gray-700 text-white px-2 py-1 rounded-md mt-1 inline-block text-xs">{unauthorizedDomain}</code>
+                </li>
+            </ol>
+            <p>
+                After adding the domain, please <a href="#" onClick={() => window.location.reload()} className="underline font-semibold">refresh this page</a> and try again.
+            </p>
+        </AlertDescription>
+    </Alert>
   );
 
   const renderConnectedView = () => {
@@ -230,9 +246,11 @@ export function GoogleIntegrationView() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-            {user ? renderConnectedView() : renderDisconnectedView()}
+            {unauthorizedDomain ? renderUnauthorizedDomainError() : (user ? renderConnectedView() : renderDisconnectedView())}
         </CardContent>
       </Card>
     </div>
   );
 }
+
+    
