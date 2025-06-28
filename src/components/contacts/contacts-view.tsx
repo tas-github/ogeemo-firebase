@@ -3,6 +3,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import {
   Folder,
   Plus,
@@ -12,6 +13,7 @@ import {
   Phone,
   Users,
   LoaderCircle,
+  DownloadCloud
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -45,9 +47,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { type Contact, type FolderData } from '@/data/contacts';
 import { useToast } from '@/hooks/use-toast';
-import { addFolder, getContacts, getFolders, deleteContacts } from '@/services/contact-service';
+import { addFolder, getContacts, getFolders, deleteContacts, addContact } from '@/services/contact-service';
+import { useAuth } from '@/context/auth-context';
+import { getGoogleContacts, type GoogleContact } from '@/services/google-service';
 
 const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-form-dialog'), {
   loading: () => (
@@ -56,6 +61,17 @@ const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-fo
     </div>
   ),
 });
+
+function GoogleIcon() {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-4 w-4 mr-2">
+            <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
+            <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"/>
+            <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.222 0-9.618-3.229-11.303-7.582l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
+            <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.447-2.274 4.481-4.244 5.892l6.19 5.238C42.012 35.245 44 30.028 44 24c0-1.341-.138-2.65-.389-3.917z"/>
+        </svg>
+    )
+}
 
 export function ContactsView() {
   const [folders, setFolders] = useState<FolderData[]>([]);
@@ -70,7 +86,15 @@ export function ContactsView() {
   const [contactToEdit, setContactToEdit] = useState<Contact | null>(null);
   const [isSelectFolderDialogOpen, setIsSelectFolderDialogOpen] = useState(false);
   
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isImportLoading, setIsImportLoading] = useState(false);
+  const [googleContacts, setGoogleContacts] = useState<GoogleContact[]>([]);
+  const [selectedGoogleContacts, setSelectedGoogleContacts] = useState<string[]>([]);
+
   const { toast } = useToast();
+  const { user, accessToken } = useAuth();
+  const router = useRouter();
+
 
   useEffect(() => {
     async function loadData() {
@@ -198,6 +222,80 @@ export function ContactsView() {
     setSelectedFolderId(folderId);
     setSelectedContactIds([]);
   };
+  
+  const handleOpenImportDialog = async () => {
+    if (!accessToken) {
+        toast({
+            variant: "destructive",
+            title: "Google Account Not Connected",
+            description: "Please go to the Google Integration page and connect your account to enable API access.",
+            action: <Button onClick={() => router.push('/google')}>Go to Integration</Button>
+        });
+        return;
+    }
+    
+    setIsImportDialogOpen(true);
+    setIsImportLoading(true);
+    setGoogleContacts([]);
+    setSelectedGoogleContacts([]);
+    
+    try {
+        const result = await getGoogleContacts(accessToken);
+        setGoogleContacts(result.contacts);
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Failed to fetch Google Contacts",
+            description: error.message || "An unknown error occurred.",
+        });
+        setIsImportDialogOpen(false);
+    } finally {
+        setIsImportLoading(false);
+    }
+  };
+  
+  const handleToggleGoogleContact = (resourceName: string) => {
+    setSelectedGoogleContacts(prev => prev.includes(resourceName) ? prev.filter(rn => rn !== resourceName) : [...prev, resourceName]);
+  };
+  
+  const handleImportSelected = async () => {
+    let googleFolder = folders.find(f => f.name === "Google Contacts");
+    if (!googleFolder) {
+        googleFolder = await addFolder("Google Contacts");
+        setFolders(prev => [...prev, googleFolder!]);
+    }
+    
+    const contactsToImport = googleContacts.filter(gc => selectedGoogleContacts.includes(gc.resourceName));
+    
+    let importedCount = 0;
+    const newOgeemoContacts: Contact[] = [];
+    for (const gc of contactsToImport) {
+        try {
+            const newContactData: Omit<Contact, 'id'> = {
+                name: gc.names?.[0]?.displayName || 'Unknown Name',
+                email: gc.emailAddresses?.[0]?.value || '',
+                businessPhone: gc.phoneNumbers?.find(p => p.type === 'work')?.value,
+                cellPhone: gc.phoneNumbers?.find(p => p.type === 'mobile')?.value,
+                homePhone: gc.phoneNumbers?.find(p => p.type === 'home')?.value,
+                folderId: googleFolder.id,
+                notes: `Imported from Google Contacts on ${new Date().toLocaleDateString()}`,
+            };
+            const newContact = await addContact(newContactData);
+            newOgeemoContacts.push(newContact);
+            importedCount++;
+        } catch(e) {
+            console.error("Failed to import contact", gc.names?.[0]?.displayName, e);
+        }
+    }
+    
+    setContacts(prev => [...prev, ...newOgeemoContacts]);
+    toast({
+        title: "Import Complete",
+        description: `Successfully imported ${importedCount} of ${contactsToImport.length} selected contacts.`
+    });
+    
+    setIsImportDialogOpen(false);
+  }
 
   if (isLoading) {
     return (
@@ -310,6 +408,9 @@ export function ContactsView() {
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        <Button variant="outline" onClick={handleOpenImportDialog} disabled={!user}>
+                                            <GoogleIcon /> Import from Google
+                                        </Button>
                                         <Button onClick={handleNewContactClick}>
                                             <Plus className="mr-2 h-4 w-4" /> New Contact
                                         </Button>
@@ -411,6 +512,44 @@ export function ContactsView() {
             onSave={handleSaveContact}
           />
       )}
+      
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+          <DialogContent className="sm:max-w-lg h-[80vh] flex flex-col">
+              <DialogHeader>
+                  <DialogTitle>Import Google Contacts</DialogTitle>
+                  <DialogDescription>Select the contacts you want to import into Ogeemo.</DialogDescription>
+              </DialogHeader>
+              {isImportLoading ? (
+                  <div className="flex-1 flex items-center justify-center">
+                      <LoaderCircle className="h-8 w-8 animate-spin" />
+                  </div>
+              ) : (
+                  <ScrollArea className="flex-1 -mx-6 my-4 border-y">
+                      <div className="p-4 space-y-1">
+                          {googleContacts.map(contact => (
+                              <div key={contact.resourceName} className="flex items-center p-2 rounded-md hover:bg-accent space-x-3">
+                                  <Checkbox
+                                      id={contact.resourceName}
+                                      checked={selectedGoogleContacts.includes(contact.resourceName)}
+                                      onCheckedChange={() => handleToggleGoogleContact(contact.resourceName)}
+                                  />
+                                  <Label htmlFor={contact.resourceName} className="flex-1 cursor-pointer">
+                                      <p className="font-semibold">{contact.names?.[0]?.displayName || 'N/A'}</p>
+                                      <p className="text-sm text-muted-foreground">{contact.emailAddresses?.[0]?.value || 'No email'}</p>
+                                  </Label>
+                              </div>
+                          ))}
+                      </div>
+                  </ScrollArea>
+              )}
+              <DialogFooter>
+                  <Button variant="ghost" onClick={() => setIsImportDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleImportSelected} disabled={isImportLoading || selectedGoogleContacts.length === 0}>
+                      Import ({selectedGoogleContacts.length})
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
 
     </div>
   );

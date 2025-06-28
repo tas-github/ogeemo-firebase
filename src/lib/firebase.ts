@@ -1,4 +1,3 @@
-
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
@@ -28,6 +27,8 @@ if (firebaseConfig.apiKey) {
     provider = new GoogleAuthProvider();
     // Request scope to create new files in the user's Google Drive.
     provider.addScope('https://www.googleapis.com/auth/drive.file');
+    // Request read-only access to the user's contacts.
+    provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
   } catch (error) {
     console.error("Firebase initialization error:", error);
     // This will keep app, auth, db, and storage as null if initialization fails

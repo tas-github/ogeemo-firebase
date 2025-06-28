@@ -9,13 +9,21 @@ import { onAuthStateChanged } from 'firebase/auth';
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  accessToken: string | null;
+  setAuthInfo: (user: User | null, token: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const setAuthInfo = (user: User | null, token: string | null) => {
+    setUser(user);
+    setAccessToken(token);
+  };
 
   useEffect(() => {
     if (!auth) {
@@ -23,6 +31,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
     }
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      // We only set the user here, not the access token.
+      // The access token should only be set upon an explicit sign-in action.
       setUser(currentUser);
       setIsLoading(false);
     });
@@ -30,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const value = { user, isLoading };
+  const value = { user, isLoading, accessToken, setAuthInfo };
 
   return (
     <AuthContext.Provider value={value}>
