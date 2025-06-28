@@ -234,7 +234,7 @@ export function CreateEventView() {
           </header>
 
           <Card className="max-w-4xl mx-auto">
-            <CardHeader className="flex flex-row justify-between items-start">
+            <CardHeader className="flex flex-row items-start justify-between">
               <div>
                 <CardTitle>Event Details</CardTitle>
                 <CardDescription>Select a client and their billable rate to start tracking an event.</CardDescription>
@@ -290,9 +290,9 @@ export function CreateEventView() {
           </Card>
 
           <Card className="max-w-4xl mx-auto">
-            <CardHeader>
-              <CardTitle>Description</CardTitle>
-              <CardDescription>Add detailed, formatted notes about the event.</CardDescription>
+            <CardHeader className="flex flex-row items-baseline justify-between">
+              <CardTitle className="text-lg">Description</CardTitle>
+              <CardDescription>Describe event actions performed</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col p-0">
                 <div className="p-2 border-t border-b flex items-center gap-1 flex-wrap">
