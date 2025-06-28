@@ -74,7 +74,11 @@ const FilePreviewDialog = dynamic(() => import('@/components/files/file-preview-
 
 const ItemTypes = {
   FILE: 'file',
+  FOLDER: 'folder',
 };
+
+type DroppableItem = (FileItem & { type?: 'file' }) | (FolderItem & { type: 'folder' });
+
 
 function FilesViewContent() {
   const [folders, setFolders] = useState<FolderItem[]>([]);
@@ -410,6 +414,30 @@ function FilesViewContent() {
         toast({ variant: "destructive", title: "Move Failed", description: error.message });
     }
   };
+  
+  const handleFolderDrop = async (folder: FolderItem, newParentId: string | null) => {
+    if (folder.id === newParentId || folder.parentId === newParentId) return;
+
+    let currentParentId = newParentId;
+    while(currentParentId) {
+        if (currentParentId === folder.id) {
+            toast({ variant: "destructive", title: "Invalid Move", description: "Cannot move a folder into its own subfolder." });
+            return;
+        }
+        const parent = folders.find(f => f.id === currentParentId);
+        currentParentId = parent?.parentId || null;
+    }
+
+    try {
+        await updateFolder(folder.id, { parentId: newParentId });
+        setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, parentId: newParentId } : f));
+        const parentFolder = folders.find(f => f.id === newParentId);
+        toast({ title: "Folder Moved", description: `"${folder.name}" moved to "${parentFolder?.name || 'Root'}".` });
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Move Failed", description: error.message });
+    }
+  };
+
 
   const DraggableTableRow = ({ file, children }: { file: FileItem, children: React.ReactNode }) => {
     const [{ isDragging }, drag] = useDrag(() => ({
@@ -446,9 +474,21 @@ function FilesViewContent() {
           const isExpanded = expandedFolders.has(folder.id);
           const isRenaming = renamingFolder?.id === folder.id;
           
+          const [{ isDragging }, drag, dragPreview] = useDrag(() => ({
+            type: ItemTypes.FOLDER,
+            item: { ...folder, type: ItemTypes.FOLDER },
+            collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+          }));
+          
           const [{ canDrop, isOver }, drop] = useDrop(() => ({
-            accept: ItemTypes.FILE,
-            drop: (item: FileItem) => handleFileDrop(item, folder.id),
+            accept: [ItemTypes.FILE, ItemTypes.FOLDER],
+            drop: (item: DroppableItem) => {
+              if (item.type === ItemTypes.FOLDER) {
+                handleFolderDrop(item, folder.id);
+              } else {
+                handleFileDrop(item, folder.id);
+              }
+            },
             collect: (monitor) => ({
                 isOver: monitor.isOver(),
                 canDrop: monitor.canDrop(),
@@ -456,18 +496,20 @@ function FilesViewContent() {
           }));
 
           return (
-            <div key={folder.id} className="my-1">
+            <div key={folder.id} ref={dragPreview} className={cn("my-1 rounded-md", isDragging && 'opacity-50')}>
               <div
                 ref={drop}
                 className={cn(
-                  "flex items-center gap-2 rounded-md pr-2 cursor-pointer hover:bg-accent",
-                  (isOver && canDrop) && "bg-primary/20 ring-1 ring-primary"
+                  "flex items-center gap-2 rounded-md pr-2 cursor-pointer",
+                  isRenaming ? '' : 'hover:bg-accent',
+                  (isOver && canDrop) && "bg-primary/20 ring-1 ring-primary",
+                  selectedFolderId === folder.id && !isRenaming && 'bg-accent'
                 )}
                 onClick={() => { if (!isRenaming) handleSelectFolder(folder.id); }}
                 >
                 <div
+                    ref={drag}
                     className="flex items-center gap-2 flex-1 p-1 rounded-md"
-                    style={{ backgroundColor: selectedFolderId === folder.id && !isRenaming ? 'hsl(var(--accent))' : 'transparent' }}
                 >
                     {hasChildren ? (
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => toggleFolder(e, folder.id)}>
@@ -531,6 +573,14 @@ function FilesViewContent() {
     );
   };
   
+  const [{ isOverRoot }, dropToRoot] = useDrop(() => ({
+      accept: ItemTypes.FOLDER,
+      drop: (item: FolderItem) => handleFolderDrop(item, null),
+      collect: (monitor) => ({
+          isOverRoot: monitor.isOver() && monitor.canDrop(),
+      }),
+  }));
+
   if (isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center p-4">
@@ -615,7 +665,7 @@ function FilesViewContent() {
                     <div className="flex items-center justify-center p-2 border-b h-[57px]">
                       <h3 className="text-lg font-semibold">All Folders</h3>
                     </div>
-                    <ScrollArea className="flex-1 p-2">
+                    <ScrollArea ref={dropToRoot} className={cn("flex-1 p-2", isOverRoot && 'bg-primary/10 ring-1 ring-primary-foreground')}>
                         <FolderTree />
                     </ScrollArea>
                 </div>
