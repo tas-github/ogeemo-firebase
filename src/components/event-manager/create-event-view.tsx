@@ -8,11 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Clock, Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Settings as SettingsIcon } from 'lucide-react';
+import { Clock, Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Settings as SettingsIcon, Play, Pause, Square } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { type Contact, mockContacts } from "@/data/contacts";
 import { Separator } from '@/components/ui/separator';
-import { TimerDialog } from './timer-dialog';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Checkbox } from '../ui/checkbox';
 
 interface EventEntry {
   id: string;
@@ -54,13 +54,13 @@ const formatTime = (totalSeconds: number) => {
 
 export function CreateEventView() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [isBillable, setIsBillable] = useState(false);
   const [billableRate, setBillableRate] = useState<number>(100);
   const [subject, setSubject] = useState("");
   
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isActive, setIsActive] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [isTimerDialogOpen, setIsTimerDialogOpen] = useState(false);
+  const [isPaused, setIsPaused] = useState(true);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -72,7 +72,7 @@ export function CreateEventView() {
   const isTyping = useRef(false);
 
   const saveStateToLocalStorage = useCallback(() => {
-    if (!selectedContactId) return;
+    if (!selectedContactId || !isActive) return;
     const state: StoredTimerState = {
         contactId: selectedContactId,
         subject,
@@ -83,7 +83,7 @@ export function CreateEventView() {
         lastTickTimestamp: Date.now()
     };
     localStorage.setItem('activeTimerState', JSON.stringify(state));
-  }, [isPaused, selectedContactId, subject, billableRate, elapsedTime]);
+  }, [isPaused, isActive, selectedContactId, subject, billableRate, elapsedTime]);
 
   const clearStateFromLocalStorage = useCallback(() => {
     localStorage.removeItem('activeTimerState');
@@ -140,14 +140,6 @@ export function CreateEventView() {
   }, [isActive, isPaused]);
 
   const handleStart = () => {
-    if (!selectedContactId) {
-      toast({ variant: "destructive", title: "Please select a client." });
-      return;
-    }
-    if (!subject.trim()) {
-      toast({ variant: "destructive", title: "Please enter a subject." });
-      return;
-    }
     setIsActive(true);
     setIsPaused(false);
     setElapsedTime(0);
@@ -156,6 +148,14 @@ export function CreateEventView() {
   const handlePauseResume = () => {
       setIsPaused(!isPaused);
   };
+  
+  const handleStopAndReset = () => {
+    setIsActive(false);
+    setIsPaused(true);
+    setElapsedTime(0);
+    clearStateFromLocalStorage();
+    toast({ title: "Timer Reset", description: "The timer has been stopped and reset." });
+  }
 
   // Save state to local storage when paused or active state changes
   useEffect(() => {
@@ -163,8 +163,20 @@ export function CreateEventView() {
         saveStateToLocalStorage();
       }
   }, [isPaused, isActive, saveStateToLocalStorage]);
+  
+  const resetFormAndTimer = useCallback(() => {
+    setIsActive(false);
+    setIsPaused(true);
+    setElapsedTime(0);
+    setSubject("");
+    setEditorContent("");
+    setSelectedContactId(null);
+    setIsBillable(false);
+    setBillableRate(100);
+    clearStateFromLocalStorage();
+  }, [clearStateFromLocalStorage]);
 
-  const handleSaveEvent = () => {
+  const handleLogEvent = () => {
     try {
         if (!selectedContactId) {
             toast({ variant: "destructive", title: "Cannot Log Event", description: "No client is selected." });
@@ -196,16 +208,9 @@ export function CreateEventView() {
         const updatedEntries = [newEntry, ...existingEntries];
         localStorage.setItem('eventEntries', JSON.stringify(updatedEntries));
         
-        setIsActive(false);
-        setIsPaused(false);
-        setElapsedTime(0);
-        setSubject("");
-        setEditorContent("");
-        setSelectedContactId(null);
-        clearStateFromLocalStorage();
-
+        resetFormAndTimer();
         toast({ title: "Event Logged", description: `Logged ${formatTime(elapsedTime)} for ${contact.name}.` });
-        setIsTimerDialogOpen(false);
+        setIsSettingsDialogOpen(false);
     } catch (error) {
         console.error("Error logging event:", error);
         toast({
@@ -213,10 +218,8 @@ export function CreateEventView() {
             title: "Error Logging Event",
             description: "Could not save the event. Please check the console for details."
         });
-        setIsActive(false);
-        setIsPaused(false);
-        clearStateFromLocalStorage();
-        setIsTimerDialogOpen(false);
+        resetFormAndTimer();
+        setIsSettingsDialogOpen(false);
     }
   };
   
@@ -269,28 +272,58 @@ export function CreateEventView() {
                     <DialogHeader>
                         <DialogTitle>Event Settings</DialogTitle>
                         <DialogDescription>
-                            Configure settings for this event entry.
+                            Configure billing options and track time for this event.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
-                            <Input
-                                id="billable-rate"
-                                type="number"
-                                value={billableRate}
-                                onChange={(e) => setBillableRate(Number(e.target.value))}
-                                disabled={isActive}
-                                placeholder="e.g. 100"
-                            />
+                        <div className="space-y-4">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id="is-billable" checked={isBillable} onCheckedChange={(checked) => setIsBillable(!!checked)} />
+                                <Label htmlFor="is-billable">This event is billable</Label>
+                            </div>
+                            {isBillable && (
+                                <div className="space-y-2 pl-6">
+                                    <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
+                                    <Input
+                                        id="billable-rate"
+                                        type="number"
+                                        value={billableRate}
+                                        onChange={(e) => setBillableRate(Number(e.target.value))}
+                                        placeholder="e.g. 100"
+                                    />
+                                </div>
+                            )}
                         </div>
-                        <Button variant="outline" onClick={() => { setIsSettingsDialogOpen(false); setIsTimerDialogOpen(true); }} className="w-full">
-                            <Clock className="mr-2 h-4 w-4" />
-                            Time Clock
-                        </Button>
+                        <Separator />
+                        <div>
+                            <Label>Time Clock</Label>
+                            <div className="py-6 text-center">
+                                <p className="text-5xl font-mono font-bold text-primary tracking-tight">
+                                    {formatTime(elapsedTime)}
+                                </p>
+                            </div>
+                            <div className="flex justify-center gap-4">
+                                {!isActive ? (
+                                    <Button onClick={handleStart} className="w-full">
+                                        <Play className="mr-2 h-5 w-5" /> Start
+                                    </Button>
+                                ) : (
+                                    <>
+                                        <Button onClick={handlePauseResume} variant="outline" className="flex-1">
+                                            {isPaused ? <Play className="mr-2 h-5 w-5" /> : <Pause className="mr-2 h-5 w-5" />}
+                                            {isPaused ? 'Resume' : 'Pause'}
+                                        </Button>
+                                        <Button onClick={handleStopAndReset} variant="destructive" className="flex-1">
+                                            <Square className="mr-2 h-5 w-5" /> Stop & Reset
+                                        </Button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
                     </div>
                     <DialogFooter>
-                        <Button onClick={() => setIsSettingsDialogOpen(false)}>Done</Button>
+                        <Button variant="ghost" onClick={() => setIsSettingsDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleLogEvent}>Log Event</Button>
                     </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -305,15 +338,14 @@ export function CreateEventView() {
                 placeholder="Enter a subject for the event..."
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                disabled={isActive}
               />
             </CardContent>
           </Card>
 
           <Card className="max-w-4xl mx-auto">
-            <CardHeader className="flex flex-row items-baseline justify-start gap-4">
-              <CardTitle className="text-lg">Description</CardTitle>
-              <CardDescription>Describe event actions performed</CardDescription>
+            <CardHeader className="flex flex-row items-baseline justify-start gap-4 p-4">
+              <h3 className="text-lg font-semibold">Description</h3>
+              <p className="text-sm text-muted-foreground">Describe event actions performed</p>
             </CardHeader>
             <CardContent className="flex flex-col p-0">
                 <div className="p-2 border-t border-b flex items-center gap-1 flex-wrap">
@@ -345,17 +377,6 @@ export function CreateEventView() {
             </CardContent>
           </Card>
       </div>
-      <TimerDialog
-        isOpen={isTimerDialogOpen}
-        onOpenChange={setIsTimerDialogOpen}
-        elapsedTime={elapsedTime}
-        isActive={isActive}
-        isPaused={isPaused}
-        selectedContactName={selectedContactId ? mockContacts.find(c => c.id === selectedContactId)?.name : undefined}
-        handleStart={handleStart}
-        handlePauseResume={handlePauseResume}
-        handleStop={handleSaveEvent}
-      />
     </>
   );
 }
