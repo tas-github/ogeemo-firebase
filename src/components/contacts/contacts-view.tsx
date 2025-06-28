@@ -205,10 +205,6 @@ function ContactsViewContent() {
           canDropToRoot: monitor.canDrop(),
       }),
   }));
-
-  if (isLoading) {
-    return <div className="flex h-full w-full items-center justify-center p-4"><LoaderCircle className="h-10 w-10 animate-spin text-primary" /></div>;
-  }
   
   const handleToggleSelect = (contactId: string) => {
     setSelectedContactIds((prev) =>
@@ -435,7 +431,7 @@ function ContactsViewContent() {
         collect: (monitor) => ({ isDragging: monitor.isDragging() }),
     }));
     return (
-      <TableRow ref={drag} className={cn("cursor-pointer", isDragging && "opacity-50")} onClick={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}>
+      <TableRow ref={drag} className={cn(isDragging && "opacity-50")}>
         {children}
       </TableRow>
     );
@@ -524,6 +520,13 @@ function ContactsViewContent() {
     );
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center p-4">
+        <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -593,11 +596,11 @@ function ContactsViewContent() {
                                 return (
                                   <DraggableTableRow key={contact.id} contact={contact}>
                                       <TableCell onClick={(e) => e.stopPropagation()}><Checkbox checked={selectedContactIds.includes(contact.id)} onCheckedChange={() => handleToggleSelect(contact.id)} /></TableCell>
-                                      <TableCell className="font-medium">{contact.name}</TableCell>
+                                      <TableCell className="font-medium cursor-pointer hover:underline" onClick={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}>{contact.name}</TableCell>
                                       <TableCell>{contact.email}</TableCell>
                                       <TableCell>{primaryPhoneNumber}</TableCell>
                                       {selectedFolderId === 'all' && <TableCell>{folderName}</TableCell>}
-                                      <TableCell>
+                                      <TableCell onClick={(e) => e.stopPropagation()}>
                                           <DropdownMenu>
                                               <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                               <DropdownMenuContent align="end">
