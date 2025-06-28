@@ -18,6 +18,7 @@ import {
   FolderPlus,
   Info,
   Wand2,
+  BookOpen,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -196,6 +197,14 @@ function ContactsViewContent() {
   
   const allVisibleSelected = displayedContacts.length > 0 && selectedContactIds.length === displayedContacts.length;
   const someVisibleSelected = selectedContactIds.length > 0 && selectedContactIds.length < displayedContacts.length;
+  
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center p-4">
+        <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
   
   const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
       accept: ItemTypes.FOLDER,
@@ -520,14 +529,6 @@ function ContactsViewContent() {
     );
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-full w-full items-center justify-center p-4">
-        <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
-
   return (
     <>
       <div className="flex flex-col h-full">
@@ -604,6 +605,7 @@ function ContactsViewContent() {
                                           <DropdownMenu>
                                               <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                               <DropdownMenuContent align="end">
+                                                  <DropdownMenuItem onSelect={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}><BookOpen className="mr-2 h-4 w-4" />Open</DropdownMenuItem>
                                                   <DropdownMenuItem onSelect={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}><Pencil className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
                                                   <DropdownMenuItem onSelect={() => setIsActionInfoDialogOpen(true)}>
                                                     <Wand2 className="mr-2 h-4 w-4" />
