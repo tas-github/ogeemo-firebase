@@ -42,7 +42,7 @@ const formatTime = (totalSeconds: number) => {
 export function EventManagerView() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [billableRate, setBillableRate] = useState<number>(100);
-  const [eventDescription, setEventDescription] = useState("");
+  const [subject, setSubject] = useState("");
   
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isActive, setIsActive] = useState(false);
@@ -68,7 +68,7 @@ export function EventManagerView() {
       try {
         const state: StoredTimerState = JSON.parse(savedStateRaw);
         setSelectedContactId(state.contactId);
-        setEventDescription(state.description);
+        setSubject(state.description);
         setBillableRate(state.billableRate);
         setIsActive(true);
         setIsPaused(state.isPaused);
@@ -131,8 +131,8 @@ export function EventManagerView() {
       toast({ variant: "destructive", title: "Please select a client." });
       return;
     }
-    if (!eventDescription.trim()) {
-      toast({ variant: "destructive", title: "Please enter an event description." });
+    if (!subject.trim()) {
+      toast({ variant: "destructive", title: "Please enter a subject." });
       return;
     }
     setIsActive(true);
@@ -141,7 +141,7 @@ export function EventManagerView() {
 
     const state: StoredTimerState = {
         contactId: selectedContactId,
-        description: eventDescription,
+        description: subject,
         billableRate,
         isPaused: false,
         elapsedTime: 0,
@@ -179,7 +179,7 @@ export function EventManagerView() {
       id: `entry-${Date.now()}`,
       contactId,
       contactName: contact.name,
-      description: eventDescription,
+      description: subject,
       startTime: new Date(Date.now() - elapsedTime * 1000), // Approximate start time
       endTime: new Date(),
       duration: elapsedTime,
@@ -192,7 +192,7 @@ export function EventManagerView() {
     setIsActive(false);
     setIsPaused(false);
     setElapsedTime(0);
-    setEventDescription("");
+    setSubject("");
     setSelectedContactId(null);
     clearStateFromLocalStorage();
 
@@ -244,12 +244,12 @@ export function EventManagerView() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="event-description">Event Description</Label>
+            <Label htmlFor="subject">Subject</Label>
             <Input
-              id="event-description"
-              placeholder="e.g., Drafting initial project proposal"
-              value={eventDescription}
-              onChange={(e) => setEventDescription(e.target.value)}
+              id="subject"
+              placeholder="Enter a subject..."
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
               disabled={isActive}
             />
           </div>
@@ -303,7 +303,7 @@ export function EventManagerView() {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Client</TableHead>
-                            <TableHead>Description</TableHead>
+                            <TableHead>Subject</TableHead>
                             <TableHead className="text-right">Duration</TableHead>
                             <TableHead className="text-right">Total</TableHead>
                         </TableRow>
