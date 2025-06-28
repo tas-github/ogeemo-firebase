@@ -52,8 +52,20 @@ export async function updateFolder(folderId: string, folderData: Partial<Omit<Fo
 
 export async function deleteFolder(folderId: string): Promise<void> {
     checkDb();
+    const batch = writeBatch(db);
+
+    // Delete folder itself
     const folderRef = doc(db, FOLDERS_COLLECTION, folderId);
-    await deleteDoc(folderRef);
+    batch.delete(folderRef);
+
+    // Query for contacts in that folder and delete them
+    const contactsQuery = query(collection(db, CONTACTS_COLLECTION), where("folderId", "==", folderId));
+    const contactsSnapshot = await getDocs(contactsQuery);
+    contactsSnapshot.forEach(contactDoc => {
+        batch.delete(contactDoc.ref);
+    });
+
+    await batch.commit();
 }
 
 
@@ -87,3 +99,5 @@ export async function deleteContacts(contactIds: string[]): Promise<void> {
     });
     await batch.commit();
 }
+
+    
