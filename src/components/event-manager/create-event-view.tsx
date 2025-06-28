@@ -263,7 +263,7 @@ export function CreateEventView() {
               </div>
               <Dialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="outline" className="bg-orange-500 hover:bg-orange-600 text-white">
+                    <Button className="bg-orange-500 hover:bg-orange-600 text-white">
                         <SettingsIcon className="mr-2 h-4 w-4" />
                         Settings
                     </Button>
