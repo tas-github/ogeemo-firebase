@@ -479,7 +479,7 @@ function ContactsViewContent() {
                   ) : (
                     <div className="w-4 h-4" />
                   )}
-                  <Folder className={cn('h-4 w-4', folder.parentId ? 'text-green-500' : 'text-primary')} />
+                  <Folder className={cn('h-4 w-4', folder.parentId ? 'text-green-500' : 'text-blue-500')} />
                   {isRenaming ? (
                     <Input autoFocus value={renameInputValue} onChange={e => setRenameInputValue(e.target.value)} onBlur={handleConfirmRename} onKeyDown={e => { if (e.key === 'Enter') handleConfirmRename(); if (e.key === 'Escape') handleCancelRename(); }} className="h-7" onClick={e => e.stopPropagation()} />
                   ) : (

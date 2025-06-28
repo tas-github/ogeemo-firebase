@@ -518,7 +518,7 @@ function FilesViewContent() {
                     ) : (
                         <div className="w-6 h-6" />
                     )}
-                    <Folder className={`h-4 w-4 ${folder.parentId ? 'text-green-500' : 'text-primary'}`} />
+                    <Folder className={cn('h-4 w-4', folder.parentId ? 'text-green-500' : 'text-blue-500')} />
                      {isRenaming ? (
                         <Input
                             value={renameInputValue}
