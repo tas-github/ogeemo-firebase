@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -237,18 +237,27 @@ export function CreateEventView() {
             <CardHeader className="flex flex-row items-start justify-between">
               <div>
                 <CardTitle>Event Details</CardTitle>
-                <CardDescription>Select a client and their billable rate to start tracking an event.</CardDescription>
+                <CardDescription>Select a client to start tracking an event.</CardDescription>
               </div>
-              <div className="space-y-2 text-center">
-                <Label className="text-xs text-muted-foreground">Settings</Label>
-                <Button variant="outline" onClick={() => setIsTimerDialogOpen(true)}>
+              <div className="flex flex-col items-end gap-2">
+                <Label className="text-xs text-muted-foreground self-center">Settings</Label>
+                 <div className="w-[180px] space-y-1">
+                    <Label htmlFor="billable-rate" className="text-xs text-muted-foreground px-1">Billable Rate ($/hr)</Label>
+                    <Input
+                        id="billable-rate"
+                        type="number"
+                        value={billableRate}
+                        onChange={(e) => setBillableRate(Number(e.target.value))}
+                        disabled={isActive}
+                    />
+                 </div>
+                <Button variant="outline" onClick={() => setIsTimerDialogOpen(true)} className="w-[180px]">
                     <Clock className="mr-2 h-4 w-4" />
                     Time Clock
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="client-select">Client</Label>
                   <Select value={selectedContactId ?? ''} onValueChange={setSelectedContactId} disabled={isActive}>
@@ -262,17 +271,6 @@ export function CreateEventView() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
-                  <Input
-                    id="billable-rate"
-                    type="number"
-                    value={billableRate}
-                    onChange={(e) => setBillableRate(Number(e.target.value))}
-                    disabled={isActive}
-                  />
-                </div>
-              </div>
             </CardContent>
           </Card>
           
