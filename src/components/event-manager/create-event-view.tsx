@@ -244,10 +244,19 @@ export function CreateEventView() {
           </header>
 
           <Card className="max-w-4xl mx-auto">
-            <CardHeader className="flex flex-row items-start justify-between">
-              <div>
-                <CardTitle>Event Details</CardTitle>
-                <CardDescription>Select a client to start tracking an event.</CardDescription>
+            <CardContent className="p-4 flex items-end justify-between gap-4">
+              <div className="space-y-2 flex-1">
+                <Label htmlFor="client-select">Client</Label>
+                <Select value={selectedContactId ?? ''} onValueChange={setSelectedContactId} disabled={isActive}>
+                  <SelectTrigger id="client-select">
+                    <SelectValue placeholder="Select a client..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mockContacts.map((contact) => (
+                      <SelectItem key={contact.id} value={contact.id}>{contact.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <Dialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
                 <DialogTrigger asChild>
@@ -285,21 +294,6 @@ export function CreateEventView() {
                     </DialogFooter>
                 </DialogContent>
               </Dialog>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-2">
-                  <Label htmlFor="client-select">Client</Label>
-                  <Select value={selectedContactId ?? ''} onValueChange={setSelectedContactId} disabled={isActive}>
-                    <SelectTrigger id="client-select">
-                      <SelectValue placeholder="Select a client..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockContacts.map((contact) => (
-                        <SelectItem key={contact.id} value={contact.id}>{contact.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
             </CardContent>
           </Card>
           
