@@ -253,19 +253,25 @@ function FilesViewContent() {
         toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to upload files.'});
         return;
     }
-    if (!event.target.files || !selectedFolderId) {
+    if (!event.target.files || event.target.files.length === 0 || !selectedFolderId) {
       toast({
         variant: 'destructive',
         title: 'Upload Failed',
-        description: 'Please select a folder before uploading files.',
+        description: 'Please select a folder and at least one file to upload.',
       });
       return;
     }
 
     const filesToUpload = Array.from(event.target.files);
+    const formData = new FormData();
+    formData.append('userId', user.uid);
+    formData.append('folderId', selectedFolderId);
+    filesToUpload.forEach(file => {
+        formData.append('files', file);
+    });
 
     try {
-        const addedFiles = await uploadFiles(user.uid, selectedFolderId, filesToUpload);
+        const addedFiles = await uploadFiles(formData);
         setFiles((prev) => [...prev, ...addedFiles]);
         toast({
             title: `${addedFiles.length} file(s) uploaded successfully!`,
@@ -275,7 +281,6 @@ function FilesViewContent() {
         console.error("File upload failed:", error);
         toast({ variant: "destructive", title: "Upload Failed", description: error.message });
     }
-
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';

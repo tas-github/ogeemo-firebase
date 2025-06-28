@@ -121,9 +121,17 @@ async function _addFileDoc(fileData: Omit<FileItem, 'id'>): Promise<FileItem> {
   return { id: docRef.id, ...fileData };
 }
 
-export async function uploadFiles(userId: string, folderId: string, files: File[]): Promise<FileItem[]> {
+export async function uploadFiles(formData: FormData): Promise<FileItem[]> {
   checkDb();
   checkStorage();
+
+  const userId = formData.get('userId') as string;
+  const folderId = formData.get('folderId') as string;
+  const files = formData.getAll('files') as File[];
+
+  if (!userId || !folderId || files.length === 0) {
+    throw new Error("Missing required data for file upload.");
+  }
 
   const uploadedFileItems: FileItem[] = [];
 
