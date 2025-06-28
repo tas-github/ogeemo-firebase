@@ -124,6 +124,31 @@ function ContactsViewContent() {
   const { user, accessToken } = useAuth();
   const router = useRouter();
 
+  const selectedFolder = useMemo(
+    () => folders.find((f) => f && f.id === selectedFolderId),
+    [folders, selectedFolderId]
+  );
+
+  const displayedContacts = useMemo(
+    () => {
+        if (selectedFolderId === 'all') return contacts;
+        return contacts.filter((c) => c.folderId === selectedFolderId);
+    },
+    [contacts, selectedFolderId]
+  );
+  
+  const allVisibleSelected = displayedContacts.length > 0 && selectedContactIds.length === displayedContacts.length;
+  const someVisibleSelected = selectedContactIds.length > 0 && selectedContactIds.length < displayedContacts.length;
+  
+  const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
+      accept: ItemTypes.FOLDER,
+      drop: (item: FolderData) => handleFolderDrop(item, null),
+      collect: (monitor) => ({
+          isOverRoot: monitor.isOver(),
+          canDropToRoot: monitor.canDrop(),
+      }),
+  }));
+  
   useEffect(() => {
     try {
       const hideInstructions = localStorage.getItem('hideGoogleImportInstructions') === 'true';
@@ -167,21 +192,6 @@ function ContactsViewContent() {
     loadData();
   }, [toast, user]);
 
-  const selectedFolder = useMemo(
-    () => folders.find((f) => f && f.id === selectedFolderId),
-    [folders, selectedFolderId]
-  );
-
-  const displayedContacts = useMemo(
-    () => {
-        if (selectedFolderId === 'all') return contacts;
-        return contacts.filter((c) => c.folderId === selectedFolderId);
-    },
-    [contacts, selectedFolderId]
-  );
-  
-  const allVisibleSelected = displayedContacts.length > 0 && selectedContactIds.length === displayedContacts.length;
-  const someVisibleSelected = selectedContactIds.length > 0 && selectedContactIds.length < displayedContacts.length;
   
   const handleToggleSelect = (contactId: string) => {
     setSelectedContactIds((prev) =>
@@ -414,15 +424,6 @@ function ContactsViewContent() {
     );
   };
 
-  const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
-      accept: ItemTypes.FOLDER,
-      drop: (item: FolderData) => handleFolderDrop(item, null),
-      collect: (monitor) => ({
-          isOverRoot: monitor.isOver(),
-          canDropToRoot: monitor.canDrop(),
-      }),
-  }));
-
   const FolderTree = ({ parentId = null, level = 0 }: { parentId?: string | null; level?: number }) => {
     const children = folders.filter(f => f.parentId === parentId).sort((a,b) => a.name.localeCompare(b.name));
     
@@ -553,7 +554,7 @@ function ContactsViewContent() {
                               </div>
                               <div className="flex items-center gap-2">
                                   <Button variant="outline" onClick={handleOpenImportDialog} disabled={!user}><GoogleIcon /> Import from Google</Button>
-                                  <Button onClick={handleNewContactClick}><Plus className="mr-2 h-4 w-4" /> New Contact</Button>
+                                  <Button onClick={handleNewContactClick}><Plus className="mr-2 h-4 w-4" /> Add Contact</Button>
                               </div>
                           </>
                       )}
