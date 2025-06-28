@@ -234,9 +234,18 @@ export function CreateEventView() {
           </header>
 
           <Card className="max-w-4xl mx-auto">
-            <CardHeader>
-              <CardTitle>Event Details</CardTitle>
-              <CardDescription>Select a client and their billable rate to start tracking an event.</CardDescription>
+            <CardHeader className="flex flex-row justify-between items-start">
+              <div>
+                <CardTitle>Event Details</CardTitle>
+                <CardDescription>Select a client and their billable rate to start tracking an event.</CardDescription>
+              </div>
+              <div className="space-y-2 text-center">
+                <Label className="text-xs text-muted-foreground">Settings</Label>
+                <Button variant="outline" onClick={() => setIsTimerDialogOpen(true)}>
+                    <Clock className="mr-2 h-4 w-4" />
+                    Time Clock
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-6">
@@ -266,10 +275,6 @@ export function CreateEventView() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-start gap-4">
-                <Button onClick={() => setIsTimerDialogOpen(true)}>
-                    <Clock className="mr-2 h-4 w-4" />
-                    Time Clock
-                </Button>
                 <Button asChild variant="secondary">
                   <Link href="/event-manager/logged-events">
                       <BookOpen className="mr-2 h-4 w-4"/>
@@ -308,7 +313,8 @@ export function CreateEventView() {
                 </div>
                 <div
                     ref={editorRef}
-                    className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full min-h-[250px]"
+                    className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full min-h-[250px] text-left"
+                    dir="ltr"
                     contentEditable
                     onFocus={() => isTyping.current = true}
                     onBlur={(e) => {
@@ -316,6 +322,10 @@ export function CreateEventView() {
                         if(editorRef.current?.innerHTML !== e.currentTarget.innerHTML) {
                             setEditorContent(e.currentTarget.innerHTML);
                         }
+                    }}
+                    onInput={(e) => {
+                        if (!isTyping.current) return;
+                        setEditorContent(e.currentTarget.innerHTML);
                     }}
                     placeholder="Start writing your event details here..."
                 />
