@@ -31,24 +31,37 @@ const docToFolder = (doc: QueryDocumentSnapshot<DocumentData>): FolderData => ({
 const docToContact = (doc: QueryDocumentSnapshot<DocumentData>): Contact => ({ id: doc.id, ...doc.data() } as Contact);
 
 // Folder functions
-export async function getFolders(): Promise<FolderData[]> {
+export async function getFolders(userId: string): Promise<FolderData[]> {
   checkDb();
-  const foldersCol = collection(db, FOLDERS_COLLECTION);
-  const snapshot = await getDocs(foldersCol);
+  const q = query(collection(db, FOLDERS_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
   return snapshot.docs.map(docToFolder);
 }
 
-export async function addFolder(folderName: string): Promise<FolderData> {
+export async function addFolder(folderData: Omit<FolderData, 'id'>): Promise<FolderData> {
   checkDb();
-  const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), { name: folderName });
-  return { id: docRef.id, name: folderName };
+  const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), folderData);
+  return { id: docRef.id, ...folderData };
 }
 
+export async function updateFolder(folderId: string, folderData: Partial<Omit<FolderData, 'id' | 'userId'>>): Promise<void> {
+    checkDb();
+    const folderRef = doc(db, FOLDERS_COLLECTION, folderId);
+    await updateDoc(folderRef, folderData);
+}
+
+export async function deleteFolder(folderId: string): Promise<void> {
+    checkDb();
+    const folderRef = doc(db, FOLDERS_COLLECTION, folderId);
+    await deleteDoc(folderRef);
+}
+
+
 // Contact functions
-export async function getContacts(): Promise<Contact[]> {
+export async function getContacts(userId: string): Promise<Contact[]> {
   checkDb();
-  const contactsCol = collection(db, CONTACTS_COLLECTION);
-  const snapshot = await getDocs(contactsCol);
+  const q = query(collection(db, CONTACTS_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
   return snapshot.docs.map(docToContact);
 }
 
@@ -58,7 +71,7 @@ export async function addContact(contactData: Omit<Contact, 'id'>): Promise<Cont
   return { id: docRef.id, ...contactData };
 }
 
-export async function updateContact(contactId: string, contactData: Partial<Omit<Contact, 'id'>>): Promise<void> {
+export async function updateContact(contactId: string, contactData: Partial<Omit<Contact, 'id' | 'userId'>>): Promise<void> {
     checkDb();
     const contactRef = doc(db, CONTACTS_COLLECTION, contactId);
     await updateDoc(contactRef, contactData);

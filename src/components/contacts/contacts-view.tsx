@@ -35,6 +35,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
 import {
   Dialog,
@@ -50,9 +51,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { type Contact, type FolderData } from '@/data/contacts';
 import { useToast } from '@/hooks/use-toast';
-import { addFolder, getContacts, getFolders, deleteContacts, addContact } from '@/services/contact-service';
+import { addFolder, getContacts, getFolders, deleteContacts, addContact, updateContact, updateFolder, deleteFolder } from '@/services/contact-service';
 import { useAuth } from '@/context/auth-context';
 import { getGoogleContacts, type GoogleContact } from '@/services/google-service';
+import { cn } from '@/lib/utils';
 
 const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-form-dialog'), {
   loading: () => (
@@ -79,17 +81,20 @@ export function ContactsView() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFolderId, setSelectedFolderId] = useState<string>('all');
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+  
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
+  const [folderToEdit, setFolderToEdit] = useState<FolderData | null>(null);
+  const [folderName, setFolderName] = useState("");
   
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [contactToEdit, setContactToEdit] = useState<Contact | null>(null);
-  const [isSelectFolderDialogOpen, setIsSelectFolderDialogOpen] = useState(false);
   
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isImportLoading, setIsImportLoading] = useState(false);
   const [googleContacts, setGoogleContacts] = useState<GoogleContact[]>([]);
   const [selectedGoogleContacts, setSelectedGoogleContacts] = useState<string[]>([]);
+  const [folderToDelete, setFolderToDelete] = useState<FolderData | null>(null);
 
   const { toast } = useToast();
   const { user, accessToken } = useAuth();
@@ -98,11 +103,15 @@ export function ContactsView() {
 
   useEffect(() => {
     async function loadData() {
+        if (!user) {
+            setIsLoading(false);
+            return;
+        }
         setIsLoading(true);
         try {
             const [fetchedFolders, fetchedContacts] = await Promise.all([
-                getFolders(),
-                getContacts(),
+                getFolders(user.uid),
+                getContacts(user.uid),
             ]);
             setFolders(fetchedFolders);
             setContacts(fetchedContacts);
@@ -118,7 +127,7 @@ export function ContactsView() {
         }
     }
     loadData();
-  }, [toast]);
+  }, [toast, user]);
 
   const selectedFolder = useMemo(
     () => folders.find((f) => f && f.id === selectedFolderId),
@@ -127,9 +136,7 @@ export function ContactsView() {
 
   const displayedContacts = useMemo(
     () => {
-        if (selectedFolderId === 'all') {
-            return contacts;
-        }
+        if (selectedFolderId === 'all') return contacts;
         return contacts.filter((c) => c.folderId === selectedFolderId);
     },
     [contacts, selectedFolderId]
@@ -147,93 +154,93 @@ export function ContactsView() {
   };
 
   const handleToggleSelectAll = () => {
-    if (allVisibleSelected) {
-      setSelectedContactIds([]);
-    } else {
-      setSelectedContactIds(displayedContacts.map(c => c.id));
-    }
-  };
-
-  const openContactForm = (contact: Contact | null) => {
-    setContactToEdit(contact);
-    setIsContactFormOpen(true);
+    setSelectedContactIds(allVisibleSelected ? [] : displayedContacts.map(c => c.id));
   };
   
   const handleNewContactClick = () => {
     if (selectedFolderId === 'all') {
-      setIsSelectFolderDialogOpen(true);
-    } else {
-      openContactForm(null);
+      toast({ variant: "destructive", title: "Folder Required", description: "Please select a specific folder before adding a contact." });
+      return;
     }
+    setContactToEdit(null);
+    setIsContactFormOpen(true);
   };
   
-  const handleSaveContact = (savedContact: Contact) => {
-    const isEditing = contacts.some(c => c.id === savedContact.id);
-    if (isEditing) {
-      setContacts(contacts.map(c => c.id === savedContact.id ? savedContact : c));
-    } else {
-      setContacts(prev => [...prev, savedContact]);
-    }
-  };
-
-
-  const handleDeleteContact = async (contactId: string) => {
-    const contactToDelete = contacts.find(c => c.id === contactId);
-    if (contactToDelete) {
-      try {
-        await deleteContacts([contactId]);
-        setContacts(contacts.filter(c => c.id !== contactId));
-        setSelectedContactIds(prev => prev.filter(id => id !== contactId));
-        toast({ title: "Contact Deleted", description: `${contactToDelete.name} has been deleted.` });
-      } catch (error: any) {
-        console.error("Failed to delete contact:", error);
-        toast({ variant: "destructive", title: "Failed to delete contact", description: error.message });
-      }
+  const handleSaveContact = async (data: Contact | Omit<Contact, 'id'>, isEditing: boolean) => {
+    if (!user) return;
+    try {
+        if (isEditing) {
+            const contact = data as Contact;
+            await updateContact(contact.id, contact);
+            setContacts(prev => prev.map(c => c.id === contact.id ? contact : c));
+            toast({ title: "Contact Updated", description: `Details for ${contact.name} have been saved.` });
+        } else {
+            const newContactData = { ...data, userId: user.uid } as Omit<Contact, 'id'>;
+            const newContact = await addContact(newContactData);
+            setContacts(prev => [...prev, newContact]);
+            toast({ title: "Contact Created", description: `${newContact.name} has been added.` });
+        }
+    } catch(error: any) {
+        toast({ variant: "destructive", title: "Save failed", description: error.message });
     }
   };
 
   const handleDeleteSelected = async () => {
+    if (!user || selectedContactIds.length === 0) return;
     try {
       await deleteContacts(selectedContactIds);
       setContacts(contacts.filter(c => !selectedContactIds.includes(c.id)));
-      toast({ title: `${selectedContactIds.length} Contacts Deleted`, description: `The selected contacts have been removed.` });
+      toast({ title: `${selectedContactIds.length} Contacts Deleted` });
       setSelectedContactIds([]);
     } catch (error: any) {
-      console.error("Failed to delete selected contacts:", error);
-      toast({ variant: "destructive", title: "Failed to delete contacts", description: error.message });
+      toast({ variant: "destructive", title: "Delete Failed", description: error.message });
     }
   };
 
-  const handleCreateFolder = async () => {
-    if (newFolderName.trim()) {
-      try {
-        const newFolder = await addFolder(newFolderName.trim());
-        setFolders([...folders, newFolder]);
-        setNewFolderName("");
+  const handleFolderDialogSubmit = async () => {
+    if (!user || !folderName.trim()) return;
+    try {
+        if (folderToEdit) {
+            await updateFolder(folderToEdit.id, { name: folderName });
+            setFolders(folders.map(f => f.id === folderToEdit.id ? { ...f, name: folderName } : f));
+            toast({ title: "Folder Renamed" });
+        } else {
+            const newFolder = await addFolder({ name: folderName, userId: user.uid });
+            setFolders([...folders, newFolder]);
+            toast({ title: "Folder Created" });
+        }
         setIsNewFolderDialogOpen(false);
-      } catch (error: any) {
-        console.error("Failed to create folder:", error);
-        toast({ variant: "destructive", title: "Failed to create folder", description: error.message });
-      }
+        setFolderToEdit(null);
+        setFolderName("");
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Operation Failed", description: error.message });
     }
   };
   
-  const handleFolderSelect = (folderId: string) => {
-    setSelectedFolderId(folderId);
-    setSelectedContactIds([]);
+  const handleDeleteFolder = async () => {
+    if (!user || !folderToDelete) return;
+    try {
+        await deleteFolder(folderToDelete.id);
+        const contactsInFolder = contacts.filter(c => c.folderId === folderToDelete.id).map(c => c.id);
+        await deleteContacts(contactsInFolder);
+
+        setFolders(folders.filter(f => f.id !== folderToDelete.id));
+        setContacts(contacts.filter(c => c.folderId !== folderToDelete.id));
+
+        if(selectedFolderId === folderToDelete.id) setSelectedFolderId('all');
+        toast({ title: "Folder Deleted" });
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Delete Failed", description: error.message });
+    } finally {
+        setFolderToDelete(null);
+    }
   };
   
   const handleOpenImportDialog = async () => {
     if (!accessToken) {
-        toast({
-            variant: "destructive",
-            title: "Google Account Not Connected",
-            description: "Please go to the Google Integration page and connect your account to enable API access.",
-            action: <Button onClick={() => router.push('/google')}>Go to Integration</Button>
-        });
+        setIsAuthDialogOpen(true);
         return;
     }
-    
     setIsImportDialogOpen(true);
     setIsImportLoading(true);
     setGoogleContacts([]);
@@ -243,25 +250,18 @@ export function ContactsView() {
         const result = await getGoogleContacts(accessToken);
         setGoogleContacts(result.contacts);
     } catch (error: any) {
-        toast({
-            variant: "destructive",
-            title: "Failed to fetch Google Contacts",
-            description: error.message || "An unknown error occurred.",
-        });
+        toast({ variant: "destructive", title: "Failed to fetch Google Contacts", description: error.message });
         setIsImportDialogOpen(false);
     } finally {
         setIsImportLoading(false);
     }
   };
   
-  const handleToggleGoogleContact = (resourceName: string) => {
-    setSelectedGoogleContacts(prev => prev.includes(resourceName) ? prev.filter(rn => rn !== resourceName) : [...prev, resourceName]);
-  };
-  
   const handleImportSelected = async () => {
+    if (!user) return;
     let googleFolder = folders.find(f => f.name === "Google Contacts");
     if (!googleFolder) {
-        googleFolder = await addFolder("Google Contacts");
+        googleFolder = await addFolder({ name: "Google Contacts", userId: user.uid });
         setFolders(prev => [...prev, googleFolder!]);
     }
     
@@ -278,279 +278,152 @@ export function ContactsView() {
                 cellPhone: gc.phoneNumbers?.find(p => p.type === 'mobile')?.value,
                 homePhone: gc.phoneNumbers?.find(p => p.type === 'home')?.value,
                 folderId: googleFolder.id,
+                userId: user.uid,
                 notes: `Imported from Google Contacts on ${new Date().toLocaleDateString()}`,
             };
             const newContact = await addContact(newContactData);
             newOgeemoContacts.push(newContact);
             importedCount++;
-        } catch(e) {
-            console.error("Failed to import contact", gc.names?.[0]?.displayName, e);
-        }
+        } catch(e) { console.error("Failed to import contact", gc.names?.[0]?.displayName, e); }
     }
     
     setContacts(prev => [...prev, ...newOgeemoContacts]);
-    toast({
-        title: "Import Complete",
-        description: `Successfully imported ${importedCount} of ${contactsToImport.length} selected contacts.`
-    });
-    
+    toast({ title: "Import Complete", description: `Imported ${importedCount} contacts.` });
     setIsImportDialogOpen(false);
   }
 
-  if (isLoading) {
-    return (
-        <div className="flex h-full w-full items-center justify-center p-4">
-            <div className="flex flex-col items-center gap-4">
-                <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
-                <p className="text-muted-foreground">Loading Contacts...</p>
-            </div>
-        </div>
-    );
-  }
+  if (isLoading) return <div className="flex h-full w-full items-center justify-center p-4"><LoaderCircle className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
-    <div className="flex flex-col h-full">
-      <header className="text-center py-4 sm:py-6 px-4 sm:px-6">
-        <h1 className="text-3xl font-bold font-headline text-primary">
-          Ogeemo Contact Manager
-        </h1>
-        <p className="text-muted-foreground">
-          Manage your contacts and client relationships
-        </p>
-      </header>
-      <div className="flex-1 min-h-0 pb-4 sm:pb-6">
-        <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
-          <ResizablePanel defaultSize={25} minSize={20}>
-            <div className="flex h-full flex-col p-2">
-                <div className="p-2">
-                    <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
-                        <DialogContent className="sm:max-w-[425px]">
-                            <DialogHeader>
-                                <DialogTitle>Create New Folder</DialogTitle>
-                                <DialogDescription>
-                                    Enter a name for your new contact folder.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="py-4">
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="folder-name" className="text-right">
-                                        Name
-                                    </Label>
-                                    <Input
-                                        id="folder-name"
-                                        value={newFolderName}
-                                        onChange={(e) => setNewFolderName(e.target.value)}
-                                        className="col-span-3"
-                                        placeholder="e.g., 'Family'"
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                handleCreateFolder();
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button>
-                                <Button onClick={handleCreateFolder}>Create Folder</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                        <Button className="w-full" onClick={() => setIsNewFolderDialogOpen(true)}>
-                            <Plus className="mr-2 h-4 w-4" /> New Folder
-                        </Button>
-                    </Dialog>
-                </div>
-                <nav className="flex flex-col gap-1 p-2">
-                    <Button
-                        key="all-contacts"
-                        variant={selectedFolderId === 'all' ? "secondary" : "ghost"}
-                        className="w-full justify-start gap-3"
-                        onClick={() => handleFolderSelect('all')}
-                    >
-                        <Users className="h-4 w-4" />
-                        <span>All Contacts</span>
+    <>
+      <div className="flex flex-col h-full">
+        <header className="text-center py-4 sm:py-6 px-4 sm:px-6">
+          <h1 className="text-3xl font-bold font-headline text-primary">Ogeemo Contact Manager</h1>
+          <p className="text-muted-foreground">Manage your contacts and client relationships</p>
+        </header>
+        <div className="flex-1 min-h-0 pb-4 sm:pb-6">
+          <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
+            <ResizablePanel defaultSize={25} minSize={20}>
+              <div className="flex h-full flex-col p-2">
+                  <div className="p-2">
+                    <Button className="w-full" onClick={() => { setFolderToEdit(null); setFolderName(''); setIsNewFolderDialogOpen(true); }}>
+                        <Plus className="mr-2 h-4 w-4" /> New Folder
                     </Button>
-                    {folders.map((folder) => (
-                        <Button
-                            key={folder.id}
-                            variant={selectedFolderId === folder.id ? "secondary" : "ghost"}
-                            className="w-full justify-start gap-3"
-                            onClick={() => handleFolderSelect(folder.id)}
-                        >
-                            <Folder className="h-4 w-4" />
-                            <span>{folder.name}</span>
-                        </Button>
-                    ))}
-                </nav>
-            </div>
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={75}>
-            <div className="flex flex-col h-full">
-                    <>
-                        <div className="flex items-center justify-between p-4 border-b h-20">
-                            {selectedContactIds.length > 0 ? (
-                                <>
-                                    <div>
-                                        <h2 className="text-xl font-bold">{selectedContactIds.length} selected</h2>
-                                    </div>
-                                    <Button variant="destructive" onClick={handleDeleteSelected}>
-                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Selected
-                                    </Button>
-                                </>
-                            ) : (
-                                <>
-                                    <div>
-                                        <h2 className="text-xl font-bold">{selectedFolderId === 'all' ? 'All Contacts' : selectedFolder?.name}</h2>
-                                        <p className="text-sm text-muted-foreground">
-                                            {displayedContacts.length} contact(s)
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Button variant="outline" onClick={handleOpenImportDialog} disabled={!user}>
-                                            <GoogleIcon /> Import from Google
-                                        </Button>
-                                        <Button onClick={handleNewContactClick}>
-                                            <Plus className="mr-2 h-4 w-4" /> New Contact
-                                        </Button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                         <div className="flex-1 overflow-y-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-[50px]">
-                                          <Checkbox
-                                            checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false}
-                                            onCheckedChange={handleToggleSelectAll}
-                                            aria-label="Select all"
-                                          />
-                                        </TableHead>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Email</TableHead>
-                                        <TableHead>Phone</TableHead>
-                                        {selectedFolderId === 'all' && <TableHead>Folder</TableHead>}
-                                        <TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {displayedContacts.map((contact) => {
-                                      const folderName = folders.find(f => f.id === contact.folderId)?.name || 'Unassigned';
-                                      const primaryPhoneNumber =
-                                        contact.primaryPhoneType && contact[contact.primaryPhoneType]
-                                            ? contact[contact.primaryPhoneType]
-                                            : contact.cellPhone || contact.businessPhone || contact.homePhone || contact.faxNumber;
-
-                                      return (
-                                        <TableRow key={contact.id} onClick={() => openContactForm(contact)} className="cursor-pointer">
-                                            <TableCell onClick={(e) => e.stopPropagation()}> 
-                                                <Checkbox 
-                                                    checked={selectedContactIds.includes(contact.id)} 
-                                                    onCheckedChange={() => handleToggleSelect(contact.id)} 
-                                                    aria-label={`Select ${contact.name}`} 
-                                                /> 
-                                            </TableCell>
-                                            <TableCell className="font-medium">{contact.name}</TableCell>
-                                            <TableCell>{contact.email}</TableCell>
-                                            <TableCell>{primaryPhoneNumber}</TableCell>
-                                            {selectedFolderId === 'all' && <TableCell>{folderName}</TableCell>}
-                                            <TableCell onClick={(e) => e.stopPropagation()}>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onSelect={() => openContactForm(contact)}> <Pencil className="mr-2 h-4 w-4" /> Edit </DropdownMenuItem>
-                                                        <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteContact(contact.id)}> <Trash2 className="mr-2 h-4 w-4" /> Delete </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
-                                        </TableRow>
-                                      );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </>
-            </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
+                  </div>
+                  <nav className="flex flex-col gap-1 p-2">
+                      <Button variant={selectedFolderId === 'all' ? "secondary" : "ghost"} className="w-full justify-start gap-3" onClick={() => setSelectedFolderId('all')}>
+                          <Users className="h-4 w-4" /> <span>All Contacts</span>
+                      </Button>
+                      {folders.map((folder) => (
+                          <div key={folder.id} className="group flex items-center gap-1">
+                              <Button variant={selectedFolderId === folder.id ? "secondary" : "ghost"} className="w-full justify-start gap-3 flex-1" onClick={() => setSelectedFolderId(folder.id)}>
+                                  <Folder className="h-4 w-4" /> <span className="truncate">{folder.name}</span>
+                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0"><MoreVertical className="h-4 w-4" /></Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onSelect={() => { setFolderToEdit(folder); setFolderName(folder.name); setIsNewFolderDialogOpen(true); }}><Pencil className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem className="text-destructive" onSelect={() => setFolderToDelete(folder)}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                          </div>
+                      ))}
+                  </nav>
+              </div>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={75}>
+              <div className="flex flex-col h-full">
+                  <div className="flex items-center justify-between p-4 border-b h-20">
+                      {selectedContactIds.length > 0 ? (
+                          <>
+                              <h2 className="text-xl font-bold">{selectedContactIds.length} selected</h2>
+                              <Button variant="destructive" onClick={handleDeleteSelected}><Trash2 className="mr-2 h-4 w-4" /> Delete Selected</Button>
+                          </>
+                      ) : (
+                          <>
+                              <div>
+                                  <h2 className="text-xl font-bold">{selectedFolderId === 'all' ? 'All Contacts' : selectedFolder?.name}</h2>
+                                  <p className="text-sm text-muted-foreground">{displayedContacts.length} contact(s)</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                  <Button variant="outline" onClick={handleOpenImportDialog} disabled={!user}><GoogleIcon /> Import from Google</Button>
+                                  <Button onClick={handleNewContactClick}><Plus className="mr-2 h-4 w-4" /> New Contact</Button>
+                              </div>
+                          </>
+                      )}
+                  </div>
+                   <div className="flex-1 overflow-y-auto">
+                      <Table>
+                          <TableHeader>
+                              <TableRow>
+                                  <TableHead className="w-[50px]"><Checkbox checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false} onCheckedChange={handleToggleSelectAll} /></TableHead>
+                                  <TableHead>Name</TableHead>
+                                  <TableHead>Email</TableHead>
+                                  <TableHead>Phone</TableHead>
+                                  {selectedFolderId === 'all' && <TableHead>Folder</TableHead>}
+                                  <TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead>
+                              </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                              {displayedContacts.map((contact) => {
+                                const folderName = folders.find(f => f.id === contact.folderId)?.name || 'Unassigned';
+                                const primaryPhoneNumber = contact.primaryPhoneType && contact[contact.primaryPhoneType] ? contact[contact.primaryPhoneType] : contact.cellPhone || contact.businessPhone || contact.homePhone;
+                                return (
+                                  <TableRow key={contact.id}>
+                                      <TableCell onClick={(e) => e.stopPropagation()}><Checkbox checked={selectedContactIds.includes(contact.id)} onCheckedChange={() => handleToggleSelect(contact.id)} /></TableCell>
+                                      <TableCell className="font-medium cursor-pointer" onClick={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}>{contact.name}</TableCell>
+                                      <TableCell>{contact.email}</TableCell>
+                                      <TableCell>{primaryPhoneNumber}</TableCell>
+                                      {selectedFolderId === 'all' && <TableCell>{folderName}</TableCell>}
+                                      <TableCell>
+                                          <DropdownMenu>
+                                              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                              <DropdownMenuContent align="end">
+                                                  <DropdownMenuItem onSelect={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}><Pencil className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
+                                                  <DropdownMenuItem className="text-destructive" onSelect={async () => { await deleteContacts([contact.id]); setContacts(prev => prev.filter(c => c.id !== contact.id)); toast({ title: "Contact Deleted" }); }}> <Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                          </DropdownMenu>
+                                      </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                          </TableBody>
+                      </Table>
+                  </div>
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </div>
       </div>
       
-      <Dialog open={isSelectFolderDialogOpen} onOpenChange={setIsSelectFolderDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Folder Required</DialogTitle>
-            <DialogDescription>
-              To create a new contact, you must first select an existing folder or create a new one.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => {
-                setIsSelectFolderDialogOpen(false);
-            }}>
-              Select Folder
-            </Button>
-            <Button onClick={() => {
-                setIsSelectFolderDialogOpen(false);
-                setIsNewFolderDialogOpen(true);
-            }}>
-              Create New Folder
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {isContactFormOpen && (
-          <ContactFormDialog 
-            isOpen={isContactFormOpen}
-            onOpenChange={setIsContactFormOpen}
-            contactToEdit={contactToEdit}
-            selectedFolderId={selectedFolderId}
-            folders={folders}
-            onSave={handleSaveContact}
-          />
-      )}
-      
-      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-          <DialogContent className="sm:max-w-lg h-[80vh] flex flex-col">
-              <DialogHeader>
-                  <DialogTitle>Import Google Contacts</DialogTitle>
-                  <DialogDescription>Select the contacts you want to import into Ogeemo.</DialogDescription>
-              </DialogHeader>
-              {isImportLoading ? (
-                  <div className="flex-1 flex items-center justify-center">
-                      <LoaderCircle className="h-8 w-8 animate-spin" />
-                  </div>
-              ) : (
-                  <ScrollArea className="flex-1 -mx-6 my-4 border-y">
-                      <div className="p-4 space-y-1">
-                          {googleContacts.map(contact => (
-                              <div key={contact.resourceName} className="flex items-center p-2 rounded-md hover:bg-accent space-x-3">
-                                  <Checkbox
-                                      id={contact.resourceName}
-                                      checked={selectedGoogleContacts.includes(contact.resourceName)}
-                                      onCheckedChange={() => handleToggleGoogleContact(contact.resourceName)}
-                                  />
-                                  <Label htmlFor={contact.resourceName} className="flex-1 cursor-pointer">
-                                      <p className="font-semibold">{contact.names?.[0]?.displayName || 'N/A'}</p>
-                                      <p className="text-sm text-muted-foreground">{contact.emailAddresses?.[0]?.value || 'No email'}</p>
-                                  </Label>
-                              </div>
-                          ))}
-                      </div>
-                  </ScrollArea>
-              )}
-              <DialogFooter>
-                  <Button variant="ghost" onClick={() => setIsImportDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={handleImportSelected} disabled={isImportLoading || selectedGoogleContacts.length === 0}>
-                      Import ({selectedGoogleContacts.length})
-                  </Button>
-              </DialogFooter>
+      {/* Dialogs */}
+      {isContactFormOpen && <ContactFormDialog isOpen={isContactFormOpen} onOpenChange={setIsContactFormOpen} contactToEdit={contactToEdit} selectedFolderId={selectedFolderId} folders={folders} onSave={handleSaveContact} />}
+
+      <Dialog open={isNewFolderDialogOpen} onOpenChange={(open) => { if(!open) { setFolderToEdit(null); setFolderName(''); } setIsNewFolderDialogOpen(open); }}>
+          <DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>{folderToEdit ? 'Rename Folder' : 'Create New Folder'}</DialogTitle></DialogHeader>
+          <div className="py-4"><Label htmlFor="folder-name">Name</Label><Input id="folder-name" value={folderName} onChange={(e) => setFolderName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleFolderDialogSubmit(); }} /></div>
+          <DialogFooter><Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button><Button onClick={handleFolderDialogSubmit}>{folderToEdit ? 'Save Changes' : 'Create'}</Button></DialogFooter>
           </DialogContent>
       </Dialog>
-
-    </div>
+      
+      <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
+          <DialogContent><DialogHeader><DialogTitle>Authentication Required</DialogTitle><DialogDescription>To import contacts, you need to connect your Google account and grant permission. Please go to the Google Integration page to sign in.</DialogDescription></DialogHeader><DialogFooter><Button onClick={() => {setIsAuthDialogOpen(false); router.push('/google');}}>Go to Google Integration</Button></DialogFooter></DialogContent>
+      </Dialog>
+      
+      <Dialog open={folderToDelete !== null} onOpenChange={() => setFolderToDelete(null)}>
+          <DialogContent><DialogHeader><DialogTitle>Delete Folder</DialogTitle><DialogDescription>Are you sure you want to delete the "{folderToDelete?.name}" folder and all contacts within it? This action cannot be undone.</DialogDescription></DialogHeader><DialogFooter><Button variant="ghost" onClick={() => setFolderToDelete(null)}>Cancel</Button><Button variant="destructive" onClick={handleDeleteFolder}>Delete</Button></DialogFooter></DialogContent>
+      </Dialog>
+      
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+          <DialogContent className="sm:max-w-lg h-[80vh] flex flex-col"><DialogHeader><DialogTitle>Import Google Contacts</DialogTitle><DialogDescription>Select contacts to import into a "Google Contacts" folder.</DialogDescription></DialogHeader>
+          {isImportLoading ? <div className="flex-1 flex items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin" /></div> : <ScrollArea className="flex-1 -mx-6 my-4 border-y"><div className="p-4 space-y-1">{googleContacts.map(contact => (<div key={contact.resourceName} className="flex items-center p-2 rounded-md hover:bg-accent space-x-3"><Checkbox id={contact.resourceName} checked={selectedGoogleContacts.includes(contact.resourceName)} onCheckedChange={() => setSelectedGoogleContacts(p => p.includes(contact.resourceName) ? p.filter(rn => rn !== contact.resourceName) : [...p, contact.resourceName])} /><Label htmlFor={contact.resourceName} className="flex-1 cursor-pointer"><p className="font-semibold">{contact.names?.[0]?.displayName || 'N/A'}</p><p className="text-sm text-muted-foreground">{contact.emailAddresses?.[0]?.value || 'No email'}</p></Label></div>))}</div></ScrollArea>}
+          <DialogFooter><Button variant="ghost" onClick={() => setIsImportDialogOpen(false)}>Cancel</Button><Button onClick={handleImportSelected} disabled={isImportLoading || selectedGoogleContacts.length === 0}>Import ({selectedGoogleContacts.length})</Button></DialogFooter>
+          </DialogContent>
+      </Dialog>
+    </>
   );
 }

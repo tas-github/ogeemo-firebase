@@ -66,6 +66,7 @@ export function ContactsSkeleton() {
                     </div>
                     <div className="flex items-center gap-2">
                         <Skeleton className="h-10 w-36" />
+                        <Skeleton className="h-10 w-32" />
                     </div>
                 </div>
                  <div className="flex-1 overflow-y-auto">
@@ -83,7 +84,7 @@ export function ContactsSkeleton() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {Array.from({ length: 6 }).map((_, i) => (
+                            {Array.from({ length: 8 }).map((_, i) => (
                                 <TableRow key={i}>
                                     <TableCell> <Checkbox disabled /> </TableCell>
                                     <TableCell><Skeleton className="h-4 w-32" /></TableCell>

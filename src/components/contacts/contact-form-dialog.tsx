@@ -24,7 +24,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { useToast } from '@/hooks/use-toast';
 import { type Contact, type FolderData } from '@/data/contacts';
-import { addContact, updateContact } from '@/services/contact-service';
 
 const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -45,7 +44,7 @@ interface ContactFormDialogProps {
     contactToEdit: Contact | null;
     selectedFolderId: string;
     folders: FolderData[];
-    onSave: (contact: Contact) => void;
+    onSave: (contact: Contact | Omit<Contact, 'id'>, isEditing: boolean) => void;
 }
 
 export default function ContactFormDialog({
@@ -74,18 +73,13 @@ export default function ContactFormDialog({
     const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
         onTranscript: (transcript) => {
             const newText = notesBeforeSpeech ? `${notesBeforeSpeech} ${transcript}`.trim() : transcript;
-            if (notesRef.current) {
-                notesRef.current.value = newText;
-            }
+            form.setValue('notes', newText, { shouldValidate: true });
         },
     });
 
     const handleDictateNotes = () => {
         if (isListening) {
             stopListening();
-            if (notesRef.current) {
-                form.setValue('notes', notesRef.current.value);
-            }
         } else {
             setNotesBeforeSpeech(form.getValues('notes') || '');
             form.setFocus('notes');
@@ -97,9 +91,7 @@ export default function ContactFormDialog({
         try {
             if (contactToEdit) {
                 const updatedContact = { ...contactToEdit, ...values };
-                await updateContact(contactToEdit.id, values);
-                onSave(updatedContact);
-                toast({ title: "Contact Updated", description: `Details for ${values.name} have been updated.` });
+                onSave(updatedContact, true);
             } else {
                 if (selectedFolderId === 'all') {
                     toast({ variant: "destructive", title: "Cannot Add Contact", description: "Please select a specific folder before adding a new contact." });
@@ -109,9 +101,7 @@ export default function ContactFormDialog({
                     ...values,
                     folderId: selectedFolderId
                 };
-                const newContact = await addContact(newContactData);
-                onSave(newContact);
-                toast({ title: "Contact Created", description: `${values.name} has been added.` });
+                onSave(newContactData, false);
             }
             onOpenChange(false);
         } catch (error: any) {
@@ -214,15 +204,7 @@ export default function ContactFormDialog({
                                                 className="resize-none pr-10"
                                                 rows={5}
                                                 {...field}
-                                                ref={(e) => {
-                                                    field.ref(e);
-                                                    (notesRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = e;
-                                                }}
-                                                onChange={(e) => {
-                                                    if (!isListening) {
-                                                        field.onChange(e);
-                                                    }
-                                                }}
+                                                ref={notesRef}
                                             /></FormControl>
                                             <Button type="button" variant={isListening ? 'destructive' : 'ghost'} size="icon" className="absolute bottom-2 right-2 h-8 w-8" onClick={handleDictateNotes} disabled={isSupported === false} title={isSupported === false ? "Voice not supported" : (isListening ? "Stop dictation" : "Dictate notes")}>
                                                 {isListening ? <Square className="h-4 w-4 animate-pulse" /> : <Mic className="h-4 w-4" />}
