@@ -77,20 +77,9 @@ export function GoogleIntegrationView() {
       });
       return;
     }
-    try {
-      await signInWithRedirect(auth, provider);
-    } catch (error: any) {
-      if (error.code === 'auth/unauthorized-domain') {
-        setUnauthorizedDomain(window.location.hostname);
-      } else {
-        console.error("Sign-in initiation failed:", error);
-        toast({
-          variant: "destructive",
-          title: "Authentication Error",
-          description: error.message || "An unknown error occurred during sign-in.",
-        });
-      }
-    }
+    // With redirects, we don't need a try/catch here.
+    // The error will be caught in the useEffect hook when the page reloads.
+    await signInWithRedirect(auth, provider);
   };
 
   const handleSignOut = async () => {
