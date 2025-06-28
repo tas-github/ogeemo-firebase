@@ -22,10 +22,10 @@ export function EventManagerView() {
     },
     {
       icon: BookOpen,
-      title: "View Logged Events",
-      description: "Review, search, and export your complete history of logged events for all clients.",
+      title: "View Client Event Log",
+      description: "Review, search, and export your complete history of all client events.",
       href: "/event-manager/logged-events",
-      cta: "View History",
+      cta: "View Event Log",
     },
   ];
 
