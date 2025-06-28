@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Clock, Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Settings as SettingsIcon, Play, Pause, Square, Save } from 'lucide-react';
+import { Clock, Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Settings as SettingsIcon, Play, Pause, Square, Save, RotateCcw } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { type Contact, mockContacts } from "@/data/contacts";
 import { Separator } from '@/components/ui/separator';
@@ -19,7 +19,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Checkbox } from '../ui/checkbox';
 
@@ -33,16 +32,6 @@ interface EventEntry {
   endTime: Date;
   duration: number; // in seconds
   billableRate: number;
-}
-
-interface StoredTimerState {
-  contactId: string;
-  subject: string;
-  detailsHtml?: string;
-  billableRate: number;
-  isPaused: boolean;
-  elapsedTime: number; // elapsed seconds *before* the last active period started
-  lastTickTimestamp: number; // when the timer was last running
 }
 
 const formatTime = (totalSeconds: number) => {
@@ -59,70 +48,14 @@ export function CreateEventView() {
   const [subject, setSubject] = useState("");
   
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [isActive, setIsActive] = useState(false);
-  const [isPaused, setIsPaused] = useState(true);
+  const [isActive, setIsActive] = useState(false); // Timer has been started and not stopped/reset
+  const [isPaused, setIsPaused] = useState(true);  // Timer is paused
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const [editorContent, setEditorContent] = useState('');
-  
-  const isTyping = useRef(false);
-
-  const saveStateToLocalStorage = useCallback(() => {
-    if (!selectedContactId || !isActive) return;
-    const state: StoredTimerState = {
-        contactId: selectedContactId,
-        subject,
-        detailsHtml: editorRef.current?.innerHTML || '',
-        billableRate,
-        isPaused,
-        elapsedTime,
-        lastTickTimestamp: Date.now()
-    };
-    localStorage.setItem('activeTimerState', JSON.stringify(state));
-  }, [isPaused, isActive, selectedContactId, subject, billableRate, elapsedTime]);
-
-  const clearStateFromLocalStorage = useCallback(() => {
-    localStorage.removeItem('activeTimerState');
-  }, []);
-
-  // Load state from local storage on initial mount
-  useEffect(() => {
-    const savedStateRaw = localStorage.getItem('activeTimerState');
-    if (savedStateRaw) {
-      try {
-        const state: StoredTimerState = JSON.parse(savedStateRaw);
-        setSelectedContactId(state.contactId);
-        setSubject(state.subject);
-        setEditorContent(state.detailsHtml || "");
-        setBillableRate(state.billableRate);
-        setIsActive(true);
-        setIsPaused(state.isPaused);
-        
-        let totalElapsed = state.elapsedTime;
-        if (!state.isPaused) {
-          const now = Date.now();
-          const elapsedSinceLastTick = Math.floor((now - state.lastTickTimestamp) / 1000);
-          totalElapsed += elapsedSinceLastTick;
-        }
-        setElapsedTime(totalElapsed);
-      } catch (error) {
-        console.error("Failed to parse timer state:", error);
-        clearStateFromLocalStorage();
-      }
-    }
-  }, [clearStateFromLocalStorage]);
-
-  // Sync editor content only when component mounts or content changes externally
-  useEffect(() => {
-    if (editorRef.current && !isTyping.current && editorRef.current.innerHTML !== editorContent) {
-      editorRef.current.innerHTML = editorContent;
-    }
-  }, [editorContent]);
-  
   // Timer interval effect
   useEffect(() => {
     if (isActive && !isPaused) {
@@ -138,48 +71,36 @@ export function CreateEventView() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [isActive, isPaused]);
-
+  
   const handleStart = () => {
+    setElapsedTime(0);
     setIsActive(true);
     setIsPaused(false);
-    setElapsedTime(0);
   };
-
+  
   const handlePauseResume = () => {
+      if (!isActive) return;
       setIsPaused(!isPaused);
   };
-  
-  const handleStopAndReset = () => {
-    setIsActive(false);
-    setIsPaused(true);
-    setElapsedTime(0);
-    clearStateFromLocalStorage();
-    toast({ title: "Timer Reset", description: "The timer has been stopped and reset." });
-  }
 
-  // Save state to local storage when paused or active state changes
-  useEffect(() => {
-      if(isActive) {
-        saveStateToLocalStorage();
-      }
-  }, [isPaused, isActive, saveStateToLocalStorage]);
+  const handleStop = () => {
+    setIsPaused(true);
+  }
   
-  const resetFormAndTimer = useCallback(() => {
+  const handleReset = () => {
     setIsActive(false);
     setIsPaused(true);
     setElapsedTime(0);
-    setSubject("");
-    setEditorContent("");
-    setSelectedContactId(null);
-    setIsBillable(false);
-    setBillableRate(100);
-    clearStateFromLocalStorage();
-  }, [clearStateFromLocalStorage]);
+  }
 
   const handleLogEvent = () => {
     try {
         if (!selectedContactId) {
             toast({ variant: "destructive", title: "Cannot Log Event", description: "No client is selected." });
+            return;
+        }
+        if (elapsedTime === 0) {
+            toast({ variant: "destructive", title: "Cannot Log Event", description: "The timer has not been run." });
             return;
         }
     
@@ -208,9 +129,15 @@ export function CreateEventView() {
         const updatedEntries = [newEntry, ...existingEntries];
         localStorage.setItem('eventEntries', JSON.stringify(updatedEntries));
         
-        resetFormAndTimer();
-        toast({ title: "Event Logged", description: `Logged ${formatTime(elapsedTime)} for ${contact.name}.` });
-        setIsSettingsDialogOpen(false);
+        // Reset form and timer
+        handleReset();
+        setSubject("");
+        if (editorRef.current) editorRef.current.innerHTML = "";
+        setSelectedContactId(null);
+        setIsBillable(false);
+        setBillableRate(100);
+
+        toast({ title: "Event Logged", description: `Logged ${formatTime(newEntry.duration)} for ${contact.name}.` });
     } catch (error) {
         console.error("Error logging event:", error);
         toast({
@@ -218,8 +145,6 @@ export function CreateEventView() {
             title: "Error Logging Event",
             description: "Could not save the event. Please check the console for details."
         });
-        resetFormAndTimer();
-        setIsSettingsDialogOpen(false);
     }
   };
   
@@ -268,9 +193,9 @@ export function CreateEventView() {
                         Settings
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-xl">
                     <DialogHeader>
-                        <DialogTitle>Event Settings</DialogTitle>
+                        <DialogTitle>Event Settings & Timer</DialogTitle>
                         <DialogDescription>
                             Configure billing options and track time for this event.
                         </DialogDescription>
@@ -283,7 +208,7 @@ export function CreateEventView() {
                             </div>
                             {isBillable && (
                                 <div className="flex items-center gap-2 pl-6">
-                                    <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
+                                    <Label htmlFor="billable-rate" className="whitespace-nowrap">Billable Rate ($/hr)</Label>
                                     <Input
                                         id="billable-rate"
                                         type="number"
@@ -303,30 +228,16 @@ export function CreateEventView() {
                                     {formatTime(elapsedTime)}
                                 </p>
                             </div>
-                            <div className="flex justify-center gap-4">
-                                {!isActive ? (
-                                    <Button onClick={handleStart} className="w-full">
-                                        <Play className="mr-2 h-5 w-5" /> Start
-                                    </Button>
-                                ) : (
-                                    <>
-                                        <Button onClick={handlePauseResume} variant="outline" className="flex-1">
-                                            {isPaused ? <Play className="mr-2 h-5 w-5" /> : <Pause className="mr-2 h-5 w-5" />}
-                                            {isPaused ? 'Resume' : 'Pause'}
-                                        </Button>
-                                        <Button onClick={handleStopAndReset} variant="destructive" className="flex-1">
-                                            <Square className="mr-2 h-5 w-5" /> Reset
-                                        </Button>
-                                    </>
-                                )}
+                            <div className="grid grid-cols-2 gap-4">
+                               <Button onClick={handleStart} disabled={isActive}><Play className="mr-2 h-5 w-5" /> Start</Button>
+                               <Button onClick={handlePauseResume} variant="outline" disabled={!isActive}>{isPaused ? <Play className="mr-2 h-5 w-5" /> : <Pause className="mr-2 h-5 w-5" />}{isPaused && isActive ? 'Resume' : 'Pause'}</Button>
+                               <Button onClick={handleStop} variant="destructive" disabled={!isActive}><Square className="mr-2 h-5 w-5" /> Stop</Button>
+                               <Button onClick={handleReset} variant="destructive-outline" disabled={elapsedTime === 0 && !isActive}><RotateCcw className="mr-2 h-5 w-5" /> Reset</Button>
                             </div>
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setIsSettingsDialogOpen(false)}>Close</Button>
-                         <Button onClick={handleLogEvent} disabled={elapsedTime === 0}>
-                            <Save className="mr-2 h-4 w-4" /> Save to Log
-                        </Button>
                     </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -349,6 +260,9 @@ export function CreateEventView() {
             <CardHeader className="flex flex-row items-baseline gap-4 p-4">
               <h3 className="text-lg font-semibold">Description</h3>
               <p className="text-sm text-muted-foreground">Describe event actions performed</p>
+               <div className="ml-auto">
+                  <Button onClick={handleLogEvent}><Save className="mr-2 h-4 w-4"/> Save to Log</Button>
+              </div>
             </CardHeader>
             <CardContent className="flex flex-col p-0">
                 <div className="p-2 border-t border-b flex items-center gap-1 flex-wrap">
@@ -364,17 +278,7 @@ export function CreateEventView() {
                     className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full min-h-[250px] text-left"
                     dir="ltr"
                     contentEditable
-                    onFocus={() => isTyping.current = true}
-                    onBlur={(e) => {
-                        isTyping.current = false;
-                        if(editorRef.current?.innerHTML !== e.currentTarget.innerHTML) {
-                            setEditorContent(e.currentTarget.innerHTML);
-                        }
-                    }}
-                    onInput={(e) => {
-                        if (!isTyping.current) return;
-                        setEditorContent(e.currentTarget.innerHTML);
-                    }}
+                    onInput={(e) => {}}
                     placeholder="Start writing your event details here..."
                 />
             </CardContent>
