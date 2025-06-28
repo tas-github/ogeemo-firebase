@@ -1,11 +1,9 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
 import {
   signInWithPopup,
   signOut,
-  onAuthStateChanged,
   GoogleAuthProvider,
 } from "firebase/auth";
 import { auth, provider } from "@/lib/firebase";
@@ -23,24 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 
 export function GoogleIntegrationView() {
-  const { user, accessToken, setAuthInfo } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, accessToken, setAuthInfo, isLoading } = useAuth();
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (!auth) {
-      setIsLoading(false);
-      return;
-    }
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      // Set the Firebase user on load, but reset the API token.
-      // A new token is only acquired through an explicit sign-in.
-      setAuthInfo(currentUser, null);
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [setAuthInfo]);
 
   const handleSignIn = async () => {
     if (!auth || !provider) {
@@ -142,7 +124,7 @@ export function GoogleIntegrationView() {
               </div>
               {!accessToken && (
                  <p className="text-center text-sm text-muted-foreground">
-                    Your account is connected, but to use API features like downloading to Drive, you need to re-authenticate to get a fresh API token.
+                    Your account is connected, but to use API features like importing contacts, you need to re-authenticate to get a fresh API token.
                 </p>
               )}
               <Button onClick={accessToken ? handleSignOut : handleSignIn} variant={accessToken ? "destructive" : "default"}>
