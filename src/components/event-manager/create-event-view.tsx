@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -226,14 +227,10 @@ export function CreateEventView() {
 
           <Card className="max-w-4xl mx-auto">
             <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle>Event Details</CardTitle>
-                  <CardDescription>Select client, subject, and rate to start tracking an event.</CardDescription>
-                </div>
-              </div>
+              <CardTitle>Event Details</CardTitle>
+              <CardDescription>Select a client and their billable rate to start tracking an event.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent>
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="client-select">Client</Label>
@@ -259,16 +256,6 @@ export function CreateEventView() {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="subject">Subject</Label>
-                <Input
-                  id="subject"
-                  placeholder="Enter a subject..."
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  disabled={isActive}
-                />
-              </div>
             </CardContent>
             <CardFooter className="flex justify-start gap-4">
                 <Button onClick={() => setIsTimerDialogOpen(true)}>
@@ -282,6 +269,24 @@ export function CreateEventView() {
                   </Link>
                 </Button>
             </CardFooter>
+          </Card>
+          
+          <Card className="max-w-4xl mx-auto">
+            <CardHeader>
+              <CardTitle>Subject</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <Label htmlFor="subject" className="sr-only">Subject</Label>
+                <Input
+                  id="subject"
+                  placeholder="Enter a subject for the event..."
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  disabled={isActive}
+                />
+              </div>
+            </CardContent>
           </Card>
 
           <Card className="max-w-4xl mx-auto">
