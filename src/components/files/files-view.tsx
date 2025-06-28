@@ -86,6 +86,7 @@ function FilesViewContent() {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
+  const [filesToDelete, setFilesToDelete] = useState<FileItem[] | null>(null);
   const [renamingFolder, setRenamingFolder] = useState<FolderItem | null>(null);
   const [renameInputValue, setRenameInputValue] = useState("");
   const [isDownloading, setIsDownloading] = useState(false);
@@ -194,21 +195,27 @@ function FilesViewContent() {
     }
   };
   
-  const handleDeleteSelected = async () => {
-    const filesToDelete = files.filter(file => selectedFileIds.includes(file.id));
+  const handleInitiateDelete = (filesToDelete: FileItem[]) => {
     if (filesToDelete.length === 0) return;
+    setFilesToDelete(filesToDelete);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!filesToDelete) return;
     try {
-        await deleteFiles(filesToDelete);
-        setFiles(prevFiles => prevFiles.filter(file => !selectedFileIds.includes(file.id)));
-        toast({
-            title: `${selectedFileIds.length} file(s) deleted`,
-            description: 'The selected files have been removed.',
-        });
-        setSelectedFileIds([]);
+      await deleteFiles(filesToDelete);
+      const deletedIds = filesToDelete.map(f => f.id);
+      setFiles(prevFiles => prevFiles.filter(file => !deletedIds.includes(file.id)));
+      setSelectedFileIds(prev => prev.filter(id => !deletedIds.includes(id)));
+      toast({
+        title: `${filesToDelete.length} file(s) deleted`,
+        description: 'The selected files have been removed.',
+      });
     } catch (error: any) {
-        console.error("Failed to delete files:", error);
-        toast({ variant: "destructive", title: "Deletion Failed", description: error.message });
+      console.error("Failed to delete files:", error);
+      toast({ variant: "destructive", title: "Deletion Failed", description: error.message });
+    } finally {
+      setFilesToDelete(null);
     }
   };
 
@@ -286,42 +293,42 @@ function FilesViewContent() {
     }
   };
 
-  const handleDownload = async () => {
-    if (selectedFileIds.length === 0) return;
+  const handleDownload = async (filesToDownload: FileItem[]) => {
+    if (filesToDownload.length === 0) return;
     setIsDownloading(true);
     try {
-      for (const fileId of selectedFileIds) {
-        const fileToDownload = files.find((f) => f.id === fileId);
-        if (!fileToDownload) continue;
-
+      for (const file of filesToDownload) {
+        if (!file.storagePath) continue;
         const response = await fetch('/api/download', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            storagePath: fileToDownload.storagePath,
-            fileName: fileToDownload.name,
+            storagePath: file.storagePath,
+            fileName: file.name,
           }),
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Download failed: ${errorText}`);
+          const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred' }));
+          throw new Error(`Download failed: ${errorData.message}`);
         }
 
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = fileToDownload.name;
+        a.download = file.name;
         document.body.appendChild(a);
         a.click();
         a.remove();
         window.URL.revokeObjectURL(url);
       }
-      toast({
-        title: 'Download Started',
-        description: `Your file(s) are being downloaded.`,
-      });
+      if (filesToDownload.length > 0) {
+        toast({
+          title: 'Download Started',
+          description: `Your file(s) are being downloaded.`,
+        });
+      }
     } catch (error) {
       console.error("Download failed:", error);
       toast({
@@ -574,6 +581,25 @@ function FilesViewContent() {
               </AlertDialogFooter>
           </AlertDialogContent>
       </AlertDialog>
+      <AlertDialog open={!!filesToDelete} onOpenChange={(open) => !open && setFilesToDelete(null)}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      This action will permanently delete {filesToDelete?.length} file(s). This action cannot be undone.
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={handleConfirmDelete}
+                  >
+                      Delete
+                  </AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
       <div className="flex flex-col h-full p-4 sm:p-6 space-y-6">
         <header className="text-center">
           <h1 className="text-3xl font-bold font-headline text-primary">
@@ -613,7 +639,7 @@ function FilesViewContent() {
                             {selectedFileIds.length > 0 ? (
                                 <>
                                     <Button
-                                      onClick={handleDownload}
+                                      onClick={() => handleDownload(files.filter(f => selectedFileIds.includes(f.id)))}
                                       disabled={isDownloading}
                                     >
                                       {isDownloading ? (
@@ -623,7 +649,7 @@ function FilesViewContent() {
                                       )}
                                       Download
                                     </Button>
-                                    <Button variant="destructive" onClick={handleDeleteSelected}>
+                                    <Button variant="destructive" onClick={() => handleInitiateDelete(files.filter(f => selectedFileIds.includes(f.id)))}>
                                         <Trash2 className="mr-2 h-4 w-4" />
                                         Delete
                                     </Button>
@@ -660,6 +686,7 @@ function FilesViewContent() {
                                         <TableHead>Type</TableHead>
                                         <TableHead>Size</TableHead>
                                         <TableHead>Modified</TableHead>
+                                        <TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -680,11 +707,31 @@ function FilesViewContent() {
                                                 <TableCell>{file.type}</TableCell>
                                                 <TableCell>{(file.size / 1024).toFixed(2)} KB</TableCell>
                                                 <TableCell>{format(file.modifiedAt, 'PPp')}</TableCell>
+                                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                <span className="sr-only">Open menu for {file.name}</span>
+                                                                <MoreVertical className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onSelect={() => handleDownload([file])}>
+                                                                <Download className="mr-2 h-4 w-4" />
+                                                                <span>Download</span>
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => handleInitiateDelete([file])} className="text-destructive focus:text-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                <span>Delete</span>
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
                                             </DraggableTableRow>
                                         ))
                                     ) : (
                                         <TableRow>
-                                            <TableCell colSpan={5} className="h-24 text-center">
+                                            <TableCell colSpan={6} className="h-24 text-center">
                                                 This folder is empty.
                                             </TableCell>
                                         </TableRow>
