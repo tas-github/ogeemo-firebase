@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -60,7 +60,6 @@ export function CreateEventView() {
 
   const [editorContent, setEditorContent] = useState('');
   
-  // This ref helps prevent React from overwriting the editor's content while typing.
   const isTyping = useRef(false);
 
   const saveStateToLocalStorage = useCallback(() => {
@@ -316,6 +315,7 @@ export function CreateEventView() {
                         onFocus={() => isTyping.current = true}
                         onBlur={() => isTyping.current = false}
                         placeholder="Start writing your event details here..."
+                        dir="ltr"
                     />
                 </ScrollArea>
             </CardContent>
