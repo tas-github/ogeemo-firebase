@@ -19,6 +19,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Checkbox } from '../ui/checkbox';
 
@@ -73,6 +74,10 @@ export function CreateEventView() {
   }, [isActive, isPaused]);
   
   const handleStart = () => {
+    if (!selectedContactId) {
+        toast({ variant: "destructive", title: "Cannot Start Timer", description: "A client must be selected first." });
+        return;
+    }
     setElapsedTime(0);
     setIsActive(true);
     setIsPaused(false);
@@ -85,6 +90,9 @@ export function CreateEventView() {
 
   const handleStop = () => {
     setIsPaused(true);
+    // The "Save to Log" button is now the explicit action to log the time.
+    // This button just stops the clock.
+    toast({ title: "Timer Stopped", description: `Final time: ${formatTime(elapsedTime)}` });
   }
   
   const handleReset = () => {
@@ -99,8 +107,8 @@ export function CreateEventView() {
             toast({ variant: "destructive", title: "Cannot Log Event", description: "No client is selected." });
             return;
         }
-        if (elapsedTime === 0) {
-            toast({ variant: "destructive", title: "Cannot Log Event", description: "The timer has not been run." });
+        if (elapsedTime === 0 && !isActive) {
+            toast({ variant: "destructive", title: "Cannot Log Event", description: "The timer has not been run for this event." });
             return;
         }
     
@@ -129,7 +137,6 @@ export function CreateEventView() {
         const updatedEntries = [newEntry, ...existingEntries];
         localStorage.setItem('eventEntries', JSON.stringify(updatedEntries));
         
-        // Reset form and timer
         handleReset();
         setSubject("");
         if (editorRef.current) editorRef.current.innerHTML = "";
@@ -201,7 +208,8 @@ export function CreateEventView() {
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-6">
-                        <div className="space-y-4">
+                        <div className="space-y-4 p-4 border rounded-lg">
+                            <h4 className="font-semibold">Billing</h4>
                             <div className="flex items-center space-x-2">
                                 <Checkbox id="is-billable" checked={isBillable} onCheckedChange={(checked) => setIsBillable(!!checked)} />
                                 <Label htmlFor="is-billable">This event is billable</Label>
@@ -220,17 +228,16 @@ export function CreateEventView() {
                                 </div>
                             )}
                         </div>
-                        <Separator />
-                        <div>
-                            <Label>Time Clock</Label>
+                        <div className="space-y-4 p-4 border rounded-lg">
+                            <h4 className="font-semibold">Time Clock</h4>
                             <div className="py-8 text-center">
                                 <p className="text-6xl font-mono font-bold text-primary tracking-tight">
                                     {formatTime(elapsedTime)}
                                 </p>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                <Button onClick={handleStart} disabled={isActive}><Play className="mr-2 h-5 w-5" /> Start</Button>
-                               <Button onClick={handlePauseResume} variant="outline" disabled={!isActive}>{isPaused ? <Play className="mr-2 h-5 w-5" /> : <Pause className="mr-2 h-5 w-5" />}{isPaused && isActive ? 'Resume' : 'Pause'}</Button>
+                               <Button onClick={handlePauseResume} variant="outline" disabled={!isActive}>{isPaused && isActive ? <Play className="mr-2 h-5 w-5" /> : <Pause className="mr-2 h-5 w-5" />}{isPaused && isActive ? 'Resume' : 'Pause'}</Button>
                                <Button onClick={handleStop} variant="destructive" disabled={!isActive}><Square className="mr-2 h-5 w-5" /> Stop</Button>
                                <Button onClick={handleReset} variant="destructive-outline" disabled={elapsedTime === 0 && !isActive}><RotateCcw className="mr-2 h-5 w-5" /> Reset</Button>
                             </div>
