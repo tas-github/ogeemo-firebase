@@ -282,14 +282,15 @@ export function CreateEventView() {
                                 <Label htmlFor="is-billable">This event is billable</Label>
                             </div>
                             {isBillable && (
-                                <div className="space-y-2 pl-6">
+                                <div className="flex items-center gap-2 pl-6">
                                     <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
                                     <Input
                                         id="billable-rate"
                                         type="number"
                                         value={billableRate}
                                         onChange={(e) => setBillableRate(Number(e.target.value))}
-                                        placeholder="e.g. 100"
+                                        placeholder="100"
+                                        className="w-24"
                                     />
                                 </div>
                             )}
