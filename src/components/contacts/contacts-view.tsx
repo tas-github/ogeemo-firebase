@@ -88,7 +88,11 @@ function GoogleIcon() {
 
 const ItemTypes = {
   CONTACT: 'contact',
+  FOLDER: 'folder',
 };
+
+type DroppableItem = (Contact & { type?: 'contact' }) | (FolderData & { type: 'folder' });
+
 
 function ContactsViewContent() {
   const [folders, setFolders] = useState<FolderData[]>([]);
@@ -372,6 +376,32 @@ function ContactsViewContent() {
     }
   };
 
+  const handleFolderDrop = async (folder: FolderData, newParentId: string | null) => {
+    if (folder.id === newParentId) return; // Can't drop on self
+    if (folder.parentId === newParentId) return; // Already in the target folder
+
+    // Prevent dropping a folder into one of its own descendants
+    let currentParentId = newParentId;
+    while(currentParentId) {
+        if (currentParentId === folder.id) {
+            toast({ variant: "destructive", title: "Invalid Move", description: "You cannot move a folder into one of its own subfolders." });
+            return;
+        }
+        const parent = folders.find(f => f.id === currentParentId);
+        currentParentId = parent?.parentId || null;
+    }
+
+    try {
+        await updateFolder(folder.id, { parentId: newParentId });
+        setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, parentId: newParentId } : f));
+        const parentFolder = folders.find(f => f.id === newParentId);
+        toast({ title: "Folder Moved", description: `"${folder.name}" moved to "${parentFolder?.name || 'Root'}".` });
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Move Failed", description: error.message });
+    }
+  };
+
+
   if (isLoading) return <div className="flex h-full w-full items-center justify-center p-4"><LoaderCircle className="h-10 w-10 animate-spin text-primary" /></div>;
 
   const FolderTree = ({ parentId = null, level = 0 }: { parentId?: string | null; level?: number }) => {
@@ -389,19 +419,33 @@ function ContactsViewContent() {
           const isExpanded = expandedFolders.has(folder.id);
           const isRenaming = renamingFolder?.id === folder.id;
 
+          const [{ isDragging }, drag, dragPreview] = useDrag(() => ({
+            type: ItemTypes.FOLDER,
+            item: { ...folder, type: ItemTypes.FOLDER },
+            collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+          }));
+
           const [{ canDrop, isOver }, drop] = useDrop(() => ({
-            accept: ItemTypes.CONTACT,
-            drop: (item: Contact) => handleContactDrop(item, folder.id),
+            accept: [ItemTypes.CONTACT, ItemTypes.FOLDER],
+            drop: (item: DroppableItem) => {
+              if (item.type === ItemTypes.FOLDER) {
+                handleFolderDrop(item, folder.id);
+              } else {
+                handleContactDrop(item, folder.id);
+              }
+            },
             collect: (monitor) => ({ isOver: monitor.isOver(), canDrop: monitor.canDrop() }),
           }));
 
           return (
-            <div key={folder.id} className="my-1 rounded-md" ref={drop}>
+            <div key={folder.id} className="my-1 rounded-md" ref={dragPreview}>
               <div
+                ref={node => drag(drop(node))}
                 className={cn(
                   "flex items-center gap-1 rounded-md pr-1 group",
                   isRenaming ? 'bg-background' : 'hover:bg-accent',
-                  (isOver && canDrop) && 'bg-primary/20 ring-1 ring-primary'
+                  (isOver && canDrop) && 'bg-primary/20 ring-1 ring-primary',
+                  isDragging && 'opacity-50'
                 )}
                 style={{ backgroundColor: selectedFolderId === folder.id && !isRenaming ? 'hsl(var(--accent))' : 'transparent' }}
               >
@@ -455,6 +499,16 @@ function ContactsViewContent() {
     );
   };
 
+  const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
+      accept: ItemTypes.FOLDER,
+      drop: (item: FolderData) => handleFolderDrop(item, null),
+      collect: (monitor) => ({
+          isOverRoot: monitor.isOver(),
+          canDropToRoot: monitor.canDrop(),
+      }),
+  }));
+
+
   return (
     <>
       <div className="flex flex-col h-full">
@@ -471,7 +525,7 @@ function ContactsViewContent() {
                         <Plus className="mr-2 h-4 w-4" /> New Folder
                     </Button>
                   </div>
-                  <ScrollArea className="flex-1">
+                  <ScrollArea ref={dropToRoot} className={cn("flex-1 rounded-md", isOverRoot && canDropToRoot && 'bg-primary/10 ring-1 ring-primary-foreground')}>
                     <nav className="flex flex-col gap-1 p-2">
                         <Button variant={selectedFolderId === 'all' ? "secondary" : "ghost"} className="w-full justify-start gap-3" onClick={() => setSelectedFolderId('all')}>
                             <Users className="h-4 w-4" /> <span>All Contacts</span>
