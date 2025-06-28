@@ -401,6 +401,28 @@ function ContactsViewContent() {
     }
   };
 
+  const DraggableTableRow = ({ contact, children }: { contact: Contact, children: React.ReactNode }) => {
+    const [{ isDragging }, drag] = useDrag(() => ({
+        type: ItemTypes.CONTACT,
+        item: contact,
+        collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+    }));
+    return (
+      <TableRow ref={drag} className={cn("cursor-pointer", isDragging && "opacity-50")} onClick={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}>
+        {children}
+      </TableRow>
+    );
+  };
+
+  const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
+      accept: ItemTypes.FOLDER,
+      drop: (item: FolderData) => handleFolderDrop(item, null),
+      collect: (monitor) => ({
+          isOverRoot: monitor.isOver(),
+          canDropToRoot: monitor.canDrop(),
+      }),
+  }));
+
   const FolderTree = ({ parentId = null, level = 0 }: { parentId?: string | null; level?: number }) => {
     const children = folders.filter(f => f.parentId === parentId).sort((a,b) => a.name.localeCompare(b.name));
     
@@ -482,30 +504,11 @@ function ContactsViewContent() {
       </div>
     );
   };
-  
-  const DraggableTableRow = ({ contact, children }: { contact: Contact, children: React.ReactNode }) => {
-    const [{ isDragging }, drag] = useDrag(() => ({
-        type: ItemTypes.CONTACT,
-        item: contact,
-        collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-    }));
-    return (
-      <TableRow ref={drag} className={cn("cursor-pointer", isDragging && "opacity-50")} onClick={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}>
-        {children}
-      </TableRow>
-    );
-  };
 
-  const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
-      accept: ItemTypes.FOLDER,
-      drop: (item: FolderData) => handleFolderDrop(item, null),
-      collect: (monitor) => ({
-          isOverRoot: monitor.isOver(),
-          canDropToRoot: monitor.canDrop(),
-      }),
-  }));
-
-  if (isLoading) return <div className="flex h-full w-full items-center justify-center p-4"><LoaderCircle className="h-10 w-10 animate-spin text-primary" /></div>;
+  // The isLoading check is moved here, after all hooks have been defined.
+  if (isLoading) {
+    return <div className="flex h-full w-full items-center justify-center p-4"><LoaderCircle className="h-10 w-10 animate-spin text-primary" /></div>;
+  }
 
   return (
     <>
