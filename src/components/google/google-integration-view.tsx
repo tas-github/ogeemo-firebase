@@ -67,7 +67,7 @@ export function GoogleIntegrationView() {
     if (!auth || !provider) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: "Firebase Not Configured",
         description: "Firebase is not configured correctly. Please check your setup.",
       });
       return;
@@ -76,11 +76,20 @@ export function GoogleIntegrationView() {
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
       console.error("Sign-in initiation failed:", error);
-      toast({
-        variant: "destructive",
-        title: "Authentication Error",
-        description: `Could not initiate sign-in. This is likely an 'auth/unauthorized-domain' error. Please add your app's current domain to the Firebase Console's list of authorized domains to proceed. Error: ${error.code}`,
-      });
+      if (error.code === 'auth/unauthorized-domain') {
+        toast({
+          variant: "destructive",
+          title: "Authentication Domain Error",
+          description: `This app's domain is not authorized. Please add the exact domain from your browser's address bar to the Firebase Console's list of authorized domains.`,
+          duration: 10000,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Authentication Error",
+          description: error.message || "An unknown error occurred during sign-in.",
+        });
+      }
     }
   };
 
