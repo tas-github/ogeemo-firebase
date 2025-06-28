@@ -683,7 +683,7 @@ function ContactsViewContent() {
           <DialogHeader>
             <DialogTitle>Action Required</DialogTitle>
             <DialogDescription>
-              Click the contact's checkbox and select an action to take from the Ogeemo Menu.
+              Select menu option for this contact.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
