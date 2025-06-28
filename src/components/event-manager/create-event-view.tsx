@@ -263,12 +263,12 @@ export function CreateEventView() {
               </div>
               <Dialog open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="outline">
+                    <Button variant="outline" className="bg-orange-500 hover:bg-orange-600 text-white">
                         <SettingsIcon className="mr-2 h-4 w-4" />
                         Settings
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>Event Settings</DialogTitle>
                         <DialogDescription>
@@ -297,8 +297,8 @@ export function CreateEventView() {
                         <Separator />
                         <div>
                             <Label>Time Clock</Label>
-                            <div className="py-6 text-center">
-                                <p className="text-5xl font-mono font-bold text-primary tracking-tight">
+                            <div className="py-8 text-center">
+                                <p className="text-6xl font-mono font-bold text-primary tracking-tight">
                                     {formatTime(elapsedTime)}
                                 </p>
                             </div>
@@ -314,7 +314,7 @@ export function CreateEventView() {
                                             {isPaused ? 'Resume' : 'Pause'}
                                         </Button>
                                         <Button onClick={handleStopAndReset} variant="destructive" className="flex-1">
-                                            <Square className="mr-2 h-5 w-5" /> Stop & Reset
+                                            <Square className="mr-2 h-5 w-5" /> Reset
                                         </Button>
                                     </>
                                 )}
@@ -322,7 +322,10 @@ export function CreateEventView() {
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button onClick={() => setIsSettingsDialogOpen(false)}>Done</Button>
+                        <Button variant="ghost" onClick={() => setIsSettingsDialogOpen(false)}>Close</Button>
+                         <Button onClick={handleLogEvent} disabled={elapsedTime === 0}>
+                            <Save className="mr-2 h-4 w-4" /> Save to Log
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
               </Dialog>
@@ -347,10 +350,6 @@ export function CreateEventView() {
                 <h3 className="text-lg font-semibold">Description</h3>
                 <p className="text-sm text-muted-foreground">Describe event actions performed</p>
               </div>
-              <Button onClick={handleLogEvent}>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save to Log
-              </Button>
             </CardHeader>
             <CardContent className="flex flex-col p-0">
                 <div className="p-2 border-t border-b flex items-center gap-1 flex-wrap">
