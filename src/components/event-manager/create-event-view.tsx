@@ -1,9 +1,9 @@
 
-"use client";
+'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,11 @@ export function CreateEventView() {
   const editorRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  const [editorContent, setEditorContent] = useState('');
+  
+  // This ref helps prevent React from overwriting the editor's content while typing.
+  const isTyping = useRef(false);
+
   const saveStateToLocalStorage = useCallback(() => {
     if (!selectedContactId) return;
     const state: StoredTimerState = {
@@ -84,9 +89,7 @@ export function CreateEventView() {
         const state: StoredTimerState = JSON.parse(savedStateRaw);
         setSelectedContactId(state.contactId);
         setSubject(state.subject);
-        if (editorRef.current) {
-            editorRef.current.innerHTML = state.detailsHtml || "";
-        }
+        setEditorContent(state.detailsHtml || "");
         setBillableRate(state.billableRate);
         setIsActive(true);
         setIsPaused(state.isPaused);
@@ -104,6 +107,13 @@ export function CreateEventView() {
       }
     }
   }, [clearStateFromLocalStorage]);
+
+  // Sync editor content only when component mounts or content changes externally
+  useEffect(() => {
+    if (editorRef.current && !isTyping.current && editorRef.current.innerHTML !== editorContent) {
+      editorRef.current.innerHTML = editorContent;
+    }
+  }, [editorContent]);
   
   // Timer interval effect
   useEffect(() => {
@@ -182,7 +192,7 @@ export function CreateEventView() {
         setIsPaused(false);
         setElapsedTime(0);
         setSubject("");
-        if(editorRef.current) editorRef.current.innerHTML = "";
+        setEditorContent("");
         setSelectedContactId(null);
         clearStateFromLocalStorage();
 
@@ -272,20 +282,15 @@ export function CreateEventView() {
           </Card>
           
           <Card className="max-w-4xl mx-auto">
-            <CardHeader>
-              <CardTitle>Subject</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Label htmlFor="subject" className="sr-only">Subject</Label>
-                <Input
-                  id="subject"
-                  placeholder="Enter a subject for the event..."
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  disabled={isActive}
-                />
-              </div>
+            <CardContent className="p-4 flex items-center gap-4">
+              <Label htmlFor="subject" className="text-sm font-semibold whitespace-nowrap">Subject</Label>
+              <Input
+                id="subject"
+                placeholder="Enter a subject for the event..."
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                disabled={isActive}
+              />
             </CardContent>
           </Card>
 
@@ -306,10 +311,11 @@ export function CreateEventView() {
                 <ScrollArea className="flex-1 min-h-[250px]">
                     <div
                         ref={editorRef}
-                        className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full text-left"
+                        className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full"
                         contentEditable
+                        onFocus={() => isTyping.current = true}
+                        onBlur={() => isTyping.current = false}
                         placeholder="Start writing your event details here..."
-                        dir="ltr"
                     />
                 </ScrollArea>
             </CardContent>
