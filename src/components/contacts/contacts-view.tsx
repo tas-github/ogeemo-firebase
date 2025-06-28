@@ -401,9 +401,6 @@ function ContactsViewContent() {
     }
   };
 
-
-  if (isLoading) return <div className="flex h-full w-full items-center justify-center p-4"><LoaderCircle className="h-10 w-10 animate-spin text-primary" /></div>;
-
   const FolderTree = ({ parentId = null, level = 0 }: { parentId?: string | null; level?: number }) => {
     const children = folders.filter(f => f.parentId === parentId).sort((a,b) => a.name.localeCompare(b.name));
     
@@ -508,6 +505,7 @@ function ContactsViewContent() {
       }),
   }));
 
+  if (isLoading) return <div className="flex h-full w-full items-center justify-center p-4"><LoaderCircle className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
     <>
