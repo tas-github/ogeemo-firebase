@@ -156,40 +156,59 @@ export function EventManagerView() {
   };
 
   const handleStop = () => {
-    if (!selectedContactId) return;
-
-    const contact = mockContacts.find(c => c.id === selectedContactId);
-    if (!contact) return;
+    try {
+        if (!selectedContactId) {
+            toast({ variant: "destructive", title: "Cannot Log Event", description: "No client is selected." });
+            return;
+        }
     
-    const currentEditorContent = editorRef.current?.innerHTML || detailsHtml;
+        const contact = mockContacts.find(c => c.id === selectedContactId);
+        if (!contact) {
+            toast({ variant: "destructive", title: "Cannot Log Event", description: "Selected client could not be found." });
+            return;
+        }
+        
+        const currentEditorContent = editorRef.current?.innerHTML || detailsHtml;
 
-    const newEntry: EventEntry = {
-      id: `entry-${Date.now()}`,
-      contactId,
-      contactName: contact.name,
-      subject: subject,
-      detailsHtml: currentEditorContent,
-      startTime: new Date(Date.now() - elapsedTime * 1000),
-      endTime: new Date(),
-      duration: elapsedTime,
-      billableRate,
-    };
-    
-    const existingEntriesRaw = localStorage.getItem('eventEntries');
-    const existingEntries = existingEntriesRaw ? JSON.parse(existingEntriesRaw) : [];
-    const updatedEntries = [newEntry, ...existingEntries];
-    localStorage.setItem('eventEntries', JSON.stringify(updatedEntries));
-    
-    setIsActive(false);
-    setIsPaused(false);
-    setElapsedTime(0);
-    setSubject("");
-    setDetailsHtml("");
-    if (editorRef.current) editorRef.current.innerHTML = "";
-    setSelectedContactId(null);
-    clearStateFromLocalStorage();
+        const newEntry: EventEntry = {
+            id: `entry-${Date.now()}`,
+            contactId,
+            contactName: contact.name,
+            subject: subject,
+            detailsHtml: currentEditorContent,
+            startTime: new Date(Date.now() - elapsedTime * 1000),
+            endTime: new Date(),
+            duration: elapsedTime,
+            billableRate,
+        };
+        
+        const existingEntriesRaw = localStorage.getItem('eventEntries');
+        const existingEntries = existingEntriesRaw ? JSON.parse(existingEntriesRaw) : [];
+        const updatedEntries = [newEntry, ...existingEntries];
+        localStorage.setItem('eventEntries', JSON.stringify(updatedEntries));
+        
+        setIsActive(false);
+        setIsPaused(false);
+        setElapsedTime(0);
+        setSubject("");
+        setDetailsHtml("");
+        if (editorRef.current) editorRef.current.innerHTML = "";
+        setSelectedContactId(null);
+        clearStateFromLocalStorage();
 
-    toast({ title: "Event Logged", description: `Logged ${formatTime(elapsedTime)} for ${contact.name}.` });
+        toast({ title: "Event Logged", description: `Logged ${formatTime(elapsedTime)} for ${contact.name}.` });
+    } catch (error) {
+        console.error("Error logging event:", error);
+        toast({
+            variant: "destructive",
+            title: "Error Logging Event",
+            description: "Could not save the event. Please check the console for details."
+        });
+        // Also reset state on error to avoid being stuck
+        setIsActive(false);
+        setIsPaused(false);
+        clearStateFromLocalStorage();
+    }
   };
   
   const handleFormat = (command: string, value?: string) => {
