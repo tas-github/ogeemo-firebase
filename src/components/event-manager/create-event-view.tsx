@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,6 @@ import { Clock, BookOpen, Bold, Italic, Underline, List, ListOrdered, ArrowLeft 
 import { useToast } from "@/hooks/use-toast";
 import { type Contact, mockContacts } from "@/data/contacts";
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '../ui/scroll-area';
 import { TimerDialog } from './timer-dialog';
 
 interface EventEntry {
@@ -221,17 +220,17 @@ export function CreateEventView() {
   return (
     <>
       <div className="p-4 sm:p-6 space-y-6">
-          <header className="flex items-center justify-between">
-              <div>
-                  <h1 className="text-3xl font-bold font-headline text-primary">Create Event</h1>
-                  <p className="text-muted-foreground">Select a client, track time, and describe the event.</p>
+          <header className="relative text-center">
+              <div className="absolute left-0 top-1/2 -translate-y-1/2">
+                <Button asChild>
+                    <Link href="/event-manager">
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Event Hub
+                    </Link>
+                </Button>
               </div>
-              <Button asChild>
-                  <Link href="/event-manager">
-                      <ArrowLeft className="mr-2 h-4 w-4" />
-                      Back to Event Hub
-                  </Link>
-              </Button>
+              <h1 className="text-3xl font-bold font-headline text-primary">Create Event</h1>
+              <p className="text-muted-foreground">Select a client, track time, and describe the event.</p>
           </header>
 
           <Card className="max-w-4xl mx-auto">
@@ -274,7 +273,7 @@ export function CreateEventView() {
                 <Button asChild variant="secondary">
                   <Link href="/event-manager/logged-events">
                       <BookOpen className="mr-2 h-4 w-4"/>
-                      View Events
+                      View Client Event Log
                   </Link>
                 </Button>
             </CardFooter>
@@ -307,17 +306,19 @@ export function CreateEventView() {
                     <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
                 </div>
-                <ScrollArea className="flex-1 min-h-[250px]">
-                    <div
-                        ref={editorRef}
-                        className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full"
-                        contentEditable
-                        onFocus={() => isTyping.current = true}
-                        onBlur={() => isTyping.current = false}
-                        placeholder="Start writing your event details here..."
-                        dir="ltr"
-                    />
-                </ScrollArea>
+                <div
+                    ref={editorRef}
+                    className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full min-h-[250px]"
+                    contentEditable
+                    onFocus={() => isTyping.current = true}
+                    onBlur={(e) => {
+                        isTyping.current = false;
+                        if(editorRef.current?.innerHTML !== e.currentTarget.innerHTML) {
+                            setEditorContent(e.currentTarget.innerHTML);
+                        }
+                    }}
+                    placeholder="Start writing your event details here..."
+                />
             </CardContent>
           </Card>
       </div>
