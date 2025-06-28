@@ -296,19 +296,28 @@ function FilesViewContent() {
             if (!fileToDownload) continue;
 
             const url = await getFileDownloadUrl(fileToDownload.storagePath);
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch file: ${response.statusText}`);
+            }
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            
             const link = document.createElement('a');
-            link.href = url;
+            link.href = blobUrl;
             link.setAttribute('download', fileToDownload.name);
             document.body.appendChild(link);
             link.click();
+            
             document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
         }
         toast({
             title: 'Download Started',
             description: `Your file(s) are being downloaded.`,
         });
     } catch (error) {
-        console.error(error);
+        console.error("Download failed:", error);
         toast({
             variant: 'destructive',
             title: 'Download Failed',
