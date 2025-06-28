@@ -322,7 +322,7 @@ export function CreateEventView() {
               <ScrollArea className="flex-1 min-h-[250px]">
                   <div
                       ref={editorRef}
-                      className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full"
+                      className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full text-left"
                       contentEditable={!isActive}
                       onInput={(e) => setDetailsHtml(e.currentTarget.innerHTML)}
                       dangerouslySetInnerHTML={{ __html: detailsHtml }}
