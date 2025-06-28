@@ -72,9 +72,17 @@ export function GoogleIntegrationView() {
       });
       return;
     }
-    // The redirect will navigate away from the page, so we don't need to handle success/error here.
-    // The useEffect hook will handle the result when the user is redirected back.
-    await signInWithRedirect(auth, provider);
+    // We wrap this in a try/catch to handle errors like 'auth/unauthorized-domain'.
+    try {
+      await signInWithRedirect(auth, provider);
+    } catch (error: any) {
+      console.error("Sign-in initiation failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: `Could not initiate sign-in. Please ensure your domain is authorized in the Firebase console. Error: ${error.code}`,
+      });
+    }
   };
 
   const handleSignOut = async () => {
