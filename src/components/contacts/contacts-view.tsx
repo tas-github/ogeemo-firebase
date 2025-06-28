@@ -129,6 +129,15 @@ function ContactsViewContent() {
   const { user, accessToken } = useAuth();
   const router = useRouter();
   
+  const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
+      accept: ItemTypes.FOLDER,
+      drop: (item: FolderData) => handleFolderDrop(item, null),
+      collect: (monitor) => ({
+          isOverRoot: monitor.isOver(),
+          canDropToRoot: monitor.canDrop(),
+      }),
+  }));
+
   useEffect(() => {
     try {
       const hideInstructions = localStorage.getItem('hideGoogleImportInstructions') === 'true';
@@ -205,15 +214,6 @@ function ContactsViewContent() {
       </div>
     );
   }
-  
-  const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
-      accept: ItemTypes.FOLDER,
-      drop: (item: FolderData) => handleFolderDrop(item, null),
-      collect: (monitor) => ({
-          isOverRoot: monitor.isOver(),
-          canDropToRoot: monitor.canDrop(),
-      }),
-  }));
   
   const handleToggleSelect = (contactId: string) => {
     setSelectedContactIds((prev) =>
