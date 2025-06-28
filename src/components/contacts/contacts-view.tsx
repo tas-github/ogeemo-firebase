@@ -14,7 +14,6 @@ import {
   Pencil,
   Users,
   LoaderCircle,
-  DownloadCloud,
   ChevronRight,
   FolderPlus
 } from 'lucide-react';
@@ -67,6 +66,15 @@ const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-fo
   ),
 });
 
+const GoogleImportInstructionsDialog = dynamic(() => import('@/components/contacts/google-import-instructions-dialog'), {
+  loading: () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <LoaderCircle className="h-10 w-10 animate-spin text-white" />
+    </div>
+  ),
+});
+
+
 function GoogleIcon() {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-4 w-4 mr-2">
@@ -105,10 +113,23 @@ function ContactsViewContent() {
   const [folderToDelete, setFolderToDelete] = useState<FolderData | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
+  const [showGoogleInstructions, setShowGoogleInstructions] = useState(true);
+  const [isInstructionsDialogOpen, setIsInstructionsDialogOpen] = useState(false);
+
   const { toast } = useToast();
   const { user, accessToken } = useAuth();
   const router = useRouter();
 
+  useEffect(() => {
+    try {
+      const hideInstructions = localStorage.getItem('hideGoogleImportInstructions') === 'true';
+      if (hideInstructions) {
+        setShowGoogleInstructions(false);
+      }
+    } catch (error) {
+      console.error("Could not read from localStorage", error);
+    }
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -260,8 +281,8 @@ function ContactsViewContent() {
       handleCancelRename();
     }
   };
-  
-  const handleOpenImportDialog = async () => {
+
+  const startGoogleImportFlow = async () => {
     if (!accessToken) {
         setIsAuthDialogOpen(true);
         return;
@@ -282,6 +303,27 @@ function ContactsViewContent() {
     }
   };
   
+  const handleOpenImportDialog = () => {
+    if (showGoogleInstructions) {
+        setIsInstructionsDialogOpen(true);
+    } else {
+        startGoogleImportFlow();
+    }
+  };
+  
+  const handleProceedFromInstructions = (dontShowAgain: boolean) => {
+    if (dontShowAgain) {
+        try {
+            localStorage.setItem('hideGoogleImportInstructions', 'true');
+            setShowGoogleInstructions(false);
+        } catch (error) {
+            console.error("Could not write to localStorage", error);
+        }
+    }
+    setIsInstructionsDialogOpen(false);
+    startGoogleImportFlow();
+  };
+
   const handleImportSelected = async () => {
     if (!user) return;
     let googleFolder = folders.find(f => f.name === "Google Contacts");
@@ -535,6 +577,14 @@ function ContactsViewContent() {
           <DialogFooter><Button variant="ghost" onClick={() => setIsImportDialogOpen(false)}>Cancel</Button><Button onClick={handleImportSelected} disabled={isImportLoading || selectedGoogleContacts.length === 0}>Import ({selectedGoogleContacts.length})</Button></DialogFooter>
           </DialogContent>
       </Dialog>
+      
+      {isInstructionsDialogOpen && (
+        <GoogleImportInstructionsDialog
+          isOpen={isInstructionsDialogOpen}
+          onOpenChange={setIsInstructionsDialogOpen}
+          onProceed={handleProceedFromInstructions}
+        />
+      )}
     </>
   );
 }
