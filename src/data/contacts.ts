@@ -10,20 +10,26 @@ export interface Contact {
   primaryPhoneType?: 'businessPhone' | 'cellPhone' | 'homePhone';
   folderId: string;
   notes?: string;
+  userId: string;
 }
 
 export interface FolderData {
   id: string;
   name: string;
+  userId: string;
 }
 
-export const mockFolders: Readonly<FolderData[]> = [
+// NOTE: Mock data below is for demonstration in other components
+// and is NOT used by the main Contacts Manager view.
+// A 'userId' of 'mock-user' is used as a placeholder.
+
+export const mockFolders: Readonly<Omit<FolderData, 'userId'>[]> = [
   { id: '1', name: 'Personal' },
   { id: '2', name: 'Work' },
   { id: '3', name: 'Leads' },
 ];
 
-export const mockContacts: Readonly<Contact[]> = [
+export const mockContacts: Readonly<Omit<Contact, 'userId'>[]> = [
   { id: 'c1', name: 'Alice Johnson', email: 'alice@example.com', cellPhone: '123-456-7890', primaryPhoneType: 'cellPhone', folderId: '1', notes: 'Met at the 2023 conference. Interested in our enterprise package.' },
   { id: 'c2', name: 'Bob Williams', email: 'bob@example.com', homePhone: '234-567-8901', primaryPhoneType: 'homePhone', folderId: '1', notes: 'Long-time personal friend.' },
   { id: 'c3', name: 'Charlie Brown', email: 'charlie@work.com', businessPhone: '345-678-9012', primaryPhoneType: 'businessPhone', folderId: '2', notes: 'Key contact for Project Phoenix.' },
