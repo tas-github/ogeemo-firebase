@@ -47,7 +47,6 @@ export function CreateEventView() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [billableRate, setBillableRate] = useState<number>(100);
   const [subject, setSubject] = useState("");
-  const [detailsHtml, setDetailsHtml] = useState("");
   
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isActive, setIsActive] = useState(false);
@@ -57,22 +56,25 @@ export function CreateEventView() {
   const editorRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // This effect synchronizes the detailsHtml state (for external changes) to the editor.
-  useEffect(() => {
-      if (editorRef.current && editorRef.current.innerHTML !== detailsHtml) {
-          editorRef.current.innerHTML = detailsHtml;
-      }
-  }, [detailsHtml]);
-
-
-  const saveStateToLocalStorage = useCallback((state: StoredTimerState) => {
+  const saveStateToLocalStorage = useCallback(() => {
+    if (!isActive || !selectedContactId) return;
+    const state: StoredTimerState = {
+        contactId: selectedContactId,
+        subject,
+        detailsHtml: editorRef.current?.innerHTML || '',
+        billableRate,
+        isPaused,
+        elapsedTime,
+        lastTickTimestamp: Date.now()
+    };
     localStorage.setItem('activeTimerState', JSON.stringify(state));
-  }, []);
+  }, [isActive, isPaused, selectedContactId, subject, billableRate, elapsedTime]);
 
   const clearStateFromLocalStorage = useCallback(() => {
     localStorage.removeItem('activeTimerState');
   }, []);
 
+  // Load state from local storage on initial mount
   useEffect(() => {
     const savedStateRaw = localStorage.getItem('activeTimerState');
     if (savedStateRaw) {
@@ -80,7 +82,9 @@ export function CreateEventView() {
         const state: StoredTimerState = JSON.parse(savedStateRaw);
         setSelectedContactId(state.contactId);
         setSubject(state.subject);
-        setDetailsHtml(state.detailsHtml || ""); // This will trigger the useEffect to update the editor
+        if (editorRef.current) {
+            editorRef.current.innerHTML = state.detailsHtml || "";
+        }
         setBillableRate(state.billableRate);
         setIsActive(true);
         setIsPaused(state.isPaused);
@@ -99,6 +103,7 @@ export function CreateEventView() {
     }
   }, [clearStateFromLocalStorage]);
   
+  // Timer interval effect
   useEffect(() => {
     if (isActive && !isPaused) {
       intervalRef.current = setInterval(() => {
@@ -126,40 +131,18 @@ export function CreateEventView() {
     setIsActive(true);
     setIsPaused(false);
     setElapsedTime(0);
-    
-    const currentEditorContent = editorRef.current?.innerHTML || '';
-
-    const state: StoredTimerState = {
-        contactId: selectedContactId,
-        subject: subject,
-        detailsHtml: currentEditorContent,
-        billableRate,
-        isPaused: false,
-        elapsedTime: 0,
-        lastTickTimestamp: Date.now()
-    };
-    saveStateToLocalStorage(state);
   };
 
   const handlePauseResume = () => {
-      const wasPaused = isPaused;
-      setIsPaused(!wasPaused);
-
-      const savedStateRaw = localStorage.getItem('activeTimerState');
-      if(savedStateRaw) {
-          try {
-              const state: StoredTimerState = JSON.parse(savedStateRaw);
-              state.isPaused = !wasPaused;
-              if (wasPaused) { 
-                  state.lastTickTimestamp = Date.now();
-              } else { 
-                  state.elapsedTime = elapsedTime;
-              }
-              state.detailsHtml = editorRef.current?.innerHTML || ''; // Get latest content
-              saveStateToLocalStorage(state);
-          } catch(e) { console.error(e) }
-      }
+      setIsPaused(!isPaused);
   };
+
+  // Save state to local storage when paused
+  useEffect(() => {
+      if(isActive) {
+        saveStateToLocalStorage();
+      }
+  }, [isPaused, saveStateToLocalStorage, isActive]);
 
   const handleSaveEvent = () => {
     try {
@@ -197,7 +180,7 @@ export function CreateEventView() {
         setIsPaused(false);
         setElapsedTime(0);
         setSubject("");
-        setDetailsHtml(""); // This will clear the editor via the useEffect
+        if(editorRef.current) editorRef.current.innerHTML = "";
         setSelectedContactId(null);
         clearStateFromLocalStorage();
 
@@ -209,7 +192,6 @@ export function CreateEventView() {
             title: "Error Logging Event",
             description: "Could not save the event. Please check the console for details."
         });
-        // Also reset state on error to avoid being stuck
         setIsActive(false);
         setIsPaused(false);
         clearStateFromLocalStorage();
@@ -226,8 +208,7 @@ export function CreateEventView() {
   const currentBillableAmount = isActive ? (elapsedTime / 3600) * billableRate : 0;
 
   return (
-    <>
-      <div className="p-4 sm:p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
         <header className="flex items-center justify-between">
             <div>
                 <h1 className="text-3xl font-bold font-headline text-primary">Create Event</h1>
@@ -298,26 +279,30 @@ export function CreateEventView() {
               />
             </div>
           </CardContent>
-          <CardFooter className="flex justify-center">
-            <div className="flex items-center gap-2">
-                {!isActive ? (
-                    <Button onClick={handleStart} size="lg">
-                        <Play className="mr-2 h-4 w-4" />
-                        Create Event
-                    </Button>
-                ) : (
-                    <>
-                    <Button onClick={handlePauseResume} variant="outline">
-                        {isPaused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
-                        {isPaused ? 'Resume' : 'Pause'}
-                    </Button>
-                    <Button onClick={handleSaveEvent} variant="destructive">
-                        <StopIcon className="mr-2 h-4 w-4" />
-                        Save Event
-                    </Button>
-                    </>
-                )}
-            </div>
+          <CardFooter className="flex justify-center gap-4">
+              {!isActive ? (
+                  <Button onClick={handleStart} size="lg">
+                      <Play className="mr-2 h-4 w-4" />
+                      Create Event
+                  </Button>
+              ) : (
+                  <>
+                  <Button onClick={handlePauseResume} variant="outline">
+                      {isPaused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
+                      {isPaused ? 'Resume' : 'Pause'}
+                  </Button>
+                  <Button onClick={handleSaveEvent} variant="destructive">
+                      <StopIcon className="mr-2 h-4 w-4" />
+                      Save Event
+                  </Button>
+                  </>
+              )}
+              <Button asChild variant="secondary">
+                <Link href="/event-manager/logged-events">
+                    <BookOpen className="mr-2 h-4 w-4"/>
+                    View Events
+                </Link>
+              </Button>
           </CardFooter>
         </Card>
 
@@ -339,14 +324,12 @@ export function CreateEventView() {
                   <div
                       ref={editorRef}
                       className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full text-left"
-                      contentEditable={!isActive}
+                      contentEditable
                       placeholder="Start writing your event details here..."
                   />
               </ScrollArea>
           </CardContent>
         </Card>
-      </div>
-    </>
+    </div>
   );
 }
-
