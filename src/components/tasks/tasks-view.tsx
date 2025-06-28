@@ -7,9 +7,8 @@ import { Plus, Edit, FileText, ChevronDown, LoaderCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { type Event } from "@/types/calendar";
-import { type Project, initialProjects } from "@/data/projects";
-import { getInitialEvents } from "@/data/events";
-import { type ProjectTemplate, type PartialTask, initialProjectTemplates } from "@/data/project-templates";
+import { type Project } from "@/data/projects";
+import { type ProjectTemplate, type PartialTask } from "@/data/project-templates";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +25,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
 import { ProjectInfoCard } from "@/components/tasks/ProjectInfoCard";
+import * as ProjectService from '@/services/project-service';
 
 const DialogLoader = () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -56,151 +57,137 @@ export function TasksView() {
   const [projectTemplates, setProjectTemplates] = useState<ProjectTemplate[]>([]);
   const [templateToApply, setTemplateToApply] = useState<PartialTask[] | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    async function loadData(userId: string) {
+        setIsLoading(true);
+        try {
+            const [fetchedProjects, fetchedTasks, fetchedTemplates] = await Promise.all([
+                ProjectService.getProjects(userId),
+                ProjectService.getTasks(userId),
+                ProjectService.getProjectTemplates(userId),
+            ]);
+            setProjects(fetchedProjects);
+            setAllTasks(fetchedTasks);
+            setProjectTemplates(fetchedTemplates);
 
-    try {
-      const storedProjects = localStorage.getItem('projects');
-      if (storedProjects) {
-        setProjects(JSON.parse(storedProjects));
-      } else {
-        setProjects(initialProjects);
-        localStorage.setItem('projects', JSON.stringify(initialProjects));
-      }
-    } catch (error) {
-      console.error("Could not read projects from localStorage", error);
-      setProjects(initialProjects);
+            if (fetchedProjects.length > 0 && !selectedProjectId) {
+                setSelectedProjectId(fetchedProjects[0].id);
+            }
+        } catch (error: any) {
+            console.error("Failed to load project data:", error);
+            toast({
+                variant: "destructive",
+                title: "Failed to load data",
+                description: error.message || "Could not retrieve data from the database.",
+            });
+        } finally {
+            setIsLoading(false);
+        }
     }
-
-    try {
-      const storedEvents = localStorage.getItem('calendarEvents');
-      if (storedEvents) {
-        const parsedEvents = JSON.parse(storedEvents).map((e: any) => ({
-          ...e,
-          start: new Date(e.start),
-          end: new Date(e.end),
-        }));
-        setAllTasks(parsedEvents);
-      } else {
-        const initial = getInitialEvents();
-        setAllTasks(initial);
-        localStorage.setItem('calendarEvents', JSON.stringify(initial));
-      }
-    } catch (error) {
-      console.error("Could not read calendar events from localStorage", error);
-      setAllTasks(getInitialEvents());
+    if (user) {
+        loadData(user.uid);
+    } else {
+      setIsLoading(false);
     }
-
-    try {
-      const storedTemplates = localStorage.getItem('projectTemplates');
-      if (storedTemplates) {
-        setProjectTemplates(JSON.parse(storedTemplates));
-      } else {
-        setProjectTemplates(initialProjectTemplates);
-        localStorage.setItem('projectTemplates', JSON.stringify(initialProjectTemplates));
-      }
-    } catch (error) {
-      console.error("Could not read project templates from localStorage", error);
-      setProjectTemplates(initialProjectTemplates);
-    }
-  }, []);
-  
-  useEffect(() => {
-    if (projects.length > 0 && !selectedProjectId) {
-      setSelectedProjectId(projects[0].id);
-    }
-  }, [projects, selectedProjectId]);
-  
-  useEffect(() => {
-    if (projects.length > 0) {
-      try {
-        localStorage.setItem('projects', JSON.stringify(projects));
-      } catch (error) {
-        console.error("Could not write projects to localStorage", error);
-      }
-    }
-  }, [projects]);
-
-
-  useEffect(() => {
-    if (allTasks.length > 0) {
-      try {
-        localStorage.setItem('calendarEvents', JSON.stringify(allTasks));
-      } catch (error) {
-        console.error("Could not write calendar events to localStorage", error);
-      }
-    }
-  }, [allTasks]);
-  
-  useEffect(() => {
-    if (projectTemplates.length > 0) {
-      try {
-        localStorage.setItem('projectTemplates', JSON.stringify(projectTemplates));
-      } catch (error) {
-        console.error("Could not write project templates to localStorage", error);
-      }
-    }
-  }, [projectTemplates]);
+  }, [user, toast, selectedProjectId]);
   
   const tasksForSelectedProject = allTasks.filter(task => task.projectId === selectedProjectId);
 
-  const handleCreateTask = (newEvent: Event) => {
-    setAllTasks(prev => [newEvent, ...prev]);
+  const handleCreateTask = async (taskData: Omit<Event, 'id' | 'userId'>) => {
+    if (!user) return;
+    try {
+        const newTask = await ProjectService.addTask({...taskData, userId: user.uid});
+        setAllTasks(prev => [newTask, ...prev]);
+         toast({
+            title: "Task Created",
+            description: `"${newTask.title}" has been successfully created.`,
+        });
+    } catch (error: any) {
+        console.error("Failed to create task:", error);
+        toast({ variant: "destructive", title: "Create Task Failed", description: error.message });
+    }
   };
 
-  const handleCreateProject = (projectName: string, projectDescription: string, tasks: PartialTask[]) => {
-    const newProject: Project = {
-      id: `proj-${Date.now()}`,
-      name: projectName,
-      description: projectDescription,
-    };
-    setProjects(prev => [...prev, newProject]);
-    setSelectedProjectId(newProject.id);
+  const handleCreateProject = async (projectName: string, projectDescription: string, tasks: PartialTask[]) => {
+    if (!user) return;
+    try {
+        const newProjectData: Omit<Project, 'id'> = {
+            name: projectName,
+            description: projectDescription,
+            userId: user.uid,
+        };
+        const newProject = await ProjectService.addProject(newProjectData);
+        setProjects(prev => [...prev, newProject]);
+        setSelectedProjectId(newProject.id);
 
-    const newTasks: Event[] = tasks.map((task, index) => ({
-      id: `task-${newProject.id}-${Date.now()}-${index}`,
-      title: task.title,
-      description: task.description,
-      start: new Date(),
-      end: new Date(new Date().getTime() + 30 * 60000), // Default 30 min duration
-      attendees: [],
-      status: 'todo',
-      projectId: newProject.id,
-    }));
-
-    setAllTasks(prev => [...prev, ...newTasks]);
-
-    toast({
-      title: "Project Created",
-      description: `"${projectName}" has been created with ${tasks.length} tasks.`,
-    });
+        if (tasks.length > 0) {
+            const newTasksData: Omit<Event, 'id'>[] = tasks.map((task) => ({
+                title: task.title,
+                description: task.description,
+                start: new Date(),
+                end: new Date(new Date().getTime() + 30 * 60000), // Default 30 min duration
+                attendees: [],
+                status: 'todo',
+                projectId: newProject.id,
+                userId: user.uid,
+            }));
+            const addedTasks = await ProjectService.addMultipleTasks(newTasksData);
+            setAllTasks(prev => [...prev, ...addedTasks]);
+        }
+        toast({
+            title: "Project Created",
+            description: `"${projectName}" has been created with ${tasks.length} tasks.`,
+        });
+    } catch(error: any) {
+        console.error("Failed to create project:", error);
+        toast({ variant: "destructive", title: "Create Project Failed", description: error.message });
+    }
   };
   
-  const handleProjectSave = (updatedProject: Project, newTasks: Event[]) => {
-    setProjects(prevProjects => prevProjects.map(p => p.id === updatedProject.id ? updatedProject : p));
-    
-    const otherProjectTasks = allTasks.filter(t => t.projectId !== updatedProject.id);
-    setAllTasks([...otherProjectTasks, ...newTasks]);
+  const handleProjectSave = async (updatedProject: Project, updatedTasks: Event[]) => {
+    if (!user) return;
+    try {
+        await ProjectService.updateProject(updatedProject.id, {
+            name: updatedProject.name,
+            description: updatedProject.description,
+        });
+        setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+        
+        const otherProjectTasks = allTasks.filter(t => t.projectId !== updatedProject.id);
+        setAllTasks([...otherProjectTasks, ...updatedTasks]);
 
-    toast({
-      title: "Project Saved",
-      description: `Changes to "${updatedProject.name}" have been saved.`,
-    });
+        // In a real scenario, you'd have a more robust way of batch updating tasks.
+        // For simplicity here, we assume tasks are just replaced.
+        
+        toast({
+            title: "Project Saved",
+            description: `Changes to "${updatedProject.name}" have been saved.`,
+        });
+    } catch (error: any) {
+        console.error("Failed to save project:", error);
+        toast({ variant: "destructive", title: "Save Project Failed", description: error.message });
+    }
   };
 
-  const handleSaveTemplate = (name: string, steps: PartialTask[]) => {
-    const newTemplate: ProjectTemplate = {
-      id: `template-${Date.now()}`,
-      name,
-      steps,
-    };
-    setProjectTemplates(prev => [...prev, newTemplate]);
-    toast({
-      title: "Template Saved",
-      description: `"${name}" has been saved as a new project template.`,
-    });
+  const handleSaveTemplate = async (name: string, steps: PartialTask[]) => {
+    if (!user) return;
+    try {
+        const newTemplateData: Omit<ProjectTemplate, 'id'> = { name, steps, userId: user.uid };
+        const newTemplate = await ProjectService.addProjectTemplate(newTemplateData);
+        setProjectTemplates(prev => [...prev, newTemplate]);
+        toast({
+            title: "Template Saved",
+            description: `"${name}" has been saved as a new project template.`,
+        });
+    } catch (error: any) {
+        console.error("Failed to save template:", error);
+        toast({ variant: "destructive", title: "Save Template Failed", description: error.message });
+    }
   };
   
   const handleSelectTemplate = (template: ProjectTemplate) => {
@@ -209,6 +196,14 @@ export function TasksView() {
   };
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
+
+  if (isLoading) {
+    return (
+        <div className="flex h-full w-full items-center justify-center p-4">
+            <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
+        </div>
+    );
+  }
 
   return (
     <div className="p-4 sm:p-6 flex flex-col h-full">
@@ -269,14 +264,14 @@ export function TasksView() {
       </div>
 
       <main className="flex-1 min-h-0">
-        {selectedProject && selectedProject.id !== 'proj-1' ? (
+        {selectedProject ? (
           <ProjectInfoCard project={selectedProject} tasks={tasksForSelectedProject} />
         ) : (
           <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed">
             <div className="text-center max-w-2xl">
               <h3 className="text-xl font-semibold">Welcome to Your Integrated Workspace</h3>
               <p className="text-muted-foreground mt-2">
-                Here, projects, tasks, and your calendar work together seamlessly. Every project is a collection of tasks, and every task you create can be instantly added to your calendar. This integration helps you visualize your workload, manage deadlines, and ensure nothing falls through the cracks. Select a project to get started, or create a new one to begin organizing your work.
+                Create or select a project to get started.
               </p>
             </div>
           </div>

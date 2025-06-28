@@ -8,8 +8,11 @@ export interface ProjectTemplate {
     id: string;
     name: string;
     steps: PartialTask[];
+    userId: string;
 }
 
+// This mock data is kept for components that haven't been migrated yet.
+// The main Projects/Tasks manager will use the new project service to fetch from Firestore.
 export const initialProjectTemplates: ProjectTemplate[] = [
   {
     id: 'template-1',
@@ -21,7 +24,8 @@ export const initialProjectTemplates: ProjectTemplate[] = [
       { title: "Develop Backend API", description: "Create necessary API endpoints." },
       { title: "User Acceptance Testing", description: "Testing by the client/end-users." },
       { title: "Deployment", description: "Deploy to production environment." },
-    ]
+    ],
+    userId: 'mock-user'
   },
   {
     id: 'template-2',
@@ -33,6 +37,7 @@ export const initialProjectTemplates: ProjectTemplate[] = [
         { title: "Launch Campaign", description: "Push the campaign live across selected channels." },
         { title: "Monitor and Optimize", description: "Track performance and make adjustments." },
         { title: "Final Report", description: "Summarize campaign results." },
-    ]
+    ],
+    userId: 'mock-user'
   }
 ];
