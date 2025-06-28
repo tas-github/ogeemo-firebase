@@ -57,6 +57,14 @@ export function CreateEventView() {
   const editorRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // This effect synchronizes the detailsHtml state (for external changes) to the editor.
+  useEffect(() => {
+      if (editorRef.current && editorRef.current.innerHTML !== detailsHtml) {
+          editorRef.current.innerHTML = detailsHtml;
+      }
+  }, [detailsHtml]);
+
+
   const saveStateToLocalStorage = useCallback((state: StoredTimerState) => {
     localStorage.setItem('activeTimerState', JSON.stringify(state));
   }, []);
@@ -72,10 +80,7 @@ export function CreateEventView() {
         const state: StoredTimerState = JSON.parse(savedStateRaw);
         setSelectedContactId(state.contactId);
         setSubject(state.subject);
-        setDetailsHtml(state.detailsHtml || "");
-        if (editorRef.current) {
-            editorRef.current.innerHTML = state.detailsHtml || "";
-        }
+        setDetailsHtml(state.detailsHtml || ""); // This will trigger the useEffect to update the editor
         setBillableRate(state.billableRate);
         setIsActive(true);
         setIsPaused(state.isPaused);
@@ -121,11 +126,13 @@ export function CreateEventView() {
     setIsActive(true);
     setIsPaused(false);
     setElapsedTime(0);
+    
+    const currentEditorContent = editorRef.current?.innerHTML || '';
 
     const state: StoredTimerState = {
         contactId: selectedContactId,
         subject: subject,
-        detailsHtml: detailsHtml,
+        detailsHtml: currentEditorContent,
         billableRate,
         isPaused: false,
         elapsedTime: 0,
@@ -148,6 +155,7 @@ export function CreateEventView() {
               } else { 
                   state.elapsedTime = elapsedTime;
               }
+              state.detailsHtml = editorRef.current?.innerHTML || ''; // Get latest content
               saveStateToLocalStorage(state);
           } catch(e) { console.error(e) }
       }
@@ -166,7 +174,7 @@ export function CreateEventView() {
             return;
         }
         
-        const currentEditorContent = editorRef.current?.innerHTML || detailsHtml;
+        const currentEditorContent = editorRef.current?.innerHTML || '';
 
         const newEntry: EventEntry = {
             id: `entry-${Date.now()}`,
@@ -189,8 +197,7 @@ export function CreateEventView() {
         setIsPaused(false);
         setElapsedTime(0);
         setSubject("");
-        setDetailsHtml("");
-        if (editorRef.current) editorRef.current.innerHTML = "";
+        setDetailsHtml(""); // This will clear the editor via the useEffect
         setSelectedContactId(null);
         clearStateFromLocalStorage();
 
@@ -219,133 +226,127 @@ export function CreateEventView() {
   const currentBillableAmount = isActive ? (elapsedTime / 3600) * billableRate : 0;
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <header className="flex items-center justify-between">
-          <div>
-              <h1 className="text-3xl font-bold font-headline text-primary">Create Event</h1>
-              <p className="text-muted-foreground">Select a client, track time, and describe the event.</p>
-          </div>
-          <Button asChild>
-              <Link href="/event-manager">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Event Hub
-              </Link>
-          </Button>
-      </header>
-
-      <Card className="max-w-4xl mx-auto">
-        <CardHeader>
-          <div className="flex justify-between items-start">
+    <>
+      <div className="p-4 sm:p-6 space-y-6">
+        <header className="flex items-center justify-between">
             <div>
-              <CardTitle>Event Details & Controls</CardTitle>
-              <CardDescription>Select client, subject, and rate to start tracking an event.</CardDescription>
+                <h1 className="text-3xl font-bold font-headline text-primary">Create Event</h1>
+                <p className="text-muted-foreground">Select a client, track time, and describe the event.</p>
             </div>
-            {isActive && (
-                <div className="flex items-center gap-2 border rounded-lg p-2 bg-muted">
-                  <Clock className="h-5 w-5 text-primary"/>
-                  <div className="text-lg font-mono text-foreground font-semibold">
-                    {formatTime(elapsedTime)}
+            <Button asChild>
+                <Link href="/event-manager">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Event Hub
+                </Link>
+            </Button>
+        </header>
+
+        <Card className="max-w-4xl mx-auto">
+          <CardHeader>
+            <div className="flex justify-between items-start">
+              <div>
+                <CardTitle>Event Details & Controls</CardTitle>
+                <CardDescription>Select client, subject, and rate to start tracking an event.</CardDescription>
+              </div>
+              {isActive && (
+                  <div className="flex items-center gap-2 border rounded-lg p-2 bg-muted">
+                    <Clock className="h-5 w-5 text-primary"/>
+                    <div className="text-lg font-mono text-foreground font-semibold">
+                      {formatTime(elapsedTime)}
+                    </div>
+                    <div className="text-lg font-mono font-semibold text-primary">
+                      ${currentBillableAmount.toFixed(2)}
+                    </div>
                   </div>
-                  <div className="text-lg font-mono font-semibold text-primary">
-                    ${currentBillableAmount.toFixed(2)}
-                  </div>
-                </div>
-              )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="client-select">Client</Label>
-              <Select value={selectedContactId ?? ''} onValueChange={setSelectedContactId} disabled={isActive}>
-                <SelectTrigger id="client-select">
-                  <SelectValue placeholder="Select a client..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {mockContacts.map((contact) => (
-                    <SelectItem key={contact.id} value={contact.id}>{contact.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="client-select">Client</Label>
+                <Select value={selectedContactId ?? ''} onValueChange={setSelectedContactId} disabled={isActive}>
+                  <SelectTrigger id="client-select">
+                    <SelectValue placeholder="Select a client..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mockContacts.map((contact) => (
+                      <SelectItem key={contact.id} value={contact.id}>{contact.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
+                <Input
+                  id="billable-rate"
+                  type="number"
+                  value={billableRate}
+                  onChange={(e) => setBillableRate(Number(e.target.value))}
+                  disabled={isActive}
+                />
+              </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
+              <Label htmlFor="subject">Subject</Label>
               <Input
-                id="billable-rate"
-                type="number"
-                value={billableRate}
-                onChange={(e) => setBillableRate(Number(e.target.value))}
+                id="subject"
+                placeholder="Enter a subject..."
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
                 disabled={isActive}
               />
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="subject">Subject</Label>
-            <Input
-              id="subject"
-              placeholder="Enter a subject..."
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              disabled={isActive}
-            />
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-between items-center">
-          <Button asChild variant="secondary">
-              <Link href="/event-manager/logged-events">
-                  <BookOpen className="mr-2 h-4 w-4"/>
-                  View All Events
-              </Link>
-          </Button>
-          <div className="flex items-center gap-2">
-              {!isActive ? (
-                  <Button onClick={handleStart} size="lg">
-                      <Play className="mr-2 h-4 w-4" />
-                      Create Event
-                  </Button>
-              ) : (
-                  <>
-                  <Button onClick={handlePauseResume} variant="outline">
-                      {isPaused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
-                      {isPaused ? 'Resume' : 'Pause'}
-                  </Button>
-                  <Button onClick={handleSaveEvent} variant="destructive">
-                      <StopIcon className="mr-2 h-4 w-4" />
-                      Save Event
-                  </Button>
-                  </>
-              )}
-          </div>
-        </CardFooter>
-      </Card>
-
-      <Card className="max-w-4xl mx-auto">
-         <CardHeader>
-          <CardTitle>Description</CardTitle>
-          <CardDescription>Add detailed, formatted notes about the event.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col p-0">
-            <div className="p-2 border-t border-b flex items-center gap-1 flex-wrap">
-                <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Italic" onMouseDown={preventDefault} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
-                <Separator orientation="vertical" className="h-6 mx-1" />
-                <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
+          </CardContent>
+          <CardFooter className="flex justify-center">
+            <div className="flex items-center gap-2">
+                {!isActive ? (
+                    <Button onClick={handleStart} size="lg">
+                        <Play className="mr-2 h-4 w-4" />
+                        Create Event
+                    </Button>
+                ) : (
+                    <>
+                    <Button onClick={handlePauseResume} variant="outline">
+                        {isPaused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
+                        {isPaused ? 'Resume' : 'Pause'}
+                    </Button>
+                    <Button onClick={handleSaveEvent} variant="destructive">
+                        <StopIcon className="mr-2 h-4 w-4" />
+                        Save Event
+                    </Button>
+                    </>
+                )}
             </div>
-            <ScrollArea className="flex-1 min-h-[250px]">
-                <div
-                    ref={editorRef}
-                    className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full text-left"
-                    contentEditable={!isActive}
-                    onInput={(e) => setDetailsHtml(e.currentTarget.innerHTML)}
-                    dangerouslySetInnerHTML={{ __html: detailsHtml }}
-                    placeholder="Start writing your event details here..."
-                    dir="ltr"
-                />
-            </ScrollArea>
-        </CardContent>
-      </Card>
-    </div>
+          </CardFooter>
+        </Card>
+
+        <Card className="max-w-4xl mx-auto">
+          <CardHeader>
+            <CardTitle>Description</CardTitle>
+            <CardDescription>Add detailed, formatted notes about the event.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col p-0">
+              <div className="p-2 border-t border-b flex items-center gap-1 flex-wrap">
+                  <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" title="Italic" onMouseDown={preventDefault} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
+                  <Separator orientation="vertical" className="h-6 mx-1" />
+                  <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
+              </div>
+              <ScrollArea className="flex-1 min-h-[250px]">
+                  <div
+                      ref={editorRef}
+                      className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full text-left"
+                      contentEditable={!isActive}
+                      placeholder="Start writing your event details here..."
+                  />
+              </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
+    </>
   );
 }
+
