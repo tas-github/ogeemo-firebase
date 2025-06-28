@@ -1,8 +1,10 @@
 
 "use client";
 
+import React, { useEffect, useState } from "react";
 import {
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   GoogleAuthProvider,
 } from "firebase/auth";
@@ -21,40 +23,58 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 
 export function GoogleIntegrationView() {
-  const { user, accessToken, setAuthInfo, isLoading } = useAuth();
+  const { user, accessToken, setAuthInfo, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
+  const [isProcessingRedirect, setIsProcessingRedirect] = useState(true);
+
+  useEffect(() => {
+    const processRedirectResult = async () => {
+      if (!auth) {
+        setIsProcessingRedirect(false);
+        return;
+      }
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          const credential = GoogleAuthProvider.credentialFromResult(result);
+          const token = credential?.accessToken;
+          if (token) {
+            setAuthInfo(result.user, token);
+            toast({
+              title: "Authentication Successful",
+              description: "Successfully connected to your Google Account.",
+            });
+          }
+        }
+      } catch (error: any) {
+        console.error("Google Redirect Error:", error);
+        if (error.code !== 'auth/web-storage-unsupported') {
+            toast({
+                variant: "destructive",
+                title: "Authentication Failed",
+                description: error.message || "An unknown error occurred during sign-in.",
+            });
+        }
+      } finally {
+        setIsProcessingRedirect(false);
+      }
+    };
+
+    processRedirectResult();
+  }, [setAuthInfo, toast]);
 
   const handleSignIn = async () => {
     if (!auth || !provider) {
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Firebase is not configured correctly. Please check your setup.",
-        });
-        return;
-    }
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      
-      const token = credential?.accessToken;
-
-      if (token) {
-        console.log("Google OAuth Access Token:", token);
-        setAuthInfo(result.user, token);
-        toast({
-            title: "Authentication Successful",
-            description: "Successfully connected to your Google Account.",
-        });
-      }
-    } catch (error: any) {
-      console.error("Google Sign-In Error:", error);
       toast({
         variant: "destructive",
-        title: "Authentication Failed",
-        description: error.message || "An unknown error occurred during sign-in.",
+        title: "Error",
+        description: "Firebase is not configured correctly. Please check your setup.",
       });
+      return;
     }
+    // The redirect will navigate away from the page, so we don't need to handle success/error here.
+    // The useEffect hook will handle the result when the user is redirected back.
+    await signInWithRedirect(auth, provider);
   };
 
   const handleSignOut = async () => {
@@ -68,14 +88,14 @@ export function GoogleIntegrationView() {
       });
     } catch (error: any) {
       console.error("Google Sign-Out Error:", error);
-       toast({
+      toast({
         variant: "destructive",
         title: "Sign-Out Failed",
         description: error.message || "Could not disconnect from Google.",
       });
     }
   };
-  
+
   const GoogleIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-5 w-5 mr-2">
       <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
@@ -155,8 +175,7 @@ export function GoogleIntegrationView() {
       </div>
   );
 
-
-  if (isLoading) {
+  if (isAuthLoading || isProcessingRedirect) {
     return (
       <div className="flex h-full items-center justify-center">
         <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
