@@ -460,7 +460,7 @@ function FilesViewContent() {
               <div
                 ref={drop}
                 className={cn(
-                  "group flex items-center gap-2 rounded-md pr-2 cursor-pointer hover:bg-accent",
+                  "flex items-center gap-2 rounded-md pr-2 cursor-pointer hover:bg-accent",
                   (isOver && canDrop) && "bg-primary/20 ring-1 ring-primary"
                 )}
                 onClick={() => { if (!isRenaming) handleSelectFolder(folder.id); }}
@@ -494,7 +494,7 @@ function FilesViewContent() {
                 {!isRenaming && (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-foreground">
                                 <MoreVertical className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
