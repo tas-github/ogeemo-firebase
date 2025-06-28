@@ -77,7 +77,20 @@ export function GoogleIntegrationView() {
       });
       return;
     }
-    await signInWithRedirect(auth, provider);
+    try {
+        await signInWithRedirect(auth, provider);
+    } catch (error: any) {
+        console.error("Google Sign-In Initiation Error:", error);
+        if (error.code === 'auth/unauthorized-domain') {
+            setUnauthorizedDomain(window.location.hostname);
+        } else {
+             toast({
+                variant: "destructive",
+                title: "Authentication Failed",
+                description: error.message || "An unexpected error occurred during sign-in initiation.",
+            });
+        }
+    }
   };
 
   const handleSignOut = async () => {
