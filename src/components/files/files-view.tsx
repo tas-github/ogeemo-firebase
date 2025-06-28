@@ -435,7 +435,6 @@ function FilesViewContent() {
   const FolderTree = ({ parentId = null, level = 0 }: { parentId?: string | null, level?: number }) => {
     const children = folders.filter(f => f.parentId === parentId);
     if (children.length === 0 && level === 0 && parentId === null) {
-        // Special case for when there are no folders at all
         return <p className="p-4 text-center text-sm text-muted-foreground">No folders yet. Create one to get started.</p>;
     }
     if (children.length === 0) return null;
@@ -464,11 +463,11 @@ function FilesViewContent() {
                   "group flex items-center gap-2 rounded-md pr-2 cursor-pointer hover:bg-accent",
                   (isOver && canDrop) && "bg-primary/20 ring-1 ring-primary"
                 )}
-                onClick={() => handleSelectFolder(folder.id)}
+                onClick={() => { if (!isRenaming) handleSelectFolder(folder.id); }}
                 >
                 <div
                     className="flex items-center gap-2 flex-1 p-1 rounded-md"
-                    style={{ backgroundColor: selectedFolderId === folder.id ? 'hsl(var(--accent))' : 'transparent' }}
+                    style={{ backgroundColor: selectedFolderId === folder.id && !isRenaming ? 'hsl(var(--accent))' : 'transparent' }}
                 >
                     {hasChildren ? (
                         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => toggleFolder(e, folder.id)}>
