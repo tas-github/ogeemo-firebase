@@ -77,8 +77,6 @@ export function GoogleIntegrationView() {
       });
       return;
     }
-    // With redirects, we don't need a try/catch here.
-    // The error will be caught in the useEffect hook when the page reloads.
     await signInWithRedirect(auth, provider);
   };
 
