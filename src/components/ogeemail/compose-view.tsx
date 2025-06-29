@@ -103,19 +103,13 @@ export function ComposeEmailView() {
   const [cc, setCc] = React.useState('');
   const [bcc, setBcc] = React.useState('');
   const [unresolvedRecipients, setUnresolvedRecipients] = React.useState<string[]>([]);
-  const [unresolvedCc, setUnresolvedCc] = React.useState<string[]>([]);
-  const [unresolvedBcc, setUnresolvedBcc] = React.useState<string[]>([]);
 
   const [showCc, setShowCc] = React.useState(false);
   const [showBcc, setShowBcc] = React.useState(false);
   const [subject, setSubject] = React.useState('');
   const [body, setBody] = React.useState('');
   const editorRef = React.useRef<HTMLDivElement>(null);
-  const recipientRef = React.useRef<HTMLInputElement>(null);
-  const ccRef = React.useRef<HTMLInputElement>(null);
-  const bccRef = React.useRef<HTMLInputElement>(null);
-
-
+  
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = React.useState(false);
   const [newTemplateName, setNewTemplateName] = React.useState('');
@@ -155,38 +149,20 @@ export function ComposeEmailView() {
     const entries = inputValue.split(/[,;]/).map(e => e.trim()).filter(Boolean);
 
     const formattedEntries = entries.map(entry => {
-      const formattedMatch = entry.match(/"(.*)" <(.*)>/);
-      if (formattedMatch) {
-          const email = formattedMatch[2];
-          const contact = currentContacts.find(c => c.email.toLowerCase() === email.toLowerCase());
-          return contact ? `"${contact.name}" <${contact.email}>` : entry;
-      }
+      const formattedMatch = entry.match(/<(.+)>/);
+      const emailInEntry = formattedMatch ? formattedMatch[1].toLowerCase() : entry.toLowerCase();
+      
+      const contact = currentContacts.find(c => c.email.toLowerCase() === emailInEntry || c.name.toLowerCase() === emailInEntry);
 
-      if (emailRegex.test(entry)) {
-          const contact = currentContacts.find(c => c.email.toLowerCase() === entry.toLowerCase());
-          if (contact) {
-              return `"${contact.name}" <${contact.email}>`;
-          } else {
-              unresolved.push(entry);
-              return entry;
-          }
-      }
-
-      // Improved name matching logic
-      const lowerCaseEntry = entry.toLowerCase();
-      let contact = currentContacts.find(c => c.name.toLowerCase() === lowerCaseEntry);
-      if (!contact) {
-          contact = currentContacts.find(c => c.name.toLowerCase().startsWith(lowerCaseEntry));
-      }
-      if (!contact) {
-          contact = currentContacts.find(c => c.name.toLowerCase().includes(lowerCaseEntry));
+      if (contact) {
+        return `"${contact.name}" <${contact.email}>`;
       }
       
-      if (contact) {
-          return `"${contact.name}" <${contact.email}>`;
+      if(emailRegex.test(entry)) {
+        unresolved.push(entry);
+        return entry;
       }
-
-      // If no match by email or name, it's unresolved
+      
       unresolved.push(entry);
       return entry;
     });
@@ -197,27 +173,11 @@ export function ComposeEmailView() {
     };
   }, []);
 
-  const handleRecipientBlur = React.useCallback((field: 'recipient' | 'cc' | 'bcc') => {
-      let value: string, setter, unresolvedSetter;
-
-      if (field === 'recipient') {
-          value = recipient;
-          setter = setRecipient;
-          unresolvedSetter = setUnresolvedRecipients;
-      } else if (field === 'cc') {
-          value = cc;
-          setter = setCc;
-          unresolvedSetter = setUnresolvedCc;
-      } else {
-          value = bcc;
-          setter = setBcc;
-          unresolvedSetter = setUnresolvedBcc;
-      }
-
-      const { formattedString, unresolvedEmails } = processRecipients(value, allContacts);
-      setter(formattedString);
-      unresolvedSetter(unresolvedEmails);
-  }, [recipient, cc, bcc, allContacts, processRecipients]);
+  const handleRecipientBlur = React.useCallback(() => {
+      const { formattedString, unresolvedEmails } = processRecipients(recipient, allContacts);
+      setRecipient(formattedString);
+      setUnresolvedRecipients(unresolvedEmails);
+  }, [recipient, allContacts, processRecipients]);
 
   const handleFormat = (command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -342,7 +302,10 @@ export function ComposeEmailView() {
 
       const emailsString = contactsInfo.join(', ');
 
-      if (contactPickerTarget === 'recipient') setRecipient(emailsString);
+      if (contactPickerTarget === 'recipient') {
+        setRecipient(emailsString);
+        setUnresolvedRecipients([]); // Assume contacts from picker are resolved
+      }
       if (contactPickerTarget === 'cc') setCc(emailsString);
       if (contactPickerTarget === 'bcc') setBcc(emailsString);
       setIsContactPickerOpen(false);
@@ -370,31 +333,18 @@ export function ComposeEmailView() {
       email: values.email,
       businessPhone: values.phone || '',
       folderId: values.folderId,
-      userId: 'mock-user-id', // In a real app, this would be the logged-in user's ID
+      userId: 'mock-user-id', 
     };
     
     const updatedContacts = [...allContacts, newContact];
     setAllContacts(updatedContacts);
     newContactForm.reset();
     setIsNewContactDialogOpen(false);
-
-    // Re-process fields that might contain the new email
-    const newEmail = values.email.toLowerCase();
-    if(recipient.toLowerCase().includes(newEmail)) {
-      const { formattedString, unresolvedEmails } = processRecipients(recipient, updatedContacts);
-      setRecipient(formattedString);
-      setUnresolvedRecipients(unresolvedEmails);
-    }
-    if(cc.toLowerCase().includes(newEmail)) {
-      const { formattedString, unresolvedEmails } = processRecipients(cc, updatedContacts);
-      setCc(formattedString);
-      setUnresolvedCc(unresolvedEmails);
-    }
-    if(bcc.toLowerCase().includes(newEmail)) {
-      const { formattedString, unresolvedEmails } = processRecipients(bcc, updatedContacts);
-      setBcc(formattedString);
-      setUnresolvedBcc(unresolvedEmails);
-    }
+    
+    // Check if the new contact resolves an unresolved recipient
+    const { formattedString, unresolvedEmails } = processRecipients(recipient, updatedContacts);
+    setRecipient(formattedString);
+    setUnresolvedRecipients(unresolvedEmails);
   }
 
   const handleOpenNewContactDialog = (email: string) => {
@@ -621,12 +571,11 @@ export function ComposeEmailView() {
                 <div className="flex-1 relative">
                   <Input
                     id="to"
-                    ref={recipientRef}
                     className="border-0 shadow-none focus-visible:ring-0 flex-1 pr-10"
                     placeholder="recipient@example.com"
                     value={recipient}
                     onChange={(e) => setRecipient(e.target.value)}
-                    onBlur={() => handleRecipientBlur('recipient')}
+                    onBlur={handleRecipientBlur}
                   />
                   <Button variant="ghost" size="icon" type="button" onClick={() => openContactPicker('recipient')} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
                       <BookUser className="h-4 w-4" />
@@ -634,9 +583,6 @@ export function ComposeEmailView() {
                   </Button>
                 </div>
                  <div className="flex gap-2 items-center">
-                    <Button variant="link" size="sm" className="p-0 h-auto text-primary" onClick={() => setIsNewContactDialogOpen(true)}>
-                        + New Contact
-                    </Button>
                     <Button variant="link" size="sm" className="p-0 h-auto text-muted-foreground" onClick={() => setShowCc(!showCc)}>Cc</Button>
                     <Button variant="link" size="sm" className="p-0 h-auto text-muted-foreground" onClick={() => setShowBcc(!showBcc)}>Bcc</Button>
                 </div>
@@ -661,12 +607,10 @@ export function ComposeEmailView() {
                         <div className="flex-1 relative">
                           <Input
                               id="cc"
-                              ref={ccRef}
                               className="border-0 shadow-none focus-visible:ring-0 flex-1 pr-10"
                               placeholder="cc@example.com"
                               value={cc}
                               onChange={(e) => setCc(e.target.value)}
-                              onBlur={() => handleRecipientBlur('cc')}
                           />
                           <Button variant="ghost" size="icon" type="button" onClick={() => openContactPicker('cc')} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
                               <BookUser className="h-4 w-4" />
@@ -674,18 +618,6 @@ export function ComposeEmailView() {
                           </Button>
                         </div>
                     </div>
-                     {unresolvedCc.length > 0 && (
-                        <div className="pl-16 text-xs text-muted-foreground space-x-2">
-                          {unresolvedCc.map(email => (
-                            <span key={email} className="inline-flex items-center gap-1">
-                              Recipient '{email}' not found.
-                              <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => handleOpenNewContactDialog(email)}>
-                                Add contact?
-                              </Button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     <Separator />
                 </>
               )}
@@ -696,12 +628,10 @@ export function ComposeEmailView() {
                           <div className="flex-1 relative">
                             <Input
                                 id="bcc"
-                                ref={bccRef}
                                 className="border-0 shadow-none focus-visible:ring-0 flex-1 pr-10"
                                 placeholder="bcc@example.com"
                                 value={bcc}
                                 onChange={(e) => setBcc(e.target.value)}
-                                onBlur={() => handleRecipientBlur('bcc')}
                             />
                             <Button variant="ghost" size="icon" type="button" onClick={() => openContactPicker('bcc')} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
                                 <BookUser className="h-4 w-4" />
@@ -709,18 +639,6 @@ export function ComposeEmailView() {
                             </Button>
                           </div>
                       </div>
-                      {unresolvedBcc.length > 0 && (
-                        <div className="pl-16 text-xs text-muted-foreground space-x-2">
-                          {unresolvedBcc.map(email => (
-                            <span key={email} className="inline-flex items-center gap-1">
-                              Recipient '{email}' not found.
-                              <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => handleOpenNewContactDialog(email)}>
-                                Add contact?
-                              </Button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
                       <Separator />
                   </>
               )}
