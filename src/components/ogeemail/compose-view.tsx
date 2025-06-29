@@ -54,7 +54,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -102,11 +101,19 @@ export function ComposeEmailView() {
   const [recipient, setRecipient] = React.useState('');
   const [cc, setCc] = React.useState('');
   const [bcc, setBcc] = React.useState('');
+  const [unresolvedRecipients, setUnresolvedRecipients] = React.useState<string[]>([]);
+  const [unresolvedCc, setUnresolvedCc] = React.useState<string[]>([]);
+  const [unresolvedBcc, setUnresolvedBcc] = React.useState<string[]>([]);
+
   const [showCc, setShowCc] = React.useState(false);
   const [showBcc, setShowBcc] = React.useState(false);
   const [subject, setSubject] = React.useState('');
   const [body, setBody] = React.useState('');
   const editorRef = React.useRef<HTMLDivElement>(null);
+  const recipientRef = React.useRef<HTMLInputElement>(null);
+  const ccRef = React.useRef<HTMLInputElement>(null);
+  const bccRef = React.useRef<HTMLInputElement>(null);
+
 
   const [templates, setTemplates] = React.useState(initialTemplates);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = React.useState(false);
@@ -136,33 +143,69 @@ export function ComposeEmailView() {
     defaultValues: { name: "", email: "", phone: "", folderId: "" },
   });
 
-  const formatRecipientString = (value: string): string => {
-    if (!value.trim()) return "";
-    const recipients = value.split(/[,;]/).map(r => r.trim()).filter(Boolean);
-    const formatted = recipients.map(rec => {
-        const emailMatch = rec.match(/<(.+)>/);
-        if (emailMatch) {
-            return rec;
-        }
-        
-        const contact = allContacts.find(c => c.email.toLowerCase() === rec.toLowerCase());
-        return contact ? `"${contact.name}" <${contact.email}>` : rec;
-    });
-    return formatted.join(', ');
-  };
-
-  const handleRecipientChange = (
-    currentValue: string,
-    newValue: string,
-    setter: React.Dispatch<React.SetStateAction<string>>
-  ) => {
-    if ((newValue.endsWith(',') || newValue.endsWith(';')) && newValue.length > currentValue.length) {
-        const formatted = formatRecipientString(newValue.slice(0, -1));
-        setter(formatted + newValue.slice(-1) + ' ');
-    } else {
-        setter(newValue);
+  const processRecipients = React.useCallback((inputValue: string, currentContacts: Contact[]): { formattedString: string; unresolvedEmails: string[] } => {
+    if (!inputValue.trim()) {
+        return { formattedString: '', unresolvedEmails: [] };
     }
-  };
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const unresolved: string[] = [];
+    
+    const entries = inputValue.split(/[,;]/).map(e => e.trim()).filter(Boolean);
+
+    const formattedEntries = entries.map(entry => {
+        const formattedMatch = entry.match(/"(.*)" <(.*)>/);
+        if (formattedMatch) {
+            const email = formattedMatch[2];
+            const contact = currentContacts.find(c => c.email.toLowerCase() === email.toLowerCase());
+            return contact ? `"${contact.name}" <${contact.email}>` : entry;
+        }
+
+        if (emailRegex.test(entry)) {
+            const contact = currentContacts.find(c => c.email.toLowerCase() === entry.toLowerCase());
+            if (contact) {
+                return `"${contact.name}" <${contact.email}>`;
+            } else {
+                unresolved.push(entry);
+                return entry;
+            }
+        }
+
+        const contact = currentContacts.find(c => c.name.toLowerCase() === entry.toLowerCase());
+        if (contact) {
+            return `"${contact.name}" <${contact.email}>`;
+        }
+
+        return entry;
+    });
+
+    return {
+        formattedString: formattedEntries.join(', '),
+        unresolvedEmails: [...new Set(unresolved)], // Return unique unresolved emails
+    };
+  }, []);
+
+  const handleRecipientBlur = React.useCallback((field: 'recipient' | 'cc' | 'bcc') => {
+      let value: string, setter, unresolvedSetter;
+
+      if (field === 'recipient') {
+          value = recipient;
+          setter = setRecipient;
+          unresolvedSetter = setUnresolvedRecipients;
+      } else if (field === 'cc') {
+          value = cc;
+          setter = setCc;
+          unresolvedSetter = setUnresolvedCc;
+      } else {
+          value = bcc;
+          setter = setBcc;
+          unresolvedSetter = setUnresolvedBcc;
+      }
+
+      const { formattedString, unresolvedEmails } = processRecipients(value, allContacts);
+      setter(formattedString);
+      unresolvedSetter(unresolvedEmails);
+  }, [recipient, cc, bcc, allContacts, processRecipients]);
 
   const handleFormat = (command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -315,12 +358,37 @@ export function ComposeEmailView() {
       email: values.email,
       businessPhone: values.phone || '',
       folderId: values.folderId,
+      userId: 'mock-user-id', // In a real app, this would be the logged-in user's ID
     };
     
-    setAllContacts(prev => [...prev, newContact]);
+    const updatedContacts = [...allContacts, newContact];
+    setAllContacts(updatedContacts);
     newContactForm.reset();
     setIsNewContactDialogOpen(false);
+
+    // Re-process fields that might contain the new email
+    const newEmail = values.email.toLowerCase();
+    if(recipient.toLowerCase().includes(newEmail)) {
+      const { formattedString, unresolvedEmails } = processRecipients(recipient, updatedContacts);
+      setRecipient(formattedString);
+      setUnresolvedRecipients(unresolvedEmails);
+    }
+    if(cc.toLowerCase().includes(newEmail)) {
+      const { formattedString, unresolvedEmails } = processRecipients(cc, updatedContacts);
+      setCc(formattedString);
+      setUnresolvedCc(unresolvedEmails);
+    }
+    if(bcc.toLowerCase().includes(newEmail)) {
+      const { formattedString, unresolvedEmails } = processRecipients(bcc, updatedContacts);
+      setBcc(formattedString);
+      setUnresolvedBcc(unresolvedEmails);
+    }
   }
+
+  const handleOpenNewContactDialog = (email: string) => {
+    newContactForm.reset({ email, name: '', phone: '', folderId: '' });
+    setIsNewContactDialogOpen(true);
+  };
 
   return (
     <div className="p-4 sm:p-6 space-y-6 h-full flex flex-col">
@@ -541,11 +609,12 @@ export function ComposeEmailView() {
                 <div className="flex-1 relative">
                   <Input
                     id="to"
+                    ref={recipientRef}
                     className="border-0 shadow-none focus-visible:ring-0 flex-1 pr-10"
                     placeholder="recipient@example.com"
                     value={recipient}
-                    onChange={(e) => handleRecipientChange(recipient, e.target.value, setRecipient)}
-                    onBlur={() => setRecipient(formatRecipientString(recipient))}
+                    onChange={(e) => setRecipient(e.target.value)}
+                    onBlur={() => handleRecipientBlur('recipient')}
                   />
                   <Button variant="ghost" size="icon" type="button" onClick={() => openContactPicker('recipient')} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
                       <BookUser className="h-4 w-4" />
@@ -560,6 +629,18 @@ export function ComposeEmailView() {
                     <Button variant="link" size="sm" className="p-0 h-auto text-muted-foreground" onClick={() => setShowBcc(!showBcc)}>Bcc</Button>
                 </div>
               </div>
+              {unresolvedRecipients.length > 0 && (
+                <div className="pl-16 text-xs text-muted-foreground space-x-2">
+                  {unresolvedRecipients.map(email => (
+                    <span key={email} className="inline-flex items-center gap-1">
+                      Recipient '{email}' not found.
+                      <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => handleOpenNewContactDialog(email)}>
+                        Add contact?
+                      </Button>
+                    </span>
+                  ))}
+                </div>
+              )}
               <Separator />
                {showCc && (
                 <>
@@ -568,11 +649,12 @@ export function ComposeEmailView() {
                         <div className="flex-1 relative">
                           <Input
                               id="cc"
+                              ref={ccRef}
                               className="border-0 shadow-none focus-visible:ring-0 flex-1 pr-10"
                               placeholder="cc@example.com"
                               value={cc}
-                              onChange={(e) => handleRecipientChange(cc, e.target.value, setCc)}
-                              onBlur={() => setCc(formatRecipientString(cc))}
+                              onChange={(e) => setCc(e.target.value)}
+                              onBlur={() => handleRecipientBlur('cc')}
                           />
                           <Button variant="ghost" size="icon" type="button" onClick={() => openContactPicker('cc')} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
                               <BookUser className="h-4 w-4" />
@@ -580,6 +662,18 @@ export function ComposeEmailView() {
                           </Button>
                         </div>
                     </div>
+                     {unresolvedCc.length > 0 && (
+                        <div className="pl-16 text-xs text-muted-foreground space-x-2">
+                          {unresolvedCc.map(email => (
+                            <span key={email} className="inline-flex items-center gap-1">
+                              Recipient '{email}' not found.
+                              <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => handleOpenNewContactDialog(email)}>
+                                Add contact?
+                              </Button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     <Separator />
                 </>
               )}
@@ -590,11 +684,12 @@ export function ComposeEmailView() {
                           <div className="flex-1 relative">
                             <Input
                                 id="bcc"
+                                ref={bccRef}
                                 className="border-0 shadow-none focus-visible:ring-0 flex-1 pr-10"
                                 placeholder="bcc@example.com"
                                 value={bcc}
-                                onChange={(e) => handleRecipientChange(bcc, e.target.value, setBcc)}
-                                onBlur={() => setBcc(formatRecipientString(bcc))}
+                                onChange={(e) => setBcc(e.target.value)}
+                                onBlur={() => handleRecipientBlur('bcc')}
                             />
                             <Button variant="ghost" size="icon" type="button" onClick={() => openContactPicker('bcc')} className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8">
                                 <BookUser className="h-4 w-4" />
@@ -602,6 +697,18 @@ export function ComposeEmailView() {
                             </Button>
                           </div>
                       </div>
+                      {unresolvedBcc.length > 0 && (
+                        <div className="pl-16 text-xs text-muted-foreground space-x-2">
+                          {unresolvedBcc.map(email => (
+                            <span key={email} className="inline-flex items-center gap-1">
+                              Recipient '{email}' not found.
+                              <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => handleOpenNewContactDialog(email)}>
+                                Add contact?
+                              </Button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <Separator />
                   </>
               )}
