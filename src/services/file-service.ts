@@ -192,6 +192,13 @@ export async function deleteFiles(files: FileItem[]): Promise<void> {
     await batch.commit();
 }
 
+export async function addFile(fileData: Omit<FileItem, 'id'>): Promise<FileItem> {
+  checkDb();
+  const dataToSave = { ...fileData, modifiedAt: new Date() };
+  const docRef = await addDoc(collection(db, FILES_COLLECTION), dataToSave);
+  return { id: docRef.id, ...dataToSave } as FileItem;
+}
+
 export async function saveEmailForContact(
     userId: string, 
     contactName: string, 
