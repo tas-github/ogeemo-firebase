@@ -12,23 +12,12 @@ import {
   Underline,
   List,
   ListOrdered,
-  Mail,
   Bot,
-  Strikethrough,
-  Quote,
-  Link as LinkIcon,
-  ChevronDown,
-  FileText,
   FilePlus,
   Send,
   Paperclip,
-  X,
-  Plus,
-  Image as ImageIcon,
-  Minus,
-  Code2,
+  ImageIcon,
   Sparkles,
-  BookUser,
   LoaderCircle,
 } from 'lucide-react';
 
@@ -46,6 +35,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -61,11 +51,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { generateImage } from '@/ai/flows/generate-image-flow';
-import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { type Contact, type FolderData, mockContacts, mockFolders } from '@/data/contacts';
 
 const OgeemoChatDialog = dynamic(() => import('@/components/ogeemail/ogeemo-chat-dialog'), {
@@ -87,56 +73,38 @@ const initialTemplates = [
 const newContactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }),
-  phone: z.string().optional(),
   folderId: z.string({ required_error: "Please select a folder." }),
 });
 
 export function ComposeEmailView() {
   const [recipient, setRecipient] = React.useState('');
-  const [cc, setCc] = React.useState('');
-  const [bcc, setBcc] = React.useState('');
-  const [unresolvedRecipient, setUnresolvedRecipient] = React.useState<string | null>(null);
-
-  const [showCc, setShowCc] = React.useState(false);
-  const [showBcc, setShowBcc] = React.useState(false);
   const [subject, setSubject] = React.useState('');
   const [body, setBody] = React.useState('');
+  const [unresolvedRecipient, setUnresolvedRecipient] = React.useState<string | null>(null);
+  
+  const [allContacts, setAllContacts] = React.useState<Contact[]>(mockContacts);
+  const [allFolders, setAllFolders] = React.useState<FolderData[]>(mockFolders);
+  
+  const [isNewContactDialogOpen, setIsNewContactDialogOpen] = React.useState(false);
+
   const editorRef = React.useRef<HTMLDivElement>(null);
   
-  const [templates, setTemplates] = React.useState(initialTemplates);
+  const [templates] = React.useState(initialTemplates);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = React.useState(false);
   const [newTemplateName, setNewTemplateName] = React.useState('');
-
-  const [attachments, setAttachments] = React.useState<File[]>([]);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const { toast } = useToast();
+  
   const [isChatOpen, setIsChatOpen] = React.useState(false);
-
   const [isGenerateImageDialogOpen, setIsGenerateImageDialogOpen] = React.useState(false);
   const [imagePrompt, setImagePrompt] = React.useState('');
   const [isGeneratingImage, setIsGeneratingImage] = React.useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = React.useState<string | null>(null);
-
-  const [isContactPickerOpen, setIsContactPickerOpen] = React.useState(false);
-  const [contactPickerTarget, setContactPickerTarget] = React.useState<'recipient' | 'cc' | 'bcc' | null>(null);
-  const [allContacts, setAllContacts] = React.useState<Contact[]>([]);
-  const [filteredContacts, setFilteredContacts] = React.useState<Contact[]>([]);
-  const [contactSearch, setContactSearch] = React.useState('');
-  const [selectedDialogContacts, setSelectedDialogContacts] = React.useState<string[]>([]);
-  const [isNewContactDialogOpen, setIsNewContactDialogOpen] = React.useState(false);
   
+  const { toast } = useToast();
+
   const newContactForm = useForm<z.infer<typeof newContactSchema>>({
     resolver: zodResolver(newContactSchema),
-    defaultValues: { name: "", email: "", phone: "", folderId: "" },
+    defaultValues: { name: "", email: "", folderId: "" },
   });
-  
-  React.useEffect(() => {
-    // Simulate fetching contacts
-    const contactsWithUserId = mockContacts.map(c => ({...c, userId: 'mock-user-id' }));
-    setAllContacts(contactsWithUserId);
-    setFilteredContacts(contactsWithUserId);
-  }, []);
 
   const handleRecipientBlur = React.useCallback(() => {
     const input = recipient.trim();
@@ -145,14 +113,13 @@ export function ComposeEmailView() {
       return;
     }
 
-    // Don't re-format if it's already in "Name" <email> format
     if (input.match(/".*" <.+>/)) {
       setUnresolvedRecipient(null);
       return;
     }
 
     const lowerInput = input.toLowerCase();
-    const contact = allContacts.find(c => c.email.toLowerCase() === lowerInput || c.name.toLowerCase() === lowerInput);
+    const contact = allContacts.find(c => c.email.toLowerCase() === lowerInput || c.name.toLowerCase().includes(lowerInput));
 
     if (contact) {
       setRecipient(`"${contact.name}" <${contact.email}>`);
@@ -167,13 +134,8 @@ export function ComposeEmailView() {
     }
   }, [recipient, allContacts]);
 
-  const handleFormat = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
-    editorRef.current?.focus();
-  };
-  
   const handleOpenNewContactDialog = (email: string) => {
-    newContactForm.reset({ email, name: '', phone: '', folderId: '' });
+    newContactForm.reset({ email, name: '', folderId: '' });
     setIsNewContactDialogOpen(true);
   };
   
@@ -182,18 +144,15 @@ export function ComposeEmailView() {
       id: `c-${Date.now()}`,
       name: values.name,
       email: values.email,
-      businessPhone: values.phone || '',
       folderId: values.folderId,
       userId: 'mock-user-id', 
     };
     
-    const updatedContacts = [...allContacts, newContact];
-    setAllContacts(updatedContacts);
+    setAllContacts(prev => [...prev, newContact]);
     newContactForm.reset();
     setIsNewContactDialogOpen(false);
     
-    // Auto-fill the recipient field with the newly created contact
-    if (recipient === newContact.email) {
+    if (unresolvedRecipient === newContact.email) {
       setRecipient(`"${newContact.name}" <${newContact.email}>`);
       setUnresolvedRecipient(null);
     }
@@ -201,14 +160,18 @@ export function ComposeEmailView() {
     toast({ title: 'Contact Created', description: `${newContact.name} has been added.` });
   }
 
-  // Simplified functions from the original implementation
-  const handleAttachmentClick = () => fileInputRef.current?.click();
+  const handleFormat = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+  };
+
   const handleTemplateSelect = (content: string) => {
-    setBody(content);
     if (editorRef.current) {
       editorRef.current.innerHTML = content;
+      setBody(content);
     }
   };
+
   const handleGenerateImage = async () => {
     if (!imagePrompt.trim() || isGeneratingImage) return;
     setIsGeneratingImage(true);
@@ -232,18 +195,19 @@ export function ComposeEmailView() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6 h-full flex flex-col">
-       <input type="file" ref={fileInputRef} className="hidden" multiple />
-       
        <Dialog open={isNewContactDialogOpen} onOpenChange={setIsNewContactDialogOpen}>
          <DialogContent>
             <DialogHeader>
                 <DialogTitle>Create New Contact</DialogTitle>
+                <DialogDescription>
+                  This contact will be added to your contact list.
+                </DialogDescription>
             </DialogHeader>
             <Form {...newContactForm}>
                 <form onSubmit={newContactForm.handleSubmit(handleCreateNewContact)} className="space-y-4 py-4">
                      <FormField control={newContactForm.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                     <FormField control={newContactForm.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                     <FormField control={newContactForm.control} name="folderId" render={({ field }) => ( <FormItem> <FormLabel>Folder</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a folder" /></SelectTrigger></FormControl><SelectContent>{mockFolders.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
+                     <FormField control={newContactForm.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input {...field} disabled /></FormControl> <FormMessage /> </FormItem> )} />
+                     <FormField control={newContactForm.control} name="folderId" render={({ field }) => ( <FormItem> <FormLabel>Folder</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a folder" /></SelectTrigger></FormControl><SelectContent>{allFolders.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
                      <DialogFooter className="pt-4 !mt-0">
                          <Button type="button" variant="ghost" onClick={() => setIsNewContactDialogOpen(false)}>Cancel</Button>
                          <Button type="submit">Create Contact</Button>
@@ -272,30 +236,8 @@ export function ComposeEmailView() {
                       </div>
                    )}
                 </div>
-                 <div className="flex gap-2 items-center">
-                    <Button variant="link" size="sm" className="p-0 h-auto text-muted-foreground" onClick={() => setShowCc(!showCc)}>Cc</Button>
-                    <Button variant="link" size="sm" className="p-0 h-auto text-muted-foreground" onClick={() => setShowBcc(!showBcc)}>Bcc</Button>
-                </div>
               </div>
               <Separator />
-               {showCc && (
-                <>
-                    <div className="flex items-center gap-4">
-                        <Label htmlFor="cc" className="text-sm text-muted-foreground w-12 text-right">Cc</Label>
-                        <Input id="cc" className="border-0 shadow-none focus-visible:ring-0" value={cc} onChange={(e) => setCc(e.target.value)} />
-                    </div>
-                    <Separator />
-                </>
-              )}
-              {showBcc && (
-                  <>
-                      <div className="flex items-center gap-4">
-                          <Label htmlFor="bcc" className="text-sm text-muted-foreground w-12 text-right">Bcc</Label>
-                          <Input id="bcc" className="border-0 shadow-none focus-visible:ring-0" value={bcc} onChange={(e) => setBcc(e.target.value)} />
-                      </div>
-                      <Separator />
-                  </>
-              )}
               <div className="flex items-center gap-4">
                 <Label htmlFor="subject" className="text-sm text-muted-foreground w-12 text-right">Subject</Label>
                 <Input id="subject" className="border-0 shadow-none focus-visible:ring-0" value={subject} onChange={(e) => setSubject(e.target.value)} />
@@ -312,10 +254,8 @@ export function ComposeEmailView() {
                 <Button variant="ghost" size="icon" title="Unordered List" onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" title="Ordered List" onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
                  <Separator orientation="vertical" className="h-6" />
-                <Button variant="ghost" size="icon" title="Attach File" onClick={handleAttachmentClick}><Paperclip className="h-4 w-4" /></Button>
-                <DialogTrigger asChild>
-                    <Button variant="ghost" size="icon" title="Generate Image" onClick={() => setIsGenerateImageDialogOpen(true)}><ImageIcon className="h-4 w-4" /></Button>
-                </DialogTrigger>
+                <Button variant="ghost" size="icon" title="Attach File"><Paperclip className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" title="Generate Image" onClick={() => setIsGenerateImageDialogOpen(true)}><ImageIcon className="h-4 w-4" /></Button>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
                 <div
@@ -334,7 +274,7 @@ export function ComposeEmailView() {
                 <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline"><FileText className="mr-2 h-4 w-4" /> Templates</Button>
+                            <Button variant="outline"><FilePlus className="mr-2 h-4 w-4" /> Templates</Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                             {templates.map(t => <DropdownMenuItem key={t.name} onSelect={() => handleTemplateSelect(t.content)}>{t.name}</DropdownMenuItem>)}
