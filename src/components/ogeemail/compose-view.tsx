@@ -133,8 +133,8 @@ export function ComposeEmailView() {
 
   const [isContactPickerOpen, setIsContactPickerOpen] = React.useState(false);
   const [contactPickerTarget, setContactPickerTarget] = React.useState<'recipient' | 'cc' | 'bcc' | null>(null);
-  const [allContacts, setAllContacts] = React.useState<Contact[]>(mockContacts);
-  const [filteredContacts, setFilteredContacts] = React.useState<Contact[]>(mockContacts);
+  const [allContacts, setAllContacts] = React.useState<Contact[]>(mockContacts.map(c => ({...c, userId: 'mock-user-id'})));
+  const [filteredContacts, setFilteredContacts] = React.useState<Contact[]>(mockContacts.map(c => ({...c, userId: 'mock-user-id'})));
   const [contactSearch, setContactSearch] = React.useState('');
   const [selectedDialogContacts, setSelectedDialogContacts] = React.useState<string[]>([]);
   const [isNewContactDialogOpen, setIsNewContactDialogOpen] = React.useState(false);
@@ -172,7 +172,7 @@ export function ComposeEmailView() {
             }
         }
 
-        const contact = currentContacts.find(c => c.name.toLowerCase() === entry.toLowerCase());
+        const contact = currentContacts.find(c => c.name.toLowerCase().includes(entry.toLowerCase()));
         if (contact) {
             return `"${contact.name}" <${contact.email}>`;
         }
