@@ -54,7 +54,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -134,7 +133,7 @@ export function ComposeEmailView() {
   const [isContactPickerOpen, setIsContactPickerOpen] = React.useState(false);
   const [contactPickerTarget, setContactPickerTarget] = React.useState<'recipient' | 'cc' | 'bcc' | null>(null);
   const [allContacts, setAllContacts] = React.useState<Contact[]>(mockContacts.map(c => ({...c, userId: 'mock-user-id'})));
-  const [filteredContacts, setFilteredContacts] = React.useState<Contact[]>(mockContacts.map(c => ({...c, userId: 'mock-user-id'})));
+  const [filteredContacts, setFilteredContacts] = React.useState<Contact[]>(allContacts);
   const [contactSearch, setContactSearch] = React.useState('');
   const [selectedDialogContacts, setSelectedDialogContacts] = React.useState<string[]>([]);
   const [isNewContactDialogOpen, setIsNewContactDialogOpen] = React.useState(false);
@@ -146,43 +145,54 @@ export function ComposeEmailView() {
 
   const processRecipients = React.useCallback((inputValue: string, currentContacts: Contact[]): { formattedString: string; unresolvedEmails: string[] } => {
     if (!inputValue.trim()) {
-        return { formattedString: '', unresolvedEmails: [] };
+      return { formattedString: '', unresolvedEmails: [] };
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const unresolved: string[] = [];
-    
+
     const entries = inputValue.split(/[,;]/).map(e => e.trim()).filter(Boolean);
 
     const formattedEntries = entries.map(entry => {
-        const formattedMatch = entry.match(/"(.*)" <(.*)>/);
-        if (formattedMatch) {
-            const email = formattedMatch[2];
-            const contact = currentContacts.find(c => c.email.toLowerCase() === email.toLowerCase());
-            return contact ? `"${contact.name}" <${contact.email}>` : entry;
-        }
+      const formattedMatch = entry.match(/"(.*)" <(.*)>/);
+      if (formattedMatch) {
+          const email = formattedMatch[2];
+          const contact = currentContacts.find(c => c.email.toLowerCase() === email.toLowerCase());
+          return contact ? `"${contact.name}" <${contact.email}>` : entry;
+      }
 
-        if (emailRegex.test(entry)) {
-            const contact = currentContacts.find(c => c.email.toLowerCase() === entry.toLowerCase());
-            if (contact) {
-                return `"${contact.name}" <${contact.email}>`;
-            } else {
-                unresolved.push(entry);
-                return entry;
-            }
-        }
+      if (emailRegex.test(entry)) {
+          const contact = currentContacts.find(c => c.email.toLowerCase() === entry.toLowerCase());
+          if (contact) {
+              return `"${contact.name}" <${contact.email}>`;
+          } else {
+              unresolved.push(entry);
+              return entry;
+          }
+      }
 
-        const contact = currentContacts.find(c => c.name.toLowerCase().includes(entry.toLowerCase()));
-        if (contact) {
-            return `"${contact.name}" <${contact.email}>`;
-        }
+      // Improved name matching logic
+      const lowerCaseEntry = entry.toLowerCase();
+      let contact = currentContacts.find(c => c.name.toLowerCase() === lowerCaseEntry);
+      if (!contact) {
+          contact = currentContacts.find(c => c.name.toLowerCase().startsWith(lowerCaseEntry));
+      }
+      if (!contact) {
+          contact = currentContacts.find(c => c.name.toLowerCase().includes(lowerCaseEntry));
+      }
+      
+      if (contact) {
+          return `"${contact.name}" <${contact.email}>`;
+      }
 
-        return entry;
+      // If no match by email or name, it's unresolved
+      unresolved.push(entry);
+      return entry;
     });
 
     return {
-        formattedString: formattedEntries.join(', '),
-        unresolvedEmails: [...new Set(unresolved)], // Return unique unresolved emails
+      formattedString: formattedEntries.join(', '),
+      unresolvedEmails: [...new Set(unresolved)],
     };
   }, []);
 
