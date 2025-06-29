@@ -378,11 +378,11 @@ export function ComposeEmailView() {
           </CardContent>
           <CardFooter className="border-t p-3 flex justify-between items-center">
             <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={() => setIsChatOpen(true)}><Bot className="mr-2 h-4 w-4" /> Ogeemo Assistant</Button>
+                <Button onClick={() => setIsChatOpen(true)} className="bg-orange-500 hover:bg-orange-600 text-white"><Bot className="mr-2 h-4 w-4" /> Ogeemo Assistant</Button>
                 <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline"><FilePlus className="mr-2 h-4 w-4" /> Templates</Button>
+                            <Button className="bg-orange-500 hover:bg-orange-600 text-white"><FilePlus className="mr-2 h-4 w-4" /> Templates</Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                             {templates.map(t => <DropdownMenuItem key={t.name} onSelect={() => handleTemplateSelect(t.content)}>{t.name}</DropdownMenuItem>)}
@@ -398,11 +398,11 @@ export function ComposeEmailView() {
                 </Dialog>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={handleSaveToContactFolder} disabled={isSaving || !resolvedContact}>
+                <Button onClick={handleSaveToContactFolder} disabled={isSaving || !resolvedContact} className="bg-orange-500 hover:bg-orange-600 text-white">
                     {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />}
                     {isSaving ? "Saving..." : "Save to Contact Folder"}
                 </Button>
-                <Button><Send className="mr-2 h-4 w-4" /> Send</Button>
+                <Button className="bg-orange-500 hover:bg-orange-600 text-white"><Send className="mr-2 h-4 w-4" /> Send</Button>
             </div>
           </CardFooter>
         </Card>
