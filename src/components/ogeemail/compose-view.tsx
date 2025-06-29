@@ -19,6 +19,7 @@ import {
   ImageIcon,
   Sparkles,
   LoaderCircle,
+  Archive,
 } from 'lucide-react';
 
 import {
@@ -55,6 +56,7 @@ import { generateImage } from '@/ai/flows/generate-image-flow';
 import { Textarea } from '@/components/ui/textarea';
 import { type Contact, type FolderData } from '@/data/contacts';
 import { getContacts, getFolders, addContact } from '@/services/contact-service';
+import { saveEmailForContact } from '@/services/file-service';
 
 const OgeemoChatDialog = dynamic(() => import('@/components/ogeemail/ogeemo-chat-dialog'), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
@@ -85,6 +87,7 @@ export function ComposeEmailView() {
   const [subject, setSubject] = React.useState('');
   const [body, setBody] = React.useState('');
   const [unresolvedRecipient, setUnresolvedRecipient] = React.useState<string | null>(null);
+  const [resolvedContact, setResolvedContact] = React.useState<Contact | null>(null);
   
   const [allContacts, setAllContacts] = React.useState<Contact[]>([]);
   const [allFolders, setAllFolders] = React.useState<FolderData[]>([]);
@@ -103,6 +106,7 @@ export function ComposeEmailView() {
   const [imagePrompt, setImagePrompt] = React.useState('');
   const [isGeneratingImage, setIsGeneratingImage] = React.useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = React.useState<string | null>(null);
+  const [isSaving, setIsSaving] = React.useState(false);
   
   const { toast } = useToast();
   const { user } = useAuth();
@@ -140,6 +144,7 @@ export function ComposeEmailView() {
     const input = recipient.trim();
     if (!input) {
       setUnresolvedRecipient(null);
+      setResolvedContact(null);
       return;
     }
 
@@ -154,7 +159,9 @@ export function ComposeEmailView() {
     if (contact) {
       setRecipient(`"${contact.name}" <${contact.email}>`);
       setUnresolvedRecipient(null);
+      setResolvedContact(contact);
     } else {
+      setResolvedContact(null);
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (emailRegex.test(input)) {
         setUnresolvedRecipient(input);
@@ -175,15 +182,8 @@ export function ComposeEmailView() {
         return;
     }
 
-    const newContactData: Omit<Contact, 'id'> = {
-      name: values.name,
-      email: values.email,
-      folderId: values.folderId,
-      userId: user.uid, 
-    };
-    
     try {
-        const newContact = await addContact(newContactData);
+        const newContact = await addContact({ ...values, userId: user.uid });
         setAllContacts(prev => [...prev, newContact]);
         
         newContactForm.reset();
@@ -191,6 +191,7 @@ export function ComposeEmailView() {
         
         if (unresolvedRecipient === newContact.email) {
           setRecipient(`"${newContact.name}" <${newContact.email}>`);
+          setResolvedContact(newContact);
           setUnresolvedRecipient(null);
         }
     
@@ -200,6 +201,53 @@ export function ComposeEmailView() {
         toast({ variant: "destructive", title: "Save Failed", description: error.message });
     }
   }
+
+  const handleSaveToContactFolder = async () => {
+    if (!user) {
+        toast({ variant: "destructive", title: "Not logged in", description: "You must be logged in to save emails." });
+        return;
+    }
+    if (!resolvedContact) {
+        toast({
+            variant: "destructive",
+            title: "No Contact Selected",
+            description: "Please enter a valid contact in the 'To' field first.",
+        });
+        return;
+    }
+
+    const currentBody = editorRef.current?.innerHTML || body;
+
+    if (!subject.trim() && !currentBody.trim()) {
+        toast({
+            variant: "destructive",
+            title: "Empty Email",
+            description: "Please provide a subject or body before saving.",
+        });
+        return;
+    }
+
+    setIsSaving(true);
+    try {
+        await saveEmailForContact(user.uid, resolvedContact.name, {
+            subject: subject || 'Untitled Email',
+            body: currentBody,
+        });
+        toast({
+            title: "Email Saved",
+            description: `A copy of this email has been saved to the "${resolvedContact.name}" folder in your File Manager.`,
+        });
+    } catch (error: any) {
+        console.error("Failed to save email to contact folder:", error);
+        toast({
+            variant: "destructive",
+            title: "Save Failed",
+            description: error.message || "An unexpected error occurred.",
+        });
+    } finally {
+        setIsSaving(false);
+    }
+  };
 
   const handleFormat = (command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -269,7 +317,16 @@ export function ComposeEmailView() {
               <div className="flex items-center gap-4">
                 <Label htmlFor="to" className="text-sm text-muted-foreground w-12 text-right">To</Label>
                 <div className="flex-1">
-                  <Input id="to" className="border-0 shadow-none focus-visible:ring-0" value={recipient} onChange={(e) => setRecipient(e.target.value)} onBlur={handleRecipientBlur} />
+                  <Input 
+                    id="to" 
+                    className="border-0 shadow-none focus-visible:ring-0" 
+                    value={recipient} 
+                    onChange={(e) => {
+                      setRecipient(e.target.value);
+                      setResolvedContact(null);
+                      setUnresolvedRecipient(null);
+                    }} 
+                    onBlur={handleRecipientBlur} />
                    {unresolvedRecipient && (
                       <div className="pl-2 pt-1 text-xs text-muted-foreground">
                         <span className="mr-1">Contact not found.</span>
@@ -340,7 +397,13 @@ export function ComposeEmailView() {
                     </DialogContent>
                 </Dialog>
             </div>
-            <Button><Send className="mr-2 h-4 w-4" /> Send</Button>
+            <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={handleSaveToContactFolder} disabled={isSaving || !resolvedContact}>
+                    {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Archive className="mr-2 h-4 w-4" />}
+                    {isSaving ? "Saving..." : "Save to Contact Folder"}
+                </Button>
+                <Button><Send className="mr-2 h-4 w-4" /> Send</Button>
+            </div>
           </CardFooter>
         </Card>
       </div>
