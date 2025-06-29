@@ -78,12 +78,14 @@ const newContactSchema = z.object({
 
 export function ComposeEmailView() {
   const [recipient, setRecipient] = React.useState('');
+  const [cc, setCc] = React.useState('');
+  const [bcc, setBcc] = React.useState('');
   const [subject, setSubject] = React.useState('');
   const [body, setBody] = React.useState('');
   const [unresolvedRecipient, setUnresolvedRecipient] = React.useState<string | null>(null);
   
-  const [allContacts, setAllContacts] = React.useState<Contact[]>(mockContacts);
-  const [allFolders, setAllFolders] = React.useState<FolderData[]>(mockFolders);
+  const [allContacts, setAllContacts] = React.useState<Contact[]>([]);
+  const [allFolders, setAllFolders] = React.useState<FolderData[]>([]);
   
   const [isNewContactDialogOpen, setIsNewContactDialogOpen] = React.useState(false);
 
@@ -105,6 +107,14 @@ export function ComposeEmailView() {
     resolver: zodResolver(newContactSchema),
     defaultValues: { name: "", email: "", folderId: "" },
   });
+  
+  React.useEffect(() => {
+    // Simulate fetching and preparing contact data
+    const contactsWithUserId = mockContacts.map(c => ({ ...c, userId: 'mock-user-id' }));
+    setAllContacts(contactsWithUserId);
+    const foldersWithUserId = mockFolders.map(f => ({ ...f, userId: 'mock-user-id' }));
+    setAllFolders(foldersWithUserId);
+  }, []);
 
   const handleRecipientBlur = React.useCallback(() => {
     const input = recipient.trim();
@@ -239,6 +249,16 @@ export function ComposeEmailView() {
               </div>
               <Separator />
               <div className="flex items-center gap-4">
+                <Label htmlFor="cc" className="text-sm text-muted-foreground w-12 text-right">Cc</Label>
+                <Input id="cc" className="border-0 shadow-none focus-visible:ring-0" value={cc} onChange={(e) => setCc(e.target.value)} />
+              </div>
+              <Separator />
+              <div className="flex items-center gap-4">
+                <Label htmlFor="bcc" className="text-sm text-muted-foreground w-12 text-right">Bcc</Label>
+                <Input id="bcc" className="border-0 shadow-none focus-visible:ring-0" value={bcc} onChange={(e) => setBcc(e.target.value)} />
+              </div>
+              <Separator />
+              <div className="flex items-center gap-4">
                 <Label htmlFor="subject" className="text-sm text-muted-foreground w-12 text-right">Subject</Label>
                 <Input id="subject" className="border-0 shadow-none focus-visible:ring-0" value={subject} onChange={(e) => setSubject(e.target.value)} />
               </div>
@@ -250,10 +270,10 @@ export function ComposeEmailView() {
                 <Button variant="ghost" size="icon" title="Bold" onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" title="Italic" onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" title="Underline" onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
-                <Separator orientation="vertical" className="h-6" />
+                <Separator orientation="vertical" className="h-6 mx-1" />
                 <Button variant="ghost" size="icon" title="Unordered List" onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" title="Ordered List" onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
-                 <Separator orientation="vertical" className="h-6" />
+                <Separator orientation="vertical" className="h-6 mx-1" />
                 <Button variant="ghost" size="icon" title="Attach File"><Paperclip className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" title="Generate Image" onClick={() => setIsGenerateImageDialogOpen(true)}><ImageIcon className="h-4 w-4" /></Button>
             </div>
