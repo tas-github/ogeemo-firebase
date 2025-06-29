@@ -86,8 +86,11 @@ export function ComposeEmailView() {
   const [bcc, setBcc] = React.useState('');
   const [subject, setSubject] = React.useState('');
   const [body, setBody] = React.useState('');
+  
   const [unresolvedRecipient, setUnresolvedRecipient] = React.useState<string | null>(null);
   const [resolvedContact, setResolvedContact] = React.useState<Contact | null>(null);
+  const [suggestions, setSuggestions] = React.useState<Contact[]>([]);
+  const [showSuggestions, setShowSuggestions] = React.useState(false);
   
   const [allContacts, setAllContacts] = React.useState<Contact[]>([]);
   const [allFolders, setAllFolders] = React.useState<FolderData[]>([]);
@@ -96,6 +99,7 @@ export function ComposeEmailView() {
   const [isNewContactDialogOpen, setIsNewContactDialogOpen] = React.useState(false);
 
   const editorRef = React.useRef<HTMLDivElement>(null);
+  const recipientInputRef = React.useRef<HTMLInputElement>(null);
   
   const [templates] = React.useState(initialTemplates);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = React.useState(false);
@@ -140,37 +144,48 @@ export function ComposeEmailView() {
     loadContactData();
   }, [user, toast]);
 
-  const handleRecipientBlur = React.useCallback(() => {
-    const input = recipient.trim();
-    if (!input) {
-      setUnresolvedRecipient(null);
-      setResolvedContact(null);
-      return;
-    }
+  const handleRecipientChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setRecipient(value);
+    setResolvedContact(null);
+    setUnresolvedRecipient(null);
 
-    if (input.match(/".*" <.+>/)) {
-      setUnresolvedRecipient(null);
-      return;
-    }
-
-    const lowerInput = input.toLowerCase();
-    const contact = allContacts.find(c => c.email.toLowerCase() === lowerInput || c.name.toLowerCase().includes(lowerInput));
-
-    if (contact) {
-      setRecipient(`"${contact.name}" <${contact.email}>`);
-      setUnresolvedRecipient(null);
-      setResolvedContact(contact);
+    if (value.trim().length > 1) {
+      const lowerValue = value.toLowerCase();
+      const filtered = allContacts.filter(
+        (c) =>
+          c.name.toLowerCase().includes(lowerValue) ||
+          c.email.toLowerCase().includes(lowerValue)
+      );
+      setSuggestions(filtered.slice(0, 5));
+      setShowSuggestions(true);
     } else {
-      setResolvedContact(null);
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (emailRegex.test(input)) {
-        setUnresolvedRecipient(input);
-      } else {
-        setUnresolvedRecipient(null);
-      }
+      setSuggestions([]);
+      setShowSuggestions(false);
     }
-  }, [recipient, allContacts]);
+  };
 
+  const handleSuggestionClick = (contact: Contact) => {
+    setRecipient(`"${contact.name}" <${contact.email}>`);
+    setResolvedContact(contact);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
+
+  const handleRecipientBlur = () => {
+    setTimeout(() => {
+      if (!recipientInputRef.current?.matches(':focus-within')) {
+        setShowSuggestions(false);
+      }
+      if (!resolvedContact) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (emailRegex.test(recipient.trim())) {
+          setUnresolvedRecipient(recipient.trim());
+        }
+      }
+    }, 200);
+  };
+  
   const handleOpenNewContactDialog = (email: string) => {
     newContactForm.reset({ email, name: '', folderId: '' });
     setIsNewContactDialogOpen(true);
@@ -316,23 +331,49 @@ export function ComposeEmailView() {
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-4">
                 <Label htmlFor="to" className="text-sm text-muted-foreground w-12 text-right">To</Label>
-                <div className="flex-1">
-                  <Input 
-                    id="to" 
-                    className="border-0 shadow-none focus-visible:ring-0" 
-                    value={recipient} 
-                    onChange={(e) => {
-                      setRecipient(e.target.value);
-                      setResolvedContact(null);
-                      setUnresolvedRecipient(null);
-                    }} 
-                    onBlur={handleRecipientBlur} />
-                   {unresolvedRecipient && (
-                      <div className="pl-2 pt-1 text-xs text-muted-foreground">
-                        <span className="mr-1">Contact not found.</span>
-                        <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => handleOpenNewContactDialog(unresolvedRecipient)}>Add contact?</Button>
-                      </div>
-                   )}
+                <div className="flex-1 relative">
+                  <Input
+                    id="to"
+                    ref={recipientInputRef}
+                    className="border-0 shadow-none focus-visible:ring-0"
+                    value={recipient}
+                    onChange={handleRecipientChange}
+                    onBlur={handleRecipientBlur}
+                    onFocus={handleRecipientChange}
+                    autoComplete="off"
+                  />
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute top-full left-0 w-full bg-background border rounded-md shadow-lg z-10 mt-1">
+                      <ul className="py-1">
+                        {suggestions.map((contact) => (
+                          <li
+                            key={contact.id}
+                            className="px-3 py-2 cursor-pointer hover:bg-accent"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleSuggestionClick(contact);
+                            }}
+                          >
+                            <p className="font-medium">{contact.name}</p>
+                            <p className="text-sm text-muted-foreground">{contact.email}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {unresolvedRecipient && (
+                    <div className="pl-2 pt-1 text-xs text-muted-foreground">
+                      <span className="mr-1">Contact not found.</span>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="p-0 h-auto text-xs"
+                        onClick={() => handleOpenNewContactDialog(unresolvedRecipient)}
+                      >
+                        Add contact?
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
               <Separator />
