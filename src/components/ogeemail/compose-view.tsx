@@ -50,9 +50,11 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/auth-context';
 import { generateImage } from '@/ai/flows/generate-image-flow';
 import { Textarea } from '@/components/ui/textarea';
-import { type Contact, type FolderData, mockContacts, mockFolders } from '@/data/contacts';
+import { type Contact, type FolderData } from '@/data/contacts';
+import { getContacts, getFolders, addContact } from '@/services/contact-service';
 
 const OgeemoChatDialog = dynamic(() => import('@/components/ogeemail/ogeemo-chat-dialog'), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
@@ -86,6 +88,7 @@ export function ComposeEmailView() {
   
   const [allContacts, setAllContacts] = React.useState<Contact[]>([]);
   const [allFolders, setAllFolders] = React.useState<FolderData[]>([]);
+  const [isDataLoading, setIsDataLoading] = React.useState(true);
   
   const [isNewContactDialogOpen, setIsNewContactDialogOpen] = React.useState(false);
 
@@ -102,6 +105,7 @@ export function ComposeEmailView() {
   const [generatedImageUrl, setGeneratedImageUrl] = React.useState<string | null>(null);
   
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const newContactForm = useForm<z.infer<typeof newContactSchema>>({
     resolver: zodResolver(newContactSchema),
@@ -109,12 +113,28 @@ export function ComposeEmailView() {
   });
   
   React.useEffect(() => {
-    // Simulate fetching and preparing contact data
-    const contactsWithUserId = mockContacts.map(c => ({ ...c, userId: 'mock-user-id' }));
-    setAllContacts(contactsWithUserId);
-    const foldersWithUserId = mockFolders.map(f => ({ ...f, userId: 'mock-user-id' }));
-    setAllFolders(foldersWithUserId);
-  }, []);
+    async function loadContactData() {
+        if (!user) {
+            setIsDataLoading(false);
+            return;
+        }
+        setIsDataLoading(true);
+        try {
+            const [contacts, folders] = await Promise.all([
+                getContacts(user.uid),
+                getFolders(user.uid)
+            ]);
+            setAllContacts(contacts);
+            setAllFolders(folders);
+        } catch (error) {
+            console.error("Failed to load contact data:", error);
+            toast({ variant: 'destructive', title: "Error", description: "Could not load contact data." });
+        } finally {
+            setIsDataLoading(false);
+        }
+    }
+    loadContactData();
+  }, [user, toast]);
 
   const handleRecipientBlur = React.useCallback(() => {
     const input = recipient.trim();
@@ -149,25 +169,36 @@ export function ComposeEmailView() {
     setIsNewContactDialogOpen(true);
   };
   
-  function handleCreateNewContact(values: z.infer<typeof newContactSchema>) {
-    const newContact: Contact = {
-      id: `c-${Date.now()}`,
+  async function handleCreateNewContact(values: z.infer<typeof newContactSchema>) {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to create a contact.' });
+        return;
+    }
+
+    const newContactData: Omit<Contact, 'id'> = {
       name: values.name,
       email: values.email,
       folderId: values.folderId,
-      userId: 'mock-user-id', 
+      userId: user.uid, 
     };
     
-    setAllContacts(prev => [...prev, newContact]);
-    newContactForm.reset();
-    setIsNewContactDialogOpen(false);
+    try {
+        const newContact = await addContact(newContactData);
+        setAllContacts(prev => [...prev, newContact]);
+        
+        newContactForm.reset();
+        setIsNewContactDialogOpen(false);
+        
+        if (unresolvedRecipient === newContact.email) {
+          setRecipient(`"${newContact.name}" <${newContact.email}>`);
+          setUnresolvedRecipient(null);
+        }
     
-    if (unresolvedRecipient === newContact.email) {
-      setRecipient(`"${newContact.name}" <${newContact.email}>`);
-      setUnresolvedRecipient(null);
+        toast({ title: 'Contact Created', description: `${newContact.name} has been added.` });
+    } catch(error: any) {
+        console.error("Failed to save contact:", error);
+        toast({ variant: "destructive", title: "Save Failed", description: error.message });
     }
-
-    toast({ title: 'Contact Created', description: `${newContact.name} has been added.` });
   }
 
   const handleFormat = (command: string, value?: string) => {
