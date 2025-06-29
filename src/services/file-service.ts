@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import type { FileItem, FolderItem } from '@/data/files';
+import { format } from "date-fns";
 
 const FOLDERS_COLLECTION = 'fileFolders';
 const FILES_COLLECTION = 'files';
@@ -189,4 +190,61 @@ export async function deleteFiles(files: FileItem[]): Promise<void> {
     }
     
     await batch.commit();
+}
+
+export async function saveEmailForContact(
+    userId: string, 
+    contactName: string, 
+    email: { subject: string, body: string }
+): Promise<FileItem> {
+    checkDb();
+
+    // 1. Find or create the main "OgeeMail Logs" folder.
+    const mailLogsFolderQuery = query(
+        collection(db, FOLDERS_COLLECTION),
+        where("userId", "==", userId),
+        where("name", "==", "OgeeMail Logs"),
+        where("parentId", "==", null)
+    );
+    let mailLogsFolderSnapshot = await getDocs(mailLogsFolderQuery);
+    let mailLogsFolder: FolderItem;
+
+    if (mailLogsFolderSnapshot.empty) {
+        mailLogsFolder = await addFolder({ name: "OgeeMail Logs", userId, parentId: null });
+    } else {
+        mailLogsFolder = { id: mailLogsFolderSnapshot.docs[0].id, ...mailLogsFolderSnapshot.docs[0].data() } as FolderItem;
+    }
+
+    // 2. Find or create the specific contact's folder inside "OgeeMail Logs".
+    const contactFolderQuery = query(
+        collection(db, FOLDERS_COLLECTION),
+        where("userId", "==", userId),
+        where("name", "==", contactName),
+        where("parentId", "==", mailLogsFolder.id)
+    );
+    let contactFolderSnapshot = await getDocs(contactFolderQuery);
+    let contactFolder: FolderItem;
+
+    if (contactFolderSnapshot.empty) {
+        contactFolder = await addFolder({ name: contactName, userId, parentId: mailLogsFolder.id });
+    } else {
+        contactFolder = { id: contactFolderSnapshot.docs[0].id, ...contactFolderSnapshot.docs[0].data() } as FolderItem;
+    }
+
+    // 3. Create the file item for the email.
+    const now = new Date();
+    const fileName = `${format(now, 'yyyy-MM-dd')} - ${email.subject || 'Untitled Email'}.html`;
+    
+    const fileData: Omit<FileItem, 'id'> = {
+        name: fileName,
+        type: 'text/html',
+        content: email.body,
+        size: email.body.length,
+        modifiedAt: now,
+        folderId: contactFolder.id,
+        userId,
+        storagePath: '', // No actual file in storage
+    };
+
+    return await _addFileDoc(fileData);
 }
