@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { ProjectInfoCard } from "@/components/tasks/ProjectInfoCard";
@@ -46,6 +47,8 @@ const NewProjectDialog = dynamic(() => import('@/components/tasks/NewProjectDial
 const EditProjectDialog = dynamic(() => import('@/components/tasks/EditProjectDialog'), {
     loading: () => <DialogLoader />,
 });
+
+const QUICK_TASKS_PROJECT_ID = 'quick_tasks';
 
 
 export function TasksView() {
@@ -75,8 +78,8 @@ export function TasksView() {
             setAllTasks(fetchedTasks);
             setProjectTemplates(fetchedTemplates);
 
-            if (fetchedProjects.length > 0 && !selectedProjectId) {
-                setSelectedProjectId(fetchedProjects[0].id);
+            if (!selectedProjectId) {
+                setSelectedProjectId(QUICK_TASKS_PROJECT_ID);
             }
         } catch (error: any) {
             console.error("Failed to load project data:", error);
@@ -94,9 +97,14 @@ export function TasksView() {
     } else {
       setIsLoading(false);
     }
-  }, [user, toast, selectedProjectId]);
+  }, [user, toast]);
   
-  const tasksForSelectedProject = allTasks.filter(task => task.projectId === selectedProjectId);
+  const tasksForSelectedProject = allTasks.filter(task => {
+    if (selectedProjectId === QUICK_TASKS_PROJECT_ID) {
+        return !task.projectId;
+    }
+    return task.projectId === selectedProjectId;
+  });
 
   const handleCreateTask = async (taskData: Omit<Event, 'id' | 'userId'>) => {
     if (!user) return;
@@ -196,6 +204,16 @@ export function TasksView() {
   };
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
+  
+  const quickTasksVirtualProject: Project = {
+      id: QUICK_TASKS_PROJECT_ID,
+      name: "Project List",
+      description: "A collection of miscellaneous tasks and to-dos.",
+      userId: user?.uid || '',
+  };
+
+  const displayProject = selectedProjectId === QUICK_TASKS_PROJECT_ID ? quickTasksVirtualProject : selectedProject;
+
 
   if (isLoading) {
     return (
@@ -212,7 +230,7 @@ export function TasksView() {
           Projects Manager
         </h1>
         <p className="text-sm text-muted-foreground mt-2">
-          Oversee your projects from start to finish. All tasks created here are automatically added to your calendar. Any and all tasks are projects.
+          Oversee your projects from start to finish. All tasks created here are automatically added to your calendar.
         </p>
       </header>
 
@@ -222,6 +240,8 @@ export function TasksView() {
             <SelectValue placeholder="Select a project" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={QUICK_TASKS_PROJECT_ID}>Project List</SelectItem>
+            {projects.length > 0 && <Separator className="my-1"/>}
             {projects.map((project) => (
               <SelectItem key={project.id} value={project.id}>
                 {project.name}
@@ -252,7 +272,7 @@ export function TasksView() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={() => setIsEditProjectOpen(true)} disabled={!selectedProjectId} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button onClick={() => setIsEditProjectOpen(true)} disabled={!selectedProjectId || selectedProjectId === QUICK_TASKS_PROJECT_ID} className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Edit className="mr-2 h-4 w-4" />
               Edit Project
             </Button>
@@ -264,8 +284,8 @@ export function TasksView() {
       </div>
 
       <main className="flex-1 min-h-0">
-        {selectedProject ? (
-          <ProjectInfoCard project={selectedProject} tasks={tasksForSelectedProject} />
+        {displayProject ? (
+          <ProjectInfoCard project={displayProject} tasks={tasksForSelectedProject} />
         ) : (
           <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed">
             <div className="text-center max-w-2xl">
@@ -278,7 +298,12 @@ export function TasksView() {
         )}
       </main>
 
-      {isNewTaskOpen && <NewTaskDialog isOpen={isNewTaskOpen} onOpenChange={setIsNewTaskOpen} onTaskCreate={handleCreateTask} projectId={selectedProjectId} />}
+      {isNewTaskOpen && <NewTaskDialog 
+          isOpen={isNewTaskOpen} 
+          onOpenChange={setIsNewTaskOpen} 
+          onTaskCreate={handleCreateTask} 
+          projectId={selectedProjectId === QUICK_TASKS_PROJECT_ID ? null : selectedProjectId} 
+      />}
       
       {isNewProjectOpen && <NewProjectDialog
         isOpen={isNewProjectOpen}
