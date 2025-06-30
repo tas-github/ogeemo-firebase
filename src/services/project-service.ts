@@ -95,6 +95,13 @@ export async function updateTask(taskId: string, taskData: Partial<Omit<Event, '
     await updateDoc(taskRef, taskData);
 }
 
+export async function deleteTask(taskId: string): Promise<void> {
+    checkDb();
+    const taskRef = doc(db, TASKS_COLLECTION, taskId);
+    await deleteDoc(taskRef);
+}
+
+
 // --- Template Functions ---
 export async function getProjectTemplates(userId: string): Promise<ProjectTemplate[]> {
   checkDb();
