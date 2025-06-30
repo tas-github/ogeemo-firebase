@@ -44,7 +44,7 @@ interface NewTaskDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   defaultStartDate?: Date;
   eventToEdit?: Event | null;
-  onTaskCreate?: (newEvent: Event) => void;
+  onTaskCreate?: (newEvent: Omit<Event, 'id' | 'userId'>) => void;
   onTaskUpdate?: (updatedEvent: Event) => void;
   projectId: string | null;
 }
@@ -186,7 +186,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
         return;
     }
 
-    if (!isEditMode && !projectId) {
+    if (!isEditMode && projectId === undefined) {
       toast({
         variant: "destructive",
         title: "No Project Selected",
@@ -250,22 +250,21 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
             description: `"${updatedEvent.title}" has been successfully updated.`,
         });
     } else {
-        const newEvent: Event = {
-            id: `event-${Date.now()}`,
+        const newEventData: Omit<Event, 'id' | 'userId'> = {
             title,
             description: description,
             start: startDateTime,
             end: endDateTime,
             attendees: assignee ? ['You', assignee.name] : ['You'],
             status,
-            projectId: projectId!,
+            projectId: projectId ?? undefined,
             isBillable,
             billableRate,
         };
-        onTaskCreate?.(newEvent);
+        onTaskCreate?.(newEventData);
         toast({
             title: "Task Created",
-            description: `"${newEvent.title}" has been successfully created.`,
+            description: `"${title}" has been successfully created.`,
         });
     }
 
