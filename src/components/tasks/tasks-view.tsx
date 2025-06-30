@@ -212,7 +212,7 @@ export function TasksView() {
           Projects Manager
         </h1>
         <p className="text-sm text-muted-foreground mt-2">
-          Oversee your projects from start to finish. All tasks created here are automatically added to your calendar.
+          Oversee your projects from start to finish. All tasks created here are automatically added to your calendar. Any and all tasks are projects.
         </p>
       </header>
 
