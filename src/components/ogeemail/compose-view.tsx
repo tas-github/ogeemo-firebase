@@ -283,8 +283,13 @@ export function ComposeEmailView() {
     try {
       const result = await generateImage({ prompt: imagePrompt });
       setGeneratedImageUrl(result.imageUrl);
-    } catch (error) {
-      toast({ variant: "destructive", title: "Image Generation Failed" });
+    } catch (error: any) {
+      console.error("Image generation UI error:", error);
+      toast({
+        variant: "destructive",
+        title: "Image Generation Failed",
+        description: error.message || 'An unexpected error occurred. Please try again.'
+      });
     } finally {
       setIsGeneratingImage(false);
     }
