@@ -37,22 +37,22 @@ const generateImageFlow = ai.defineFlow(
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
         safetySettings: [
-          {
-            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-            threshold: 'BLOCK_ONLY_HIGH',
-          },
-          {
-            category: 'HARM_CATEGORY_HATE_SPEECH',
-            threshold: 'BLOCK_ONLY_HIGH',
-          },
-          {
-            category: 'HARM_CATEGORY_HARASSMENT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
-          {
-            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
-          },
+            {
+                category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+                threshold: 'BLOCK_ONLY_HIGH',
+            },
+            {
+                category: 'HARM_CATEGORY_HATE_SPEECH',
+                threshold: 'BLOCK_ONLY_HIGH',
+            },
+            {
+                category: 'HARM_CATEGORY_HARASSMENT',
+                threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+            },
+            {
+                category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+                threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+            },
         ],
       },
     });
@@ -60,8 +60,20 @@ const generateImageFlow = ai.defineFlow(
     const imageUrl = response.media?.url;
 
     if (!imageUrl) {
-        console.error("Image generation failed. The model did not return an image.");
-        throw new Error('Image generation failed. The model may have refused to generate the image due to safety policies.');
+        const finishReason = response.candidates[0]?.finishReason;
+        const finishMessage = response.candidates[0]?.finishMessage;
+        let errorMessage = 'Image generation failed for an unknown reason.';
+
+        if (finishReason === 'SAFETY') {
+            errorMessage = `Image generation was blocked for safety reasons. Please try a different prompt. Details: ${finishMessage || 'No details provided.'}`;
+        } else if (finishReason === 'REFUSED') {
+            errorMessage = 'The model refused to generate an image for this prompt. Please try rephrasing it.';
+        } else {
+            errorMessage = `Image generation failed. The model may have refused to generate the image. Reason: ${finishReason || 'Unknown'}. ${finishMessage || ''}`;
+        }
+        
+        console.error("Image generation failed:", errorMessage, response);
+        throw new Error(errorMessage);
     }
 
     return { imageUrl };
