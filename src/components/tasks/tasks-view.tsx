@@ -130,7 +130,7 @@ export function TasksView() {
                 title: task.title,
                 description: task.description,
                 start: new Date(),
-                end: new Date(new Date().getTime() + 30 * 60000), // Default 30 min duration
+                end: new Date(new Date().getTime() + 30 * 60 * 1000), // Default 30 min duration
                 attendees: [],
                 status: 'todo',
                 projectId: newProject.id,
@@ -209,10 +209,10 @@ export function TasksView() {
     <div className="p-4 sm:p-6 flex flex-col h-full">
       <header className="text-center pb-4 border-b shrink-0">
         <h1 className="text-3xl font-bold font-headline text-primary">
-          Project Task Manager
+          Projects Manager
         </h1>
         <p className="text-sm text-muted-foreground mt-2">
-          All projects are multiple tasks. Tasks entered here get entered into your calendar automatically.
+          Oversee your projects from start to finish. All tasks created here are automatically added to your calendar.
         </p>
       </header>
 
