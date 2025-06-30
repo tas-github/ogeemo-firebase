@@ -29,6 +29,16 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { ProjectInfoCard } from "@/components/tasks/ProjectInfoCard";
 import * as ProjectService from '@/services/project-service';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const DialogLoader = () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -61,6 +71,8 @@ export function TasksView() {
   const [templateToApply, setTemplateToApply] = useState<PartialTask[] | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [taskToEdit, setTaskToEdit] = useState<Event | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<Event | null>(null);
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -121,6 +133,47 @@ export function TasksView() {
     }
   };
 
+  const handleUpdateTask = async (updatedTaskData: Event) => {
+    if (!user) return;
+    try {
+        await ProjectService.updateTask(updatedTaskData.id, updatedTaskData);
+        setAllTasks(prev => prev.map(t => t.id === updatedTaskData.id ? updatedTaskData : t));
+        toast({
+            title: "Task Updated",
+            description: `"${updatedTaskData.title}" has been updated.`,
+        });
+    } catch (error: any) {
+        console.error("Failed to update task:", error);
+        toast({ variant: "destructive", title: "Update Failed", description: error.message });
+    }
+  };
+
+  const handleInitiateDelete = (task: Event) => {
+    setTaskToDelete(task);
+  };
+  
+  const handleConfirmDelete = async () => {
+    if (!taskToDelete || !user) return;
+    try {
+        await ProjectService.deleteTask(taskToDelete.id);
+        setAllTasks(prev => prev.filter(t => t.id !== taskToDelete.id));
+        toast({
+            title: "Task Deleted",
+            description: `"${taskToDelete.title}" has been deleted.`,
+        });
+    } catch (error: any) {
+        console.error("Failed to delete task:", error);
+        toast({ variant: "destructive", title: "Delete Failed", description: error.message });
+    } finally {
+        setTaskToDelete(null);
+    }
+  };
+
+  const handleEditTask = (task: Event) => {
+    setTaskToEdit(task);
+    setIsNewTaskOpen(true);
+  };
+
   const handleCreateProject = async (projectName: string, projectDescription: string, tasks: PartialTask[]) => {
     if (!user) return;
     try {
@@ -168,9 +221,6 @@ export function TasksView() {
         
         const otherProjectTasks = allTasks.filter(t => t.projectId !== updatedProject.id);
         setAllTasks([...otherProjectTasks, ...updatedTasks]);
-
-        // In a real scenario, you'd have a more robust way of batch updating tasks.
-        // For simplicity here, we assume tasks are just replaced.
         
         toast({
             title: "Project Saved",
@@ -272,7 +322,7 @@ export function TasksView() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={() => setIsEditProjectOpen(true)} disabled={!selectedProjectId || selectedProjectId === QUICK_TASKS_PROJECT_ID} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button onClick={() => selectedProject && handleEditTask(selectedProject)} disabled={!selectedProjectId || selectedProjectId === QUICK_TASKS_PROJECT_ID} className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Edit className="mr-2 h-4 w-4" />
               Edit Project
             </Button>
@@ -285,7 +335,12 @@ export function TasksView() {
 
       <main className="flex-1 min-h-0">
         {displayProject ? (
-          <ProjectInfoCard project={displayProject} tasks={tasksForSelectedProject} />
+          <ProjectInfoCard 
+            project={displayProject} 
+            tasks={tasksForSelectedProject}
+            onEditTask={handleEditTask}
+            onInitiateDelete={handleInitiateDelete}
+          />
         ) : (
           <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed">
             <div className="text-center max-w-2xl">
@@ -300,8 +355,13 @@ export function TasksView() {
 
       {isNewTaskOpen && <NewTaskDialog 
           isOpen={isNewTaskOpen} 
-          onOpenChange={setIsNewTaskOpen} 
-          onTaskCreate={handleCreateTask} 
+          onOpenChange={(open) => {
+            setIsNewTaskOpen(open);
+            if (!open) setTaskToEdit(null);
+          }} 
+          onTaskCreate={handleCreateTask}
+          onTaskUpdate={handleUpdateTask}
+          eventToEdit={taskToEdit}
           projectId={selectedProjectId === QUICK_TASKS_PROJECT_ID ? null : selectedProjectId} 
       />}
       
@@ -326,6 +386,21 @@ export function TasksView() {
         templates={projectTemplates}
         onSaveAsTemplate={handleSaveTemplate}
       />}
+
+      <AlertDialog open={!!taskToDelete} onOpenChange={() => setTaskToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the task "{taskToDelete?.title}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
