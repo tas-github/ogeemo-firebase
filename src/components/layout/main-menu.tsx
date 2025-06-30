@@ -101,8 +101,8 @@ export function MainMenu() {
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isActive("/tasks")} tooltip="Projects">
-          <Link href="/tasks" onClick={handleNavigate}>
+        <SidebarMenuButton asChild isActive={isActive("/projects")} tooltip="Projects">
+          <Link href="/projects" onClick={handleNavigate}>
             <Briefcase />
             <span>Projects</span>
           </Link>
