@@ -4,8 +4,14 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Lightbulb, Trash2 } from 'lucide-react';
+import { Lightbulb, MoreVertical, Trash2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface Idea {
   id: number;
@@ -76,15 +82,28 @@ export default function IdeasPage() {
                     <CardContent className="flex-1">
                       <p className="text-foreground">{idea.text}</p>
                     </CardContent>
-                    <CardFooter>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleDeleteIdea(idea.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                    <CardFooter className="justify-end">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                                <MoreVertical className="h-4 w-4" />
+                                <span className="sr-only">More options</span>
+                            </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                                onClick={() => handleDeleteIdea(idea.id)}
+                                className="text-destructive cursor-pointer"
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete</span>
+                            </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </CardFooter>
                   </Card>
                 </motion.div>
