@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useSpeechToText, type SpeechRecognitionStatus } from "@/hooks/use-speech-to-text";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
 
 type Message = {
   id: string;
@@ -44,6 +45,7 @@ export function ActionManagerView() {
   const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const baseTextRef = useRef("");
+  const { user } = useAuth();
 
   const {
     status,
@@ -85,6 +87,15 @@ export function ActionManagerView() {
     const currentInput = (inputRef.current?.value || input).trim();
     if (!currentInput || isLoading) return;
 
+    if (!user) {
+        toast({
+            variant: "destructive",
+            title: "Not Logged In",
+            description: "You must be logged in to chat with the assistant."
+        });
+        return;
+    }
+
     if (isListening) {
       stopListening();
     }
@@ -100,7 +111,7 @@ export function ActionManagerView() {
     setIsLoading(true);
 
     try {
-      const response = await askOgeemo({ message: currentInput });
+      const response = await askOgeemo({ message: currentInput, userId: user.uid });
       const ogeemoMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: response.reply,
@@ -118,7 +129,7 @@ export function ActionManagerView() {
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, isListening, stopListening]);
+  }, [input, isLoading, isListening, stopListening, user, toast]);
 
   useEffect(() => {
     if (status === 'idle' && shouldSubmitOnMicStop) {
