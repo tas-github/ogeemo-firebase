@@ -111,7 +111,7 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
         </div>
 
         <DialogFooter className="p-4 border-t flex-col sm:flex-row sm:justify-between items-center gap-2">
-          <Button variant="outline" onClick={handleCreateProject}>
+          <Button onClick={handleCreateProject} className="bg-orange-500 hover:bg-orange-600 text-white">
             Create a New Project
           </Button>
           <div className="flex items-center gap-2">
