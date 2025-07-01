@@ -65,7 +65,14 @@ export function GoogleIntegrationView() {
       }
     };
 
-    processRedirectResult();
+    // This check ensures we only process the redirect on this page, not on every page load.
+    // The main callback page handles the initial login. This handles re-auth for permissions.
+    if (window.sessionStorage.getItem('firebaseui/pendingRedirect') === 'true') {
+      window.sessionStorage.removeItem('firebaseui/pendingRedirect');
+      processRedirectResult();
+    } else {
+      setIsProcessingRedirect(false);
+    }
   }, [setAuthInfo, toast]);
 
   const handleSignIn = async () => {
@@ -78,8 +85,11 @@ export function GoogleIntegrationView() {
       return;
     }
     try {
+        // Mark that a redirect is in progress for this specific flow
+        window.sessionStorage.setItem('firebaseui/pendingRedirect', 'true');
         await signInWithRedirect(auth, provider);
     } catch (error: any) {
+        window.sessionStorage.removeItem('firebaseui/pendingRedirect');
         console.error("Google Sign-In Initiation Error:", error);
         if (error.code === 'auth/unauthorized-domain') {
             setUnauthorizedDomain(window.location.hostname);
