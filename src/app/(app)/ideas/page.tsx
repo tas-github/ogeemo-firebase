@@ -1,15 +1,17 @@
+
 'use client';
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Lightbulb, MoreVertical, Trash2 } from 'lucide-react';
+import { Lightbulb, MessageSquare, MoreVertical, Trash2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -95,13 +97,21 @@ export default function IdeasPage() {
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                                onClick={() => handleDeleteIdea(idea.id)}
-                                className="text-destructive cursor-pointer"
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                <span>Delete</span>
-                            </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => console.log('Ask for feedback for idea:', idea.id)}
+                                className="cursor-pointer"
+                              >
+                                <MessageSquare className="mr-2 h-4 w-4" />
+                                <span>Ask for feedback</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                  onClick={() => handleDeleteIdea(idea.id)}
+                                  className="text-destructive cursor-pointer focus:text-destructive focus:bg-destructive/10"
+                              >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  <span>Delete</span>
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </CardFooter>
