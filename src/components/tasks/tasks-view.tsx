@@ -73,6 +73,8 @@ export function TasksView() {
   const [isLoading, setIsLoading] = useState(true);
   const [taskToEdit, setTaskToEdit] = useState<Event | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<Event | null>(null);
+  const [initialProjectData, setInitialProjectData] = useState<{name: string, description: string} | null>(null);
+
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -110,6 +112,22 @@ export function TasksView() {
       setIsLoading(false);
     }
   }, [user, toast]);
+
+  useEffect(() => {
+    try {
+      const ideaDataString = sessionStorage.getItem('ogeemo-idea-to-project');
+      if (ideaDataString) {
+        sessionStorage.removeItem('ogeemo-idea-to-project');
+        const ideaData = JSON.parse(ideaDataString);
+        if (ideaData.title) {
+          setInitialProjectData({ name: ideaData.title, description: ideaData.description || '' });
+          setIsNewProjectOpen(true);
+        }
+      }
+    } catch (error) {
+      console.error("Could not process idea data from session storage", error);
+    }
+  }, []);
   
   const tasksForSelectedProject = allTasks.filter(task => {
     if (selectedProjectId === QUICK_TASKS_PROJECT_ID) {
@@ -322,7 +340,7 @@ export function TasksView() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={() => selectedProject && handleEditTask(selectedProject)} disabled={!selectedProjectId || selectedProjectId === QUICK_TASKS_PROJECT_ID} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button onClick={() => setIsEditProjectOpen(true)} disabled={!selectedProjectId || selectedProjectId === QUICK_TASKS_PROJECT_ID} className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Edit className="mr-2 h-4 w-4" />
               Edit Project
             </Button>
@@ -369,12 +387,17 @@ export function TasksView() {
         isOpen={isNewProjectOpen}
         onOpenChange={(open) => {
             setIsNewProjectOpen(open);
-            if (!open) setTemplateToApply(null);
+            if (!open) {
+                setTemplateToApply(null);
+                setInitialProjectData(null);
+            }
         }}
         onProjectCreate={handleCreateProject}
         templates={projectTemplates}
         onSaveAsTemplate={handleSaveTemplate}
         initialTasks={templateToApply}
+        initialName={initialProjectData?.name}
+        initialDescription={initialProjectData?.description}
       />}
       
       {isEditProjectOpen && selectedProject && <EditProjectDialog

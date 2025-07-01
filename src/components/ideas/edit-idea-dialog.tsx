@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
   const [title, setTitle] = useState(idea.title);
   const [content, setContent] = useState(idea.content);
   const editorRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     setTitle(idea.title);
@@ -58,6 +60,16 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
   };
   
   const preventDefault = (e: React.MouseEvent) => e.preventDefault();
+  
+  const handleCreateProject = () => {
+    try {
+      sessionStorage.setItem('ogeemo-idea-to-project', JSON.stringify({ title, description: content }));
+      onOpenChange(false);
+      router.push('/projects');
+    } catch (error) {
+      console.error("Failed to save idea to session storage", error);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -98,9 +110,14 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
           </ScrollArea>
         </div>
 
-        <DialogFooter className="p-4 border-t">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSaveClick}>Save Idea</Button>
+        <DialogFooter className="p-4 border-t flex-col sm:flex-row sm:justify-between items-center gap-2">
+          <Button variant="outline" onClick={handleCreateProject}>
+            Create a New Project
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button onClick={handleSaveClick}>Save Idea</Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
