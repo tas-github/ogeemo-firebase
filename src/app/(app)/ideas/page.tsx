@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,20 +19,48 @@ interface Idea {
   text: string;
 }
 
+const IDEAS_STORAGE_KEY = 'ogeemo-ideas';
+
 export default function IdeasPage() {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [newIdea, setNewIdea] = useState('');
 
+  // Load ideas from localStorage on initial render
+  useEffect(() => {
+    try {
+      const savedIdeas = localStorage.getItem(IDEAS_STORAGE_KEY);
+      if (savedIdeas) {
+        setIdeas(JSON.parse(savedIdeas));
+      }
+    } catch (error) {
+      console.error("Failed to parse ideas from localStorage", error);
+      // If parsing fails, start with an empty board
+      setIdeas([]);
+    }
+  }, []); // Empty dependency array means this runs once on mount
+
+  // Helper function to update state and localStorage
+  const updateIdeas = (newIdeas: Idea[]) => {
+    setIdeas(newIdeas);
+    try {
+      localStorage.setItem(IDEAS_STORAGE_KEY, JSON.stringify(newIdeas));
+    } catch (error) {
+      console.error("Failed to save ideas to localStorage", error);
+    }
+  };
+
   const handleAddIdea = (e: React.FormEvent) => {
     e.preventDefault();
     if (newIdea.trim()) {
-      setIdeas([...ideas, { id: Date.now(), text: newIdea.trim() }]);
+      const newIdeasArray = [...ideas, { id: Date.now(), text: newIdea.trim() }];
+      updateIdeas(newIdeasArray);
       setNewIdea('');
     }
   };
 
   const handleDeleteIdea = (id: number) => {
-    setIdeas(ideas.filter((idea) => idea.id !== id));
+    const newIdeasArray = ideas.filter((idea) => idea.id !== id);
+    updateIdeas(newIdeasArray);
   };
 
   return (
