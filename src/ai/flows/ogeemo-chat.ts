@@ -23,6 +23,39 @@ const OgeemoChatOutputSchema = z.object({
 });
 export type OgeemoChatOutput = z.infer<typeof OgeemoChatOutputSchema>;
 
+async function findOrCreateDefaultFolder(userId: string): Promise<string> {
+    const folders = await getFolders(userId);
+    const defaultFolderName = "From Ogeemo Assistant";
+    let folder = folders.find(f => f.name === defaultFolderName && !f.parentId);
+    
+    if (!folder) {
+        folder = await addFolder({ name: defaultFolderName, userId, parentId: null });
+    }
+    return folder.id;
+}
+
+const createContactTool = ai.defineTool(
+    {
+        name: 'createContact',
+        description: "Creates a new contact. Use this when a user asks to add, create, or save a new contact. You must have the contact's name, email address, and the user's ID.",
+        inputSchema: z.object({
+            name: z.string().describe("The full name of the contact."),
+            email: z.string().email().describe("The email address for the contact."),
+            userId: z.string().describe("The ID of the user for whom to create the contact.")
+        }),
+        outputSchema: z.string(),
+    },
+    async ({ name, email, userId }) => {
+        const folderId = await findOrCreateDefaultFolder(userId);
+        await addContact({
+            name,
+            email,
+            folderId,
+            userId,
+        });
+        return `I have successfully created a new contact for ${name} with the email ${email}.`;
+    }
+);
 
 const ogeemoChatFlow = ai.defineFlow(
   {
@@ -31,43 +64,9 @@ const ogeemoChatFlow = ai.defineFlow(
     outputSchema: OgeemoChatOutputSchema,
   },
   async ({ message, userId }) => {
-
-    const findOrCreateDefaultFolder = async (): Promise<string> => {
-        const folders = await getFolders(userId);
-        const defaultFolderName = "From Ogeemo Assistant";
-        let folder = folders.find(f => f.name === defaultFolderName && !f.parentId);
-        
-        if (!folder) {
-            folder = await addFolder({ name: defaultFolderName, userId, parentId: null });
-        }
-        return folder.id;
-    }
-
-    const createContactTool = ai.defineTool(
-        {
-            name: 'createContact',
-            description: "Creates a new contact. Use this when a user asks to add, create, or save a new contact. You must have the contact's name and email address.",
-            inputSchema: z.object({
-                name: z.string().describe("The full name of the contact."),
-                email: z.string().email().describe("The email address for the contact."),
-            }),
-            outputSchema: z.string(),
-        },
-        async ({ name, email }) => {
-            const folderId = await findOrCreateDefaultFolder();
-            await addContact({
-                name,
-                email,
-                folderId,
-                userId,
-            });
-            return `I have successfully created a new contact for ${name} with the email ${email}.`;
-        }
-    );
-
     const systemPrompt = `You are Ogeemo, an intelligent assistant for the Ogeemo platform. You are not "AI", you are "Ogeemo". Your purpose is to help users navigate the platform, understand its features, and accomplish their tasks. Be helpful, concise, and friendly.
 
-You have access to a set of tools to perform actions on the user's behalf.
+You have access to a set of tools to perform actions on the user's behalf. The current user's ID is: ${userId}.
 
 The Ogeemo platform has the following features (Managers):
 - Dashboard: Overview of key metrics.
@@ -91,7 +90,8 @@ The Ogeemo platform has the following features (Managers):
 
 TOOL INSTRUCTIONS:
 - If a user asks you to create a contact, use the \`createContact\` tool.
-- You must get the contact's full name and their email address before using the tool. If they are not provided in the user's first message, you must ask for the missing information.
+- You must get the contact's full name and their email address before using the tool.
+- When you call the \`createContact\` tool, you MUST pass the user's ID, which is ${userId}, to the tool's \`userId\` parameter.
 `;
 
     const { text } = await ai.generate({
