@@ -6,10 +6,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  signInWithRedirect,
+} from "firebase/auth";
 import { LoaderCircle } from "lucide-react";
 
-import { auth } from "@/lib/firebase";
+import { auth, provider } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +24,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 const formSchema = z.object({
   email: z.string().email({
@@ -35,7 +44,7 @@ const formSchema = z.object({
 export function LoginForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -46,7 +55,7 @@ export function LoginForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true);
+    setIsSigningIn(true);
     try {
       if (!auth) {
         throw new Error("Firebase Auth is not initialized.");
@@ -63,11 +72,23 @@ export function LoginForm() {
             ? "Invalid email or password."
             : "An unexpected error occurred. Please try again.",
       });
-      // Only set loading to false on error, so modal disappears.
-      // On success, the page redirects away.
-      setIsLoading(false);
+      setIsSigningIn(false);
     }
   }
+
+  const handleGoogleSignIn = async () => {
+    setIsSigningIn(true);
+    if (!auth || !provider) {
+       toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Authentication service not ready. Please try again."
+      });
+      setIsSigningIn(false);
+      return;
+    }
+    await signInWithRedirect(auth, provider);
+  };
 
   return (
     <>
@@ -83,7 +104,7 @@ export function LoginForm() {
                   <Input
                     placeholder="name@example.com"
                     {...field}
-                    disabled={isLoading}
+                    disabled={isSigningIn}
                   />
                 </FormControl>
                 <FormMessage />
@@ -101,24 +122,49 @@ export function LoginForm() {
                     type="password"
                     placeholder="••••••••"
                     {...field}
-                    disabled={isLoading}
+                    disabled={isSigningIn}
                   />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full" disabled={isSigningIn}>
             Login
           </Button>
         </form>
       </Form>
 
-      <Dialog open={isLoading}>
+      <div className="relative my-4">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">
+            Or continue with
+          </span>
+        </div>
+      </div>
+
+      <Button
+        className="w-full bg-[#4285F4] text-white hover:bg-[#4285F4]/90"
+        onClick={handleGoogleSignIn}
+        disabled={isSigningIn}
+      >
+        Sign in with Google
+      </Button>
+
+      <Dialog open={isSigningIn}>
         <DialogContent
           className="sm:max-w-xs"
           onInteractOutside={(e) => e.preventDefault()}
         >
+          <DialogHeader>
+            <DialogTitle className="sr-only">Signing In</DialogTitle>
+            <DialogDescription className="sr-only">
+              Please wait while we are signing you in.
+            </DialogDescription>
+          </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-8">
             <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
             <p className="text-lg font-medium text-foreground">Signing in...</p>

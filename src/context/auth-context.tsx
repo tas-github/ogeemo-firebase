@@ -11,6 +11,7 @@ interface AuthContextType {
   isLoading: boolean;
   accessToken: string | null;
   setAuthInfo: (user: User | null, token: string | null) => void;
+  photoURL: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,11 +19,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [photoURL, setPhotoURL] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const setAuthInfo = (user: User | null, token: string | null) => {
     setUser(user);
     setAccessToken(token);
+    if (user) {
+      setPhotoURL(user.photoURL);
+    } else {
+      setPhotoURL(null);
+    }
   };
 
   useEffect(() => {
@@ -31,16 +38,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
     }
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      // We only set the user here, not the access token.
-      // The access token should only be set upon an explicit sign-in action.
       setUser(currentUser);
+      if (currentUser) {
+        setPhotoURL(currentUser.photoURL);
+      } else {
+        setPhotoURL(null);
+      }
       setIsLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const value = { user, isLoading, accessToken, setAuthInfo };
+  const value = { user, isLoading, accessToken, setAuthInfo, photoURL };
 
   return (
     <AuthContext.Provider value={value}>
