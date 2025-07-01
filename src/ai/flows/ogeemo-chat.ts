@@ -46,14 +46,19 @@ const createContactTool = ai.defineTool(
         outputSchema: z.string(),
     },
     async ({ name, email, userId }) => {
-        const folderId = await findOrCreateDefaultFolder(userId);
-        await addContact({
-            name,
-            email,
-            folderId,
-            userId,
-        });
-        return `I have successfully created a new contact for ${name} with the email ${email}.`;
+        try {
+            const folderId = await findOrCreateDefaultFolder(userId);
+            await addContact({
+                name,
+                email,
+                folderId,
+                userId,
+            });
+            return `I have successfully created a new contact for ${name} with the email ${email}.`;
+        } catch (error: any) {
+            console.error("Critical Error in createContactTool:", error);
+            return `I encountered a problem while trying to create the contact. The system reported: ${error.message}`;
+        }
     }
 );
 
