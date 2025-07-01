@@ -27,6 +27,8 @@ interface NewProjectDialogProps {
   templates: ProjectTemplate[];
   onSaveAsTemplate: (name: string, tasks: PartialTask[]) => void;
   initialTasks?: PartialTask[] | null;
+  initialName?: string;
+  initialDescription?: string;
 }
 
 export function NewProjectDialog({
@@ -36,6 +38,8 @@ export function NewProjectDialog({
   templates,
   onSaveAsTemplate,
   initialTasks,
+  initialName,
+  initialDescription,
 }: NewProjectDialogProps) {
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
@@ -55,10 +59,18 @@ export function NewProjectDialog({
       if (initialTasks) {
         setTasks(initialTasks);
       }
+      if (initialName) {
+        setProjectName(initialName);
+      }
+      if (initialDescription) {
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = initialDescription;
+        setProjectDescription(tempDiv.textContent || tempDiv.innerText || "");
+      }
     } else {
       resetForm();
     }
-  }, [isOpen, initialTasks]);
+  }, [isOpen, initialTasks, initialName, initialDescription]);
 
   const handleApplyTemplate = (template: ProjectTemplate) => {
     setTasks(prevTasks => [...prevTasks, ...template.steps]);
