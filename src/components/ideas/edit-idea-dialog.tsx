@@ -112,7 +112,7 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
 
         <DialogFooter className="p-4 border-t flex-col sm:flex-row sm:justify-between items-center gap-2">
           <Button onClick={handleCreateProject} className="bg-orange-500 hover:bg-orange-600 text-white">
-            Create a New Project
+            make it a project
           </Button>
           <div className="flex items-center gap-2">
             <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
