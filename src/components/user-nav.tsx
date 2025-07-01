@@ -22,7 +22,7 @@ import {
 
 export function UserNav() {
   const { state: sidebarState } = useSidebar();
-  const { user } = useAuth();
+  const { user, photoURL } = useAuth();
 
   const handleLogout = async () => {
     if (auth) {
@@ -82,7 +82,7 @@ export function UserNav() {
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
             <Avatar className="h-8 w-8">
               <AvatarImage
-                src={user.photoURL || undefined}
+                src={photoURL || undefined}
                 alt={user.displayName || 'User avatar'}
               />
               <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
@@ -99,7 +99,7 @@ export function UserNav() {
       <div className="flex w-full items-center gap-2">
         <Avatar className="h-8 w-8">
            <AvatarImage
-              src={user.photoURL || undefined}
+              src={photoURL || undefined}
               alt={user.displayName || 'User avatar'}
             />
            <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
