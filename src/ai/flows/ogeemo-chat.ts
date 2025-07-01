@@ -10,9 +10,11 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { getFolders, addFolder, addContact } from '@/services/contact-service';
 
 const OgeemoChatInputSchema = z.object({
   message: z.string().describe('The user message to Ogeemo.'),
+  userId: z.string().describe('The ID of the user making the request.'),
 });
 export type OgeemoChatInput = z.infer<typeof OgeemoChatInputSchema>;
 
@@ -21,12 +23,51 @@ const OgeemoChatOutputSchema = z.object({
 });
 export type OgeemoChatOutput = z.infer<typeof OgeemoChatOutputSchema>;
 
-const ogeemoChatPrompt = ai.definePrompt({
-    name: 'ogeemoChatPrompt',
-    model: 'googleai/gemini-1.5-flash',
-    input: { schema: OgeemoChatInputSchema },
-    output: { schema: OgeemoChatOutputSchema },
-    prompt: `You are Ogeemo, an intelligent assistant for the Ogeemo platform. You are not "AI", you are "Ogeemo". Your purpose is to help users navigate the platform, understand its features, and accomplish their tasks. Be helpful, concise, and friendly.
+
+const ogeemoChatFlow = ai.defineFlow(
+  {
+    name: 'ogeemoChatFlow',
+    inputSchema: OgeemoChatInputSchema,
+    outputSchema: OgeemoChatOutputSchema,
+  },
+  async ({ message, userId }) => {
+
+    const findOrCreateDefaultFolder = async (): Promise<string> => {
+        const folders = await getFolders(userId);
+        const defaultFolderName = "From Ogeemo Assistant";
+        let folder = folders.find(f => f.name === defaultFolderName && !f.parentId);
+        
+        if (!folder) {
+            folder = await addFolder({ name: defaultFolderName, userId, parentId: null });
+        }
+        return folder.id;
+    }
+
+    const createContactTool = ai.defineTool(
+        {
+            name: 'createContact',
+            description: "Creates a new contact. Use this when a user asks to add, create, or save a new contact. You must have the contact's name and email address.",
+            inputSchema: z.object({
+                name: z.string().describe("The full name of the contact."),
+                email: z.string().email().describe("The email address for the contact."),
+            }),
+            outputSchema: z.string(),
+        },
+        async ({ name, email }) => {
+            const folderId = await findOrCreateDefaultFolder();
+            await addContact({
+                name,
+                email,
+                folderId,
+                userId,
+            });
+            return `I have successfully created a new contact for ${name} with the email ${email}.`;
+        }
+    );
+
+    const systemPrompt = `You are Ogeemo, an intelligent assistant for the Ogeemo platform. You are not "AI", you are "Ogeemo". Your purpose is to help users navigate the platform, understand its features, and accomplish their tasks. Be helpful, concise, and friendly.
+
+You have access to a set of tools to perform actions on the user's behalf.
 
 The Ogeemo platform has the following features (Managers):
 - Dashboard: Overview of key metrics.
@@ -48,24 +89,19 @@ The Ogeemo platform has the following features (Managers):
 - Forms: Generate forms for data entry.
 - Settings: Configure your profile and application settings.
 
-When a user asks what you can do, or asks for help, you can suggest some of these features. If they ask to go to a specific feature, you can tell them how to find it in the sidebar menu.
+TOOL INSTRUCTIONS:
+- If a user asks you to create a contact, use the \`createContact\` tool.
+- You must get the contact's full name and their email address before using the tool. If they are not provided in the user's first message, you must ask for the missing information.
+`;
 
-The user has sent the following message:
-{{{message}}}
+    const { text } = await ai.generate({
+        model: 'googleai/gemini-1.5-pro-latest',
+        prompt: message,
+        system: systemPrompt,
+        tools: [createContactTool],
+    });
 
-Provide a helpful response.
-`,
-});
-
-const ogeemoChatFlow = ai.defineFlow(
-  {
-    name: 'ogeemoChatFlow',
-    inputSchema: OgeemoChatInputSchema,
-    outputSchema: OgeemoChatOutputSchema,
-  },
-  async (input) => {
-    const { output } = await ogeemoChatPrompt(input);
-    return output!;
+    return { reply: text || "I'm not sure how to respond to that. Could you please rephrase?" };
   }
 );
 
