@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft } from "lucide-react";
-import { EventDetailsDialog } from "@/components/event-manager/event-details-dialog";
+import { EventDetailsDialog } from "@/components/client-manager/event-details-dialog";
 
 interface EventEntry {
   id: string;
@@ -27,7 +27,7 @@ const formatTime = (totalSeconds: number) => {
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
-export default function LoggedEventsPage() {
+export function LoggedEntriesView() {
   const [eventEntries, setEventEntries] = useState<EventEntry[]>([]);
   const [selectedEntry, setSelectedEntry] = useState<EventEntry | null>(null);
 
@@ -58,13 +58,13 @@ export default function LoggedEventsPage() {
         <div className="p-4 sm:p-6 space-y-6">
             <header className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold font-headline text-primary">Client Event Log</h1>
+                    <h1 className="text-3xl font-bold font-headline text-primary">Client Log</h1>
                     <p className="text-muted-foreground">A detailed record of all tracked client events.</p>
                 </div>
                 <Button asChild>
-                    <Link href="/event-manager">
+                    <Link href="/client-manager">
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Event Manager
+                        Back to Client Hub
                     </Link>
                 </Button>
             </header>
@@ -73,7 +73,7 @@ export default function LoggedEventsPage() {
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <div>
-                            <CardTitle>Event History</CardTitle>
+                            <CardTitle>Log History</CardTitle>
                             <CardDescription>Click a row to view full details.</CardDescription>
                         </div>
                         <div className="text-right">
@@ -103,7 +103,7 @@ export default function LoggedEventsPage() {
                                     </TableRow>
                                 )) : (
                                     <TableRow>
-                                        <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">No events logged yet.</TableCell>
+                                        <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">No entries logged yet.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
