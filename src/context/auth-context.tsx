@@ -41,8 +41,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(currentUser);
       if (currentUser) {
         setPhotoURL(currentUser.photoURL);
+        // After user is set, check for a stored access token.
+        const storedToken = sessionStorage.getItem('google_access_token');
+        if (storedToken) {
+          setAccessToken(storedToken);
+          // Clean up the token from storage once it's in context.
+          sessionStorage.removeItem('google_access_token');
+        }
       } else {
+        // Clear everything on logout.
         setPhotoURL(null);
+        setAccessToken(null);
       }
       setIsLoading(false);
     });
