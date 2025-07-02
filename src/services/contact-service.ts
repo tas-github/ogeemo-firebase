@@ -119,5 +119,3 @@ export async function deleteContacts(contactIds: string[]): Promise<void> {
     });
     await batch.commit();
 }
-
-    
