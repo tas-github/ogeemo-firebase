@@ -8,39 +8,39 @@ import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle } from "lucide-react";
 
+// This is a dedicated page to handle the redirect from Google's sign-in.
+// Its sole purpose is to process the authentication result and redirect the user.
 export default function AuthCallbackPage() {
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log("CALLBACK_PAGE: Loaded. Now processing redirect result...");
     const processRedirect = async () => {
       try {
         if (!auth) {
-          console.error("CALLBACK_PAGE: Firebase auth object not available.");
-          toast({ variant: "destructive", title: "Fatal Error", description: "Firebase is not initialized." });
-          router.push("/login");
-          return;
+          throw new Error("Firebase auth object not available.");
         }
         
+        // This function processes the redirect result.
         const result = await getRedirectResult(auth);
-        console.log("CALLBACK_PAGE: getRedirectResult returned:", result);
 
+        // If 'result' is not null, the user has successfully signed in.
         if (result) {
-          console.log("CALLBACK_PAGE: Success! User data received. Redirecting to /dashboard.");
-          // The user object can be found in result.user
-          console.log("CALLBACK_PAGE: User object:", result.user);
+          // The onAuthStateChanged listener in our AuthContext will now have the user,
+          // so we can safely redirect to the main application.
           router.push("/dashboard");
         } else {
-          console.log("CALLBACK_PAGE: No redirect result found. This page may have been loaded directly. Redirecting to /login.");
+          // If 'result' is null, it might mean the page was loaded directly
+          // or the auth state was already handled. We redirect to login
+          // as a safe fallback.
           router.push("/login");
         }
-      } catch (error) {
-        console.error("CALLBACK_PAGE: Error during getRedirectResult:", error);
+      } catch (error: any) {
+        console.error("Error during authentication callback:", error);
         toast({
           variant: "destructive",
           title: "Sign-In Failed",
-          description: "An error occurred during authentication. Please try logging in again.",
+          description: error.message || "An error occurred during authentication. Please try again.",
         });
         router.push("/login");
       }
@@ -49,11 +49,12 @@ export default function AuthCallbackPage() {
     processRedirect();
   }, [router, toast]);
 
+  // Display a loading indicator while the redirect is being processed.
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
       <p className="mt-4 text-lg font-medium text-foreground">
-        Verifying authentication, please wait...
+        Finalizing authentication, please wait...
       </p>
     </div>
   );

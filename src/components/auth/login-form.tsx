@@ -61,7 +61,7 @@ export function LoginForm() {
         throw new Error("Firebase Auth is not initialized.");
       }
       await signInWithEmailAndPassword(auth, values.email, values.password);
-      router.push("/dashboard");
+      // The redirect to /dashboard is handled by the auth state listener
     } catch (error: any) {
       console.error("Login Error:", error);
       toast({
@@ -87,6 +87,8 @@ export function LoginForm() {
       setIsSigningIn(false);
       return;
     }
+    // This will redirect the user to Google's sign-in page.
+    // The browser will then be redirected to /auth/callback to process the result.
     await signInWithRedirect(auth, provider);
   };
 
@@ -130,6 +132,7 @@ export function LoginForm() {
             )}
           />
           <Button type="submit" className="w-full" disabled={isSigningIn}>
+            {isSigningIn && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
             Login
           </Button>
         </form>
@@ -151,9 +154,11 @@ export function LoginForm() {
         onClick={handleGoogleSignIn}
         disabled={isSigningIn}
       >
+        {isSigningIn && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
         Sign in with Google
       </Button>
 
+      {/* This dialog provides feedback to the user that the redirect is happening */}
       <Dialog open={isSigningIn}>
         <DialogContent
           className="sm:max-w-xs"
@@ -168,6 +173,7 @@ export function LoginForm() {
           <div className="flex flex-col items-center gap-4 py-8">
             <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
             <p className="text-lg font-medium text-foreground">Signing in...</p>
+            <p className="text-sm text-muted-foreground">Redirecting to Google.</p>
           </div>
         </DialogContent>
       </Dialog>
