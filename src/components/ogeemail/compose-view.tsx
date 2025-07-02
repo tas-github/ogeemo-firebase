@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -25,6 +26,7 @@ import {
   Link as LinkIcon,
   Mic,
   Square,
+  ArrowLeft,
 } from 'lucide-react';
 
 import {
@@ -364,7 +366,12 @@ export function ComposeEmailView() {
          </DialogContent>
        </Dialog>
       
-      <header className="text-center">
+      <header className="relative text-center">
+        <Button asChild variant="ghost" className="absolute left-0 top-1/2 -translate-y-1/2">
+            <Link href="/ogeemail">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Inbox
+            </Link>
+        </Button>
         <h1 className="text-3xl font-bold font-headline text-primary">Compose Email</h1>
       </header>
       
