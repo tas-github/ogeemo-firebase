@@ -29,7 +29,16 @@ export function GoogleIntegrationView() {
   const [isProcessingRedirect, setIsProcessingRedirect] = useState(true);
   const [unauthorizedDomain, setUnauthorizedDomain] = useState<string | null>(null);
 
+  // This effect handles the redirect result specifically for this page's re-auth flow.
   useEffect(() => {
+    // We only process if a flag was set before redirecting.
+    if (sessionStorage.getItem('google_reauth_in_progress') !== 'true') {
+        setIsProcessingRedirect(false);
+        return;
+    }
+
+    sessionStorage.removeItem('google_reauth_in_progress'); // Clear the flag
+
     const processRedirectResult = async () => {
       if (!auth) {
         setIsProcessingRedirect(false);
@@ -41,10 +50,11 @@ export function GoogleIntegrationView() {
           const credential = GoogleAuthProvider.credentialFromResult(result);
           const token = credential?.accessToken;
           if (token) {
+            // Update the global auth context with the new user and token.
             setAuthInfo(result.user, token);
-            setUnauthorizedDomain(null); // Clear error on success
+            setUnauthorizedDomain(null); // Clear any previous error
             toast({
-              title: "Authentication Successful",
+              title: "API Access Granted",
               description: "Successfully connected to your Google Account.",
             });
           }
@@ -53,7 +63,7 @@ export function GoogleIntegrationView() {
         console.error("Google Redirect Error:", error);
         if (error.code === 'auth/unauthorized-domain') {
             setUnauthorizedDomain(window.location.hostname);
-        } else if (error.code !== 'auth/web-storage-unsupported') {
+        } else {
             toast({
                 variant: "destructive",
                 title: "Authentication Failed",
@@ -64,15 +74,8 @@ export function GoogleIntegrationView() {
         setIsProcessingRedirect(false);
       }
     };
-
-    // This check ensures we only process the redirect on this page, not on every page load.
-    // The main callback page handles the initial login. This handles re-auth for permissions.
-    if (window.sessionStorage.getItem('firebaseui/pendingRedirect') === 'true') {
-      window.sessionStorage.removeItem('firebaseui/pendingRedirect');
-      processRedirectResult();
-    } else {
-      setIsProcessingRedirect(false);
-    }
+    
+    processRedirectResult();
   }, [setAuthInfo, toast]);
 
   const handleSignIn = async () => {
@@ -85,11 +88,11 @@ export function GoogleIntegrationView() {
       return;
     }
     try {
-        // Mark that a redirect is in progress for this specific flow
-        window.sessionStorage.setItem('firebaseui/pendingRedirect', 'true');
+        // Set a flag to indicate that this specific page initiated the redirect.
+        sessionStorage.setItem('google_reauth_in_progress', 'true');
         await signInWithRedirect(auth, provider);
     } catch (error: any) {
-        window.sessionStorage.removeItem('firebaseui/pendingRedirect');
+        sessionStorage.removeItem('google_reauth_in_progress'); // Clear flag on error
         console.error("Google Sign-In Initiation Error:", error);
         if (error.code === 'auth/unauthorized-domain') {
             setUnauthorizedDomain(window.location.hostname);
@@ -107,6 +110,8 @@ export function GoogleIntegrationView() {
     if (!auth) return;
     try {
       await signOut(auth);
+      // setAuthInfo from context will be cleared by the onAuthStateChanged listener.
+      // We just need to clear our local access token state.
       setAuthInfo(null, null);
       toast({
         title: "Disconnected",
@@ -162,7 +167,7 @@ export function GoogleIntegrationView() {
         <div className="flex flex-col items-center gap-6">
           <div className="flex items-center gap-4">
             <CheckCircle2 className="h-8 w-8 text-green-500" />
-            <p className="font-semibold text-lg">API Ready</p>
+            <p className="font-semibold text-lg">API Ready & Connected</p>
           </div>
           <div className="flex items-center gap-4 rounded-lg border p-4 w-full">
             <Avatar className="h-12 w-12">
@@ -189,27 +194,7 @@ export function GoogleIntegrationView() {
             </div>
 
             <div className="space-y-4 text-sm text-muted-foreground w-full">
-                <div className="flex items-start gap-3 p-3 border rounded-lg">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold flex-shrink-0 mt-1">1</div>
-                    <div>
-                        <h4 className="font-semibold text-foreground">Sign In to Google</h4>
-                        <p>Clicking the button below will take you to Google's secure sign-in page.</p>
-                    </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 border rounded-lg">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold flex-shrink-0 mt-1">2</div>
-                    <div>
-                        <h4 className="font-semibold text-foreground">Grant Permissions</h4>
-                        <p>Google will ask you to approve access for Ogeemo to view services like your contacts. This is a secure, standard process.</p>
-                    </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 border rounded-lg">
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold flex-shrink-0 mt-1">3</div>
-                    <div>
-                        <h4 className="font-semibold text-foreground">Return to Ogeemo</h4>
-                        <p>After you approve, you'll be brought back here, and the integration will be fully active.</p>
-                    </div>
-                </div>
+                <p>You are logged into Ogeemo, but to use Google integrations like Contacts, you need to grant specific permissions.</p>
             </div>
 
             <Button onClick={handleSignIn} size="lg" className="w-full">

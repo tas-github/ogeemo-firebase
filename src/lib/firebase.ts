@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth, GoogleAuthProvider, browserLocalPersistence, browserSessionPersistence } from "firebase/auth";
+import { getAuth, type Auth, GoogleAuthProvider, browserLocalPersistence } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
@@ -30,9 +30,10 @@ if (firebaseConfig.apiKey) {
     db = getFirestore(app);
     storage = getStorage(app);
     provider = new GoogleAuthProvider();
-    provider.addScope('https://www.googleapis.com/auth/drive.file');
-    provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
+    // Add scopes necessary for Google Workspace integration
     provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
+    provider.addScope('https://www.googleapis.com/auth/userinfo.email');
+    provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
     
   } catch (error) {
     console.error("Firebase initialization error:", error);
