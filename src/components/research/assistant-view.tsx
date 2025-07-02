@@ -32,7 +32,6 @@ interface AssistantViewProps {
   handleAssistantMicClick: () => void;
   isAssistantListening: boolean;
   isSttSupported: boolean;
-  chatInputRef: React.RefObject<HTMLInputElement> | null; // This can now be null
 }
 
 export const AssistantView = ({ setView, chatMessages, handleAddToNotepad, isLoading, userInput, setUserInput, handleSendMessage, handleAssistantMicClick, isAssistantListening, isSttSupported }: AssistantViewProps) => (

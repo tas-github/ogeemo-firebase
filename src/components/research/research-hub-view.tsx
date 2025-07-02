@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import dynamic from 'next/dynamic';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 import { useToast } from '@/hooks/use-toast';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
@@ -21,10 +22,10 @@ import { Input } from '@/components/ui/input';
 import { LoaderCircle, Search } from 'lucide-react';
 
 // Dynamically import the views for code-splitting
-const HubView = dynamic(() => import('./hub-view').then(mod => mod.HubView), { ssr: false, loading: () => <LoaderCircle className="h-8 w-8 animate-spin mx-auto mt-10" /> });
-const SourcesView = dynamic(() => import('./sources-view').then(mod => mod.SourcesView), { ssr: false, loading: () => <LoaderCircle className="h-8 w-8 animate-spin mx-auto mt-10" /> });
-const NotepadView = dynamic(() => import('./notepad-view').then(mod => mod.NotepadView), { ssr: false, loading: () => <LoaderCircle className="h-8 w-8 animate-spin mx-auto mt-10" /> });
-const AssistantView = dynamic(() => import('./assistant-view').then(mod => mod.AssistantView), { ssr: false, loading: () => <LoaderCircle className="h-8 w-8 animate-spin mx-auto mt-10" /> });
+const HubView = dynamic(() => import('./hub-view').then(mod => mod.HubView), { ssr: false, loading: () => <div className="flex h-full w-full items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin" /></div> });
+const SourcesView = dynamic(() => import('./sources-view').then(mod => mod.SourcesView), { ssr: false, loading: () => <div className="flex h-full w-full items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin" /></div> });
+const NotepadView = dynamic(() => import('./notepad-view').then(mod => mod.NotepadView), { ssr: false, loading: () => <div className="flex h-full w-full items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin" /></div> });
+const AssistantView = dynamic(() => import('./assistant-view').then(mod => mod.AssistantView), { ssr: false, loading: () => <div className="flex h-full w-full items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin" /></div> });
 
 export type View = 'hub' | 'sources' | 'notepad' | 'assistant';
 
@@ -188,19 +189,17 @@ export function ResearchHubView() {
     }, 2000);
   };
 
-  const handleAddToNotepad = async (content: React.ReactNode) => {
+  const handleAddToNotepad = (content: React.ReactNode) => {
     if (editorRef.current) {
-      if (typeof content === 'string') {
-        editorRef.current.innerHTML += content;
-      } else if (React.isValidElement(content)) {
-        const { createRoot } = await import('react-dom/client');
-        const tempDiv = document.createElement('div');
-        const root = createRoot(tempDiv);
-        root.render(<>{content}</>);
-        const htmlContent = tempDiv.innerHTML;
+        let htmlContent = '';
+        if (typeof content === 'string') {
+            htmlContent = `<p>${content}</p>`;
+        } else if (React.isValidElement(content)) {
+            htmlContent = renderToStaticMarkup(content);
+        }
+        
         const separator = editorRef.current.innerHTML.trim() ? '<hr class="my-4">' : '';
         editorRef.current.innerHTML += `${separator}<blockquote>${htmlContent}</blockquote><p><br></p>`;
-      }
       
       toast({ title: "Added to Notepad", description: "The content has been pinned to your notes." });
       setView('notepad');
@@ -214,7 +213,7 @@ export function ResearchHubView() {
         case 'notepad':
             return <NotepadView setView={setView} editorRef={editorRef} handleFormat={handleFormat} handleNotepadMicClick={handleNotepadMicClick} isNotepadListening={isNotepadListening} isSttSupported={isSttSupported} />;
         case 'assistant':
-            return <AssistantView setView={setView} chatMessages={chatMessages} handleAddToNotepad={handleAddToNotepad} isLoading={isLoading} userInput={userInput} setUserInput={setUserInput} handleSendMessage={handleSendMessage} handleAssistantMicClick={handleAssistantMicClick} isAssistantListening={isAssistantListening} isSttSupported={isSttSupported} chatInputRef={null} />;
+            return <AssistantView setView={setView} chatMessages={chatMessages} handleAddToNotepad={handleAddToNotepad} isLoading={isLoading} userInput={userInput} setUserInput={setUserInput} handleSendMessage={handleSendMessage} handleAssistantMicClick={handleAssistantMicClick} isAssistantListening={isAssistantListening} isSttSupported={isSttSupported} />;
         case 'hub':
         default:
             return <HubView setView={setView} />;
