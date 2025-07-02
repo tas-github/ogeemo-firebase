@@ -1,10 +1,12 @@
+
 "use client"
 
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { PersonStanding, ListTodo, WandSparkles, LoaderCircle } from "lucide-react";
+import { PersonStanding, ListTodo, WandSparkles, LoaderCircle, Lightbulb, Calendar as CalendarIcon } from "lucide-react";
+import { format, set } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -44,6 +46,12 @@ import {
 } from "@/components/ui/dialog";
 import { generateForm, type GenerateFormOutput } from "@/ai/flows/generate-form-flow";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/auth-context";
+import { addTask } from "@/services/project-service";
+import { type Event } from "@/types/calendar";
 
 
 const contactFormSchema = z.object({
@@ -58,7 +66,16 @@ const taskFormSchema = z.object({
   priority: z.enum(["low", "medium", "high"]),
 });
 
-type FormType = "contact" | "task";
+const ideaFormSchema = z.object({
+  title: z.string().min(2, { message: "Idea title must be at least 2 characters." }),
+  details: z.string().optional(),
+  date: z.date().optional(),
+  hour: z.string().optional(),
+  minute: z.string().optional(),
+});
+
+
+type FormType = "contact" | "task" | "idea";
 
 function ContactForm() {
   const { toast } = useToast();
@@ -238,6 +255,195 @@ function TaskForm() {
   );
 }
 
+function IdeaForm() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const form = useForm<z.infer<typeof ideaFormSchema>>({
+    resolver: zodResolver(ideaFormSchema),
+    defaultValues: { title: "", details: "" },
+  });
+
+  const hourOptions = Array.from({ length: 24 }, (_, i) => {
+    const date = set(new Date(), { hours: i });
+    return { value: String(i), label: format(date, 'h a') };
+  });
+
+  const minuteOptions = Array.from({ length: 12 }, (_, i) => {
+    const minutes = i * 5;
+    return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` };
+  });
+
+  async function onSubmit(values: z.infer<typeof ideaFormSchema>) {
+    if (!user) {
+      toast({ variant: "destructive", title: "You must be logged in." });
+      return;
+    }
+
+    const startDateTime = values.date && values.hour && values.minute
+      ? set(values.date, { hours: parseInt(values.hour), minutes: parseInt(values.minute) })
+      : new Date();
+    
+    const endDateTime = new Date(startDateTime.getTime() + 30 * 60000);
+
+    const newEventData: Omit<Event, 'id' | 'userId'> = {
+      title: values.title,
+      description: values.details || "",
+      start: startDateTime,
+      end: endDateTime,
+      attendees: ['You'],
+      status: 'todo',
+      projectId: undefined,
+    };
+
+    try {
+      await addTask({ ...newEventData, userId: user.uid });
+      toast({
+        title: "Idea Scheduled",
+        description: `"${values.title}" has been added to your calendar.`,
+      });
+      form.reset();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Failed to save idea",
+        description: error.message,
+      });
+    }
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Lightbulb className="h-6 w-6 text-primary" />
+            <div>
+              <CardTitle>New Idea Form</CardTitle>
+              <CardDescription>
+                Capture a new idea and optionally add it to your calendar.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <FormField
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Idea Title</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., A new AI-powered feature" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="details"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Details</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Flesh out the details of your idea..."
+                    className="resize-none"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="space-y-2">
+            <Label>Schedule (Optional)</Label>
+            <div className="flex items-center gap-2">
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-[240px] pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="hour"
+                render={({ field }) => (
+                  <FormItem>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue placeholder="Hour" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="minute"
+                render={({ field }) => (
+                  <FormItem>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue placeholder="Min" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button type="submit">Save Idea</Button>
+        </CardFooter>
+      </form>
+    </Form>
+  );
+}
+
+
 // New component to render the dynamically generated form
 const GeneratedForm = ({ schema, onClear }: { schema: GenerateFormOutput, onClear: () => void }) => {
   const { toast } = useToast();
@@ -360,6 +566,7 @@ export function FormsView() {
                     <SelectContent>
                       <SelectItem value="contact">New Contact</SelectItem>
                       <SelectItem value="task">New Task</SelectItem>
+                      <SelectItem value="idea">New Idea</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -387,7 +594,7 @@ export function FormsView() {
              </Card>
           ) : (
             <Card key={formType} className="transition-all duration-300 animate-in fade-in-50">
-              {formType === "contact" ? <ContactForm /> : <TaskForm />}
+              {formType === "contact" ? <ContactForm /> : formType === 'task' ? <TaskForm /> : <IdeaForm />}
             </Card>
           )}
 
