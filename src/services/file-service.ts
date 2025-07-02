@@ -180,8 +180,8 @@ export async function deleteFiles(files: FileItem[]): Promise<void> {
     for (const file of files) {
         // Delete from Storage
         if(file.storagePath) {
-            const fileRef = ref(storage, file.storagePath);
-            await deleteObject(fileRef);
+            const fileStorageRef = ref(storage, file.storagePath);
+            await deleteObject(fileStorageRef);
         }
         
         // Batch delete from Firestore
