@@ -182,7 +182,7 @@ export function MainMenu() {
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isActive("/new-dashboard")} tooltip="Dashboard">
+        <SidebarMenuButton asChild isActive={isActive("/new-dashboard")} tooltip="Dashboard Manager">
           <Link href="/new-dashboard" onClick={handleNavigate}>
             <AreaChart />
             <span>Dashboard</span>
@@ -190,7 +190,7 @@ export function MainMenu() {
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isActive("/reports")} tooltip="Reports">
+        <SidebarMenuButton asChild isActive={isActive("/reports...")} tooltip="Reports">
           <Link href="/reports" onClick={handleNavigate}>
             <BarChart3 />
             <span>Reports</span>
