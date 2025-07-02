@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Bot, LoaderCircle, Send, User, Mic, Square } from "lucide-react";
+import { Bot, LoaderCircle, Send, User, Mic, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,6 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -167,12 +168,18 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
     return (
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-                <div className="flex flex-col space-y-1.5 text-center p-6 pb-4 border-b">
+                <DialogHeader className="p-6 pb-4 border-b text-center relative">
                     <DialogTitle className="text-2xl font-bold font-headline text-primary">Chat with Ogeemo</DialogTitle>
                     <DialogDescription>
                     Ask me anything or tell me what you would like to do.
                     </DialogDescription>
-                </div>
+                    <DialogClose asChild className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <Button variant="ghost" size="icon" className="rounded-full">
+                            <X className="h-5 w-5" />
+                            <span className="sr-only">Close</span>
+                        </Button>
+                    </DialogClose>
+                </DialogHeader>
                 <div className="flex-1 p-6 overflow-hidden">
                     <ScrollArea className="h-full pr-4" ref={chatScrollAreaRef}>
                     <div className="space-y-4">
