@@ -26,12 +26,11 @@ interface SpeechRecognition extends EventTarget {
 
 type UseSpeechToTextOptions = {
   onTranscript: (transcript: string) => void;
-  onFinalTranscript?: (transcript: string) => void;
 };
 
 export type SpeechRecognitionStatus = 'idle' | 'activating' | 'listening';
 
-export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechToTextOptions) {
+export function useSpeechToText({ onTranscript }: UseSpeechToTextOptions) {
   const [status, setStatus] = useState<SpeechRecognitionStatus>('idle');
   const [isSupported, setIsSupported] = useState<boolean | undefined>(undefined);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -125,15 +124,10 @@ export function useSpeechToText({ onTranscript, onFinalTranscript }: UseSpeechTo
       }
       
       onTranscript(transcript);
-      
-      const lastResult = event.results[event.results.length - 1];
-      if (lastResult.isFinal && onFinalTranscript) {
-        onFinalTranscript(transcript);
-      }
     };
 
     recognition.start();
-  }, [status, isSupported, onTranscript, onFinalTranscript, playStartSound]);
+  }, [status, isSupported, onTranscript, playStartSound]);
 
   const stopListening = useCallback(() => {
     if (recognitionRef.current && (status === 'listening' || status === 'activating')) {
