@@ -1,5 +1,4 @@
 
-import Link from "next/link";
 import { LoggedEntriesView } from '@/components/client-manager/logged-entries-view';
 
 export default function ClientBillingReportPage() {

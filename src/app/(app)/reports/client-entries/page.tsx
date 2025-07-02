@@ -1,7 +1,7 @@
 
 import { ReportsPageHeader } from "@/components/reports/page-header";
 
-export default function ClientEntriesPage() {
+export default function ClientEntriesReportPage() {
   return (
     <div className="p-4 sm:p-6 flex flex-col h-full space-y-6">
       <ReportsPageHeader pageTitle="Client Entries Report" />
