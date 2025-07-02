@@ -16,8 +16,6 @@ import {
   LoaderCircle,
   ChevronRight,
   FolderPlus,
-  Info,
-  Wand2,
   BookOpen,
 } from 'lucide-react';
 
@@ -122,8 +120,6 @@ function ContactsViewContent() {
 
   const [showGoogleInstructions, setShowGoogleInstructions] = useState(true);
   const [isInstructionsDialogOpen, setIsInstructionsDialogOpen] = useState(false);
-  const [isInfoDialogOpen, setIsInfoDialogOpen] = React.useState(false);
-  const [isActionInfoDialogOpen, setIsActionInfoDialogOpen] = React.useState(false);
 
   const { toast } = useToast();
   const { user, accessToken } = useAuth();
@@ -539,19 +535,19 @@ function ContactsViewContent() {
         <div className="flex-1 min-h-0 pb-4 sm:pb-6">
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
             <ResizablePanel defaultSize={25} minSize={20}>
-              <div className="flex h-full flex-col p-2">
-                  <div className="p-2">
-                    <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white" onClick={() => handleOpenNewFolderDialog({ parentId: null })}>
-                        <Plus className="mr-2 h-4 w-4" /> New Folder
-                    </Button>
+              <div className="flex h-full flex-col">
+                  <div className="flex items-center justify-between p-2 border-b h-[57px]">
+                      <h3 className="text-lg font-semibold px-2">Folders</h3>
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenNewFolderDialog({ parentId: null })} title="New Root Folder">
+                          <FolderPlus className="h-5 w-5" />
+                          <span className="sr-only">New Root Folder</span>
+                      </Button>
                   </div>
-                  <ScrollArea ref={dropToRoot} className={cn("flex-1 rounded-md", isOverRoot && canDropToRoot && 'bg-primary/10 ring-1 ring-primary-foreground')}>
-                    <nav className="flex flex-col gap-1 p-2">
-                        <Button variant={selectedFolderId === 'all' ? "secondary" : "ghost"} className="w-full justify-start gap-3" onClick={() => setSelectedFolderId('all')}>
-                            <Users className="h-4 w-4" /> <span>All Contacts</span>
-                        </Button>
-                        <FolderTree />
-                    </nav>
+                  <ScrollArea ref={dropToRoot} className={cn("flex-1 rounded-md p-2", isOverRoot && canDropToRoot && 'bg-primary/10 ring-1 ring-primary')}>
+                      <Button variant={selectedFolderId === 'all' ? "secondary" : "ghost"} className="w-full justify-start gap-3 my-1" onClick={() => setSelectedFolderId('all')}>
+                          <Users className="h-4 w-4" /> <span>All Contacts</span>
+                      </Button>
+                      <FolderTree />
                   </ScrollArea>
               </div>
             </ResizablePanel>
@@ -571,7 +567,6 @@ function ContactsViewContent() {
                                   <p className="text-sm text-muted-foreground">{displayedContacts.length} contact(s)</p>
                               </div>
                               <div className="flex items-center gap-2">
-                                  <Button variant="outline" onClick={() => setIsInfoDialogOpen(true)}><Info className="mr-2 h-4 w-4" /> Info</Button>
                                   <Button variant="outline" onClick={handleOpenImportDialog} disabled={!user}><GoogleIcon /> Import from Google</Button>
                                   <Button onClick={handleNewContactClick} className="bg-orange-500 hover:bg-orange-600 text-white"><Plus className="mr-2 h-4 w-4" /> Add Contact</Button>
                               </div>
@@ -607,10 +602,6 @@ function ContactsViewContent() {
                                               <DropdownMenuContent align="end">
                                                   <DropdownMenuItem onSelect={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}><BookOpen className="mr-2 h-4 w-4" />Open</DropdownMenuItem>
                                                   <DropdownMenuItem onSelect={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}><Pencil className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
-                                                  <DropdownMenuItem onSelect={() => setIsActionInfoDialogOpen(true)}>
-                                                    <Wand2 className="mr-2 h-4 w-4" />
-                                                    Action
-                                                  </DropdownMenuItem>
                                                   <DropdownMenuSeparator />
                                                   <DropdownMenuItem className="text-destructive" onSelect={async () => { await deleteContacts([contact.id]); setContacts(prev => prev.filter(c => c.id !== contact.id)); toast({ title: "Contact Deleted" }); }}> <Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
                                               </DropdownMenuContent>
@@ -666,33 +657,6 @@ function ContactsViewContent() {
           onProceed={handleProceedFromInstructions}
         />
       )}
-      <Dialog open={isInfoDialogOpen} onOpenChange={setIsInfoDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>A Philosophy of Focus</DialogTitle>
-          </DialogHeader>
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            <p>In a world of digital clutter, the Ogeemo Contact Manager embraces a philosophy of focus. Instead of importing thousands of contacts you rarely interact with, we encourage a deliberate approach.</p>
-            <p>By adding only the clients and contacts you're actively engaged with, you create a clean, efficient, and searchable workspace. This "just-in-time" method saves you time, reduces noise, and ensures the people you see are the people who matter right now.</p>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setIsInfoDialogOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={isActionInfoDialogOpen} onOpenChange={setIsActionInfoDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Action Required</DialogTitle>
-            <DialogDescription>
-              Select menu option for this contact.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => setIsActionInfoDialogOpen(false)}>OK</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
