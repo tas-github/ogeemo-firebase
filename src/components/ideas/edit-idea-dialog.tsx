@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -15,7 +16,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bold, Italic, Underline, List, ListOrdered, Quote } from "lucide-react";
+import { Bold, Italic, Underline, List, ListOrdered, Quote, Strikethrough, Link as LinkIcon, Mic, Square } from "lucide-react";
+import { useSpeechToText } from "@/hooks/use-speech-to-text";
+import { cn } from "@/lib/utils";
 
 interface Idea {
   id: number;
@@ -35,6 +38,25 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
   const [content, setContent] = useState(idea.content);
   const editorRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const [contentBeforeSpeech, setContentBeforeSpeech] = useState('');
+
+  const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
+    onTranscript: (transcript) => {
+        if (editorRef.current) {
+            const newText = contentBeforeSpeech ? `${contentBeforeSpeech} ${transcript}`.trim() : transcript;
+            editorRef.current.innerHTML = newText;
+            setContent(newText);
+            const range = document.createRange();
+            const sel = window.getSelection();
+            if (sel) {
+                range.selectNodeContents(editorRef.current);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+    }
+  });
 
   useEffect(() => {
     setTitle(idea.title);
@@ -55,11 +77,23 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
   };
   
   const handleEditorInput = (e: React.FormEvent<HTMLDivElement>) => {
-    setContent(e.currentTarget.innerHTML);
+    if (!isListening) {
+      setContent(e.currentTarget.innerHTML);
+    }
   };
   
   const preventDefault = (e: React.MouseEvent) => e.preventDefault();
   
+  const handleDictateNotes = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      setContentBeforeSpeech(content);
+      editorRef.current?.focus();
+      startListening();
+    }
+  };
+
   const handleCreateProject = () => {
     try {
       sessionStorage.setItem('ogeemo-idea-to-project', JSON.stringify({ title, description: content }));
@@ -90,10 +124,17 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
               <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
               <Button variant="ghost" size="icon" title="Italic" onMouseDown={preventDefault} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
               <Button variant="ghost" size="icon" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" title="Strikethrough" onMouseDown={preventDefault} onClick={() => handleFormat('strikeThrough')}><Strikethrough className="h-4 w-4" /></Button>
               <Separator orientation="vertical" className="h-6 mx-1" />
               <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
               <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
               <Button variant="ghost" size="icon" title="Blockquote" onMouseDown={preventDefault} onClick={() => handleFormat('formatBlock', 'blockquote')}><Quote className="h-4 w-4" /></Button>
+              <Separator orientation="vertical" className="h-6 mx-1" />
+              <Button variant="ghost" size="icon" title="Insert Link" onMouseDown={preventDefault} onClick={() => { const url = prompt('Enter a URL:'); if (url) handleFormat('createLink', url); }}><LinkIcon className="h-4 w-4" /></Button>
+              <Separator orientation="vertical" className="h-6 mx-1" />
+              <Button variant="ghost" size="icon" title={isListening ? "Stop dictation" : "Dictate notes"} onMouseDown={preventDefault} onClick={handleDictateNotes} disabled={isSupported === false} className={cn(isListening && "text-destructive")}>
+                  {isListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </Button>
           </div>
 
           <ScrollArea className="flex-1">
@@ -104,7 +145,6 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
               onInput={handleEditorInput}
               dangerouslySetInnerHTML={{ __html: content }}
               placeholder="Start developing your idea here..."
-              dir="ltr"
             />
           </ScrollArea>
         </div>

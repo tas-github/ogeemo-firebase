@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -10,11 +11,15 @@ import {
   Mic,
   Square,
   ArrowLeft,
+  Strikethrough,
+  Quote,
+  Link as LinkIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from '@/lib/utils';
 import { type View } from './research-hub-view';
+import { Separator } from '@/components/ui/separator';
 
 interface NotepadViewProps {
   setView: (view: View) => void;
@@ -37,8 +42,14 @@ export const NotepadView = ({ setView, editorRef, handleFormat, handleNotepadMic
                 <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" title="Italic" onMouseDown={preventDefault} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" title="Strikethrough" onMouseDown={preventDefault} onClick={() => handleFormat('strikeThrough')}><Strikethrough className="h-4 w-4" /></Button>
+                <Separator orientation="vertical" className="h-6 mx-1" />
                 <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" title="Blockquote" onMouseDown={preventDefault} onClick={() => handleFormat('formatBlock', 'blockquote')}><Quote className="h-4 w-4" /></Button>
+                <Separator orientation="vertical" className="h-6 mx-1" />
+                <Button variant="ghost" size="icon" title="Insert Link" onMouseDown={preventDefault} onClick={() => { const url = prompt('Enter a URL:'); if (url) handleFormat('createLink', url); }}><LinkIcon className="h-4 w-4" /></Button>
+                <Separator orientation="vertical" className="h-6 mx-1" />
                 <Button variant="ghost" size="icon" title="Dictate Notes" onMouseDown={preventDefault} onClick={handleNotepadMicClick} disabled={!isSttSupported} className={cn(isNotepadListening && "text-destructive")}>
                     {isNotepadListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                 </Button>
