@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getRedirectResult } from "firebase/auth";
+import { getRedirectResult, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle, Terminal } from "lucide-react";
@@ -34,7 +34,18 @@ export default function AuthCallbackPage() {
         const result = await getRedirectResult(auth);
 
         if (result) {
-          // Success! The onAuthStateChanged listener in AuthContext will now have the user.
+          // This is a sign-in with a credential.
+          const credential = GoogleAuthProvider.credentialFromResult(result);
+          if (credential) {
+            // We have a credential, so let's try to get the access token.
+            const accessToken = credential.accessToken;
+            if (accessToken) {
+              // Store the token so the AuthContext can pick it up.
+              sessionStorage.setItem('google_access_token', accessToken);
+            }
+          }
+          // The onAuthStateChanged listener will handle the user object.
+          // We just need to get them to the main app.
           router.push("/dashboard");
         } else {
           // This can happen if the page is reloaded or visited directly.
