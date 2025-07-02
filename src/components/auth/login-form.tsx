@@ -78,21 +78,31 @@ export function LoginForm() {
 
   const handleGoogleSignIn = async () => {
     setIsSigningIn(true);
-    if (!auth || !provider) {
-       toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Authentication service not ready. Please try again."
-      });
-      setIsSigningIn(false);
-      return;
+    try {
+      if (!auth || !provider) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Authentication service not ready. Please try again."
+        });
+        setIsSigningIn(false);
+        return;
+      }
+      // Set a flag in session storage to indicate a redirect is in progress.
+      // This helps the callback page confirm the origin of the auth attempt.
+      sessionStorage.setItem('google_auth_in_progress', 'true');
+      // This will redirect the user to Google's sign-in page.
+      // The browser will then be redirected to /auth/callback to process the result.
+      await signInWithRedirect(auth, provider);
+    } catch (error: any) {
+        console.error("Google Sign-In Error:", error);
+        toast({
+            variant: "destructive",
+            title: "Google Sign-In Failed",
+            description: "Could not initiate Google Sign-In. Please check the console.",
+        });
+        setIsSigningIn(false);
     }
-    // Set a flag in session storage to indicate a redirect is in progress.
-    // This helps the callback page confirm the origin of the auth attempt.
-    sessionStorage.setItem('google_auth_in_progress', 'true');
-    // This will redirect the user to Google's sign-in page.
-    // The browser will then be redirected to /auth/callback to process the result.
-    await signInWithRedirect(auth, provider);
   };
 
   return (
@@ -165,7 +175,6 @@ export function LoginForm() {
       <Dialog open={isSigningIn}>
         <DialogContent
           className="sm:max-w-xs"
-          onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle className="sr-only">Signing In</DialogTitle>
