@@ -87,6 +87,9 @@ export function LoginForm() {
       setIsSigningIn(false);
       return;
     }
+    // Set a flag in session storage to indicate a redirect is in progress.
+    // This helps the callback page confirm the origin of the auth attempt.
+    sessionStorage.setItem('google_auth_in_progress', 'true');
     // This will redirect the user to Google's sign-in page.
     // The browser will then be redirected to /auth/callback to process the result.
     await signInWithRedirect(auth, provider);
