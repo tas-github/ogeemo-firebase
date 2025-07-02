@@ -1,8 +1,8 @@
-
 'use client';
 
 import type { User } from 'firebase/auth';
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { auth } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -21,6 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [photoURL, setPhotoURL] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const pathname = usePathname();
 
   const setAuthInfo = (user: User | null, token: string | null) => {
     setUser(user);
@@ -32,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Effect for Firebase auth state (user object)
   useEffect(() => {
     if (!auth) {
         setIsLoading(false);
@@ -39,18 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser) {
-        setPhotoURL(currentUser.photoURL);
-        // After user is set, check for a stored access token.
-        const storedToken = sessionStorage.getItem('google_access_token');
-        if (storedToken) {
-          setAccessToken(storedToken);
-          // Clean up the token from storage once it's in context.
-          sessionStorage.removeItem('google_access_token');
-        }
-      } else {
-        // Clear everything on logout.
-        setPhotoURL(null);
+      setPhotoURL(currentUser?.photoURL || null);
+      // Clear access token on logout
+      if (!currentUser) {
         setAccessToken(null);
       }
       setIsLoading(false);
@@ -58,6 +51,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => unsubscribe();
   }, []);
+
+  // Effect for capturing the access token from sessionStorage after redirect
+  useEffect(() => {
+    if (user && !accessToken) {
+      const storedToken = sessionStorage.getItem('google_access_token');
+      if (storedToken) {
+        setAccessToken(storedToken);
+        sessionStorage.removeItem('google_access_token');
+      }
+    }
+  }, [user, accessToken, pathname]); // Re-run on navigation
 
   const value = { user, isLoading, accessToken, setAuthInfo, photoURL };
 
