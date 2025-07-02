@@ -20,6 +20,11 @@ import {
   Sparkles,
   LoaderCircle,
   Archive,
+  Strikethrough,
+  Quote,
+  Link as LinkIcon,
+  Mic,
+  Square,
 } from 'lucide-react';
 
 import {
@@ -57,6 +62,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { type Contact, type FolderData } from '@/data/contacts';
 import { getContacts, getFolders, addContact } from '@/services/contact-service';
 import { saveEmailForContact } from '@/services/file-service';
+import { useSpeechToText } from '@/hooks/use-speech-to-text';
+import { cn } from '@/lib/utils';
 
 const OgeemoChatDialog = dynamic(() => import('@/components/ogeemail/ogeemo-chat-dialog'), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
@@ -114,10 +121,29 @@ export function ComposeEmailView() {
   
   const { toast } = useToast();
   const { user } = useAuth();
+  const [bodyBeforeSpeech, setBodyBeforeSpeech] = React.useState('');
 
   const newContactForm = useForm<z.infer<typeof newContactSchema>>({
     resolver: zodResolver(newContactSchema),
     defaultValues: { name: "", email: "", folderId: "" },
+  });
+
+  const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
+    onTranscript: (transcript) => {
+        if (editorRef.current) {
+            const newText = bodyBeforeSpeech ? `${bodyBeforeSpeech} ${transcript}`.trim() : transcript;
+            editorRef.current.innerHTML = newText;
+            setBody(newText);
+            const range = document.createRange();
+            const sel = window.getSelection();
+            if (sel) {
+                range.selectNodeContents(editorRef.current);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+    }
   });
   
   React.useEffect(() => {
@@ -301,6 +327,18 @@ export function ComposeEmailView() {
     }
     setIsGenerateImageDialogOpen(false);
   };
+  
+  const handleDictateNotes = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      setBodyBeforeSpeech(body);
+      editorRef.current?.focus();
+      startListening();
+    }
+  };
+  
+  const preventDefault = (e: React.MouseEvent) => e.preventDefault();
 
   return (
     <div className="p-4 sm:p-6 space-y-6 h-full flex flex-col">
@@ -401,24 +439,31 @@ export function ComposeEmailView() {
           <Separator />
           <CardContent className="flex-1 flex flex-col p-0 min-h-0">
             <div className="p-2 border-b flex items-center gap-1 flex-wrap">
-                <Button variant="ghost" size="icon" title="Bold" onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Italic" onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Underline" onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" title="Italic" onMouseDown={preventDefault} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" title="Strikethrough" onMouseDown={preventDefault} onClick={() => handleFormat('strikeThrough')}><Strikethrough className="h-4 w-4" /></Button>
                 <Separator orientation="vertical" className="h-6 mx-1" />
-                <Button variant="ghost" size="icon" title="Unordered List" onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Ordered List" onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" title="Blockquote" onMouseDown={preventDefault} onClick={() => handleFormat('formatBlock', 'blockquote')}><Quote className="h-4 w-4" /></Button>
+                <Separator orientation="vertical" className="h-6 mx-1" />
+                <Button variant="ghost" size="icon" title="Insert Link" onMouseDown={preventDefault} onClick={() => { const url = prompt('Enter a URL:'); if (url) handleFormat('createLink', url); }}><LinkIcon className="h-4 w-4" /></Button>
                 <Separator orientation="vertical" className="h-6 mx-1" />
                 <Button variant="ghost" size="icon" title="Attach File"><Paperclip className="h-4 w-4" /></Button>
                 <Button variant="ghost" size="icon" title="Generate Image" onClick={() => setIsGenerateImageDialogOpen(true)}><ImageIcon className="h-4 w-4" /></Button>
+                <Separator orientation="vertical" className="h-6 mx-1" />
+                <Button variant="ghost" size="icon" title={isListening ? "Stop dictation" : "Dictate notes"} onMouseDown={preventDefault} onClick={handleDictateNotes} disabled={isSupported === false} className={cn(isListening && "text-destructive")}>
+                    {isListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </Button>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
                 <div
                     ref={editorRef}
                     className="prose dark:prose-invert max-w-none focus:outline-none min-h-full"
                     contentEditable={true}
-                    onInput={(e) => setBody(e.currentTarget.innerHTML)}
+                    onInput={(e) => { if (!isListening) setBody(e.currentTarget.innerHTML); }}
                     placeholder="Compose your message..."
-                    dir="ltr"
                 />
             </div>
           </CardContent>

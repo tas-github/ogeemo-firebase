@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Settings as SettingsIcon, Play, Pause, Square, Save, RotateCcw } from 'lucide-react';
+import { Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Settings as SettingsIcon, Play, Pause, Square, Save, RotateCcw, Strikethrough, Quote, Link as LinkIcon, Mic } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { type Contact, mockContacts } from "@/data/contacts";
 import { Separator } from '@/components/ui/separator';
@@ -21,6 +21,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useSpeechToText } from '@/hooks/use-speech-to-text';
+import { cn } from '@/lib/utils';
+
 
 interface EventEntry {
   id: string;
@@ -53,6 +56,7 @@ export function CreateEventView() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const [detailsBeforeSpeech, setDetailsBeforeSpeech] = useState('');
 
   // Timer interval effect
   useEffect(() => {
@@ -69,6 +73,23 @@ export function CreateEventView() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [isActive, isPaused]);
+
+  const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
+    onTranscript: (transcript) => {
+        if (editorRef.current) {
+            const newText = detailsBeforeSpeech ? `${detailsBeforeSpeech} ${transcript}`.trim() : transcript;
+            editorRef.current.innerHTML = newText;
+            const range = document.createRange();
+            const sel = window.getSelection();
+            if (sel) {
+                range.selectNodeContents(editorRef.current);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+    }
+  });
   
   const handleStart = () => {
     if (!selectedContactId) {
@@ -161,6 +182,16 @@ export function CreateEventView() {
   
   const preventDefault = (e: React.MouseEvent) => e.preventDefault();
   
+  const handleDictateNotes = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      setDetailsBeforeSpeech(editorRef.current?.innerHTML || '');
+      editorRef.current?.focus();
+      startListening();
+    }
+  };
+
   return (
     <>
       <div className="p-4 sm:p-6 space-y-6">
@@ -255,14 +286,21 @@ export function CreateEventView() {
                     <Button variant="ghost" size="icon" title="Bold" onMouseDown={preventDefault} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" title="Italic" onMouseDown={preventDefault} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" title="Underline" onMouseDown={preventDefault} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" title="Strikethrough" onMouseDown={preventDefault} onClick={() => handleFormat('strikeThrough')}><Strikethrough className="h-4 w-4" /></Button>
                     <Separator orientation="vertical" className="h-6 mx-1" />
                     <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={preventDefault} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" title="Blockquote" onMouseDown={preventDefault} onClick={() => handleFormat('formatBlock', 'blockquote')}><Quote className="h-4 w-4" /></Button>
+                    <Separator orientation="vertical" className="h-6 mx-1" />
+                    <Button variant="ghost" size="icon" title="Insert Link" onMouseDown={preventDefault} onClick={() => { const url = prompt('Enter a URL:'); if (url) handleFormat('createLink', url); }}><LinkIcon className="h-4 w-4" /></Button>
+                    <Separator orientation="vertical" className="h-6 mx-1" />
+                    <Button variant="ghost" size="icon" title={isListening ? "Stop dictation" : "Dictate notes"} onMouseDown={preventDefault} onClick={handleDictateNotes} disabled={isSupported === false} className={cn(isListening && "text-destructive")}>
+                        {isListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </Button>
                 </div>
                 <div
                     ref={editorRef}
                     className="prose dark:prose-invert max-w-none p-4 focus:outline-none h-full min-h-[250px] text-left"
-                    dir="ltr"
                     contentEditable
                     onInput={(e) => {}}
                     placeholder="Start writing your event details here..."
