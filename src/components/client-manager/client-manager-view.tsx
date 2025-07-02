@@ -11,21 +11,21 @@ import {
 import { Button } from "@/components/ui/button";
 import { Pencil, BookOpen, ArrowRight } from "lucide-react";
 
-export function EventManagerView() {
+export function ClientManagerView() {
   const features = [
     {
       icon: Pencil,
-      title: "Create a New Event",
+      title: "Create New Log Entry",
       description: "Start the timer and create a detailed log for a new client action or event.",
-      href: "/event-manager/create",
-      cta: "Create Event",
+      href: "/client-manager/create",
+      cta: "Create Entry",
     },
     {
       icon: BookOpen,
-      title: "View Client Event Log",
+      title: "View Client Log",
       description: "Review, search, and export your complete history of all client events.",
-      href: "/event-manager/logged-events",
-      cta: "View Event Log",
+      href: "/client-manager/logged-events",
+      cta: "View Log",
     },
   ];
 
@@ -33,7 +33,7 @@ export function EventManagerView() {
     <div className="p-4 sm:p-6 space-y-6">
       <header className="text-center mb-6">
         <h1 className="text-3xl font-bold font-headline text-primary">
-          Event Manager Hub
+          Client Manager Hub
         </h1>
         <p className="text-muted-foreground max-w-2xl mx-auto">
           The purpose of this manager is to have a record of all actions recorded in the event manager, to create a history so that when a client gets an invoice and questions what you did for them, there is a readily available report to print or email to them. It will show both billable and non billable actions performed for the client.
