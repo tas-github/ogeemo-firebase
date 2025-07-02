@@ -321,7 +321,7 @@ export default function AdvancedSearchPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-3">
-              <label className="text-base font-semibold">1. What do you want to search for?</label>
+              <label className="text-base font-semibold">1. Select Data Sources</label>
               <div className="flex items-center space-x-2">
                  <Checkbox
                     id="select-all"
