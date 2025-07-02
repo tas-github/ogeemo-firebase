@@ -33,8 +33,6 @@ export function SimpleChatView() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const baseTextRef = useRef("");
   const { toast } = useToast();
-  const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const {
     status,
@@ -47,9 +45,7 @@ export function SimpleChatView() {
       const newText = baseTextRef.current
         ? `${baseTextRef.current} ${transcript}`
         : transcript;
-      if (inputRef.current) {
-        inputRef.current.value = newText;
-      }
+      setInput(newText);
     },
   });
 
@@ -73,7 +69,7 @@ export function SimpleChatView() {
   }, [messages]);
 
   const submitMessage = useCallback(async () => {
-    const currentInput = (inputRef.current?.value ?? input).trim();
+    const currentInput = input.trim();
     if (!currentInput || isLoading) return;
 
     if (isListening) {
@@ -87,7 +83,6 @@ export function SimpleChatView() {
     };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    if (inputRef.current) inputRef.current.value = "";
     setIsLoading(true);
 
     try {
@@ -111,33 +106,17 @@ export function SimpleChatView() {
     }
   }, [input, isLoading, isListening, stopListening]);
 
-  useEffect(() => {
-    if (status === 'idle' && shouldSubmitOnMicStop) {
-      submitMessage();
-      setShouldSubmitOnMicStop(false);
-    }
-  }, [status, shouldSubmitOnMicStop, submitMessage]);
-
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(inputRef.current) setInput(inputRef.current.value);
     submitMessage();
   };
 
   const handleMicClick = () => {
     if (isListening) {
       stopListening();
-      if(inputRef.current) setInput(inputRef.current.value);
-      setShouldSubmitOnMicStop(true);
     } else {
       baseTextRef.current = input.trim();
       startListening();
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if(!isListening) {
-      setInput(e.target.value);
     }
   };
 
@@ -157,12 +136,12 @@ export function SimpleChatView() {
      if (isSupported === false) return "Voice input not supported";
      switch (currentStatus) {
         case 'listening':
-            return "Stop and send message";
+            return "Stop dictation";
         case 'activating':
             return "Activating...";
         case 'idle':
         default:
-            return "Start listening";
+            return "Start dictation";
      }
   };
 
@@ -247,14 +226,12 @@ export function SimpleChatView() {
                 <span className="sr-only">Use Voice</span>
               </Button>
               <Input
-                ref={inputRef}
                 placeholder="Send a message..."
-                defaultValue={input}
-                onChange={handleInputChange}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        if(inputRef.current) setInput(inputRef.current.value);
                         submitMessage();
                     }
                 }}

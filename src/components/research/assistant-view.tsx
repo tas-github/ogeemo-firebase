@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -31,10 +32,10 @@ interface AssistantViewProps {
   handleAssistantMicClick: () => void;
   isAssistantListening: boolean;
   isSttSupported: boolean;
-  chatInputRef: React.RefObject<HTMLInputElement>;
+  chatInputRef: React.RefObject<HTMLInputElement> | null; // This can now be null
 }
 
-export const AssistantView = ({ setView, chatMessages, handleAddToNotepad, isLoading, userInput, setUserInput, handleSendMessage, handleAssistantMicClick, isAssistantListening, isSttSupported, chatInputRef }: AssistantViewProps) => (
+export const AssistantView = ({ setView, chatMessages, handleAddToNotepad, isLoading, userInput, setUserInput, handleSendMessage, handleAssistantMicClick, isAssistantListening, isSttSupported }: AssistantViewProps) => (
     <div className="h-full flex flex-col p-4 sm:p-6">
         <div className="flex items-center gap-4 mb-4">
             <Button variant="outline" onClick={() => setView('hub')}><ArrowLeft className="mr-2 h-4 w-4"/> Back to Hub</Button>
@@ -78,7 +79,6 @@ export const AssistantView = ({ setView, chatMessages, handleAddToNotepad, isLoa
             <div className="p-4 border-t">
               <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                 <Input
-                  ref={chatInputRef}
                   value={userInput}
                   onChange={(e: any) => setUserInput(e.target.value)}
                   placeholder="Ask a follow-up question..."

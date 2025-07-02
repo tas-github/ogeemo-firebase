@@ -12,14 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { askTestChat } from "@/ai/flows/test-chat";
@@ -35,15 +27,12 @@ type Message = {
 };
 
 export function TestChatView() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const baseTextRef = useRef("");
-  const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const {
     status,
@@ -56,9 +45,7 @@ export function TestChatView() {
       const newText = baseTextRef.current
         ? `${baseTextRef.current} ${transcript}`
         : transcript;
-      if (inputRef.current) {
-        inputRef.current.value = newText;
-      }
+      setInput(newText);
     },
   });
 
@@ -82,7 +69,7 @@ export function TestChatView() {
   }, [messages]);
 
   const submitMessage = useCallback(async () => {
-    const currentInput = (inputRef.current?.value ?? input).trim();
+    const currentInput = input.trim();
     if (!currentInput || isLoading) return;
 
     if (isListening) {
@@ -96,7 +83,6 @@ export function TestChatView() {
     };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    if (inputRef.current) inputRef.current.value = "";
     setIsLoading(true);
 
     try {
@@ -120,33 +106,17 @@ export function TestChatView() {
     }
   }, [input, isLoading, isListening, stopListening]);
 
-  useEffect(() => {
-    if (status === 'idle' && shouldSubmitOnMicStop) {
-      submitMessage();
-      setShouldSubmitOnMicStop(false);
-    }
-  }, [status, shouldSubmitOnMicStop, submitMessage]);
-
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(inputRef.current) setInput(inputRef.current.value);
     submitMessage();
   };
 
   const handleMicClick = () => {
     if (isListening) {
       stopListening();
-      if(inputRef.current) setInput(inputRef.current.value);
-      setShouldSubmitOnMicStop(true);
     } else {
       baseTextRef.current = input.trim();
       startListening();
-    }
-  };
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if(!isListening) {
-      setInput(e.target.value);
     }
   };
 
@@ -166,17 +136,17 @@ export function TestChatView() {
      if (isSupported === false) return "Voice input not supported";
      switch (currentStatus) {
         case 'listening':
-            return "Stop and send message";
+            return "Stop dictation";
         case 'activating':
             return "Activating...";
         case 'idle':
         default:
-            return "Start listening";
+            return "Start dictation";
      }
   };
 
   return (
-    <div className="p-4 sm:p-6 flex flex-col items-center justify-center h-full">
+    <div className="p-4 sm:p-6 flex flex-col items-center h-full">
       <header className="text-center mb-6">
         <h1 className="text-3xl font-bold font-headline text-primary">
           AI Chat Test Page
@@ -185,105 +155,96 @@ export function TestChatView() {
           Use this page to debug the AI chat functionality in isolation.
         </p>
       </header>
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogTrigger asChild>
-          <Button>Open Test Chat</Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-xl h-[70vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Test Chat</DialogTitle>
-            <DialogDescription>
+        <Card className="w-full max-w-2xl flex-1 flex flex-col">
+          <CardHeader>
+            <CardTitle>Test Chat</CardTitle>
+            <CardDescription>
               This is a test environment for the chat feature.
-            </DialogDescription>
-          </DialogHeader>
-          <Card className="flex-1 flex flex-col h-full border-0 shadow-none">
-            <CardContent className="flex-1 overflow-hidden p-0">
-              <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
-                <div className="space-y-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={cn(
-                        "flex items-start gap-3",
-                        message.sender === "user" ? "justify-end" : "justify-start"
-                      )}
-                    >
-                      {message.sender === "bot" && (
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback><Bot /></AvatarFallback>
-                        </Avatar>
-                      )}
-                      <div
-                        className={cn(
-                          "max-w-xs md:max-w-md lg:max-w-lg rounded-lg px-4 py-2 text-sm",
-                          message.sender === "user"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted"
-                        )}
-                      >
-                        {message.text}
-                      </div>
-                      {message.sender === "user" && (
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback><User /></AvatarFallback>
-                        </Avatar>
-                      )}
-                    </div>
-                  ))}
-                  {isLoading && (
-                    <div className="flex items-start gap-3 justify-start">
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-hidden">
+            <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
+              <div className="space-y-4">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={cn(
+                      "flex items-start gap-3",
+                      message.sender === "user" ? "justify-end" : "justify-start"
+                    )}
+                  >
+                    {message.sender === "bot" && (
                       <Avatar className="h-8 w-8">
                         <AvatarFallback><Bot /></AvatarFallback>
                       </Avatar>
-                      <div className="bg-muted rounded-lg px-4 py-2 text-sm flex items-center">
-                        <LoaderCircle className="h-4 w-4 animate-spin" />
-                      </div>
+                    )}
+                    <div
+                      className={cn(
+                        "max-w-xs md:max-w-md lg:max-w-lg rounded-lg px-4 py-2 text-sm",
+                        message.sender === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted"
+                      )}
+                    >
+                      {message.text}
                     </div>
-                  )}
-                </div>
-              </ScrollArea>
-            </CardContent>
-            <CardFooter className="p-0 pt-4">
-              <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "flex-shrink-0",
-                    isListening && "text-destructive"
-                  )}
-                  onClick={handleMicClick}
-                  disabled={isSupported === false || isLoading || status === 'activating'}
-                  title={getMicButtonTitle(status)}
-                >
-                  {renderMicIcon(status)}
-                  <span className="sr-only">Use Voice</span>
-                </Button>
-                <Input
-                  ref={inputRef}
-                  placeholder="Enter your message here..."
-                  defaultValue={input}
-                  onChange={handleInputChange}
-                  onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                          e.preventDefault();
-                          if(inputRef.current) setInput(inputRef.current.value);
-                          submitMessage();
-                      }
-                  }}
-                  disabled={isLoading}
-                  autoComplete="off"
-                />
-                <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-                  <Send className="h-5 w-5" />
-                  <span className="sr-only">Send Message</span>
-                </Button>
-              </form>
-            </CardFooter>
-          </Card>
-        </DialogContent>
-      </Dialog>
+                    {message.sender === "user" && (
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback><User /></AvatarFallback>
+                      </Avatar>
+                    )}
+                  </div>
+                ))}
+                {isLoading && (
+                  <div className="flex items-start gap-3 justify-start">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback><Bot /></AvatarFallback>
+                    </Avatar>
+                    <div className="bg-muted rounded-lg px-4 py-2 text-sm flex items-center">
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+          <CardFooter>
+            <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "flex-shrink-0",
+                  isListening && "text-destructive"
+                )}
+                onClick={handleMicClick}
+                disabled={isSupported === false || isLoading || status === 'activating'}
+                title={getMicButtonTitle(status)}
+              >
+                {renderMicIcon(status)}
+                <span className="sr-only">Use Voice</span>
+              </Button>
+              <Input
+                placeholder="Enter your message here..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        submitMessage();
+                    }
+                }}
+                disabled={isLoading}
+                autoComplete="off"
+              />
+              <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+                <Send className="h-5 w-5" />
+                <span className="sr-only">Send Message</span>
+              </Button>
+            </form>
+          </CardFooter>
+        </Card>
     </div>
   );
 }

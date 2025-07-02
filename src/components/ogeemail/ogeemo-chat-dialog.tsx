@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useSpeechToText, type SpeechRecognitionStatus } from "@/hooks/use-speech-to-text";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
 
 type Message = {
   id: string;
@@ -37,9 +38,8 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
     const [isChatLoading, setIsChatLoading] = useState(false);
     const chatScrollAreaRef = useRef<HTMLDivElement>(null);
     const chatBaseTextRef = useRef("");
-    const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = useState(false);
     const { toast } = useToast();
-    const chatInputRef = useRef<HTMLInputElement>(null);
+    const { user } = useAuth();
 
     const {
         status: chatStatus,
@@ -52,9 +52,7 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
             const newText = chatBaseTextRef.current
                 ? `${chatBaseTextRef.current} ${transcript}`
                 : transcript;
-            if (chatInputRef.current) {
-                chatInputRef.current.value = newText;
-            }
+            setChatInput(newText);
         },
     });
 
@@ -78,8 +76,13 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
     }, [messages]);
 
     const submitChatMessage = useCallback(async () => {
-        const currentInput = (chatInputRef.current?.value ?? chatInput).trim();
+        const currentInput = chatInput.trim();
         if (!currentInput || isChatLoading) return;
+
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Not Logged In', description: 'You must be logged in to use the assistant.' });
+            return;
+        }
 
         if (isChatListening) {
             stopListening();
@@ -92,11 +95,10 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
         };
         setMessages((prev) => [...prev, userMessage]);
         setChatInput("");
-        if (chatInputRef.current) chatInputRef.current.value = "";
         setIsChatLoading(true);
 
         try {
-        const response = await askOgeemo({ message: currentInput });
+        const response = await askOgeemo({ message: currentInput, userId: user.uid });
         const ogeemoMessage: Message = {
             id: (Date.now() + 1).toString(),
             text: response.reply,
@@ -114,35 +116,19 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
         } finally {
         setIsChatLoading(false);
         }
-    }, [chatInput, isChatLoading, isChatListening, stopListening]);
-
-    useEffect(() => {
-        if (chatStatus === 'idle' && shouldSubmitOnMicStop) {
-        submitChatMessage();
-        setShouldSubmitOnMicStop(false);
-        }
-    }, [chatStatus, shouldSubmitOnMicStop, submitChatMessage]);
+    }, [chatInput, isChatLoading, isChatListening, stopListening, user, toast]);
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (chatInputRef.current) setChatInput(chatInputRef.current.value);
         submitChatMessage();
     };
 
     const handleChatMicClick = () => {
         if (isChatListening) {
             stopListening();
-            if (chatInputRef.current) setChatInput(chatInputRef.current.value);
-            setShouldSubmitOnMicStop(true);
         } else {
             chatBaseTextRef.current = chatInput.trim();
             startListening();
-        }
-    };
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if(!isChatListening) {
-          setChatInput(e.target.value);
         }
     };
     
@@ -162,12 +148,12 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
         if (isSupported === false) return "Voice input not supported";
         switch (currentStatus) {
             case 'listening':
-                return "Stop and send message";
+                return "Stop dictation";
             case 'activating':
                 return "Activating...";
             case 'idle':
             default:
-                return "Start listening";
+                return "Start dictation";
         }
     };
 
@@ -193,7 +179,7 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
                         {messages.length === 0 && (
                         <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center">
                             <p>Start the conversation...</p>
-                            <p className="text-sm mt-2">In order to start and stop voice to text, click the mic icon</p>
+                            <p className="text-sm mt-2">Click the mic icon to start and stop dictation.</p>
                         </div>
                         )}
                         {messages.map((message) => (
@@ -266,14 +252,12 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
                         <span className="sr-only">Use Voice</span>
                     </Button>
                     <Input
-                        ref={chatInputRef}
                         placeholder="Enter your message here..."
-                        defaultValue={chatInput}
-                        onChange={handleInputChange}
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
                         onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                                 e.preventDefault();
-                                if(chatInputRef.current) setChatInput(chatInputRef.current.value);
                                 submitChatMessage();
                             }
                         }}

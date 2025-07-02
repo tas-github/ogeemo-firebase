@@ -37,7 +37,6 @@ export function ResearchHubView() {
   const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
   const editorRef = React.useRef<HTMLDivElement>(null);
-  const chatInputRef = React.useRef<HTMLInputElement>(null);
 
   const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -80,30 +79,25 @@ export function ResearchHubView() {
     }
   };
 
+  const assistantBaseTextRef = React.useRef("");
   const {
     isListening: isAssistantListening,
     startListening: startAssistantListening,
     stopListening: stopAssistantListening,
   } = useSpeechToText({
     onTranscript: (transcript) => {
-      if (chatInputRef.current) {
-        chatInputRef.current.value = transcript;
-      }
+      const newText = assistantBaseTextRef.current ? `${assistantBaseTextRef.current} ${transcript}` : transcript;
+      setUserInput(newText);
     },
   });
 
   const handleAssistantMicClick = () => {
     if (isAssistantListening) {
       stopAssistantListening();
-      if (chatInputRef.current) {
-          setUserInput(chatInputRef.current.value);
-      }
     }
     else {
-      if (chatInputRef.current) {
-        chatInputRef.current.focus();
-        startAssistantListening();
-      }
+      assistantBaseTextRef.current = userInput.trim();
+      startAssistantListening();
     }
   };
 
@@ -123,8 +117,12 @@ export function ResearchHubView() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    const currentInput = (chatInputRef.current?.value || userInput).trim();
+    const currentInput = userInput.trim();
     if (!currentInput) return;
+
+    if (isAssistantListening) {
+        stopAssistantListening();
+    }
 
     setChatMessages(prev => [...prev, { sender: 'user', text: currentInput }]);
     setIsLoading(true);
@@ -165,7 +163,6 @@ export function ResearchHubView() {
     }, 1500);
 
     setUserInput('');
-    if (chatInputRef.current) chatInputRef.current.value = "";
   };
 
   const handleSearch = () => {
@@ -217,7 +214,7 @@ export function ResearchHubView() {
         case 'notepad':
             return <NotepadView setView={setView} editorRef={editorRef} handleFormat={handleFormat} handleNotepadMicClick={handleNotepadMicClick} isNotepadListening={isNotepadListening} isSttSupported={isSttSupported} />;
         case 'assistant':
-            return <AssistantView setView={setView} chatMessages={chatMessages} handleAddToNotepad={handleAddToNotepad} isLoading={isLoading} userInput={userInput} setUserInput={setUserInput} handleSendMessage={handleSendMessage} handleAssistantMicClick={handleAssistantMicClick} isAssistantListening={isAssistantListening} isSttSupported={isSttSupported} chatInputRef={chatInputRef} />;
+            return <AssistantView setView={setView} chatMessages={chatMessages} handleAddToNotepad={handleAddToNotepad} isLoading={isLoading} userInput={userInput} setUserInput={setUserInput} handleSendMessage={handleSendMessage} handleAssistantMicClick={handleAssistantMicClick} isAssistantListening={isAssistantListening} isSttSupported={isSttSupported} chatInputRef={null} />;
         case 'hub':
         default:
             return <HubView setView={setView} />;

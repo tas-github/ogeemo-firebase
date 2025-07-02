@@ -42,8 +42,6 @@ export function ActionManagerView() {
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const [shouldSubmitOnMicStop, setShouldSubmitOnMicStop] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const baseTextRef = useRef("");
   const { user } = useAuth();
 
@@ -58,9 +56,7 @@ export function ActionManagerView() {
       const newText = baseTextRef.current
         ? `${baseTextRef.current} ${transcript}`
         : transcript;
-      if (inputRef.current) {
-        inputRef.current.value = newText;
-      }
+      setInput(newText);
     },
   });
 
@@ -84,7 +80,7 @@ export function ActionManagerView() {
   }, [messages]);
 
   const submitMessage = useCallback(async () => {
-    const currentInput = (inputRef.current?.value || input).trim();
+    const currentInput = input.trim();
     if (!currentInput || isLoading) return;
 
     if (!user) {
@@ -107,7 +103,6 @@ export function ActionManagerView() {
     };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    if (inputRef.current) inputRef.current.value = "";
     setIsLoading(true);
 
     try {
@@ -131,33 +126,17 @@ export function ActionManagerView() {
     }
   }, [input, isLoading, isListening, stopListening, user, toast]);
 
-  useEffect(() => {
-    if (status === 'idle' && shouldSubmitOnMicStop) {
-      submitMessage();
-      setShouldSubmitOnMicStop(false);
-    }
-  }, [status, shouldSubmitOnMicStop, submitMessage]);
-
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(inputRef.current) setInput(inputRef.current.value);
     submitMessage();
   };
 
   const handleMicClick = () => {
     if (isListening) {
       stopListening();
-      if(inputRef.current) setInput(inputRef.current.value);
-      setShouldSubmitOnMicStop(true);
     } else {
       baseTextRef.current = input.trim();
       startListening();
-    }
-  };
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if(!isListening) {
-      setInput(e.target.value);
     }
   };
   
@@ -177,12 +156,12 @@ export function ActionManagerView() {
      if (isSupported === false) return "Voice input not supported";
      switch (currentStatus) {
         case 'listening':
-            return "Stop and send message";
+            return "Stop dictation";
         case 'activating':
             return "Activating...";
         case 'idle':
         default:
-            return "Start listening";
+            return "Start dictation";
      }
   };
 
@@ -202,7 +181,7 @@ export function ActionManagerView() {
               Ask me anything about Ogeemo or describe what you'd like to accomplish.
               </CardDescription>
               <p className="text-sm text-muted-foreground mt-2">
-                In order to start and stop voice to text, click the mic icon.
+                Click the mic icon to start and stop dictation.
               </p>
           </CardHeader>
           <CardContent className="flex-1 overflow-hidden">
@@ -269,14 +248,12 @@ export function ActionManagerView() {
                     <span className="sr-only">Use Voice</span>
                   </Button>
                   <Input
-                      ref={inputRef}
                       placeholder="Enter your message here..."
-                      defaultValue={input}
-                      onChange={handleInputChange}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
                       onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                               e.preventDefault();
-                              if(inputRef.current) setInput(inputRef.current.value);
                               submitMessage();
                           }
                       }}
