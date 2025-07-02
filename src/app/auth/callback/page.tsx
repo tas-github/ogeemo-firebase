@@ -34,25 +34,21 @@ export default function AuthCallbackPage() {
         const result = await getRedirectResult(auth);
 
         if (result) {
-          // This is a sign-in with a credential.
           const credential = GoogleAuthProvider.credentialFromResult(result);
-          if (credential) {
-            // We have a credential, so let's try to get the access token.
-            const accessToken = credential.accessToken;
-            if (accessToken) {
-              // Store the token so the AuthContext can pick it up.
-              sessionStorage.setItem('google_access_token', accessToken);
-            }
+          const accessToken = credential?.accessToken;
+
+          if (accessToken) {
+            // SUCCESS! We have a user and a token.
+            sessionStorage.setItem('google_access_token', accessToken);
+            router.push("/dashboard");
+            return; // Exit function on success
           }
-          // The onAuthStateChanged listener will handle the user object.
-          // We just need to get them to the main app.
-          router.push("/dashboard");
-        } else {
-          // This can happen if the page is reloaded or visited directly.
-          // The auth state might already be handled. We redirect to dashboard as a safe fallback.
-          // The ClientLayout will redirect to /login if there's still no user.
-          router.push("/dashboard");
         }
+        
+        // If we reach here, it means the result, credential, or token was missing.
+        // This is an error condition.
+        throw new Error("Could not retrieve Google access token. Please try signing in again.");
+
       } catch (error: any) {
         console.error("Error during authentication callback:", error);
         if (error.code === 'auth/unauthorized-domain') {
@@ -61,7 +57,7 @@ export default function AuthCallbackPage() {
             toast({
               variant: "destructive",
               title: "Sign-In Failed",
-              description: error.message || "An error occurred during authentication. Please try again.",
+              description: error.message || "An unexpected error occurred during authentication. Please try again.",
             });
             router.push("/login");
         }
