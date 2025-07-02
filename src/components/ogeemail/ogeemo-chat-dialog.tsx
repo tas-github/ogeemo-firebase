@@ -256,7 +256,7 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
                         onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
+                            if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault();
                                 submitChatMessage();
                             }
