@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -9,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Receipt, Activity, BarChart3, ArrowRight, BookText, WalletCards } from "lucide-react";
+import { UserPlus, Receipt, Activity, BarChart3, ArrowRight, BookText, WalletCards, FileDigit } from "lucide-react";
 
 export function AccountingHubView() {
   const features = [
@@ -47,6 +48,13 @@ export function AccountingHubView() {
       description: "Connect accounts and reconcile transactions against your ledgers.",
       href: "/accounting/bank-statements",
       cta: "Manage Statements",
+    },
+    {
+      icon: FileDigit,
+      title: "Invoicing",
+      description: "Generate and manage invoices for clients based on tracked time and custom line items.",
+      href: "/accounting/invoices",
+      cta: "Create Invoice",
     },
     {
       icon: BarChart3,
