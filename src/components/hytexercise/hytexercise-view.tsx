@@ -20,6 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ExercisePlayer } from './exercise-player';
 
 
 const formatTime = (totalSeconds: number) => {
@@ -36,6 +37,7 @@ export function HytexerciseView() {
   const [breakDuration, setBreakDuration] = useState(5);
   const [timeLeft, setTimeLeft] = useState(breakFrequency * 60);
   const [isBreakAlertOpen, setIsBreakAlertOpen] = useState(false);
+  const [isBreakActive, setIsBreakActive] = useState(false);
 
   const { toast } = useToast();
 
@@ -44,13 +46,13 @@ export function HytexerciseView() {
   }, []);
 
   useEffect(() => {
-    if (isActive) {
+    if (isActive && !isBreakActive) {
       resetTimer(breakFrequency);
     }
-  }, [isActive, breakFrequency, resetTimer]);
+  }, [isActive, breakFrequency, resetTimer, isBreakActive]);
   
   useEffect(() => {
-    if (!isActive || isBreakAlertOpen) {
+    if (!isActive || isBreakAlertOpen || isBreakActive) {
       return;
     }
 
@@ -64,7 +66,7 @@ export function HytexerciseView() {
     }, 1000);
 
     return () => clearInterval(intervalId);
-  }, [isActive, timeLeft, isBreakAlertOpen]);
+  }, [isActive, timeLeft, isBreakAlertOpen, isBreakActive]);
   
   const handleSaveSettings = () => {
     toast({
@@ -79,12 +81,8 @@ export function HytexerciseView() {
   };
   
   const handleStartBreak = () => {
-    toast({
-        title: "Break Time!",
-        description: `Starting your ${breakDuration}-minute exercise routine now.`,
-    });
     setIsBreakAlertOpen(false);
-    resetTimer(breakFrequency);
+    setIsBreakActive(true);
   };
   
   const handleDelayBreak = () => {
@@ -94,6 +92,19 @@ export function HytexerciseView() {
     });
     setIsBreakAlertOpen(false);
     resetTimer(10); // Fixed 10 minute delay
+  }
+  
+  const handleFinishBreak = () => {
+      setIsBreakActive(false);
+      resetTimer(breakFrequency);
+      toast({
+          title: "Break Complete!",
+          description: "Great job! Time to get back to it.",
+      });
+  };
+  
+  if (isBreakActive) {
+      return <ExercisePlayer breakDurationMinutes={breakDuration} onFinish={handleFinishBreak} />
   }
 
   return (
