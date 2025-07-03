@@ -273,7 +273,7 @@ export function InvoiceGeneratorView() {
                  <Button className="w-full" onClick={fetchLoggedEntries}>Fetch Logged Activities</Button>
             </div>
             <div className="space-y-4 lg:col-span-2">
-                <h4 className="font-semibold text-base">2. Add Item</h4>
+                <h4 className="font-semibold text-base">Add Item</h4>
                 <div className="grid sm:grid-cols-[1fr_auto] gap-2">
                     <Select onValueChange={addPredefinedItem}>
                         <SelectTrigger><SelectValue placeholder="Select a predefined item..." /></SelectTrigger>
@@ -289,12 +289,12 @@ export function InvoiceGeneratorView() {
                             <div key={item.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
                                 <Input placeholder="Item description" value={item.description} onChange={e => updateCustomItem(item.id, 'description', e.target.value)} />
                                 <div className="flex items-center gap-2">
-                                    <Label htmlFor={`qty-${item.id}`} className="sr-only">Qty</Label>
-                                    <Input id={`qty-${item.id}`} type="number" placeholder="Qty" value={item.quantity} onChange={e => updateCustomItem(item.id, 'quantity', Number(e.target.value))} className="w-16" />
+                                    <Label htmlFor={`qty-${item.id}`}>Qty</Label>
+                                    <Input id={`qty-${item.id}`} type="number" value={item.quantity} onChange={e => updateCustomItem(item.id, 'quantity', Number(e.target.value))} className="w-16" />
                                 </div>
                                  <div className="flex items-center gap-2">
-                                    <Label htmlFor={`price-${item.id}`} className="sr-only">$ Rate</Label>
-                                    <Input id={`price-${item.id}`} type="number" placeholder="Rate" value={item.price} onChange={e => updateCustomItem(item.id, 'price', Number(e.target.value))} className="w-24" />
+                                    <Label htmlFor={`price-${item.id}`}>$ Rate</Label>
+                                    <Input id={`price-${item.id}`} type="number" value={item.price} onChange={e => updateCustomItem(item.id, 'price', Number(e.target.value))} className="w-24" />
                                 </div>
                                 <Button variant="ghost" size="icon" onClick={() => removeCustomItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
                             </div>
