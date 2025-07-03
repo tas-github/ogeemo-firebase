@@ -80,7 +80,7 @@ export function ExercisePlayer({ breakDurationMinutes, onFinish }: ExercisePlaye
     };
 
     fetchImage();
-  }, [currentExerciseIndex]);
+  }, [currentExerciseIndex, currentExercise]);
 
   const progress = ((totalDurationSeconds - timeLeft) / totalDurationSeconds) * 100;
 
