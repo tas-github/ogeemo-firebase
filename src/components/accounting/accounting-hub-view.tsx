@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -6,6 +5,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -66,8 +66,8 @@ export function AccountingHubView() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <header className="text-center mb-6">
+    <div className="p-4 sm:p-6 space-y-4">
+      <header className="text-center mb-4">
         <h1 className="text-3xl font-bold font-headline text-primary">
           New World Accounting Hub
         </h1>
@@ -76,27 +76,27 @@ export function AccountingHubView() {
         </p>
       </header>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
         {features.map((feature) => (
           <Card key={feature.title} className="flex flex-col">
-            <CardHeader className="flex flex-row items-start gap-4">
-              <div className="p-3 bg-primary/10 rounded-lg">
-                  <feature.icon className="h-6 w-6 text-primary" />
+            <CardHeader className="p-4 flex flex-row items-start gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                  <feature.icon className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <CardTitle>{feature.title}</CardTitle>
-                <CardDescription>{feature.description}</CardDescription>
+                <CardTitle className="text-lg">{feature.title}</CardTitle>
+                <CardDescription className="text-sm mt-1">{feature.description}</CardDescription>
               </div>
             </CardHeader>
             <CardContent className="flex-1" />
-            <div className="p-6 pt-0">
-                <Button asChild className="w-full">
+            <CardFooter className="p-4 pt-0">
+                <Button asChild size="sm" className="w-full">
                   <Link href={feature.href}>
                     {feature.cta}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-            </div>
+            </CardFooter>
           </Card>
         ))}
       </div>
