@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -51,10 +52,10 @@ export function AccountingHubView() {
     },
     {
       icon: FileDigit,
-      title: "Invoicing",
-      description: "Generate and manage invoices for clients based on tracked time and custom line items.",
+      title: "Invoice Manager",
+      description: "Create and manage professional invoices for your clients.",
       href: "/accounting/invoices",
-      cta: "Create Invoice",
+      cta: "Go to Invoice Manager",
     },
     {
       icon: BarChart3,
@@ -76,7 +77,7 @@ export function AccountingHubView() {
         </p>
       </header>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
         {features.map((feature) => (
           <Card key={feature.title} className="flex flex-col">
             <CardHeader className="p-4 flex flex-row items-start gap-3">
@@ -84,7 +85,7 @@ export function AccountingHubView() {
                   <feature.icon className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-lg">{feature.title}</CardTitle>
+                <CardTitle className="text-base">{feature.title}</CardTitle>
                 <CardDescription className="text-sm mt-1">{feature.description}</CardDescription>
               </div>
             </CardHeader>
