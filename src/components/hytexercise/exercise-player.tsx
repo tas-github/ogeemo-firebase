@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -69,11 +68,10 @@ export function ExercisePlayer({ breakDurationMinutes, onFinish }: ExercisePlaye
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
-            <Image
+            <img
                 src={`https://picsum.photos/600/400?random=${currentExerciseIndex}`}
                 alt={currentExercise.name}
-                fill
-                className="object-cover"
+                className="object-cover w-full h-full"
                 key={currentExerciseIndex}
             />
           </div>
