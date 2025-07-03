@@ -70,7 +70,7 @@ const generateImageFlow = ai.defineFlow(
         } else if (finishReason === 'REFUSED') {
             errorMessage = 'The model refused to generate an image for this prompt. Please try rephrasing it.';
         } else {
-            errorMessage = `Image generation failed. The model may have refused to generate the image. Reason: ${finishReason || 'Unknown'}. ${finishMessage || ''}`;
+            errorMessage = `Image generation failed. The model may have refused to generate the image. Reason: ${finishReason || 'Unknown'}. Message: ${finishMessage || ''}`;
         }
         
         console.error("Image generation failed:", errorMessage, response);
