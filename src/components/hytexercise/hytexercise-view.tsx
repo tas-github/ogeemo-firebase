@@ -13,13 +13,13 @@ import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExercisePlayer } from './exercise-player';
 
 
@@ -38,6 +38,7 @@ export function HytexerciseView() {
   const [timeLeft, setTimeLeft] = useState(breakFrequency * 60);
   const [isBreakAlertOpen, setIsBreakAlertOpen] = useState(false);
   const [isBreakActive, setIsBreakActive] = useState(false);
+  const [customDelay, setCustomDelay] = useState(10);
 
   const { toast } = useToast();
 
@@ -85,13 +86,13 @@ export function HytexerciseView() {
     setIsBreakActive(true);
   };
   
-  const handleDelayBreak = () => {
+  const handleDelayBreak = (delayMinutes: number) => {
     toast({
         title: "Break Delayed",
-        description: "Your break has been delayed by 10 minutes.",
+        description: `Your break has been delayed by ${delayMinutes} minutes.`,
     });
     setIsBreakAlertOpen(false);
-    resetTimer(10); // Fixed 10 minute delay
+    resetTimer(delayMinutes);
   }
   
   const handleFinishBreak = () => {
@@ -119,12 +120,12 @@ export function HytexerciseView() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Status & Controls Card */}
-          <Card>
+          <Card className="flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><HeartPulse className="h-5 w-5"/> Status & Controls</CardTitle>
               <CardDescription>Activate the app to start receiving break reminders.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 flex-1">
               <div className="flex items-center space-x-4 rounded-md border p-4">
                 <div className="flex-1 space-y-1">
                   <p className="text-sm font-medium leading-none">
@@ -150,6 +151,11 @@ export function HytexerciseView() {
                 </div>
               </div>
             </CardContent>
+            <CardFooter>
+                <Button variant="outline" className="w-full" onClick={() => setIsBreakAlertOpen(true)}>
+                    Test Break Alert
+                </Button>
+            </CardFooter>
           </Card>
 
           {/* Settings Card */}
@@ -181,7 +187,7 @@ export function HytexerciseView() {
             </CardHeader>
             <CardContent className="flex-1">
               <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
-                  <Image src="https://placehold.co/600x400.png" alt="Exercise preview placeholder" layout="fill" objectFit="cover" data-ai-hint="chair exercise" />
+                  <img src="https://placehold.co/600x400.png" alt="Exercise preview placeholder" data-ai-hint="chair exercise" className="object-cover w-full h-full" />
                   <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                       <p className="text-white font-semibold">Animation Placeholder</p>
                   </div>
@@ -218,8 +224,25 @@ export function HytexerciseView() {
                     It's time for your scheduled {breakDuration}-minute exercise break. Take a moment to stretch and recharge.
                 </AlertDialogDescription>
             </AlertDialogHeader>
+            <div className="py-4 space-y-2">
+              <Label htmlFor="delay-select">Or, delay your break by:</Label>
+              <Select
+                  defaultValue={String(customDelay)}
+                  onValueChange={(value) => setCustomDelay(Number(value))}
+              >
+                  <SelectTrigger id="delay-select">
+                      <SelectValue placeholder="Select delay time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="5">5 minutes</SelectItem>
+                      <SelectItem value="10">10 minutes</SelectItem>
+                      <SelectItem value="15">15 minutes</SelectItem>
+                      <SelectItem value="20">20 minutes</SelectItem>
+                  </SelectContent>
+              </Select>
+            </div>
             <AlertDialogFooter>
-                <AlertDialogCancel onClick={handleDelayBreak}>Delay (10 mins)</AlertDialogCancel>
+                <Button variant="ghost" onClick={() => handleDelayBreak(customDelay)}>Delay Break</Button>
                 <AlertDialogAction onClick={handleStartBreak}>Start Break Now</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
