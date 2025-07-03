@@ -24,6 +24,7 @@ import {
   BarChart3,
   Bell,
   Bug,
+  HeartPulse,
 } from "lucide-react";
 
 import {
@@ -186,6 +187,18 @@ export function MainMenu() {
           <Link href="/reports">
             <BarChart3 />
             <span>Reports</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          asChild
+          isActive={isActive("/hytexercise")}
+          tooltip="Hytexercise"
+        >
+          <Link href="/hytexercise">
+            <HeartPulse />
+            <span>Hytexercise</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
