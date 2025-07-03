@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { generateImage } from '@/ai/flows/generate-image-flow';
 import { LoaderCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const exercises = [
   { name: 'Neck Tilts', description: 'Slowly tilt your head from side to side, holding for 15 seconds on each side.', duration: 30 },
@@ -36,6 +37,7 @@ export function ExercisePlayer({ breakDurationMinutes, onFinish }: ExercisePlaye
   const [timeInCurrentExercise, setTimeInCurrentExercise] = useState(0);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(true);
+  const { toast } = useToast();
 
   const currentExercise = exercises[currentExerciseIndex % exercises.length];
 
@@ -76,9 +78,14 @@ export function ExercisePlayer({ breakDurationMinutes, onFinish }: ExercisePlaye
         if (!isCancelled) {
           setImageUrl(result.imageUrl);
         }
-      } catch (error) {
+      } catch (error: any) {
         if (!isCancelled) {
           console.error("Failed to generate exercise image:", error);
+          toast({
+            variant: "destructive",
+            title: "Could not load exercise image.",
+            description: error.message || "The AI failed to generate an image for this exercise.",
+          });
         }
       } finally {
         if (!isCancelled) {
@@ -92,7 +99,7 @@ export function ExercisePlayer({ breakDurationMinutes, onFinish }: ExercisePlaye
     return () => {
       isCancelled = true;
     };
-  }, [currentExerciseIndex, currentExercise]);
+  }, [currentExerciseIndex, currentExercise, toast]);
 
   const progress = ((totalDurationSeconds - timeLeft) / totalDurationSeconds) * 100;
 
