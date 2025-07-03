@@ -20,6 +20,15 @@ import { AccountingPageHeader } from './page-header';
 import { Logo } from '../logo';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 // Types
 interface EventEntry {
@@ -58,6 +67,9 @@ export function InvoiceGeneratorView() {
   const [invoiceNumber, setInvoiceNumber] = useState(`INV-${Date.now()}`);
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dueDate, setDueDate] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
+
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
 
   const { toast } = useToast();
   const printRef = useRef<HTMLDivElement>(null);
@@ -126,6 +138,44 @@ export function InvoiceGeneratorView() {
   const handlePrint = () => {
     window.print();
   };
+
+  const handleSaveTemplate = () => {
+    if (!newTemplateName.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'Template name is required.',
+      });
+      return;
+    }
+
+    const templateData = {
+      name: newTemplateName,
+      items: customItems.map(({ id, ...item }) => item),
+    };
+
+    try {
+      const existingTemplatesRaw = localStorage.getItem('invoiceTemplates');
+      const existingTemplates = existingTemplatesRaw ? JSON.parse(existingTemplatesRaw) : [];
+      const updatedTemplates = [...existingTemplates, templateData];
+      localStorage.setItem('invoiceTemplates', JSON.stringify(updatedTemplates));
+
+      toast({
+        title: 'Template Saved!',
+        description: `Template "${newTemplateName}" has been saved.`,
+      });
+
+      setIsTemplateDialogOpen(false);
+      setNewTemplateName('');
+    } catch (error) {
+      console.error('Failed to save template to localStorage', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error Saving Template',
+        description: 'Could not save the template.',
+      });
+    }
+  };
+
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -204,7 +254,33 @@ export function InvoiceGeneratorView() {
                 <CardHeader className="flex-row justify-between items-center">
                     <CardTitle>Invoice Preview</CardTitle>
                     <div className="flex items-center gap-2">
-                        <Button variant="outline"><Save className="mr-2 h-4 w-4" /> Save as Template</Button>
+                        <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline"><Save className="mr-2 h-4 w-4" /> Save as Template</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Save Invoice as Template</DialogTitle>
+                                    <DialogDescription>
+                                    Enter a name for this template. It will save the custom line items and structure.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="py-4">
+                                    <Label htmlFor="template-name">Template Name</Label>
+                                    <Input
+                                        id="template-name"
+                                        value={newTemplateName}
+                                        onChange={(e) => setNewTemplateName(e.target.value)}
+                                        placeholder="e.g., 'Standard Consulting Invoice'"
+                                        onKeyDown={(e) => { if (e.key === 'Enter') handleSaveTemplate() }}
+                                    />
+                                </div>
+                                <DialogFooter>
+                                    <Button variant="ghost" onClick={() => setIsTemplateDialogOpen(false)}>Cancel</Button>
+                                    <Button onClick={handleSaveTemplate}>Save Template</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                         <Button onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
                     </div>
                 </CardHeader>
