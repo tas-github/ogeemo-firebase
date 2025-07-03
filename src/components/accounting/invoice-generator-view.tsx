@@ -19,6 +19,7 @@ import { mockContacts, type Contact } from '@/data/contacts';
 import { AccountingPageHeader } from './page-header';
 import { Logo } from '../logo';
 import { ScrollArea } from '../ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 // Types
 interface EventEntry {
