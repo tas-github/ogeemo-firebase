@@ -1,8 +1,8 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -28,10 +28,12 @@ interface InvoiceTemplate {
 }
 
 const INVOICE_TEMPLATES_KEY = 'invoiceTemplates';
+const EDIT_INVOICE_TEMPLATE_KEY = 'editInvoiceTemplate';
 
 export default function InvoiceTemplatesPage() {
   const [templates, setTemplates] = useState<InvoiceTemplate[]>([]);
   const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
     try {
@@ -57,6 +59,20 @@ export default function InvoiceTemplatesPage() {
       toast({
         title: 'Template Deleted',
         description: `The "${templateName}" template has been removed.`,
+      });
+    }
+  };
+
+  const handleEditTemplate = (template: InvoiceTemplate) => {
+    try {
+      localStorage.setItem(EDIT_INVOICE_TEMPLATE_KEY, JSON.stringify(template));
+      router.push('/accounting/invoices/create');
+    } catch (error) {
+      console.error('Failed to set template for editing:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not prepare the template for editing.',
       });
     }
   };
@@ -99,7 +115,7 @@ export default function InvoiceTemplatesPage() {
                 <CardDescription>Contains {template.items.length} line item(s).</CardDescription>
               </CardContent>
               <CardFooter className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" disabled>
+                <Button variant="outline" size="sm" onClick={() => handleEditTemplate(template)}>
                   <Pencil className="mr-2 h-4 w-4" /> Edit
                 </Button>
                 <Button

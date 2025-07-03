@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -47,12 +46,26 @@ interface CustomLineItem {
   price: number;
 }
 
+// New template types for clarity
+interface TemplateItem {
+  description: string;
+  quantity: number;
+  price: number;
+}
+
+interface InvoiceTemplate {
+  name: string;
+  items: TemplateItem[];
+}
+
 const formatTime = (totalSeconds: number) => {
   if (totalSeconds < 60) return `${totalSeconds}s`;
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   return `${hours}h ${minutes}m`;
 };
+
+const EDIT_INVOICE_TEMPLATE_KEY = 'editInvoiceTemplate';
 
 export function InvoiceGeneratorView() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -78,6 +91,37 @@ export function InvoiceGeneratorView() {
     // In a real app, you would fetch contacts from a service.
     setContacts(mockContacts);
   }, []);
+  
+  // Load template for editing on component mount
+  useEffect(() => {
+    try {
+      const templateToEditRaw = localStorage.getItem(EDIT_INVOICE_TEMPLATE_KEY);
+      if (templateToEditRaw) {
+        const templateToEdit: InvoiceTemplate = JSON.parse(templateToEditRaw);
+        
+        const itemsWithIds = templateToEdit.items.map(item => ({
+          ...item,
+          id: Date.now() + Math.random(),
+        }));
+        setCustomItems(itemsWithIds);
+        
+        toast({
+          title: "Template Loaded",
+          description: `You are editing the "${templateToEdit.name}" template. Make your changes and save it as a new template.`,
+        });
+
+        localStorage.removeItem(EDIT_INVOICE_TEMPLATE_KEY);
+      }
+    } catch (error) {
+      console.error("Failed to load template for editing:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Error Loading Template',
+        description: 'Could not load the template for editing.',
+      });
+      localStorage.removeItem(EDIT_INVOICE_TEMPLATE_KEY);
+    }
+  }, [toast]);
 
   const fetchLoggedEntries = () => {
     if (!selectedContactId) {
