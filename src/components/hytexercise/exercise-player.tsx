@@ -72,8 +72,8 @@ export function ExercisePlayer({ breakDurationMinutes, onFinish }: ExercisePlaye
             <Image
                 src={`https://picsum.photos/600/400?random=${currentExerciseIndex}`}
                 alt={currentExercise.name}
-                layout="fill"
-                objectFit="cover"
+                fill
+                className="object-cover"
                 key={currentExerciseIndex}
             />
           </div>
