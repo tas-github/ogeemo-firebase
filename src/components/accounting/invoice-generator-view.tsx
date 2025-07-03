@@ -263,32 +263,63 @@ export function InvoiceGeneratorView() {
             <CardDescription>Configure the client, date range, and line items for this invoice.</CardDescription>
         </CardHeader>
         <CardContent className="grid lg:grid-cols-3 gap-6">
-            <div className="space-y-4">
-                <h4 className="font-semibold text-base">1. Fetch Time Logs</h4>
-                <div className="space-y-2">
-                    <Label htmlFor="client-select">Client</Label>
-                    <Select value={selectedContactId} onValueChange={setSelectedContactId}>
-                        <SelectTrigger id="client-select"><SelectValue placeholder="Select a client..." /></SelectTrigger>
-                        <SelectContent>
-                            {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+            <div className="space-y-6">
+                <div className="space-y-4">
+                    <h4 className="font-semibold text-base">1. Fetch Time Logs</h4>
+                    <div className="space-y-2">
+                        <Label htmlFor="client-select">Client</Label>
+                        <Select value={selectedContactId} onValueChange={setSelectedContactId}>
+                            <SelectTrigger id="client-select"><SelectValue placeholder="Select a client..." /></SelectTrigger>
+                            <SelectContent>
+                                {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Date Range</Label>
+                        <Popover>
+                        <PopoverTrigger asChild>
+                            <Button id="date" variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {dateRange?.from ? (dateRange.to ? <>{format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}</> : format(dateRange.from, "LLL dd, y")) : <span>Pick a date range</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={1}/>
+                        </PopoverContent>
+                        </Popover>
+                    </div>
+                    <Button className="w-full" onClick={fetchLoggedEntries}>Fetch Logged Activities</Button>
                 </div>
-                <div className="space-y-2">
-                    <Label>Date Range</Label>
-                    <Popover>
-                    <PopoverTrigger asChild>
-                        <Button id="date" variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange?.from ? (dateRange.to ? <>{format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}</> : format(dateRange.from, "LLL dd, y")) : <span>Pick a date range</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={1}/>
-                    </PopoverContent>
-                    </Popover>
+                <div className="space-y-4">
+                    <h4 className="font-semibold text-base">3. Configure Taxes</h4>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="tax-type">Tax Type</Label>
+                            <Select value={taxType} onValueChange={setTaxType} id="tax-type">
+                                <SelectTrigger><SelectValue placeholder="Select tax type" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">No Tax</SelectItem>
+                                    <SelectItem value="vat">VAT</SelectItem>
+                                    <SelectItem value="gst">GST</SelectItem>
+                                    <SelectItem value="hst">HST</SelectItem>
+                                    <SelectItem value="dst">DST</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="tax-rate">Tax Rate (%)</Label>
+                            <Input 
+                                id="tax-rate"
+                                type="number" 
+                                placeholder="e.g., 20"
+                                value={taxRate || ''}
+                                onChange={(e) => setTaxRate(Number(e.target.value))}
+                                disabled={taxType === 'none'}
+                            />
+                        </div>
+                    </div>
                 </div>
-                 <Button className="w-full" onClick={fetchLoggedEntries}>Fetch Logged Activities</Button>
             </div>
             <div className="space-y-4 lg:col-span-2">
                 <h4 className="font-semibold text-base">2. Add Item</h4>
@@ -428,31 +459,11 @@ export function InvoiceGeneratorView() {
                               <span>${subtotal.toFixed(2)}</span>
                           </div>
                           <Separator />
-                          <div className="flex justify-between items-center">
-                              <div className="flex items-center gap-2">
-                                  <Select value={taxType} onValueChange={setTaxType}>
-                                      <SelectTrigger className="w-[110px] h-8 text-xs border-0 shadow-none focus:ring-0">
-                                          <SelectValue placeholder="Tax Type" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                          <SelectItem value="none">No Tax</SelectItem>
-                                          <SelectItem value="vat">VAT</SelectItem>
-                                          <SelectItem value="gst">GST</SelectItem>
-                                          <SelectItem value="hst">HST</SelectItem>
-                                          <SelectItem value="dst">DST</SelectItem>
-                                      </SelectContent>
-                                  </Select>
-                                  <Input 
-                                      type="number" 
-                                      className="w-16 h-8 p-1 text-xs text-right border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" 
-                                      placeholder="Rate"
-                                      value={taxRate || ''}
-                                      onChange={(e) => setTaxRate(Number(e.target.value))}
-                                      disabled={taxType === 'none'}
-                                  />
-                                  <span className="text-gray-500">%</span>
-                              </div>
-                              <span>${taxAmount.toFixed(2)}</span>
+                          <div className="flex justify-between">
+                            <span className="text-gray-500">
+                                {taxType !== 'none' ? `Tax (${taxType.toUpperCase()} @ ${taxRate || 0}%)` : 'Tax:'}
+                            </span>
+                            <span>${taxAmount.toFixed(2)}</span>
                           </div>
                           <Separator />
                           <div className="flex justify-between font-bold text-lg">
