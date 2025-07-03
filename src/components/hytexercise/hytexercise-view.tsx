@@ -95,6 +95,16 @@ export function HytexerciseView() {
     resetTimer(delayMinutes);
   }
   
+  const handleCancelBreak = () => {
+    console.log(`Break canceled at ${new Date().toISOString()}. This event has been logged for reporting.`);
+    toast({
+        title: "Break Skipped",
+        description: `Your next break reminder is scheduled in ${breakFrequency} minutes.`,
+    });
+    setIsBreakAlertOpen(false);
+    resetTimer(breakFrequency);
+  };
+
   const handleFinishBreak = () => {
       setIsBreakActive(false);
       resetTimer(breakFrequency);
@@ -241,9 +251,12 @@ export function HytexerciseView() {
                   </SelectContent>
               </Select>
             </div>
-            <AlertDialogFooter>
-                <Button variant="ghost" onClick={() => handleDelayBreak(customDelay)}>Delay Break</Button>
+            <AlertDialogFooter className="sm:justify-between">
+              <Button variant="ghost" onClick={handleCancelBreak}>Cancel Break</Button>
+              <div className="flex flex-col-reverse sm:flex-row sm:gap-2">
+                <Button variant="outline" onClick={() => handleDelayBreak(customDelay)}>Delay Break</Button>
                 <AlertDialogAction onClick={handleStartBreak}>Start Break Now</AlertDialogAction>
+              </div>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
