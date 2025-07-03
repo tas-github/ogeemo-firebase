@@ -174,12 +174,12 @@ export function HytexerciseView() {
           </Card>
           
           {/* Today's Exercise Card */}
-          <Card>
+          <Card className="flex flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><PlayCircle className="h-5 w-5"/> Today's Exercise</CardTitle>
               <CardDescription>A preview of the next exercise routine.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1">
               <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
                   <Image src="https://placehold.co/600x400.png" alt="Exercise preview placeholder" layout="fill" objectFit="cover" data-ai-hint="chair exercise" />
                   <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
@@ -187,6 +187,9 @@ export function HytexerciseView() {
                   </div>
               </div>
             </CardContent>
+             <CardFooter>
+              <Button className="w-full" onClick={() => setIsBreakActive(true)}>Start Routine</Button>
+            </CardFooter>
           </Card>
           
           {/* My Progress Card */}
