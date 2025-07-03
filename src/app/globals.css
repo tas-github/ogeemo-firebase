@@ -50,3 +50,21 @@
   pointer-events: none;
   display: block; /* For FF */
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #invoice-preview, #invoice-preview * {
+    visibility: visible;
+  }
+  #invoice-preview {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    box-shadow: none;
+  }
+}
