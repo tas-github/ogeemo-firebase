@@ -69,9 +69,10 @@ export function ExercisePlayer({ breakDurationMinutes, onFinish }: ExercisePlaye
         <CardContent className="space-y-6">
           <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
             <img
-                src={`https://picsum.photos/600/400?random=${currentExerciseIndex}`}
+                src="https://placehold.co/600x400.png"
                 alt={currentExercise.name}
                 className="object-cover w-full h-full"
+                data-ai-hint={currentExercise.hint}
                 key={currentExerciseIndex}
             />
           </div>
