@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -84,6 +85,9 @@ export function InvoiceGeneratorView() {
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dueDate, setDueDate] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
 
+  const [taxType, setTaxType] = useState('none');
+  const [taxRate, setTaxRate] = useState(0);
+
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
 
@@ -123,6 +127,12 @@ export function InvoiceGeneratorView() {
       localStorage.removeItem(EDIT_INVOICE_TEMPLATE_KEY);
     }
   }, [toast]);
+
+  useEffect(() => {
+    if (taxType === 'none') {
+        setTaxRate(0);
+    }
+  }, [taxType]);
 
   const fetchLoggedEntries = () => {
     if (!selectedContactId) {
@@ -186,6 +196,15 @@ export function InvoiceGeneratorView() {
     const itemsTotal = customItems.reduce((acc, item) => acc + item.quantity * item.price, 0);
     return timeTotal + itemsTotal;
   }, [loggedEntries, customItems]);
+
+  const taxAmount = useMemo(() => {
+    if (taxRate <= 0) return 0;
+    return subtotal * (taxRate / 100);
+  }, [subtotal, taxRate]);
+
+  const total = useMemo(() => {
+    return subtotal + taxAmount;
+  }, [subtotal, taxAmount]);
 
   const handlePrint = () => {
     window.print();
@@ -273,7 +292,7 @@ export function InvoiceGeneratorView() {
                  <Button className="w-full" onClick={fetchLoggedEntries}>Fetch Logged Activities</Button>
             </div>
             <div className="space-y-4 lg:col-span-2">
-                <h4 className="font-semibold text-base">Add Item</h4>
+                <h4 className="font-semibold text-base">2. Add Item</h4>
                 <div className="grid sm:grid-cols-[1fr_auto] gap-2">
                     <Select onValueChange={addPredefinedItem}>
                         <SelectTrigger><SelectValue placeholder="Select a predefined item..." /></SelectTrigger>
@@ -404,15 +423,42 @@ export function InvoiceGeneratorView() {
                   </section>
 
                   <section className="flex justify-end mt-6">
-                      <div className="w-full max-w-xs space-y-2">
+                      <div className="w-full max-w-sm space-y-2">
                           <div className="flex justify-between">
                               <span className="text-gray-500">Subtotal:</span>
                               <span>${subtotal.toFixed(2)}</span>
                           </div>
                           <Separator />
+                          <div className="flex justify-between items-center">
+                              <div className="flex items-center gap-2">
+                                  <Select value={taxType} onValueChange={setTaxType}>
+                                      <SelectTrigger className="w-[110px] h-8 text-xs border-0 shadow-none focus:ring-0">
+                                          <SelectValue placeholder="Tax Type" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                          <SelectItem value="none">No Tax</SelectItem>
+                                          <SelectItem value="vat">VAT</SelectItem>
+                                          <SelectItem value="gst">GST</SelectItem>
+                                          <SelectItem value="hst">HST</SelectItem>
+                                          <SelectItem value="dst">DST</SelectItem>
+                                      </SelectContent>
+                                  </Select>
+                                  <Input 
+                                      type="number" 
+                                      className="w-16 h-8 p-1 text-xs text-right border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" 
+                                      placeholder="Rate"
+                                      value={taxRate || ''}
+                                      onChange={(e) => setTaxRate(Number(e.target.value))}
+                                      disabled={taxType === 'none'}
+                                  />
+                                  <span className="text-gray-500">%</span>
+                              </div>
+                              <span>${taxAmount.toFixed(2)}</span>
+                          </div>
+                          <Separator />
                           <div className="flex justify-between font-bold text-lg">
                               <span className="text-gray-600">Total Due:</span>
-                              <span>${subtotal.toFixed(2)}</span>
+                              <span>${total.toFixed(2)}</span>
                           </div>
                       </div>
                   </section>
