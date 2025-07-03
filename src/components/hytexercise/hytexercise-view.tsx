@@ -38,7 +38,7 @@ export function HytexerciseView() {
   const [timeLeft, setTimeLeft] = useState(breakFrequency * 60);
   const [isBreakAlertOpen, setIsBreakAlertOpen] = useState(false);
   const [isBreakActive, setIsBreakActive] = useState(false);
-  const [customDelay, setCustomDelay] = useState(10);
+  const [customDelay, setCustomDelay] = useState(5);
 
   const { toast } = useToast();
 
