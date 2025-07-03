@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FilePlus, ArrowRight } from "lucide-react";
+import { FilePlus, FileText, ArrowRight } from "lucide-react";
 import { AccountingPageHeader } from "@/components/accounting/page-header";
 
 export default function InvoicesHubPage() {
@@ -50,16 +50,29 @@ export default function InvoicesHubPage() {
           </div>
         </Card>
         
-        <Card className="flex flex-col items-center justify-center border-2 border-dashed bg-muted/50">
-          <CardHeader className="text-center">
-            <CardTitle>Recent Invoices</CardTitle>
-            <CardDescription>
-              A list of recently created invoices will appear here.
-            </CardDescription>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <FileText className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Manage Templates</CardTitle>
+                <CardDescription>
+                  Create and manage reusable templates for your invoices.
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">Coming Soon</p>
-          </CardContent>
+          <CardContent className="flex-1" />
+          <div className="p-6 pt-0">
+            <Button asChild className="w-full">
+              <Link href="/accounting/invoices/templates">
+                Go to Templates
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </Card>
       </div>
     </div>
