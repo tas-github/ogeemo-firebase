@@ -32,51 +32,60 @@ const generateImageFlow = ai.defineFlow(
     outputSchema: GenerateImageOutputSchema,
   },
   async ({ prompt }) => {
-    const response = await ai.generate({
-      model: 'googleai/gemini-2.0-flash-preview-image-generation',
-      prompt: prompt,
-      config: {
-        responseModalities: ['TEXT', 'IMAGE'],
-        safetySettings: [
-            {
-                category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-                threshold: 'BLOCK_ONLY_HIGH',
-            },
-            {
-                category: 'HARM_CATEGORY_HATE_SPEECH',
-                threshold: 'BLOCK_ONLY_HIGH',
-            },
-            {
-                category: 'HARM_CATEGORY_HARASSMENT',
-                threshold: 'BLOCK_ONLY_HIGH',
-            },
-            {
-                category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-                threshold: 'BLOCK_ONLY_HIGH',
-            },
-        ],
-      },
-    });
+    try {
+      const response = await ai.generate({
+        model: 'googleai/gemini-2.0-flash-preview-image-generation',
+        prompt: prompt,
+        config: {
+          responseModalities: ['TEXT', 'IMAGE'],
+          safetySettings: [
+              {
+                  category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+                  threshold: 'BLOCK_ONLY_HIGH',
+              },
+              {
+                  category: 'HARM_CATEGORY_HATE_SPEECH',
+                  threshold: 'BLOCK_ONLY_HIGH',
+              },
+              {
+                  category: 'HARM_CATEGORY_HARASSMENT',
+                  threshold: 'BLOCK_ONLY_HIGH',
+              },
+              {
+                  category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+                  threshold: 'BLOCK_ONLY_HIGH',
+              },
+          ],
+        },
+      });
 
-    const imageUrl = response.media?.url;
+      const imageUrl = response.media?.url;
 
-    if (!imageUrl) {
-        const finishReason = response.candidates[0]?.finishReason;
-        const finishMessage = response.candidates[0]?.finishMessage;
-        let errorMessage = 'Image generation failed for an unknown reason.';
+      if (!imageUrl) {
+          const finishReason = response.candidates[0]?.finishReason;
+          const finishMessage = response.candidates[0]?.finishMessage;
+          let errorMessage = 'Image generation failed for an unknown reason.';
 
-        if (finishReason === 'SAFETY') {
-            errorMessage = `Image generation was blocked for safety reasons. Please try a different prompt. Details: ${finishMessage || 'No details provided.'}`;
-        } else if (finishReason === 'REFUSED') {
-            errorMessage = 'The model refused to generate an image for this prompt. Please try rephrasing it.';
-        } else {
-            errorMessage = `Image generation failed. The model may have refused to generate the image. Reason: ${finishReason || 'Unknown'}. Message: ${finishMessage || ''}`;
+          if (finishReason === 'SAFETY') {
+              errorMessage = `Image generation was blocked for safety reasons. Please try a different prompt. Details: ${finishMessage || 'No details provided.'}`;
+          } else if (finishReason === 'REFUSED') {
+              errorMessage = 'The model refused to generate an image for this prompt. Please try rephrasing it.';
+          } else {
+              errorMessage = `Image generation failed. The model may have refused to generate the image. Reason: ${finishReason || 'Unknown'}. Message: ${finishMessage || ''}`;
+          }
+          
+          console.error("Image generation failed:", errorMessage, response);
+          throw new Error(errorMessage);
+      }
+
+      return { imageUrl };
+    } catch (e: any) {
+        console.error("Critical error in generateImageFlow:", e);
+        if (e.message.includes('NOT_FOUND') || e.message.includes('not found')) {
+            throw new Error(`Model not found. Please check the model name in the AI flow. Details: ${e.message}`);
         }
-        
-        console.error("Image generation failed:", errorMessage, response);
-        throw new Error(errorMessage);
+        const errorMessage = e.message || "An unexpected error occurred during image generation.";
+        throw new Error(`AI Flow Error: ${errorMessage}`);
     }
-
-    return { imageUrl };
   }
 );
