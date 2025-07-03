@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { type DateRange } from 'react-day-picker';
 import { format, addDays } from 'date-fns';
-import { Calendar as CalendarIcon, PlusCircle, Trash2, Printer } from 'lucide-react';
+import { Calendar as CalendarIcon, PlusCircle, Trash2, Printer, Save } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { mockContacts, type Contact } from '@/data/contacts';
@@ -203,7 +203,10 @@ export function InvoiceGeneratorView() {
             <Card>
                 <CardHeader className="flex-row justify-between items-center">
                     <CardTitle>Invoice Preview</CardTitle>
-                    <Button onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline"><Save className="mr-2 h-4 w-4" /> Save as Template</Button>
+                        <Button onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div id="invoice-preview" ref={printRef} className="bg-white text-black p-8 border rounded-lg shadow-sm w-full font-sans">
