@@ -16,13 +16,11 @@ import {
 import { Logo } from "@/components/logo";
 import { UserNav } from "@/components/user-nav";
 import { MainMenu } from "@/components/layout/main-menu";
-import { useNavigation } from "@/context/navigation-context";
 import { useAuth } from "@/context/auth-context";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isNavigating, setIsNavigating } = useNavigation();
   const { user, isLoading } = useAuth();
 
   useEffect(() => {
@@ -32,10 +30,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
       router.push('/login');
     }
   }, [user, isLoading, router]);
-
-  useEffect(() => {
-    setIsNavigating(false);
-  }, [pathname, setIsNavigating]);
 
   // While the auth state is loading, or if there's no user yet,
   // show a full-screen loader. This prevents a flash of the dashboard
@@ -73,11 +67,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           <main className="flex-1 overflow-auto">
             {children}
           </main>
-           {isNavigating && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-              <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
-            </div>
-          )}
         </div>
 
       </div>

@@ -3,7 +3,6 @@ import { Inter, Space_Grotesk as SpaceGrotesk } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/context/auth-context';
-import { NavigationProvider } from '@/context/navigation-context';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -31,10 +30,8 @@ export default function RootLayout({
       <head />
       <body className="font-body antialiased">
         <AuthProvider>
-          <NavigationProvider>
-            {children}
-            <Toaster />
-          </NavigationProvider>
+          {children}
+          <Toaster />
         </AuthProvider>
       </body>
     </html>
