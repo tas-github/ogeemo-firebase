@@ -37,7 +37,6 @@ interface EventEntry {
   subject: string;
   duration: number; // in seconds
   billableRate: number;
-  startTime: string; // ISO string
 }
 
 interface CustomLineItem {
