@@ -30,6 +30,15 @@ const formatTime = (totalSeconds: number) => {
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
+const HYTEXERCISE_STORAGE_KEY = 'hytexerciseState';
+
+interface StoredState {
+    isActive: boolean;
+    breakDueTimestamp: number;
+    breakFrequency: number;
+    breakDuration: number;
+}
+
 
 export function HytexerciseView() {
   const [isActive, setIsActive] = useState(false);
@@ -42,16 +51,45 @@ export function HytexerciseView() {
 
   const { toast } = useToast();
 
-  const resetTimer = useCallback((minutes: number) => {
+  const setTimer = useCallback((minutes: number) => {
+    const dueTimestamp = Date.now() + minutes * 60 * 1000;
+    const stateToStore: StoredState = {
+        isActive: true,
+        breakDueTimestamp: dueTimestamp,
+        breakFrequency,
+        breakDuration,
+    };
+    localStorage.setItem(HYTEXERCISE_STORAGE_KEY, JSON.stringify(stateToStore));
     setTimeLeft(minutes * 60);
+  }, [breakFrequency, breakDuration]);
+
+  // Load state from localStorage on initial mount
+  useEffect(() => {
+    try {
+        const savedStateRaw = localStorage.getItem(HYTEXERCISE_STORAGE_KEY);
+        if (savedStateRaw) {
+            const savedState: StoredState = JSON.parse(savedStateRaw);
+            setIsActive(savedState.isActive);
+            setBreakFrequency(savedState.breakFrequency);
+            setBreakDuration(savedState.breakDuration);
+
+            if (savedState.isActive) {
+                const remainingSeconds = Math.round((savedState.breakDueTimestamp - Date.now()) / 1000);
+                if (remainingSeconds <= 0) {
+                    setIsBreakAlertOpen(true);
+                    setTimeLeft(0);
+                } else {
+                    setTimeLeft(remainingSeconds);
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Failed to load Hytexercise state:", error);
+        localStorage.removeItem(HYTEXERCISE_STORAGE_KEY);
+    }
   }, []);
 
-  useEffect(() => {
-    if (isActive && !isBreakActive) {
-      resetTimer(breakFrequency);
-    }
-  }, [isActive, breakFrequency, resetTimer, isBreakActive]);
-  
+  // Main timer tick effect
   useEffect(() => {
     if (!isActive || isBreakAlertOpen || isBreakActive) {
       return;
@@ -68,14 +106,28 @@ export function HytexerciseView() {
 
     return () => clearInterval(intervalId);
   }, [isActive, timeLeft, isBreakAlertOpen, isBreakActive]);
-  
+
+  // Effect to handle toggling the timer on/off
+  useEffect(() => {
+    if (isActive) {
+        // If timer is activated, set it based on frequency, but only if it's not already running from a loaded state.
+        const savedStateRaw = localStorage.getItem(HYTEXERCISE_STORAGE_KEY);
+        if (!savedStateRaw) {
+            setTimer(breakFrequency);
+        }
+    } else {
+        // If timer is deactivated, clear storage.
+        localStorage.removeItem(HYTEXERCISE_STORAGE_KEY);
+    }
+  }, [isActive, breakFrequency, setTimer]);
+
   const handleSaveSettings = () => {
     toast({
       title: "Settings Saved",
       description: "Your Hytexercise preferences have been updated.",
     });
     if (isActive) {
-        resetTimer(breakFrequency);
+        setTimer(breakFrequency);
     } else {
         setTimeLeft(breakFrequency * 60);
     }
@@ -84,6 +136,7 @@ export function HytexerciseView() {
   const handleStartBreak = () => {
     setIsBreakAlertOpen(false);
     setIsBreakActive(true);
+    localStorage.removeItem(HYTEXERCISE_STORAGE_KEY);
   };
   
   const handleDelayBreak = (delayMinutes: number) => {
@@ -92,7 +145,7 @@ export function HytexerciseView() {
         description: `Your break has been delayed by ${delayMinutes} minutes.`,
     });
     setIsBreakAlertOpen(false);
-    resetTimer(delayMinutes);
+    setTimer(delayMinutes);
   }
   
   const handleCancelBreak = () => {
@@ -102,15 +155,14 @@ export function HytexerciseView() {
         description: `Your next break reminder is scheduled in ${breakFrequency} minutes.`,
     });
     setIsBreakAlertOpen(false);
-    resetTimer(breakFrequency);
+    setTimer(breakFrequency);
   };
 
   const handleFinishBreak = () => {
       setIsBreakActive(false);
-      resetTimer(breakFrequency);
+      setTimer(breakFrequency);
       toast({
-          title: "Break Complete!",
-          description: "Great job! Time to get back to it.",
+          title: "Thanks for protecting your health",
       });
   };
   
