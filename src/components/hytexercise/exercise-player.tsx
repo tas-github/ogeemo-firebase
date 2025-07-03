@@ -63,23 +63,35 @@ export function ExercisePlayer({ breakDurationMinutes, onFinish }: ExercisePlaye
   }, [timeInCurrentExercise, currentExercise.duration]);
 
   useEffect(() => {
-    const fetchImage = async () => {
-        if (!currentExercise) return;
+    let isCancelled = false;
 
-        setIsGeneratingImage(true);
-        setImageUrl(null);
-        try {
-            const prompt = `A clear, simple, animated-style illustration of a person doing the following office chair exercise: ${currentExercise.name}. The person should be in a modern office setting. The focus should be on the correct posture for the exercise.`;
-            const result = await generateImage({ prompt });
-            setImageUrl(result.imageUrl);
-        } catch (error) {
-            console.error("Failed to generate exercise image:", error);
-        } finally {
-            setIsGeneratingImage(false);
+    const fetchImage = async () => {
+      if (!currentExercise) return;
+
+      setIsGeneratingImage(true);
+      setImageUrl(null);
+      try {
+        const prompt = `A clear, simple, animated-style illustration of a person doing the following office chair exercise: ${currentExercise.name}. The person should be in a modern office setting. The focus should be on the correct posture for the exercise.`;
+        const result = await generateImage({ prompt });
+        if (!isCancelled) {
+          setImageUrl(result.imageUrl);
         }
+      } catch (error) {
+        if (!isCancelled) {
+          console.error("Failed to generate exercise image:", error);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsGeneratingImage(false);
+        }
+      }
     };
 
     fetchImage();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [currentExerciseIndex, currentExercise]);
 
   const progress = ((totalDurationSeconds - timeLeft) / totalDurationSeconds) * 100;
