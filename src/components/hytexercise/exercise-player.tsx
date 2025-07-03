@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -69,11 +70,11 @@ export function ExercisePlayer({ breakDurationMinutes, onFinish }: ExercisePlaye
         <CardContent className="space-y-6">
           <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
             <Image
-                src="https://placehold.co/600x400.png"
+                src={`https://picsum.photos/600/400?random=${currentExerciseIndex}`}
                 alt={currentExercise.name}
                 layout="fill"
                 objectFit="cover"
-                data-ai-hint={currentExercise.hint}
+                key={currentExerciseIndex}
             />
           </div>
           <div className="space-y-2">
