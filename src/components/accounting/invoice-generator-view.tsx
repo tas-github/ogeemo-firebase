@@ -281,7 +281,7 @@ export function InvoiceGeneratorView() {
                             {predefinedItems.map(item => <SelectItem key={item.description} value={item.description}>{item.description}</SelectItem>)}
                         </SelectContent>
                     </Select>
-                     <Button variant="outline" onClick={addCustomItem}><Plus className="mr-2 h-4 w-4"/> Add Custom Line Item</Button>
+                     <Button variant="outline" onClick={addCustomItem}><Plus className="mr-2 h-4 w-4"/>Add Line Item</Button>
                 </div>
                 <ScrollArea className="h-32">
                     <div className="space-y-3 pr-3">
