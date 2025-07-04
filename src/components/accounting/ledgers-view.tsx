@@ -65,17 +65,17 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 // --- MOCK DATA & TYPES ---
 
 const initialIncomeData = [
-  { id: "inc_1", date: "2024-07-25", source: "Client Alpha", description: "Web Development Services", amount: 5000, category: "Service Revenue" },
-  { id: "inc_2", date: "2024-07-24", source: "Client Beta", description: "Consulting Retainer - July", amount: 2500, category: "Consulting" },
-  { id: "inc_3", date: "2024-07-22", source: "E-commerce Store", description: "Product Sales", amount: 850.75, category: "Sales Revenue" },
-  { id: "inc_4", date: "2024-07-20", source: "Affiliate Payout", description: "Q2 Affiliate Earnings", amount: 320.50, category: "Other Income" },
+  { id: "inc_1", date: "2024-07-25", source: "Client Alpha", company: "Alpha Inc.", description: "Web Development Services", amount: 5000, category: "Service Revenue", reasons: "Contracted services" },
+  { id: "inc_2", date: "2024-07-24", source: "Client Beta", company: "Beta Corp.", description: "Consulting Retainer - July", amount: 2500, category: "Consulting", reasons: "Monthly retainer" },
+  { id: "inc_3", date: "2024-07-22", source: "E-commerce Store", company: "Ogeemo Store", description: "Product Sales", amount: 850.75, category: "Sales Revenue", reasons: "Online sales" },
+  { id: "inc_4", date: "2024-07-20", source: "Affiliate Payout", company: "PartnerStack", description: "Q2 Affiliate Earnings", amount: 320.50, category: "Other Income", reasons: "Referral commissions" },
 ];
 
 const initialExpenseData = [
-  { id: "exp_1", date: "2024-07-25", vendor: "Cloud Hosting Inc.", description: "Server Costs - July", amount: 150, category: "Utilities" },
-  { id: "exp_2", date: "2024-07-23", vendor: "SaaS Tools Co.", description: "Software Subscriptions", amount: 75.99, category: "Software" },
-  { id: "exp_3", date: "2024-07-21", vendor: "Office Supply Hub", description: "Stationery and Supplies", amount: 45.30, category: "Office Supplies" },
-  { id: "exp_4", date: "2024-07-20", vendor: "Freelance Designer", description: "Logo Design", amount: 800, category: "Contractors" },
+  { id: "exp_1", date: "2024-07-25", vendor: "Cloud Hosting Inc.", company: "Cloud Hosting Inc.", description: "Server Costs - July", amount: 150, category: "Utilities", reasons: "Monthly server maintenance" },
+  { id: "exp_2", date: "2024-07-23", vendor: "SaaS Tools Co.", company: "SaaS Tools Co.", description: "Software Subscriptions", amount: 75.99, category: "Software", reasons: "Team software licenses" },
+  { id: "exp_3", date: "2024-07-21", vendor: "Office Supply Hub", company: "Office Supply Hub", description: "Stationery and Supplies", amount: 45.30, category: "Office Supplies", reasons: "Restocking office supplies" },
+  { id: "exp_4", date: "2024-07-20", vendor: "Freelance Designer", company: "Jane Designs", description: "Logo Design", amount: 800, category: "Contractors", reasons: "New logo design for marketing campaign" },
 ];
 
 type IncomeTransaction = typeof initialIncomeData[0];
@@ -88,7 +88,7 @@ const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
 const defaultIncomeCategories = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income"];
 const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
 
-const emptyTransactionForm = { date: '', party: '', description: '', amount: '', category: '' };
+const emptyTransactionForm = { date: '', party: '', company: '', description: '', amount: '', category: '', reasons: '' };
 
 
 // --- COMPONENT ---
@@ -214,9 +214,11 @@ export function LedgersView() {
             setNewTransaction({
                 date: transaction.date,
                 party: transaction.source,
+                company: transaction.company || '',
                 description: transaction.description,
                 amount: String(transaction.amount),
-                category: transaction.category
+                category: transaction.category,
+                reasons: transaction.reasons || '',
             });
         } else {
             setTransactionToEdit(null);
@@ -232,21 +234,30 @@ export function LedgersView() {
             return;
         }
 
+        const transactionData = {
+            date: newTransaction.date,
+            description: newTransaction.description.trim(),
+            amount: amountNum,
+            category: newTransaction.category,
+            company: newTransaction.company.trim(),
+            reasons: newTransaction.reasons.trim(),
+        };
+
         if (transactionToEdit) { // Handle editing existing transaction
             if (transactionToEdit.type === 'income') {
-                setIncomeLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, date: newTransaction.date, source: newTransaction.party, description: newTransaction.description, amount: amountNum, category: newTransaction.category } : item));
+                setIncomeLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, ...transactionData, source: newTransaction.party.trim() } : item));
                 toast({ title: "Income Transaction Updated" });
             } else {
-                setExpenseLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, date: newTransaction.date, vendor: newTransaction.party, description: newTransaction.description, amount: amountNum, category: newTransaction.category } : item));
+                setExpenseLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, ...transactionData, vendor: newTransaction.party.trim() } : item));
                 toast({ title: "Expense Transaction Updated" });
             }
         } else { // Handle adding new transaction
             if (newTransactionType === 'income') {
-                const newEntry: IncomeTransaction = { id: `inc_${Date.now()}`, date: newTransaction.date, source: newTransaction.party.trim(), description: newTransaction.description.trim(), amount: amountNum, category: newTransaction.category };
+                const newEntry: IncomeTransaction = { id: `inc_${Date.now()}`, ...transactionData, source: newTransaction.party.trim() };
                 setIncomeLedger(prev => [newEntry, ...prev]);
                 toast({ title: "Income Transaction Added" });
             } else {
-                const newEntry: ExpenseTransaction = { id: `exp_${Date.now()}`, date: newTransaction.date, vendor: newTransaction.party.trim(), description: newTransaction.description.trim(), amount: amountNum, category: newTransaction.category };
+                const newEntry: ExpenseTransaction = { id: `exp_${Date.now()}`, ...transactionData, vendor: newTransaction.party.trim() };
                 setExpenseLedger(prev => [newEntry, ...prev]);
                 toast({ title: "Expense Transaction Added" });
             }
@@ -322,8 +333,10 @@ export function LedgersView() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Date</TableHead>
+                          <TableHead>Company</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
+                          <TableHead>Reasons</TableHead>
                           <TableHead>Type</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead><span className="sr-only">Actions</span></TableHead>
@@ -333,6 +346,7 @@ export function LedgersView() {
                         {generalLedger.map((item) => (
                           <TableRow key={item.id}>
                             <TableCell>{item.date}</TableCell>
+                            <TableCell>{item.company}</TableCell>
                             <TableCell>{item.description}</TableCell>
                             <TableCell>
                               <Select
@@ -347,6 +361,7 @@ export function LedgersView() {
                                 </SelectContent>
                               </Select>
                             </TableCell>
+                            <TableCell>{item.reasons}</TableCell>
                             <TableCell>
                               <Badge variant={item.type === 'income' ? 'secondary' : 'destructive'} className={cn(item.type === 'income' && 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200')}>
                                 {item.type}
@@ -404,9 +419,11 @@ export function LedgersView() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Date</TableHead>
+                          <TableHead>Company</TableHead>
                           <TableHead>Source</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
+                          <TableHead>Reasons</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead><span className="sr-only">Actions</span></TableHead>
                         </TableRow>
@@ -415,6 +432,7 @@ export function LedgersView() {
                         {incomeLedger.map(item => (
                           <TableRow key={item.id}>
                             <TableCell>{item.date}</TableCell>
+                            <TableCell>{item.company}</TableCell>
                             <TableCell>{item.source}</TableCell>
                             <TableCell>{item.description}</TableCell>
                             <TableCell>
@@ -423,6 +441,7 @@ export function LedgersView() {
                                   <SelectContent>{incomeCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
                               </Select>
                             </TableCell>
+                            <TableCell>{item.reasons}</TableCell>
                             <TableCell className="text-right font-mono text-green-600">{item.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell>
                             <TableCell>
                                <DropdownMenu>
@@ -470,9 +489,11 @@ export function LedgersView() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Date</TableHead>
+                          <TableHead>Company</TableHead>
                           <TableHead>Vendor</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
+                          <TableHead>Reasons</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead><span className="sr-only">Actions</span></TableHead>
                         </TableRow>
@@ -481,6 +502,7 @@ export function LedgersView() {
                         {expenseLedger.map(item => (
                           <TableRow key={item.id}>
                             <TableCell>{item.date}</TableCell>
+                            <TableCell>{item.company}</TableCell>
                             <TableCell>{item.vendor}</TableCell>
                             <TableCell>{item.description}</TableCell>
                             <TableCell>
@@ -489,6 +511,7 @@ export function LedgersView() {
                                   <SelectContent>{expenseCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
                               </Select>
                             </TableCell>
+                            <TableCell>{item.reasons}</TableCell>
                             <TableCell className="text-right font-mono text-red-600">({item.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })})</TableCell>
                             <TableCell>
                                <DropdownMenu>
@@ -592,6 +615,10 @@ export function LedgersView() {
               <Label htmlFor="tx-party" className="text-right">{newTransactionType === 'income' ? 'Source' : 'Vendor'}</Label>
               <Input id="tx-party" value={newTransaction.party} onChange={(e) => setNewTransaction(prev => ({...prev, party: e.target.value}))} className="col-span-3" />
             </div>
+             <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="tx-company" className="text-right">Company</Label>
+              <Input id="tx-company" value={newTransaction.company} onChange={(e) => setNewTransaction(prev => ({...prev, company: e.target.value}))} className="col-span-3" />
+            </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-description" className="text-right">Description</Label>
               <Input id="tx-description" value={newTransaction.description} onChange={(e) => setNewTransaction(prev => ({...prev, description: e.target.value}))} className="col-span-3" />
@@ -608,6 +635,10 @@ export function LedgersView() {
                   {(newTransactionType === 'income' ? incomeCategories : expenseCategories).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="tx-reasons" className="text-right">Reasons</Label>
+              <Input id="tx-reasons" value={newTransaction.reasons} onChange={(e) => setNewTransaction(prev => ({...prev, reasons: e.target.value}))} className="col-span-3" />
             </div>
           </div>
           <DialogFooter>
