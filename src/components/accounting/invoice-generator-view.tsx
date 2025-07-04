@@ -283,40 +283,77 @@ export function InvoiceGeneratorView() {
                 </TooltipProvider>
             </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-            <div className="grid lg:grid-cols-2 gap-x-8 gap-y-6">
-                {/* Left Column: Time Logs & Client */}
-                <div className="space-y-4">
-                    <h4 className="font-semibold text-base">Client & Time Logs</h4>
-                    <div className="space-y-2">
-                        <Label htmlFor="client-select">Client</Label>
-                        <Select value={selectedContactId} onValueChange={setSelectedContactId}>
-                            <SelectTrigger id="client-select"><SelectValue placeholder="Select a client..." /></SelectTrigger>
-                            <SelectContent>
-                                {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Date Range for Time Logs</Label>
-                        <Popover>
-                        <PopoverTrigger asChild>
-                            <Button id="date" variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {dateRange?.from ? (dateRange.to ? <>{format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}</> : format(dateRange.from, "LLL dd, y")) : <span>Pick a date range</span>}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={1}/>
-                        </PopoverContent>
-                        </Popover>
-                    </div>
+        <CardContent className="space-y-4">
+            {/* Primary Settings Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Client */}
+                <div className="space-y-2 lg:col-span-2">
+                    <Label htmlFor="client-select">Client</Label>
+                    <Select value={selectedContactId} onValueChange={setSelectedContactId}>
+                        <SelectTrigger id="client-select"><SelectValue placeholder="Select a client..." /></SelectTrigger>
+                        <SelectContent>
+                            {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                {/* Tax Type */}
+                <div className="space-y-2">
+                    <Label htmlFor="tax-type">Tax Type</Label>
+                    <Select value={taxType} onValueChange={setTaxType} id="tax-type">
+                        <SelectTrigger><SelectValue placeholder="Select tax type" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="none">No Tax</SelectItem>
+                            <SelectItem value="vat">VAT</SelectItem>
+                            <SelectItem value="gst">GST</SelectItem>
+                            <SelectItem value="hst">HST</SelectItem>
+                            <SelectItem value="dst">DST</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                {/* Tax Rate */}
+                <div className="space-y-2">
+                    <Label htmlFor="tax-rate">Tax Rate (%)</Label>
+                    <Input 
+                        id="tax-rate"
+                        type="number" 
+                        placeholder="e.g., 20"
+                        value={taxRate || ''}
+                        onChange={(e) => setTaxRate(Number(e.target.value))}
+                        disabled={taxType === 'none'}
+                    />
+                </div>
+            </div>
+
+            {/* Time Log Settings Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                {/* Date Range */}
+                <div className="space-y-2 lg:col-span-2">
+                    <Label>Date Range for Time Logs</Label>
+                    <Popover>
+                    <PopoverTrigger asChild>
+                        <Button id="date" variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateRange?.from ? (dateRange.to ? <>{format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}</> : format(dateRange.from, "LLL dd, y")) : <span>Pick a date range</span>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={1}/>
+                    </PopoverContent>
+                    </Popover>
+                </div>
+                {/* Fetch Button */}
+                <div className="lg:col-span-2">
                     <Button className="w-full" onClick={fetchLoggedEntries}>Fetch Logged Activities</Button>
                 </div>
-                {/* Right Column: Line Items */}
-                <div className="space-y-4">
-                    <h4 className="font-semibold text-base">Add to Invoice</h4>
-                     <div className="space-y-2">
+            </div>
+            
+            <Separator />
+
+            {/* Manual Item Entry */}
+            <div>
+                <h4 className="font-semibold text-base mb-2">Add to Invoice</h4>
+                <div className="flex flex-wrap items-end gap-2 mb-4">
+                    <div className="flex-1 min-w-[200px] space-y-2">
                          <Label>Add Predefined Item</Label>
                         <Select onValueChange={addPredefinedItem}>
                             <SelectTrigger><SelectValue placeholder="Select a predefined item..." /></SelectTrigger>
@@ -325,73 +362,38 @@ export function InvoiceGeneratorView() {
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <p className="text-sm text-muted-foreground">or</p>
-                        <Button variant="outline" size="sm" onClick={addCustomItem}><Plus className="mr-2 h-4 w-4"/>Add Line Item</Button>
-                    </div>
+                    <p className="text-sm text-muted-foreground self-center px-2">or</p>
+                    <Button variant="outline" onClick={addCustomItem}><Plus className="mr-2 h-4 w-4"/>Add Line Item</Button>
                 </div>
-            </div>
-            
-            <Separator />
-            {/* Custom Line Items Editor */}
-             {customItems.length > 0 && (
-                 <div>
-                    <h4 className="font-semibold text-base mb-2">Custom Line Items</h4>
-                    <ScrollArea className="h-40 w-full pr-3">
-                        <div className="space-y-3">
-                            {customItems.map(item => (
-                                <div key={item.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-start">
-                                    <Textarea placeholder="Item description" value={item.description} onChange={e => updateCustomItem(item.id, 'description', e.target.value)} rows={1} className="min-h-[40px] resize-y" />
-                                    <div className="flex items-center gap-2">
-                                        <Label htmlFor={`qty-${item.id}`} className="sr-only">Qty</Label>
-                                        <Input id={`qty-${item.id}`} type="number" value={item.quantity} onChange={e => updateCustomItem(item.id, 'quantity', Number(e.target.value))} className="w-16" placeholder="Qty" />
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Label htmlFor={`price-${item.id}`} className="sr-only">$ Rate</Label>
-                                        <Input id={`price-${item.id}`} type="number" value={item.price} onChange={e => updateCustomItem(item.id, 'price', Number(e.target.value))} className="w-24" placeholder="$ Rate" />
-                                    </div>
-                                    <Button variant="ghost" size="icon" onClick={() => removeCustomItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
-                                </div>
-                            ))}
-                        </div>
-                    </ScrollArea>
-                </div>
-            )}
-            
-            <Separator />
 
-            {/* Tax Configuration */}
-            <div>
-                <h4 className="font-semibold text-base">Configure Taxes</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                    <div className="space-y-2">
-                        <Label htmlFor="tax-type">Tax Type</Label>
-                        <Select value={taxType} onValueChange={setTaxType} id="tax-type">
-                            <SelectTrigger><SelectValue placeholder="Select tax type" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="none">No Tax</SelectItem>
-                                <SelectItem value="vat">VAT</SelectItem>
-                                <SelectItem value="gst">GST</SelectItem>
-                                <SelectItem value="hst">HST</SelectItem>
-                                <SelectItem value="dst">DST</SelectItem>
-                            </SelectContent>
-                        </Select>
+                {/* Custom Line Items Editor */}
+                {customItems.length > 0 && (
+                    <div className="space-y-3">
+                        <h4 className="font-semibold text-base mb-2 sr-only">Custom Line Items</h4>
+                        <ScrollArea className="h-40 w-full pr-3 border rounded-md">
+                            <div className="p-2 space-y-3">
+                                {customItems.map(item => (
+                                    <div key={item.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-start">
+                                        <Textarea placeholder="Item description" value={item.description} onChange={e => updateCustomItem(item.id, 'description', e.target.value)} rows={1} className="min-h-[40px] resize-y" />
+                                        <div className="space-y-1">
+                                            <Label htmlFor={`qty-${item.id}`} className="text-xs">Qty</Label>
+                                            <Input id={`qty-${item.id}`} type="number" value={item.quantity} onChange={e => updateCustomItem(item.id, 'quantity', Number(e.target.value))} className="w-20 h-8" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label htmlFor={`price-${item.id}`} className="text-xs">$ Rate</Label>
+                                            <Input id={`price-${item.id}`} type="number" value={item.price} onChange={e => updateCustomItem(item.id, 'price', Number(e.target.value))} className="w-24 h-8" />
+                                        </div>
+                                        <Button variant="ghost" size="icon" onClick={() => removeCustomItem(item.id)} className="self-center mt-3"><Trash2 className="h-4 w-4" /></Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </ScrollArea>
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="tax-rate">Tax Rate (%)</Label>
-                        <Input 
-                            id="tax-rate"
-                            type="number" 
-                            placeholder="e.g., 20"
-                            value={taxRate || ''}
-                            onChange={(e) => setTaxRate(Number(e.target.value))}
-                            disabled={taxType === 'none'}
-                        />
-                    </div>
-                </div>
+                )}
             </div>
         </CardContent>
       </Card>
+
 
       {/* Invoice Preview Card */}
       <Card>
