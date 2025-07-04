@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // --- MOCK DATA & TYPES ---
 
@@ -71,8 +72,8 @@ const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
 const defaultIncomeCategories = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income"];
 const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
 
-const emptyIncomeForm = { date: '', source: '', description: '', amount: '', category: '' };
-const emptyExpenseForm = { date: '', vendor: '', description: '', amount: '', category: '' };
+const emptyTransactionForm = { date: '', party: '', description: '', amount: '', category: '' };
+
 
 // --- COMPONENT ---
 
@@ -87,11 +88,9 @@ export function LedgersView() {
   const [newIncomeCategory, setNewIncomeCategory] = React.useState("");
   const [newExpenseCategory, setNewExpenseCategory] = React.useState("");
   
-  const [isAddIncomeDialogOpen, setIsAddIncomeDialogOpen] = React.useState(false);
-  const [isAddExpenseDialogOpen, setIsAddExpenseDialogOpen] = React.useState(false);
-
-  const [newIncome, setNewIncome] = React.useState(emptyIncomeForm);
-  const [newExpense, setNewExpense] = React.useState(emptyExpenseForm);
+  const [isAddTransactionDialogOpen, setIsAddTransactionDialogOpen] = React.useState(false);
+  const [newTransactionType, setNewTransactionType] = React.useState<'income' | 'expense'>('income');
+  const [newTransaction, setNewTransaction] = React.useState(emptyTransactionForm);
 
   const [showTotals, setShowTotals] = React.useState(false);
 
@@ -189,47 +188,42 @@ export function LedgersView() {
         localStorage.setItem(EXPENSE_CATEGORIES_KEY, JSON.stringify(updated));
      }
   };
-
-  const handleSaveIncome = () => {
-    const amountNum = parseFloat(newIncome.amount);
-    if (!newIncome.date || !newIncome.source || !newIncome.category || !newIncome.amount || isNaN(amountNum) || amountNum <= 0) {
-      toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please fill all fields correctly.' });
-      return;
-    }
-    const newEntry: IncomeTransaction = {
-      id: `inc_${Date.now()}`,
-      date: newIncome.date,
-      source: newIncome.source.trim(),
-      description: newIncome.description.trim(),
-      amount: amountNum,
-      category: newIncome.category,
-    };
-    setIncomeLedger(prev => [newEntry, ...prev]);
-    setIsAddIncomeDialogOpen(false);
-    setNewIncome(emptyIncomeForm);
-    toast({ title: "Income Transaction Added" });
-  };
   
-  const handleSaveExpense = () => {
-    const amountNum = parseFloat(newExpense.amount);
-    if (!newExpense.date || !newExpense.vendor || !newExpense.category || !newExpense.amount || isNaN(amountNum) || amountNum <= 0) {
-      toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please fill all fields correctly.' });
+  const handleSaveTransaction = () => {
+    const amountNum = parseFloat(newTransaction.amount);
+    if (!newTransaction.date || !newTransaction.party || !newTransaction.category || !newTransaction.amount || isNaN(amountNum) || amountNum <= 0) {
+      toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please fill all required fields correctly.' });
       return;
     }
-    const newEntry: ExpenseTransaction = {
-      id: `exp_${Date.now()}`,
-      date: newExpense.date,
-      vendor: newExpense.vendor.trim(),
-      description: newExpense.description.trim(),
-      amount: amountNum,
-      category: newExpense.category,
-    };
-    setExpenseLedger(prev => [newEntry, ...prev]);
-    setIsAddExpenseDialogOpen(false);
-    setNewExpense(emptyExpenseForm);
-    toast({ title: "Expense Transaction Added" });
-  };
 
+    if (newTransactionType === 'income') {
+        const newEntry: IncomeTransaction = {
+            id: `inc_${Date.now()}`,
+            date: newTransaction.date,
+            source: newTransaction.party.trim(),
+            description: newTransaction.description.trim(),
+            amount: amountNum,
+            category: newTransaction.category,
+        };
+        setIncomeLedger(prev => [newEntry, ...prev]);
+        toast({ title: "Income Transaction Added" });
+    } else {
+        const newEntry: ExpenseTransaction = {
+            id: `exp_${Date.now()}`,
+            date: newTransaction.date,
+            vendor: newTransaction.party.trim(),
+            description: newTransaction.description.trim(),
+            amount: amountNum,
+            category: newTransaction.category,
+        };
+        setExpenseLedger(prev => [newEntry, ...prev]);
+        toast({ title: "Expense Transaction Added" });
+    }
+
+    setIsAddTransactionDialogOpen(false);
+    setNewTransaction(emptyTransactionForm);
+    setNewTransactionType('income');
+  };
 
   return (
     <>
@@ -260,12 +254,19 @@ export function LedgersView() {
               
               <TabsContent value="general">
                 <Card>
-                  <CardHeader className="text-center relative">
-                    <CardTitle>General Ledger</CardTitle>
-                    <CardDescription>A combined view of all income and expense transactions.</CardDescription>
-                     <Button className="absolute top-4 right-4" variant="outline" onClick={() => setShowTotals(!showTotals)}>
-                      Totals
-                    </Button>
+                  <CardHeader className="text-center">
+                    <div className="flex justify-between items-center">
+                      <DialogTrigger asChild>
+                          <Button variant="outline">
+                              <PlusCircle className="mr-2 h-4 w-4" /> Post Transaction
+                          </Button>
+                      </DialogTrigger>
+                      <div className="flex-1 text-center">
+                          <CardTitle>General Ledger</CardTitle>
+                          <CardDescription>A combined view of all income and expense transactions.</CardDescription>
+                      </div>
+                      <Button variant="outline" onClick={() => setShowTotals(!showTotals)}>Totals</Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {showTotals && (
@@ -370,11 +371,6 @@ export function LedgersView() {
                       </TableBody>
                     </Table>
                   </CardContent>
-                  <CardFooter>
-                    <Button variant="outline" onClick={() => setIsAddIncomeDialogOpen(true)}>
-                      <PlusCircle className="mr-2 h-4 w-4" /> Add Income
-                    </Button>
-                  </CardFooter>
                 </Card>
               </TabsContent>
 
@@ -417,11 +413,6 @@ export function LedgersView() {
                       </TableBody>
                     </Table>
                   </CardContent>
-                  <CardFooter>
-                    <Button variant="outline" onClick={() => setIsAddExpenseDialogOpen(true)}>
-                      <PlusCircle className="mr-2 h-4 w-4" /> Add Expense
-                    </Button>
-                  </CardFooter>
                 </Card>
               </TabsContent>
             </Tabs>
@@ -476,89 +467,52 @@ export function LedgersView() {
         </div>
       </div>
       
-      {/* Add Income Dialog */}
-      <Dialog open={isAddIncomeDialogOpen} onOpenChange={setIsAddIncomeDialogOpen}>
+      {/* Add Transaction Dialog */}
+      <Dialog open={isAddTransactionDialogOpen} onOpenChange={setIsAddTransactionDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Income Transaction</DialogTitle>
+            <DialogTitle>Post New Transaction</DialogTitle>
+            <DialogDescription>Select the transaction type and fill in the details.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <RadioGroup value={newTransactionType} onValueChange={(value) => setNewTransactionType(value as 'income' | 'expense')} className="grid grid-cols-2 gap-4">
+                <div><RadioGroupItem value="income" id="r-income" className="peer sr-only" /><Label htmlFor="r-income" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">Income</Label></div>
+                <div><RadioGroupItem value="expense" id="r-expense" className="peer sr-only" /><Label htmlFor="r-expense" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">Expense</Label></div>
+            </RadioGroup>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="income-date" className="text-right">Date</Label>
-              <Input id="income-date" type="date" value={newIncome.date} onChange={(e) => setNewIncome(prev => ({...prev, date: e.target.value}))} className="col-span-3" />
+              <Label htmlFor="tx-date" className="text-right">Date</Label>
+              <Input id="tx-date" type="date" value={newTransaction.date} onChange={(e) => setNewTransaction(prev => ({...prev, date: e.target.value}))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="income-source" className="text-right">Source</Label>
-              <Input id="income-source" value={newIncome.source} onChange={(e) => setNewIncome(prev => ({...prev, source: e.target.value}))} className="col-span-3" />
+              <Label htmlFor="tx-party" className="text-right">{newTransactionType === 'income' ? 'Source' : 'Vendor'}</Label>
+              <Input id="tx-party" value={newTransaction.party} onChange={(e) => setNewTransaction(prev => ({...prev, party: e.target.value}))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="income-description" className="text-right">Description</Label>
-              <Input id="income-description" value={newIncome.description} onChange={(e) => setNewIncome(prev => ({...prev, description: e.target.value}))} className="col-span-3" />
+              <Label htmlFor="tx-description" className="text-right">Description</Label>
+              <Input id="tx-description" value={newTransaction.description} onChange={(e) => setNewTransaction(prev => ({...prev, description: e.target.value}))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="income-amount" className="text-right">Amount</Label>
-              <Input id="income-amount" type="number" value={newIncome.amount} onChange={(e) => setNewIncome(prev => ({...prev, amount: e.target.value}))} className="col-span-3" />
+              <Label htmlFor="tx-amount" className="text-right">Amount</Label>
+              <Input id="tx-amount" type="number" value={newTransaction.amount} onChange={(e) => setNewTransaction(prev => ({...prev, amount: e.target.value}))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="income-category" className="text-right">Category</Label>
-              <Select value={newIncome.category} onValueChange={(value) => setNewIncome(prev => ({...prev, category: value}))}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
+              <Label htmlFor="tx-category" className="text-right">Category</Label>
+              <Select value={newTransaction.category} onValueChange={(value) => setNewTransaction(prev => ({...prev, category: value}))}>
+                <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a category" /></SelectTrigger>
                 <SelectContent>
-                  {incomeCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                  {(newTransactionType === 'income' ? incomeCategories : expenseCategories).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsAddIncomeDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveIncome}>Add Income</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Expense Dialog */}
-       <Dialog open={isAddExpenseDialogOpen} onOpenChange={setIsAddExpenseDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Expense Transaction</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="expense-date" className="text-right">Date</Label>
-              <Input id="expense-date" type="date" value={newExpense.date} onChange={(e) => setNewExpense(prev => ({...prev, date: e.target.value}))} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="expense-vendor" className="text-right">Vendor</Label>
-              <Input id="expense-vendor" value={newExpense.vendor} onChange={(e) => setNewExpense(prev => ({...prev, vendor: e.target.value}))} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="expense-description" className="text-right">Description</Label>
-              <Input id="expense-description" value={newExpense.description} onChange={(e) => setNewExpense(prev => ({...prev, description: e.target.value}))} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="expense-amount" className="text-right">Amount</Label>
-              <Input id="expense-amount" type="number" value={newExpense.amount} onChange={(e) => setNewExpense(prev => ({...prev, amount: e.target.value}))} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="expense-category" className="text-right">Category</Label>
-              <Select value={newExpense.category} onValueChange={(value) => setNewExpense(prev => ({...prev, category: value}))}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {expenseCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsAddExpenseDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveExpense}>Add Expense</Button>
+            <Button variant="ghost" onClick={() => setIsAddTransactionDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveTransaction}>Save Transaction</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
   );
 }
+
+    
