@@ -64,6 +64,11 @@ interface InvoiceDraft {
   customItems: CustomLineItem[];
 }
 
+interface DefaultTaxSettings {
+  taxType: string;
+  taxRate: number;
+}
+
 // Helper functions
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -78,6 +83,7 @@ const formatTime = (totalSeconds: number) => {
 const EDIT_INVOICE_TEMPLATE_KEY = 'editInvoiceTemplate';
 const INVOICE_TEMPLATES_KEY = 'invoiceTemplates';
 const INVOICE_DRAFT_KEY = 'ogeemo-invoice-draft';
+const DEFAULT_INVOICE_TAX_KEY = 'ogeemo-default-tax';
 
 
 const predefinedItems = [
@@ -122,7 +128,6 @@ export function InvoiceGeneratorView() {
     try {
       const templateToEditRaw = localStorage.getItem(EDIT_INVOICE_TEMPLATE_KEY);
       if (templateToEditRaw) {
-        // A template is being edited, which takes precedence over any draft.
         const templateToEdit: InvoiceTemplate = JSON.parse(templateToEditRaw);
         
         const itemsWithIds = templateToEdit.items.map(item => ({
@@ -130,7 +135,6 @@ export function InvoiceGeneratorView() {
           id: Date.now() + Math.random(),
         }));
         
-        // Reset the form and load template items
         setCustomItems(itemsWithIds);
         setSelectedContactId('');
         setLoggedEntries([]);
@@ -145,13 +149,18 @@ export function InvoiceGeneratorView() {
           description: `You are editing the "${templateToEdit.name}" template.`,
         });
 
-        // Clean up keys
         localStorage.removeItem(EDIT_INVOICE_TEMPLATE_KEY);
         localStorage.removeItem(INVOICE_DRAFT_KEY);
-        return; // Exit to prevent loading a draft
+        return; 
       }
       
-      // If not editing a template, try loading a saved draft
+      const defaultTaxSettingsRaw = localStorage.getItem(DEFAULT_INVOICE_TAX_KEY);
+      if (defaultTaxSettingsRaw) {
+        const defaultSettings: DefaultTaxSettings = JSON.parse(defaultTaxSettingsRaw);
+        setTaxType(defaultSettings.taxType);
+        setTaxRate(defaultSettings.taxRate);
+      }
+      
       const savedDraftRaw = localStorage.getItem(INVOICE_DRAFT_KEY);
       if (savedDraftRaw) {
         const savedDraft: InvoiceDraft = JSON.parse(savedDraftRaw);
@@ -170,7 +179,6 @@ export function InvoiceGeneratorView() {
   
   // Effect to save draft to localStorage whenever relevant state changes
   useEffect(() => {
-    // Do not save a draft if the user is in the process of editing a template.
     const isEditingTemplate = !!localStorage.getItem(EDIT_INVOICE_TEMPLATE_KEY);
     if (isEditingTemplate) return;
 
@@ -196,7 +204,6 @@ export function InvoiceGeneratorView() {
     }
   }, [taxType]);
 
-  // Data fetching and mutation functions
   const fetchLoggedEntries = () => {
     if (!selectedContactId) {
       toast({ variant: 'destructive', title: 'Please select a client.' });
@@ -231,7 +238,6 @@ export function InvoiceGeneratorView() {
     }
   };
   
-  // Custom item management functions
   const addCustomItem = () => {
     setCustomItems([...customItems, { id: Date.now(), description: '', quantity: 1, price: 0 }]);
   };
@@ -253,7 +259,6 @@ export function InvoiceGeneratorView() {
     setCustomItems(customItems.filter(item => item.id !== id));
   };
 
-  // Memoized calculations
   const selectedContact = useMemo(() => contacts.find(c => c.id === selectedContactId), [contacts, selectedContactId]);
 
   const subtotal = useMemo(() => {
@@ -271,7 +276,6 @@ export function InvoiceGeneratorView() {
     return subtotal + taxAmount;
   }, [subtotal, taxAmount]);
 
-  // Event handlers for actions
   const handlePrint = () => window.print();
   const handleEmail = () => toast({ title: "Email Sent (Simulated)", description: "The invoice has been sent to the client." });
 
@@ -301,7 +305,7 @@ export function InvoiceGeneratorView() {
 
     const templateData: InvoiceTemplate = {
       name: newTemplateName,
-      items: customItems.map(({ id, ...item }) => item), // Remove runtime ID before saving
+      items: customItems.map(({ id, ...item }) => item),
     };
 
     try {
@@ -326,8 +330,21 @@ export function InvoiceGeneratorView() {
       });
     }
   };
+  
+  const handleSetDefaultTax = () => {
+    const settings: DefaultTaxSettings = { taxType, taxRate };
+    try {
+        localStorage.setItem(DEFAULT_INVOICE_TAX_KEY, JSON.stringify(settings));
+        toast({
+            title: 'Default Tax Rate Saved',
+            description: `Future invoices will default to ${taxRate}% ${taxType.toUpperCase()}.`
+        });
+    } catch (error) {
+        console.error("Failed to save default tax settings:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save default tax settings.' });
+    }
+  };
 
-  // Render logic
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <AccountingPageHeader pageTitle="Invoice Generator" />
@@ -338,7 +355,6 @@ export function InvoiceGeneratorView() {
         </p>
       </header>
 
-      {/* Controls Card */}
       <Card>
         <CardHeader className="text-center">
             <CardTitle className="flex items-center justify-center gap-2">
@@ -354,9 +370,7 @@ export function InvoiceGeneratorView() {
             </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-            {/* Primary Settings Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Client */}
                 <div className="space-y-2 lg:col-span-2">
                     <Label htmlFor="client-select">Client</Label>
                     <Select value={selectedContactId} onValueChange={setSelectedContactId}>
@@ -366,7 +380,6 @@ export function InvoiceGeneratorView() {
                         </SelectContent>
                     </Select>
                 </div>
-                {/* Tax Type */}
                 <div className="space-y-2">
                     <Label htmlFor="tax-type">Tax Type</Label>
                     <Select value={taxType} onValueChange={setTaxType} id="tax-type">
@@ -380,23 +393,41 @@ export function InvoiceGeneratorView() {
                         </SelectContent>
                     </Select>
                 </div>
-                {/* Tax Rate */}
                 <div className="space-y-2">
                     <Label htmlFor="tax-rate">Tax Rate (%)</Label>
-                    <Input 
-                        id="tax-rate"
-                        type="number" 
-                        placeholder="e.g., 20"
-                        value={taxRate || ''}
-                        onChange={(e) => setTaxRate(Number(e.target.value))}
-                        disabled={taxType === 'none'}
-                    />
+                    <div className="flex items-center gap-2">
+                        <Input 
+                            id="tax-rate"
+                            type="number" 
+                            placeholder="e.g., 20"
+                            value={taxRate || ''}
+                            onChange={(e) => setTaxRate(Number(e.target.value))}
+                            disabled={taxType === 'none'}
+                        />
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={handleSetDefaultTax}
+                                        disabled={taxType === 'none'}
+                                    >
+                                        <Save className="h-4 w-4" />
+                                        <span className="sr-only">Set as Default</span>
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Set as default tax rate</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
                 </div>
             </div>
 
-            {/* Time Log Settings Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                {/* Date Range */}
                 <div className="space-y-2 lg:col-span-2">
                     <Label>Date Range for Time Logs</Label>
                     <Popover>
@@ -411,7 +442,6 @@ export function InvoiceGeneratorView() {
                     </PopoverContent>
                     </Popover>
                 </div>
-                {/* Fetch Button */}
                 <div className="lg:col-span-2">
                     <Button className="w-full" onClick={fetchLoggedEntries}>Fetch Logged Activities</Button>
                 </div>
@@ -419,7 +449,6 @@ export function InvoiceGeneratorView() {
             
             <Separator />
 
-            {/* Manual Item Entry */}
             <div>
                 <h4 className="font-semibold text-base mb-2">Add to Invoice</h4>
                 <div className="flex flex-wrap items-end gap-2 mb-4">
@@ -436,7 +465,6 @@ export function InvoiceGeneratorView() {
                     <Button variant="outline" onClick={addCustomItem}><Plus className="mr-2 h-4 w-4"/>Add Line Item</Button>
                 </div>
 
-                {/* Custom Line Items Editor */}
                 {customItems.length > 0 && (
                     <div className="space-y-3">
                         <h4 className="font-semibold text-base mb-2 sr-only">Custom Line Items</h4>
@@ -465,7 +493,6 @@ export function InvoiceGeneratorView() {
       </Card>
 
 
-      {/* Invoice Preview Card */}
       <Card>
           <CardHeader className="flex-row justify-between items-center">
               <CardTitle>Invoice Preview</CardTitle>
