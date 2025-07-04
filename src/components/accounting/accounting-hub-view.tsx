@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -62,6 +63,13 @@ export function AccountingHubView() {
       description: "Generate and view reports tailored for different stakeholders.",
       href: "/accounting/reports",
       cta: "Go to Reports",
+    },
+    {
+      icon: BookText,
+      title: "Bookkeeping Kept Simple",
+      description: "BKS is for those who want to KISS.",
+      href: "/accounting/transactions",
+      cta: "Go to BKS",
     },
   ];
 
