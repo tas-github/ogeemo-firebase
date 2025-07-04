@@ -1,22 +1,41 @@
 
-import dynamic from 'next/dynamic';
-import { LoaderCircle } from 'lucide-react';
+import { AccountingPageHeader } from "@/components/accounting/page-header";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
-const TransactionsView = dynamic(
-  () => import('@/components/accounting/transactions-view').then((mod) => mod.TransactionsView),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-full w-full items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4">
-          <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading Transactions...</p>
-        </div>
+export default function TransactionsHubPage() {
+  return (
+    <div className="p-4 sm:p-6 space-y-6">
+      <AccountingPageHeader pageTitle="Transaction Hub" />
+      <header className="text-center mb-6">
+        <h1 className="text-3xl font-bold font-headline text-primary">
+          Transaction Hub
+        </h1>
+        <p className="text-muted-foreground max-w-2xl mx-auto">
+          Manage your income, expenses, and transaction categorization from here.
+        </p>
+      </header>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+        {/* Placeholder for buttons to be added next */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Awaiting Instructions</CardTitle>
+            <CardDescription>
+              Ready for the next step.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+             <p className="text-sm text-muted-foreground">The buttons for this hub will be added based on your next set of instructions.</p>
+          </CardContent>
+        </Card>
       </div>
-    ),
-  }
-);
-
-export default function TransactionsPage() {
-  return <TransactionsView />;
+    </div>
+  );
 }
