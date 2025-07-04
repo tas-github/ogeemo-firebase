@@ -43,6 +43,7 @@ import { Settings, Plus, Trash2, PlusCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { Separator } from "@/components/ui/separator";
 
 // --- MOCK DATA & TYPES ---
 
@@ -91,6 +92,8 @@ export function LedgersView() {
 
   const [newIncome, setNewIncome] = React.useState(emptyIncomeForm);
   const [newExpense, setNewExpense] = React.useState(emptyExpenseForm);
+
+  const [showTotals, setShowTotals] = React.useState(false);
 
 
   const { toast } = useToast();
@@ -257,9 +260,12 @@ export function LedgersView() {
               
               <TabsContent value="general">
                 <Card>
-                  <CardHeader className="text-center">
+                  <CardHeader className="text-center relative">
                     <CardTitle>General Ledger</CardTitle>
                     <CardDescription>A combined view of all income and expense transactions.</CardDescription>
+                     <Button className="absolute top-4 right-4" variant="outline" onClick={() => setShowTotals(!showTotals)}>
+                      Totals
+                    </Button>
                   </CardHeader>
                   <CardContent>
                     <Table>
@@ -303,6 +309,25 @@ export function LedgersView() {
                       </TableBody>
                     </Table>
                   </CardContent>
+                  {showTotals && (
+                    <CardFooter className="justify-end">
+                      <div className="w-full max-w-sm space-y-2 text-right">
+                          <div className="flex justify-between font-medium">
+                              <span>Total Income:</span>
+                              <span className="font-mono text-green-600">{incomeTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })}</span>
+                          </div>
+                          <div className="flex justify-between font-medium">
+                              <span>Total Expenses:</span>
+                              <span className="font-mono text-red-600">({expenseTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })})</span>
+                          </div>
+                          <Separator className="my-2" />
+                          <div className="flex justify-between font-bold text-lg">
+                              <span>Net Position:</span>
+                              <span className="font-mono">{(incomeTotal - expenseTotal).toLocaleString("en-US", { style: "currency", currency: "USD" })}</span>
+                          </div>
+                      </div>
+                    </CardFooter>
+                  )}
                 </Card>
               </TabsContent>
 
