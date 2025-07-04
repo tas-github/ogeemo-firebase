@@ -254,13 +254,11 @@ export function LedgersView() {
               
               <TabsContent value="general">
                 <Card>
-                  <CardHeader className="text-center">
+                  <CardHeader>
                     <div className="flex justify-between items-center">
-                      <DialogTrigger asChild>
-                          <Button variant="outline">
-                              <PlusCircle className="mr-2 h-4 w-4" /> Post Transaction
-                          </Button>
-                      </DialogTrigger>
+                      <Button variant="outline" onClick={() => { setNewTransactionType('income'); setIsAddTransactionDialogOpen(true); }}>
+                          <PlusCircle className="mr-2 h-4 w-4" /> Post Transaction
+                      </Button>
                       <div className="flex-1 text-center">
                           <CardTitle>General Ledger</CardTitle>
                           <CardDescription>A combined view of all income and expense transactions.</CardDescription>
@@ -371,6 +369,17 @@ export function LedgersView() {
                       </TableBody>
                     </Table>
                   </CardContent>
+                  <CardFooter>
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            setNewTransactionType('income');
+                            setIsAddTransactionDialogOpen(true);
+                        }}
+                    >
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Income
+                    </Button>
+                  </CardFooter>
                 </Card>
               </TabsContent>
 
@@ -413,6 +422,17 @@ export function LedgersView() {
                       </TableBody>
                     </Table>
                   </CardContent>
+                  <CardFooter>
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            setNewTransactionType('expense');
+                            setIsAddTransactionDialogOpen(true);
+                        }}
+                    >
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Expense
+                    </Button>
+                  </CardFooter>
                 </Card>
               </TabsContent>
             </Tabs>
