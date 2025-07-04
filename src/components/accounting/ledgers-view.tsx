@@ -283,8 +283,8 @@ export function LedgersView() {
     <>
       <div className="p-4 sm:p-6 space-y-6">
         <AccountingPageHeader pageTitle="General Ledgers" />
-        <div className="flex flex-col items-center">
-          <header className="text-center mb-6 max-w-4xl">
+        <div className="flex flex-col">
+          <header className="text-center mb-6 max-w-4xl mx-auto">
             <h1 className="text-3xl font-bold font-headline text-primary">
               General Ledgers
             </h1>
@@ -305,9 +305,9 @@ export function LedgersView() {
               
               <TabsContent value="general">
                 <Card>
-                  <CardHeader className="text-center">
-                    <CardTitle>General Ledger</CardTitle>
-                    <CardDescription>A combined view of all income and expense transactions.</CardDescription>
+                  <CardHeader>
+                    <CardTitle className="text-center">General Ledger</CardTitle>
+                    <CardDescription className="text-center">A combined view of all income and expense transactions.</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {showTotals && (
