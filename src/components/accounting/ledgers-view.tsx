@@ -16,7 +16,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -284,7 +283,7 @@ export function LedgersView() {
       <div className="p-4 sm:p-6 space-y-6">
         <AccountingPageHeader pageTitle="General Ledgers" />
         <div className="flex flex-col">
-          <header className="text-center mb-6 max-w-4xl mx-auto">
+          <header className="text-center mb-6 w-full mx-auto">
             <h1 className="text-3xl font-bold font-headline text-primary">
               General Ledgers
             </h1>
@@ -305,9 +304,20 @@ export function LedgersView() {
               
               <TabsContent value="general">
                 <Card>
-                  <CardHeader>
-                    <CardTitle className="text-center">General Ledger</CardTitle>
-                    <CardDescription className="text-center">A combined view of all income and expense transactions.</CardDescription>
+                  <CardHeader className="flex flex-row items-start justify-between">
+                    <div>
+                      <CardTitle>General Ledger</CardTitle>
+                      <CardDescription>A combined view of all income and expense transactions.</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={() => handleOpenTransactionDialog('income')}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Post Transaction
+                        </Button>
+                        <DialogTrigger asChild>
+                            <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Manage Categories</Button>
+                        </DialogTrigger>
+                        <Button variant="outline" onClick={() => setShowTotals(!showTotals)}>Totals</Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {showTotals && (
@@ -390,29 +400,30 @@ export function LedgersView() {
                       </TableBody>
                     </Table>
                   </CardContent>
-                  <CardFooter className="flex justify-between">
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" onClick={() => handleOpenTransactionDialog('income')}>
-                          <PlusCircle className="mr-2 h-4 w-4" /> Post Transaction
-                      </Button>
-                      <DialogTrigger asChild>
-                          <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Manage Categories</Button>
-                      </DialogTrigger>
-                    </div>
-                    <Button variant="outline" onClick={() => setShowTotals(!showTotals)}>Totals</Button>
-                  </CardFooter>
                 </Card>
               </TabsContent>
 
               <TabsContent value="income">
                 <Card>
-                  <CardHeader className="text-center relative">
-                      <CardTitle>Income Ledger</CardTitle>
-                      <CardDescription>All incoming revenue streams.</CardDescription>
-                      <div className="absolute top-4 right-4 text-right">
-                          <p className="text-sm font-medium text-muted-foreground">Total Income</p>
-                          <p className="text-xl font-bold text-green-600">{incomeTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })}</p>
-                      </div>
+                  <CardHeader className="flex flex-row items-start justify-between gap-4">
+                    <div>
+                        <CardTitle>Income Ledger</CardTitle>
+                        <CardDescription>All incoming revenue streams.</CardDescription>
+                    </div>
+                    <div className="flex flex-col items-end gap-4">
+                        <div className="text-right">
+                            <p className="text-sm font-medium text-muted-foreground">Total Income</p>
+                            <p className="text-xl font-bold text-green-600">{incomeTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" onClick={() => handleOpenTransactionDialog('income')}>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Add Income
+                            </Button>
+                            <DialogTrigger asChild>
+                                <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Manage Categories</Button>
+                            </DialogTrigger>
+                        </div>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <Table>
@@ -463,25 +474,29 @@ export function LedgersView() {
                       </TableBody>
                     </Table>
                   </CardContent>
-                  <CardFooter className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => handleOpenTransactionDialog('income')}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Income
-                    </Button>
-                    <DialogTrigger asChild>
-                        <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Manage Categories</Button>
-                    </DialogTrigger>
-                  </CardFooter>
                 </Card>
               </TabsContent>
 
               <TabsContent value="expenses">
                 <Card>
-                  <CardHeader className="text-center relative">
-                      <CardTitle>Expense Ledger</CardTitle>
-                      <CardDescription>All outgoing expenditures.</CardDescription>
-                      <div className="absolute top-4 right-4 text-right">
-                          <p className="text-sm font-medium text-muted-foreground">Total Expenses</p>
-                          <p className="text-xl font-bold text-red-600">({expenseTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })})</p>
+                  <CardHeader className="flex flex-row items-start justify-between gap-4">
+                      <div>
+                          <CardTitle>Expense Ledger</CardTitle>
+                          <CardDescription>All outgoing expenditures.</CardDescription>
+                      </div>
+                      <div className="flex flex-col items-end gap-4">
+                          <div className="text-right">
+                              <p className="text-sm font-medium text-muted-foreground">Total Expenses</p>
+                              <p className="text-xl font-bold text-red-600">({expenseTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })})</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                              <Button variant="outline" onClick={() => handleOpenTransactionDialog('expense')}>
+                                  <PlusCircle className="mr-2 h-4 w-4" /> Add Expense
+                              </Button>
+                              <DialogTrigger asChild>
+                                  <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Manage Categories</Button>
+                              </DialogTrigger>
+                          </div>
                       </div>
                   </CardHeader>
                   <CardContent>
@@ -533,14 +548,6 @@ export function LedgersView() {
                       </TableBody>
                     </Table>
                   </CardContent>
-                  <CardFooter className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => handleOpenTransactionDialog('expense')}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Expense
-                    </Button>
-                     <DialogTrigger asChild>
-                        <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Manage Categories</Button>
-                    </DialogTrigger>
-                  </CardFooter>
                 </Card>
               </TabsContent>
             </Tabs>
