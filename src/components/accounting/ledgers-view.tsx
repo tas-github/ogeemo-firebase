@@ -281,7 +281,7 @@ export function LedgersView() {
                             );
                           }
                           return (
-                            <TableCell key={`${item.id}-${col}`}>
+                            <TableCell key={`${item.id}-${col}`} className={cn(col === 'amount' && 'text-green-600 font-mono')}>
                               {col === 'amount'
                                 ? item[col].toLocaleString("en-US", { style: "currency", currency: "USD" })
                                 : item[col as keyof typeof item]}
@@ -355,7 +355,7 @@ export function LedgersView() {
                             );
                           }
                           return (
-                            <TableCell key={`${item.id}-${col}`}>
+                            <TableCell key={`${item.id}-${col}`} className={cn(col === 'amount' && 'text-red-600 font-mono')}>
                               {col === 'amount'
                                 ? `(${item[col].toLocaleString("en-US", { style: "currency", currency: "USD" })})`
                                 : item[col as keyof typeof item]}
