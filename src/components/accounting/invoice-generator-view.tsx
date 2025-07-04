@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Textarea } from '@/components/ui/textarea';
 import { type DateRange } from 'react-day-picker';
 import { format, addDays } from 'date-fns';
-import { Calendar as CalendarIcon, Plus, Trash2, Printer, Save } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, Printer, Save, Mail, Info } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { mockContacts, type Contact } from '@/data/contacts';
@@ -29,6 +30,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 // Types
 interface EventEntry {
@@ -51,6 +54,10 @@ interface InvoiceTemplate {
   items: CustomLineItem[];
 }
 
+// Helper functions
+const formatCurrency = (amount: number) => {
+  return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+};
 const formatTime = (totalSeconds: number) => {
   if (totalSeconds < 60) return `${totalSeconds}s`;
   const hours = Math.floor(totalSeconds / 3600);
@@ -69,8 +76,8 @@ const predefinedItems = [
   { description: 'Monthly Retainer', price: 2500.00 },
 ];
 
-
 export function InvoiceGeneratorView() {
+  // State hooks
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selectedContactId, setSelectedContactId] = useState<string>('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -93,6 +100,7 @@ export function InvoiceGeneratorView() {
   const { toast } = useToast();
   const printRef = useRef<HTMLDivElement>(null);
 
+  // Effects for data loading and initialization
   useEffect(() => {
     setContacts(mockContacts);
   }, []);
@@ -133,6 +141,7 @@ export function InvoiceGeneratorView() {
     }
   }, [taxType]);
 
+  // Data fetching and mutation functions
   const fetchLoggedEntries = () => {
     if (!selectedContactId) {
       toast({ variant: 'destructive', title: 'Please select a client.' });
@@ -167,6 +176,7 @@ export function InvoiceGeneratorView() {
     }
   };
   
+  // Custom item management functions
   const addCustomItem = () => {
     setCustomItems([...customItems, { id: Date.now(), description: '', quantity: 1, price: 0 }]);
   };
@@ -188,6 +198,7 @@ export function InvoiceGeneratorView() {
     setCustomItems(customItems.filter(item => item.id !== id));
   };
 
+  // Memoized calculations
   const selectedContact = useMemo(() => contacts.find(c => c.id === selectedContactId), [contacts, selectedContactId]);
 
   const subtotal = useMemo(() => {
@@ -205,9 +216,9 @@ export function InvoiceGeneratorView() {
     return subtotal + taxAmount;
   }, [subtotal, taxAmount]);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  // Event handlers for actions
+  const handlePrint = () => window.print();
+  const handleEmail = () => toast({ title: "Email Sent (Simulated)", description: "The invoice has been sent to the client." });
 
   const handleSaveTemplate = () => {
     if (!newTemplateName.trim()) {
@@ -220,7 +231,7 @@ export function InvoiceGeneratorView() {
 
     const templateData: InvoiceTemplate = {
       name: newTemplateName,
-      items: customItems,
+      items: customItems.map(({ id, ...item }) => item), // Remove runtime ID before saving
     };
 
     try {
@@ -246,6 +257,7 @@ export function InvoiceGeneratorView() {
     }
   };
 
+  // Render logic
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <AccountingPageHeader pageTitle="Invoice Generator" />
@@ -258,15 +270,24 @@ export function InvoiceGeneratorView() {
 
       {/* Controls Card */}
       <Card>
-        <CardHeader>
-            <CardTitle>Invoice Setup</CardTitle>
-            <CardDescription>Configure the client, date range, and line items for this invoice.</CardDescription>
+        <CardHeader className="text-center">
+            <CardTitle className="flex items-center justify-center gap-2">
+                Invoice Setup
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
+                        <TooltipContent>
+                            <p className="max-w-xs">Use this section to build your invoice. Fetch logged time for a client, add custom items, and set taxes before printing or emailing.</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-            <div className="grid lg:grid-cols-2 gap-6">
-                {/* Left Column: Time Logs */}
+            <div className="grid lg:grid-cols-2 gap-x-8 gap-y-6">
+                {/* Left Column: Time Logs & Client */}
                 <div className="space-y-4">
-                    <h4 className="font-semibold text-base">Fetch Time Logs</h4>
+                    <h4 className="font-semibold text-base">Client & Time Logs</h4>
                     <div className="space-y-2">
                         <Label htmlFor="client-select">Client</Label>
                         <Select value={selectedContactId} onValueChange={setSelectedContactId}>
@@ -277,7 +298,7 @@ export function InvoiceGeneratorView() {
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label>Date Range</Label>
+                        <Label>Date Range for Time Logs</Label>
                         <Popover>
                         <PopoverTrigger asChild>
                             <Button id="date" variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
@@ -294,28 +315,40 @@ export function InvoiceGeneratorView() {
                 </div>
                 {/* Right Column: Line Items */}
                 <div className="space-y-4">
-                    <h4 className="font-semibold text-base">Add Line Items</h4>
-                    <div className="grid sm:grid-cols-[1fr_auto] gap-2">
+                    <h4 className="font-semibold text-base">Add to Invoice</h4>
+                     <div className="space-y-2">
+                         <Label>Add Predefined Item</Label>
                         <Select onValueChange={addPredefinedItem}>
                             <SelectTrigger><SelectValue placeholder="Select a predefined item..." /></SelectTrigger>
                             <SelectContent>
                                 {predefinedItems.map(item => <SelectItem key={item.description} value={item.description}>{item.description}</SelectItem>)}
                             </SelectContent>
                         </Select>
-                        <Button variant="outline" onClick={addCustomItem}><Plus className="mr-2 h-4 w-4"/>Add Line Item</Button>
                     </div>
-                    <ScrollArea className="h-40">
-                        <div className="space-y-3 pr-3">
+                    <div className="flex items-center gap-2">
+                        <p className="text-sm text-muted-foreground">or</p>
+                        <Button variant="outline" size="sm" onClick={addCustomItem}><Plus className="mr-2 h-4 w-4"/>Add Line Item</Button>
+                    </div>
+                </div>
+            </div>
+            
+            <Separator />
+            {/* Custom Line Items Editor */}
+             {customItems.length > 0 && (
+                 <div>
+                    <h4 className="font-semibold text-base mb-2">Custom Line Items</h4>
+                    <ScrollArea className="h-40 w-full pr-3">
+                        <div className="space-y-3">
                             {customItems.map(item => (
-                                <div key={item.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
-                                    <Input placeholder="Item description" value={item.description} onChange={e => updateCustomItem(item.id, 'description', e.target.value)} />
+                                <div key={item.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-start">
+                                    <Textarea placeholder="Item description" value={item.description} onChange={e => updateCustomItem(item.id, 'description', e.target.value)} rows={1} className="min-h-[40px] resize-y" />
                                     <div className="flex items-center gap-2">
-                                        <Label htmlFor={`qty-${item.id}`}>Qty</Label>
-                                        <Input id={`qty-${item.id}`} type="number" value={item.quantity} onChange={e => updateCustomItem(item.id, 'quantity', Number(e.target.value))} className="w-16" />
+                                        <Label htmlFor={`qty-${item.id}`} className="sr-only">Qty</Label>
+                                        <Input id={`qty-${item.id}`} type="number" value={item.quantity} onChange={e => updateCustomItem(item.id, 'quantity', Number(e.target.value))} className="w-16" placeholder="Qty" />
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <Label htmlFor={`price-${item.id}`}>$ Rate</Label>
-                                        <Input id={`price-${item.id}`} type="number" value={item.price} onChange={e => updateCustomItem(item.id, 'price', Number(e.target.value))} className="w-24" />
+                                        <Label htmlFor={`price-${item.id}`} className="sr-only">$ Rate</Label>
+                                        <Input id={`price-${item.id}`} type="number" value={item.price} onChange={e => updateCustomItem(item.id, 'price', Number(e.target.value))} className="w-24" placeholder="$ Rate" />
                                     </div>
                                     <Button variant="ghost" size="icon" onClick={() => removeCustomItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
                                 </div>
@@ -323,7 +356,7 @@ export function InvoiceGeneratorView() {
                         </div>
                     </ScrollArea>
                 </div>
-            </div>
+            )}
             
             <Separator />
 
@@ -365,7 +398,9 @@ export function InvoiceGeneratorView() {
           <CardHeader className="flex-row justify-between items-center">
               <CardTitle>Invoice Preview</CardTitle>
               <div className="flex items-center gap-2">
-                  <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+                  <Button variant="outline" onClick={handleEmail}><Mail className="mr-2 h-4 w-4" /> Email Invoice</Button>
+                  <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
+                   <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
                       <DialogTrigger asChild>
                           <Button variant="outline"><Save className="mr-2 h-4 w-4" /> Save as Template</Button>
                       </DialogTrigger>
@@ -392,7 +427,6 @@ export function InvoiceGeneratorView() {
                           </DialogFooter>
                       </DialogContent>
                   </Dialog>
-                  <Button onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
               </div>
           </CardHeader>
           <CardContent>
@@ -440,18 +474,18 @@ export function InvoiceGeneratorView() {
                                   <TableRow key={entry.id}>
                                       <TableCell className="text-center">{index + 1}</TableCell>
                                       <TableCell>{entry.subject}</TableCell>
-                                      <TableCell className="text-center">${entry.billableRate.toFixed(2)}</TableCell>
+                                      <TableCell className="text-center">{formatCurrency(entry.billableRate)}</TableCell>
                                       <TableCell className="text-center">{formatTime(entry.duration)}</TableCell>
-                                      <TableCell className="text-right">${((entry.duration / 3600) * entry.billableRate).toFixed(2)}</TableCell>
+                                      <TableCell className="text-right">{formatCurrency((entry.duration / 3600) * entry.billableRate)}</TableCell>
                                   </TableRow>
                               ))}
                               {customItems.map((item, index) => (
                                    <TableRow key={item.id}>
                                       <TableCell className="text-center">{loggedEntries.length + index + 1}</TableCell>
-                                      <TableCell>{item.description}</TableCell>
-                                      <TableCell className="text-center">${item.price.toFixed(2)}</TableCell>
+                                      <TableCell className="whitespace-pre-wrap">{item.description}</TableCell>
+                                      <TableCell className="text-center">{formatCurrency(item.price)}</TableCell>
                                       <TableCell className="text-center">{item.quantity}</TableCell>
-                                      <TableCell className="text-right">${(item.quantity * item.price).toFixed(2)}</TableCell>
+                                      <TableCell className="text-right">{formatCurrency(item.quantity * item.price)}</TableCell>
                                   </TableRow>
                               ))}
                           </TableBody>
@@ -462,19 +496,19 @@ export function InvoiceGeneratorView() {
                       <div className="w-full max-w-sm space-y-2">
                           <div className="flex justify-between">
                               <span className="text-gray-500">Subtotal:</span>
-                              <span>${subtotal.toFixed(2)}</span>
+                              <span>{formatCurrency(subtotal)}</span>
                           </div>
                           <Separator />
                           <div className="flex justify-between">
                             <span className="text-gray-500">
                                 {taxType !== 'none' ? `Tax (${taxType.toUpperCase()} @ ${taxRate || 0}%)` : 'Tax:'}
                             </span>
-                            <span>${taxAmount.toFixed(2)}</span>
+                            <span>{formatCurrency(taxAmount)}</span>
                           </div>
                           <Separator />
                           <div className="flex justify-between font-bold text-lg">
                               <span className="text-gray-600">Total Due:</span>
-                              <span>${total.toFixed(2)}</span>
+                              <span>{formatCurrency(total)}</span>
                           </div>
                       </div>
                   </section>
