@@ -1,214 +1,124 @@
 
 "use client";
 
-import React, { useState } from 'react';
 import {
-    Archive, Star, Send, Trash2, Inbox, Pencil, Search
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Separator } from '@/components/ui/separator';
-import { format } from 'date-fns';
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
-interface Email {
-  id: string;
-  from: string;
-  fromEmail: string;
-  subject: string;
-  text: string;
-  date: string;
-  read: boolean;
-  starred: boolean;
-  folder: 'inbox' | 'sent' | 'archive' | 'trash';
-}
-
-const mockEmails: Email[] = [
-      {
-        id: '1',
-        from: 'The Ogeemo Team',
-        fromEmail: 'team@ogeemo.com',
-        subject: 'Welcome to your Sandbox!',
-        text: `<p>Hi there,</p><p>This is your sandbox email client. Feel free to experiment here.</p><p>Best,<br/>The Ogeemo Team</p>`,
-        date: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-        read: false,
-        starred: true,
-        folder: 'inbox',
-      },
-       {
-        id: 'd1',
-        from: 'Dummy Email',
-        fromEmail: 'dummy@example.com',
-        subject: 'This is a test email',
-        text: 'This email was generated for testing purposes.',
-        date: new Date().toISOString(),
-        read: false,
-        starred: false,
-        folder: 'inbox',
-      },
-      {
-        id: '2',
-        from: 'John Doe',
-        fromEmail: 'john.doe@example.com',
-        subject: 'Project Phoenix - Weekly Update',
-        text: `<p>Hello team,</p><p>Here is the weekly update for Project Phoenix.</p>`,
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-        read: true,
-        starred: false,
-        folder: 'inbox',
-      },
-      {
-        id: '3',
-        from: 'You',
-        fromEmail: 'you@ogeemo.com',
-        subject: 'Re: Design Mockups',
-        text: `<p>Hi Jane,</p><p>Thanks for sending these over.</p>`,
-        date: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
-        read: true,
-        starred: false,
-        folder: 'sent',
-      },
-      {
-        id: '4',
-        from: 'Important Docs',
-        fromEmail: 'archive-bot@ogeemo.com',
-        subject: 'Archived: 2023 Financial Report',
-        text: '<p>This document has been automatically archived for your records.</p>',
-        date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
-        read: true,
-        starred: false,
-        folder: 'archive',
-      },
+// Mock data for the sandbox transaction manager
+const mockTransactions = [
+  {
+    id: "txn_1",
+    description: "Web Development Services",
+    amount: 2500.0,
+    type: "income",
+    date: "2024-07-15",
+  },
+  {
+    id: "txn_2",
+    description: "Office Software Subscription",
+    amount: -45.0,
+    type: "expense",
+    date: "2024-07-14",
+  },
+  {
+    id: "txn_3",
+    description: "Client A - Project Deposit",
+    amount: 1200.0,
+    type: "income",
+    date: "2024-07-12",
+  },
+  {
+    id: "txn_4",
+    description: "Business Lunch",
+    amount: -85.5,
+    type: "expense",
+    date: "2024-07-11",
+  },
+  {
+    id: "txn_5",
+    description: "Home Office Internet",
+    amount: -70.0,
+    type: "expense",
+    date: "2024-07-10",
+  },
 ];
 
 export function SandboxView() {
-  const [emails] = useState<Email[]>(mockEmails);
-  const [selectedEmailId, setSelectedEmailId] = useState<string | null>('1');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeFolder, setActiveFolder] = useState<'inbox' | 'sent' | 'archive' | 'trash' | 'starred'>("inbox");
-
-  const handleSelectEmail = (emailId: string) => {
-    setSelectedEmailId(emailId);
-  };
-
-  const filteredEmails = emails.filter((email) => {
-    const lowerCaseQuery = searchQuery.toLowerCase();
-    const matchesSearch =
-      email.subject.toLowerCase().includes(lowerCaseQuery) ||
-      email.from.toLowerCase().includes(lowerCaseQuery) ||
-      email.text.toLowerCase().includes(lowerCaseQuery);
-
-    if (!matchesSearch) return false;
-
-    if (activeFolder === "inbox") return email.folder === 'inbox';
-    if (activeFolder === "starred") return email.starred && email.folder !== 'trash';
-    if (activeFolder === "sent") return email.folder === 'sent';
-    if (activeFolder === "archive") return email.folder === 'archive';
-    if (activeFolder === "trash") return email.folder === 'trash';
-    return false;
-  });
-
-  const menuItems = [
-    { id: "inbox", label: "Inbox", icon: Inbox },
-    { id: "starred", label: "Starred", icon: Star },
-    { id: "sent", label: "Sent", icon: Send },
-    { id: "archive", label: "Archive", icon: Archive },
-    { id: "trash", label: "Trash", icon: Trash2 },
-  ];
-
-  const handleFolderChange = (folder: typeof activeFolder) => {
-    setActiveFolder(folder);
-    const firstEmailInFolder = emails.find(e => {
-        if (folder === "inbox") return e.folder === 'inbox';
-        if (folder === "starred") return e.starred && e.folder !== 'trash';
-        return e.folder === folder;
-    });
-    setSelectedEmailId(firstEmailInFolder ? firstEmailInFolder.id : null);
-  };
-
   return (
-      <div className="flex h-full w-full flex-col bg-background text-foreground overflow-hidden">
-        <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
-          <ResizablePanel defaultSize={25} minSize={20} maxSize={30}>
-            <div className="flex h-full flex-col p-2">
-              <div className="p-2">
-                 <Button className="w-full" disabled>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Compose
-                </Button>
-              </div>
-              <Separator />
-              <nav className="flex flex-col gap-1 p-2">
-                {menuItems.map((item) => (
-                  <Button
-                    key={item.id}
-                    variant={activeFolder === item.id ? "secondary" : "ghost"}
-                    className="w-full justify-start gap-3"
-                    onClick={() => handleFolderChange(item.id as any)}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.label}</span>
-                  </Button>
-                ))}
-              </nav>
-            </div>
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={75} minSize={70}>
-            <div className="flex flex-col h-full">
-              <div className="p-2 border-b">
-                <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        type="search"
-                        placeholder="Search mail..."
-                        className="w-full rounded-lg bg-muted pl-8"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto">
-              {filteredEmails.length > 0 ? (
-                filteredEmails.map((email) => (
-                  <div
-                    key={email.id}
-                    onClick={() => handleSelectEmail(email.id)}
+    <div className="p-4 sm:p-6">
+      <h1 className="text-3xl font-bold font-headline text-primary mb-6">
+        Sandbox Environment
+      </h1>
+      <Card>
+        <CardHeader>
+          <CardTitle>Transaction Manager (Sandbox)</CardTitle>
+          <CardDescription>
+            A real-time look at your income and expenses.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Description</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mockTransactions.map((txn) => (
+                <TableRow key={txn.id}>
+                  <TableCell className="font-medium">
+                    {txn.description}
+                  </TableCell>
+                  <TableCell
                     className={cn(
-                      'cursor-pointer border-b p-4 transition-colors',
-                      selectedEmailId === email.id ? 'bg-accent' : 'hover:bg-accent/50',
-                      !email.read && 'bg-primary/5'
+                      "text-right font-mono",
+                      txn.type === "income"
+                        ? "text-green-500"
+                        : "text-red-500"
                     )}
                   >
-                    <div className="flex items-start justify-between">
-                      <p className={cn('font-semibold text-sm truncate', !email.read && 'text-primary')}>{email.from}</p>
-                      <time className="text-xs text-muted-foreground whitespace-nowrap">
-                        {format(new Date(email.date), 'MM/dd/yyyy')}
-                      </time>
-                    </div>
-                    <div className="flex items-center justify-between mt-1">
-                         <p className="font-medium truncate pr-4 text-sm">{email.subject}</p>
-                         <button>
-                            <Star
-                                className={cn('h-4 w-4 text-muted-foreground transition-colors shrink-0 hover:text-yellow-500', email.starred && 'fill-yellow-400 text-yellow-500')}
-                            />
-                         </button>
-                    </div>
-                    <p className="truncate text-sm text-muted-foreground mt-1">
-                      {email.text.replace(/<[^>]+>/g, '')}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <div className="flex h-full items-center justify-center p-4 text-center text-muted-foreground">
-                  <p>No emails in {activeFolder}.</p>
-                </div>
-              )}
-              </div>
-            </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </div>
+                    {txn.amount.toLocaleString("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                    })}
+                  </TableCell>
+                  <TableCell>{txn.date}</TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        txn.type === "income" ? "secondary" : "destructive"
+                      }
+                      className={cn(
+                        txn.type === 'income' && 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-200 dark:border-green-700'
+                      )}
+                    >
+                      {txn.type}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
