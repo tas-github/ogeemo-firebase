@@ -54,7 +54,6 @@ const initialExpenseData = [
 
 const incomeCategories = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income", "Uncategorized"];
 const expenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals", "Uncategorized"];
-const allCategories = [...new Set([...incomeCategories, ...expenseCategories])];
 
 type IncomeColumn = "date" | "source" | "description" | "amount" | "category" | "paymentMethod" | "invoiceNumber";
 type ExpenseColumn = "date" | "vendor" | "description" | "amount" | "category" | "paymentMethod" | "receiptNumber";
@@ -79,20 +78,9 @@ const expenseColumnLabels: Record<ExpenseColumn, string> = {
   receiptNumber: "Receipt #",
 };
 
-type GeneralLedgerEntry = {
-    id: string;
-    type: 'income' | 'expense';
-    date: string;
-    payeePayer: string;
-    description: string;
-    category: string;
-    amount: number;
-}
-
 export function LedgersView() {
   const [incomeLedger, setIncomeLedger] = React.useState(initialIncomeData);
   const [expenseLedger, setExpenseLedger] = React.useState(initialExpenseData);
-  const [generalLedger, setGeneralLedger] = React.useState<GeneralLedgerEntry[]>([]);
 
   const [visibleIncomeColumns, setVisibleIncomeColumns] = React.useState<Record<IncomeColumn, boolean>>({
     date: true,
@@ -114,25 +102,6 @@ export function LedgersView() {
     receiptNumber: false,
   });
 
-  React.useEffect(() => {
-    const combinedIncome = incomeLedger.map(item => ({
-        ...item,
-        type: 'income' as const,
-        payeePayer: item.source,
-    }));
-    const combinedExpenses = expenseLedger.map(item => ({
-        ...item,
-        type: 'expense' as const,
-        payeePayer: item.vendor,
-        amount: -item.amount,
-    }));
-
-    const combined = [...combinedIncome, ...combinedExpenses]
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    setGeneralLedger(combined);
-  }, [incomeLedger, expenseLedger]);
-
   const activeIncomeColumns = (Object.keys(visibleIncomeColumns) as IncomeColumn[]).filter(key => visibleIncomeColumns[key]);
   const activeExpenseColumns = (Object.keys(visibleExpenseColumns) as ExpenseColumn[]).filter(key => visibleExpenseColumns[key]);
 
@@ -147,14 +116,6 @@ export function LedgersView() {
       prev.map(item => (item.id === id ? { ...item, category: newCategory } : item))
     );
   };
-
-  const handleGeneralLedgerCategoryChange = (id: string, type: 'income' | 'expense', newCategory: string) => {
-      if (type === 'income') {
-          handleIncomeCategoryChange(id, newCategory);
-      } else {
-          handleExpenseCategoryChange(id, newCategory);
-      }
-  }
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -182,42 +143,9 @@ export function LedgersView() {
                   <CardDescription>A combined view of all income and expense transactions.</CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Payee/Payer</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {generalLedger.map(item => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.date}</TableCell>
-                        <TableCell>{item.payeePayer}</TableCell>
-                        <TableCell>{item.description}</TableCell>
-                        <TableCell>
-                            <Select value={item.category} onValueChange={(newCategory) => handleGeneralLedgerCategoryChange(item.id, item.type, newCategory)}>
-                                <SelectTrigger className="w-[180px] h-9">
-                                <SelectValue placeholder="Select..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                {allCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </TableCell>
-                        <TableCell className={cn(
-                            "text-right font-mono",
-                            item.type === 'income' ? 'text-green-600' : 'text-red-600'
-                        )}>
-                            {item.amount.toLocaleString("en-US", { style: "currency", currency: "USD", signDisplay: 'auto' })}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <div className="text-center text-muted-foreground py-16 border-2 border-dashed rounded-lg">
+                    <p>Coming Soon: A unified view of all transactions.</p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
