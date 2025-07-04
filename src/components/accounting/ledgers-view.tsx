@@ -65,17 +65,17 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 // --- MOCK DATA & TYPES ---
 
 const initialIncomeData = [
-  { id: "inc_1", date: "2024-07-25", source: "Client Alpha", company: "Alpha Inc.", description: "Web Development Services", amount: 5000, category: "Service Revenue", reasons: "Contracted services" },
-  { id: "inc_2", date: "2024-07-24", source: "Client Beta", company: "Beta Corp.", description: "Consulting Retainer - July", amount: 2500, category: "Consulting", reasons: "Monthly retainer" },
-  { id: "inc_3", date: "2024-07-22", source: "E-commerce Store", company: "Ogeemo Store", description: "Product Sales", amount: 850.75, category: "Sales Revenue", reasons: "Online sales" },
-  { id: "inc_4", date: "2024-07-20", source: "Affiliate Payout", company: "PartnerStack", description: "Q2 Affiliate Earnings", amount: 320.50, category: "Other Income", reasons: "Referral commissions" },
+  { id: "inc_1", date: "2024-07-25", source: "Client Alpha", company: "Alpha Inc.", description: "Web Development Services", amount: 5000, category: "Service Revenue", explanation: "Contracted services" },
+  { id: "inc_2", date: "2024-07-24", source: "Client Beta", company: "Beta Corp.", description: "Consulting Retainer - July", amount: 2500, category: "Consulting", explanation: "Monthly retainer" },
+  { id: "inc_3", date: "2024-07-22", source: "E-commerce Store", company: "Ogeemo Store", description: "Product Sales", amount: 850.75, category: "Sales Revenue", explanation: "Online sales" },
+  { id: "inc_4", date: "2024-07-20", source: "Affiliate Payout", company: "PartnerStack", description: "Q2 Affiliate Earnings", amount: 320.50, category: "Other Income", explanation: "Referral commissions" },
 ];
 
 const initialExpenseData = [
-  { id: "exp_1", date: "2024-07-25", vendor: "Cloud Hosting Inc.", company: "Cloud Hosting Inc.", description: "Server Costs - July", amount: 150, category: "Utilities", reasons: "Monthly server maintenance" },
-  { id: "exp_2", date: "2024-07-23", vendor: "SaaS Tools Co.", company: "SaaS Tools Co.", description: "Software Subscriptions", amount: 75.99, category: "Software", reasons: "Team software licenses" },
-  { id: "exp_3", date: "2024-07-21", vendor: "Office Supply Hub", company: "Office Supply Hub", description: "Stationery and Supplies", amount: 45.30, category: "Office Supplies", reasons: "Restocking office supplies" },
-  { id: "exp_4", date: "2024-07-20", vendor: "Freelance Designer", company: "Jane Designs", description: "Logo Design", amount: 800, category: "Contractors", reasons: "New logo design for marketing campaign" },
+  { id: "exp_1", date: "2024-07-25", vendor: "Cloud Hosting Inc.", company: "Cloud Hosting Inc.", description: "Server Costs - July", amount: 150, category: "Utilities", explanation: "Monthly server maintenance" },
+  { id: "exp_2", date: "2024-07-23", vendor: "SaaS Tools Co.", company: "SaaS Tools Co.", description: "Software Subscriptions", amount: 75.99, category: "Software", explanation: "Team software licenses" },
+  { id: "exp_3", date: "2024-07-21", vendor: "Office Supply Hub", company: "Office Supply Hub", description: "Stationery and Supplies", amount: 45.30, category: "Office Supplies", explanation: "Restocking office supplies" },
+  { id: "exp_4", date: "2024-07-20", vendor: "Freelance Designer", company: "Jane Designs", description: "Logo Design", amount: 800, category: "Contractors", explanation: "New logo design for marketing campaign" },
 ];
 
 type IncomeTransaction = typeof initialIncomeData[0];
@@ -88,7 +88,7 @@ const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
 const defaultIncomeCategories = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income"];
 const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
 
-const emptyTransactionForm = { date: '', party: '', company: '', description: '', amount: '', category: '', reasons: '' };
+const emptyTransactionForm = { date: '', party: '', company: '', description: '', amount: '', category: '', explanation: '' };
 
 
 // --- COMPONENT ---
@@ -218,7 +218,7 @@ export function LedgersView() {
                 description: transaction.description,
                 amount: String(transaction.amount),
                 category: transaction.category,
-                reasons: transaction.reasons || '',
+                explanation: (transaction as any).explanation || '',
             });
         } else {
             setTransactionToEdit(null);
@@ -240,7 +240,7 @@ export function LedgersView() {
             amount: amountNum,
             category: newTransaction.category,
             company: newTransaction.company.trim(),
-            reasons: newTransaction.reasons.trim(),
+            explanation: newTransaction.explanation.trim(),
         };
 
         if (transactionToEdit) { // Handle editing existing transaction
@@ -336,7 +336,7 @@ export function LedgersView() {
                           <TableHead>Company</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
-                          <TableHead>Reasons</TableHead>
+                          <TableHead>Explanation</TableHead>
                           <TableHead>Type</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead><span className="sr-only">Actions</span></TableHead>
@@ -361,7 +361,7 @@ export function LedgersView() {
                                 </SelectContent>
                               </Select>
                             </TableCell>
-                            <TableCell>{item.reasons}</TableCell>
+                            <TableCell>{(item as any).explanation}</TableCell>
                             <TableCell>
                               <Badge variant={item.type === 'income' ? 'secondary' : 'destructive'} className={cn(item.type === 'income' && 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200')}>
                                 {item.type}
@@ -423,7 +423,7 @@ export function LedgersView() {
                           <TableHead>Source</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
-                          <TableHead>Reasons</TableHead>
+                          <TableHead>Explanation</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead><span className="sr-only">Actions</span></TableHead>
                         </TableRow>
@@ -441,7 +441,7 @@ export function LedgersView() {
                                   <SelectContent>{incomeCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
                               </Select>
                             </TableCell>
-                            <TableCell>{item.reasons}</TableCell>
+                            <TableCell>{item.explanation}</TableCell>
                             <TableCell className="text-right font-mono text-green-600">{item.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell>
                             <TableCell>
                                <DropdownMenu>
@@ -493,7 +493,7 @@ export function LedgersView() {
                           <TableHead>Vendor</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
-                          <TableHead>Reasons</TableHead>
+                          <TableHead>Explanation</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead><span className="sr-only">Actions</span></TableHead>
                         </TableRow>
@@ -511,7 +511,7 @@ export function LedgersView() {
                                   <SelectContent>{expenseCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
                               </Select>
                             </TableCell>
-                            <TableCell>{item.reasons}</TableCell>
+                            <TableCell>{item.explanation}</TableCell>
                             <TableCell className="text-right font-mono text-red-600">({item.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })})</TableCell>
                             <TableCell>
                                <DropdownMenu>
@@ -637,8 +637,8 @@ export function LedgersView() {
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-reasons" className="text-right">Reasons</Label>
-              <Input id="tx-reasons" value={newTransaction.reasons} onChange={(e) => setNewTransaction(prev => ({...prev, reasons: e.target.value}))} className="col-span-3" />
+              <Label htmlFor="tx-explanation" className="text-right">Explanation</Label>
+              <Input id="tx-explanation" value={newTransaction.explanation} onChange={(e) => setNewTransaction(prev => ({...prev, explanation: e.target.value}))} className="col-span-3" />
             </div>
           </div>
           <DialogFooter>
