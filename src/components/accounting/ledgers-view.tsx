@@ -119,6 +119,14 @@ export function LedgersView() {
   
   const allCategories = React.useMemo(() => [...new Set([...incomeCategories, ...expenseCategories])], [incomeCategories, expenseCategories]);
 
+  const incomeTotal = React.useMemo(() => {
+    return incomeLedger.reduce((sum, item) => sum + item.amount, 0);
+  }, [incomeLedger]);
+
+  const expenseTotal = React.useMemo(() => {
+    return expenseLedger.reduce((sum, item) => sum + item.amount, 0);
+  }, [expenseLedger]);
+
   const handleCategoryChange = (id: string, newCategory: string, type: 'income' | 'expense') => {
     if (type === 'income') {
       setIncomeLedger(prev =>
@@ -249,7 +257,7 @@ export function LedgersView() {
               
               <TabsContent value="general">
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="text-center">
                     <CardTitle>General Ledger</CardTitle>
                     <CardDescription>A combined view of all income and expense transactions.</CardDescription>
                   </CardHeader>
@@ -300,9 +308,13 @@ export function LedgersView() {
 
               <TabsContent value="income">
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="text-center relative">
                       <CardTitle>Income Ledger</CardTitle>
                       <CardDescription>All incoming revenue streams.</CardDescription>
+                      <div className="absolute top-4 right-4 text-right">
+                          <p className="text-sm font-medium text-muted-foreground">Total Income</p>
+                          <p className="text-xl font-bold text-green-600">{incomeTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })}</p>
+                      </div>
                   </CardHeader>
                   <CardContent>
                     <Table>
@@ -343,9 +355,13 @@ export function LedgersView() {
 
               <TabsContent value="expenses">
                 <Card>
-                  <CardHeader>
+                  <CardHeader className="text-center relative">
                       <CardTitle>Expense Ledger</CardTitle>
                       <CardDescription>All outgoing expenditures.</CardDescription>
+                      <div className="absolute top-4 right-4 text-right">
+                          <p className="text-sm font-medium text-muted-foreground">Total Expenses</p>
+                          <p className="text-xl font-bold text-red-600">({expenseTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })})</p>
+                      </div>
                   </CardHeader>
                   <CardContent>
                     <Table>
