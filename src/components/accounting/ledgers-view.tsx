@@ -294,7 +294,7 @@ export function LedgersView() {
           </header>
 
           <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-            <Tabs defaultValue="general" className="w-full max-w-6xl">
+            <Tabs defaultValue="general" className="w-full">
               <div className="flex justify-center items-center mb-4">
                 <TabsList className="grid w-full max-w-lg grid-cols-3">
                   <TabsTrigger value="general">General Ledger</TabsTrigger>
