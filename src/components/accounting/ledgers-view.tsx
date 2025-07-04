@@ -33,8 +33,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,7 +54,7 @@ import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Settings, Plus, Trash2, PlusCircle, MoreVertical } from "lucide-react";
+import { Settings, Plus, Trash2, PlusCircle, MoreVertical, BookOpen, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -94,7 +103,9 @@ export function LedgersView() {
   const [newIncomeCategory, setNewIncomeCategory] = React.useState("");
   const [newExpenseCategory, setNewExpenseCategory] = React.useState("");
   
-  const [isAddTransactionDialogOpen, setIsAddTransactionDialogOpen] = React.useState(false);
+  const [isTransactionDialogOpen, setIsTransactionDialogOpen] = React.useState(false);
+  const [transactionToEdit, setTransactionToEdit] = React.useState<GeneralTransaction | null>(null);
+  const [transactionToDelete, setTransactionToDelete] = React.useState<GeneralTransaction | null>(null);
   const [newTransactionType, setNewTransactionType] = React.useState<'income' | 'expense'>('income');
   const [newTransaction, setNewTransaction] = React.useState(emptyTransactionForm);
 
@@ -195,41 +206,66 @@ export function LedgersView() {
      }
   };
   
-  const handleSaveTransaction = () => {
-    const amountNum = parseFloat(newTransaction.amount);
-    if (!newTransaction.date || !newTransaction.party || !newTransaction.category || !newTransaction.amount || isNaN(amountNum) || amountNum <= 0) {
-      toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please fill all required fields correctly.' });
-      return;
-    }
+    const handleOpenTransactionDialog = (type: 'income' | 'expense', transaction?: GeneralTransaction) => {
+        setNewTransactionType(type);
+        if (transaction) {
+            setTransactionToEdit(transaction);
+            setNewTransaction({
+                date: transaction.date,
+                party: transaction.source,
+                description: transaction.description,
+                amount: String(transaction.amount),
+                category: transaction.category
+            });
+        } else {
+            setTransactionToEdit(null);
+            setNewTransaction(emptyTransactionForm);
+        }
+        setIsTransactionDialogOpen(true);
+    };
 
-    if (newTransactionType === 'income') {
-        const newEntry: IncomeTransaction = {
-            id: `inc_${Date.now()}`,
-            date: newTransaction.date,
-            source: newTransaction.party.trim(),
-            description: newTransaction.description.trim(),
-            amount: amountNum,
-            category: newTransaction.category,
-        };
-        setIncomeLedger(prev => [newEntry, ...prev]);
-        toast({ title: "Income Transaction Added" });
-    } else {
-        const newEntry: ExpenseTransaction = {
-            id: `exp_${Date.now()}`,
-            date: newTransaction.date,
-            vendor: newTransaction.party.trim(),
-            description: newTransaction.description.trim(),
-            amount: amountNum,
-            category: newTransaction.category,
-        };
-        setExpenseLedger(prev => [newEntry, ...prev]);
-        toast({ title: "Expense Transaction Added" });
-    }
+    const handleSaveTransaction = () => {
+        const amountNum = parseFloat(newTransaction.amount);
+        if (!newTransaction.date || !newTransaction.party || !newTransaction.category || !newTransaction.amount || isNaN(amountNum) || amountNum <= 0) {
+            toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please fill all required fields correctly.' });
+            return;
+        }
 
-    setIsAddTransactionDialogOpen(false);
-    setNewTransaction(emptyTransactionForm);
-    setNewTransactionType('income');
-  };
+        if (transactionToEdit) { // Handle editing existing transaction
+            if (transactionToEdit.type === 'income') {
+                setIncomeLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, date: newTransaction.date, source: newTransaction.party, description: newTransaction.description, amount: amountNum, category: newTransaction.category } : item));
+                toast({ title: "Income Transaction Updated" });
+            } else {
+                setExpenseLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, date: newTransaction.date, vendor: newTransaction.party, description: newTransaction.description, amount: amountNum, category: newTransaction.category } : item));
+                toast({ title: "Expense Transaction Updated" });
+            }
+        } else { // Handle adding new transaction
+            if (newTransactionType === 'income') {
+                const newEntry: IncomeTransaction = { id: `inc_${Date.now()}`, date: newTransaction.date, source: newTransaction.party.trim(), description: newTransaction.description.trim(), amount: amountNum, category: newTransaction.category };
+                setIncomeLedger(prev => [newEntry, ...prev]);
+                toast({ title: "Income Transaction Added" });
+            } else {
+                const newEntry: ExpenseTransaction = { id: `exp_${Date.now()}`, date: newTransaction.date, vendor: newTransaction.party.trim(), description: newTransaction.description.trim(), amount: amountNum, category: newTransaction.category };
+                setExpenseLedger(prev => [newEntry, ...prev]);
+                toast({ title: "Expense Transaction Added" });
+            }
+        }
+
+        setIsTransactionDialogOpen(false);
+        setTransactionToEdit(null);
+        setNewTransaction(emptyTransactionForm);
+    };
+    
+    const handleConfirmDelete = () => {
+        if (!transactionToDelete) return;
+        if (transactionToDelete.type === 'income') {
+            setIncomeLedger(prev => prev.filter(item => item.id !== transactionToDelete.id));
+        } else {
+            setExpenseLedger(prev => prev.filter(item => item.id !== transactionToDelete.id));
+        }
+        toast({ title: 'Transaction Deleted' });
+        setTransactionToDelete(null);
+    };
 
   return (
     <>
@@ -319,7 +355,7 @@ export function LedgersView() {
                               {item.type === 'income' ? item.amount.toLocaleString("en-US", { style: "currency", currency: "USD" }) : `(${item.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })})`}
                             </TableCell>
                             <TableCell>
-                              <DropdownMenu>
+                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" className="h-8 w-8 p-0">
                                     <span className="sr-only">Open menu</span>
@@ -327,9 +363,9 @@ export function LedgersView() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>Open</DropdownMenuItem>
-                                  <DropdownMenuItem>Edit</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog(item.type, item)}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog(item.type, item)}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete(item)}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>
@@ -340,7 +376,7 @@ export function LedgersView() {
                   </CardContent>
                   <CardFooter className="flex justify-between">
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" onClick={() => { setNewTransactionType('income'); setIsAddTransactionDialogOpen(true); }}>
+                      <Button variant="outline" onClick={() => handleOpenTransactionDialog('income')}>
                           <PlusCircle className="mr-2 h-4 w-4" /> Post Transaction
                       </Button>
                       <DialogTrigger asChild>
@@ -388,7 +424,7 @@ export function LedgersView() {
                             </TableCell>
                             <TableCell className="text-right font-mono text-green-600">{item.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell>
                             <TableCell>
-                              <DropdownMenu>
+                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" className="h-8 w-8 p-0">
                                     <span className="sr-only">Open menu</span>
@@ -396,9 +432,9 @@ export function LedgersView() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>Open</DropdownMenuItem>
-                                  <DropdownMenuItem>Edit</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', { ...item, type: 'income' })}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', { ...item, type: 'income' })}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({ ...item, type: 'income' })}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>
@@ -408,13 +444,7 @@ export function LedgersView() {
                     </Table>
                   </CardContent>
                   <CardFooter className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={() => {
-                            setNewTransactionType('income');
-                            setIsAddTransactionDialogOpen(true);
-                        }}
-                    >
+                    <Button variant="outline" onClick={() => handleOpenTransactionDialog('income')}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Income
                     </Button>
                     <DialogTrigger asChild>
@@ -468,9 +498,9 @@ export function LedgersView() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem>Open</DropdownMenuItem>
-                                  <DropdownMenuItem>Edit</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('expense', { ...item, source: item.vendor, type: 'expense' })}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('expense', { ...item, source: item.vendor, type: 'expense' })}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({ ...item, source: item.vendor, type: 'expense' })}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>
@@ -480,13 +510,7 @@ export function LedgersView() {
                     </Table>
                   </CardContent>
                   <CardFooter className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={() => {
-                            setNewTransactionType('expense');
-                            setIsAddTransactionDialogOpen(true);
-                        }}
-                    >
+                    <Button variant="outline" onClick={() => handleOpenTransactionDialog('expense')}>
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Expense
                     </Button>
                      <DialogTrigger asChild>
@@ -547,11 +571,11 @@ export function LedgersView() {
         </div>
       </div>
       
-      {/* Add Transaction Dialog */}
-      <Dialog open={isAddTransactionDialogOpen} onOpenChange={setIsAddTransactionDialogOpen}>
+      {/* Add/Edit Transaction Dialog */}
+      <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Post New Transaction</DialogTitle>
+            <DialogTitle>{transactionToEdit ? 'Edit Transaction' : 'Post New Transaction'}</DialogTitle>
             <DialogDescription>Select the transaction type and fill in the details.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -586,11 +610,27 @@ export function LedgersView() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsAddTransactionDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveTransaction}>Save Transaction</Button>
+            <Button variant="ghost" onClick={() => setIsTransactionDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveTransaction}>{transactionToEdit ? 'Save Changes' : 'Save Transaction'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
+       <AlertDialog open={!!transactionToDelete} onOpenChange={() => setTransactionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action will permanently delete the transaction: "{transactionToDelete?.description}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
