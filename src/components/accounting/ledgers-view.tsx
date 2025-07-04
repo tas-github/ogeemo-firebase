@@ -125,30 +125,17 @@ export function LedgersView() {
           <h1 className="text-3xl font-bold font-headline text-primary">
             General Ledgers
           </h1>
+          <Button>General Ledger</Button>
           <p className="text-muted-foreground">
             A common-sense view of your income and expenses. Toggle columns and categorize transactions.
           </p>
         </header>
 
-        <Tabs defaultValue="general" className="w-full max-w-6xl">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="general">General Ledger</TabsTrigger>
+        <Tabs defaultValue="income" className="w-full max-w-6xl">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="income">Income Ledger</TabsTrigger>
             <TabsTrigger value="expenses">Expense Ledger</TabsTrigger>
           </TabsList>
-          <TabsContent value="general">
-            <Card>
-              <CardHeader>
-                  <CardTitle>General Ledger</CardTitle>
-                  <CardDescription>A combined view of all income and expense transactions.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center text-muted-foreground py-16 border-2 border-dashed rounded-lg">
-                    <p>Coming Soon: A unified view of all transactions.</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
           <TabsContent value="income">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
