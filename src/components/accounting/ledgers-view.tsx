@@ -268,6 +268,25 @@ export function LedgersView() {
                     </Button>
                   </CardHeader>
                   <CardContent>
+                    {showTotals && (
+                      <div className="mb-4 rounded-lg border bg-muted/50 p-3">
+                        <div className="w-full max-w-xs space-y-1 text-right ml-auto">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Total Income:</span>
+                            <span className="font-mono font-medium text-green-600">{incomeTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Total Expenses:</span>
+                            <span className="font-mono font-medium text-red-600">({expenseTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })})</span>
+                          </div>
+                          <Separator className="my-1" />
+                          <div className="flex justify-between text-sm font-semibold">
+                            <span>Net Position:</span>
+                            <span className="font-mono">{(incomeTotal - expenseTotal).toLocaleString("en-US", { style: "currency", currency: "USD" })}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -309,25 +328,6 @@ export function LedgersView() {
                       </TableBody>
                     </Table>
                   </CardContent>
-                  {showTotals && (
-                    <CardFooter className="justify-end">
-                      <div className="w-full max-w-sm space-y-2 text-right">
-                          <div className="flex justify-between font-medium">
-                              <span>Total Income:</span>
-                              <span className="font-mono text-green-600">{incomeTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })}</span>
-                          </div>
-                          <div className="flex justify-between font-medium">
-                              <span>Total Expenses:</span>
-                              <span className="font-mono text-red-600">({expenseTotal.toLocaleString("en-US", { style: "currency", currency: "USD" })})</span>
-                          </div>
-                          <Separator className="my-2" />
-                          <div className="flex justify-between font-bold text-lg">
-                              <span>Net Position:</span>
-                              <span className="font-mono">{(incomeTotal - expenseTotal).toLocaleString("en-US", { style: "currency", currency: "USD" })}</span>
-                          </div>
-                      </div>
-                    </CardFooter>
-                  )}
                 </Card>
               </TabsContent>
 
