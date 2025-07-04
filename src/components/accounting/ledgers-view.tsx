@@ -241,7 +241,7 @@ export function LedgersView() {
 
           <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
             <Tabs defaultValue="general" className="w-full max-w-6xl">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-center items-center mb-4">
                 <TabsList className="grid w-full max-w-lg grid-cols-3">
                   <TabsTrigger value="general">General Ledger</TabsTrigger>
                   <TabsTrigger value="income">Income Ledger</TabsTrigger>
@@ -251,22 +251,9 @@ export function LedgersView() {
               
               <TabsContent value="general">
                 <Card>
-                  <CardHeader>
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" onClick={() => { setNewTransactionType('income'); setIsAddTransactionDialogOpen(true); }}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Post Transaction
-                        </Button>
-                        <DialogTrigger asChild>
-                           <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Manage Categories</Button>
-                        </DialogTrigger>
-                      </div>
-                      <div className="flex-1 text-center">
-                          <CardTitle>General Ledger</CardTitle>
-                          <CardDescription>A combined view of all income and expense transactions.</CardDescription>
-                      </div>
-                      <Button variant="outline" onClick={() => setShowTotals(!showTotals)}>Totals</Button>
-                    </div>
+                  <CardHeader className="text-center">
+                    <CardTitle>General Ledger</CardTitle>
+                    <CardDescription>A combined view of all income and expense transactions.</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {showTotals && (
@@ -329,6 +316,17 @@ export function LedgersView() {
                       </TableBody>
                     </Table>
                   </CardContent>
+                  <CardFooter className="flex justify-between">
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" onClick={() => { setNewTransactionType('income'); setIsAddTransactionDialogOpen(true); }}>
+                          <PlusCircle className="mr-2 h-4 w-4" /> Post Transaction
+                      </Button>
+                      <DialogTrigger asChild>
+                          <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Manage Categories</Button>
+                      </DialogTrigger>
+                    </div>
+                    <Button variant="outline" onClick={() => setShowTotals(!showTotals)}>Totals</Button>
+                  </CardFooter>
                 </Card>
               </TabsContent>
 
