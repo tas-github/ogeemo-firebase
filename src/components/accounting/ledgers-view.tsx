@@ -120,12 +120,12 @@ export function LedgersView() {
   const allCategories = React.useMemo(() => [...new Set([...incomeCategories, ...expenseCategories])], [incomeCategories, expenseCategories]);
 
   const incomeTotal = React.useMemo(() => {
-    return incomeLedger.reduce((sum, item) => sum + item.amount, 0);
-  }, [incomeLedger]);
+    return generalLedger.filter(t => t.type === 'income').reduce((sum, item) => sum + item.amount, 0);
+  }, [generalLedger]);
 
   const expenseTotal = React.useMemo(() => {
-    return expenseLedger.reduce((sum, item) => sum + item.amount, 0);
-  }, [expenseLedger]);
+    return generalLedger.filter(t => t.type === 'expense').reduce((sum, item) => sum + item.amount, 0);
+  }, [generalLedger]);
 
   const handleCategoryChange = (id: string, newCategory: string, type: 'income' | 'expense') => {
     if (type === 'income') {
