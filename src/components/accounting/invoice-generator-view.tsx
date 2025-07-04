@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
 import { type DateRange } from 'react-day-picker';
 import { format, addDays } from 'date-fns';
-import { Calendar as CalendarIcon, Plus, Trash2, Printer, Save, Mail, Info } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, Printer, Save, Mail, Info, Settings } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { mockContacts, type Contact } from '@/data/contacts';
@@ -80,10 +80,13 @@ const formatTime = (totalSeconds: number) => {
   return `${hours}h ${minutes}m`;
 };
 
+// LocalStorage Keys
 const EDIT_INVOICE_TEMPLATE_KEY = 'editInvoiceTemplate';
 const INVOICE_TEMPLATES_KEY = 'invoiceTemplates';
 const INVOICE_DRAFT_KEY = 'ogeemo-invoice-draft';
 const DEFAULT_INVOICE_TAX_KEY = 'ogeemo-default-tax';
+const INVOICE_NEXT_NUMBER_KEY = 'ogeemo-invoice-next-number';
+const DEFAULT_INVOICE_START_NUMBER = 101;
 
 
 const predefinedItems = [
@@ -105,7 +108,7 @@ export function InvoiceGeneratorView() {
   const [loggedEntries, setLoggedEntries] = useState<EventEntry[]>([]);
   const [customItems, setCustomItems] = useState<CustomLineItem[]>([]);
   
-  const [invoiceNumber, setInvoiceNumber] = useState(`INV-${Date.now()}`);
+  const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dueDate, setDueDate] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
 
@@ -113,6 +116,7 @@ export function InvoiceGeneratorView() {
   const [taxRate, setTaxRate] = useState(0);
 
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [isInvoiceSettingsOpen, setIsInvoiceSettingsOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
 
   const { toast } = useToast();
@@ -123,6 +127,15 @@ export function InvoiceGeneratorView() {
     setContacts(mockContacts);
   }, []);
   
+  const getNextInvoiceNumber = useCallback(() => {
+    try {
+        const nextNum = localStorage.getItem(INVOICE_NEXT_NUMBER_KEY);
+        return nextNum ? parseInt(nextNum, 10) : DEFAULT_INVOICE_START_NUMBER;
+    } catch {
+        return DEFAULT_INVOICE_START_NUMBER;
+    }
+  }, []);
+
   // Effect to load either a template for editing, or a saved draft
   useEffect(() => {
     try {
@@ -140,7 +153,7 @@ export function InvoiceGeneratorView() {
         setLoggedEntries([]);
         setTaxType('none');
         setTaxRate(0);
-        setInvoiceNumber(`INV-${Date.now()}`);
+        setInvoiceNumber(`INV-${getNextInvoiceNumber()}`);
         setInvoiceDate(format(new Date(), 'yyyy-MM-dd'));
         setDueDate(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
 
@@ -171,11 +184,13 @@ export function InvoiceGeneratorView() {
         setTaxType(savedDraft.taxType);
         setTaxRate(savedDraft.taxRate);
         setCustomItems(savedDraft.customItems);
+      } else {
+        setInvoiceNumber(`INV-${getNextInvoiceNumber()}`);
       }
     } catch (error) {
       console.error("Failed to initialize invoice page:", error);
     }
-  }, [toast]);
+  }, [toast, getNextInvoiceNumber]);
   
   // Effect to save draft to localStorage whenever relevant state changes
   useEffect(() => {
@@ -277,19 +292,34 @@ export function InvoiceGeneratorView() {
   }, [subtotal, taxAmount]);
 
   const handlePrint = () => window.print();
-  const handleEmail = () => toast({ title: "Email Sent (Simulated)", description: "The invoice has been sent to the client." });
 
+  const handleEmail = () => {
+    toast({ title: "Email Sent (Simulated)", description: "The invoice has been sent to the client." });
+    try {
+        const nextNum = getNextInvoiceNumber();
+        localStorage.setItem(INVOICE_NEXT_NUMBER_KEY, String(nextNum + 1));
+        // We don't automatically load the next number here, we clear the form instead.
+        // The next number will be picked up on the next component mount or manual clear.
+    } catch(e) {
+        console.error("Could not update invoice number", e);
+    }
+  };
+
+  const clearInvoice = useCallback(() => {
+    setCustomItems([]);
+    setLoggedEntries([]);
+    setSelectedContactId('');
+    setTaxType('none');
+    setTaxRate(0);
+    setInvoiceNumber(`INV-${getNextInvoiceNumber()}`);
+    setInvoiceDate(format(new Date(), 'yyyy-MM-dd'));
+    setDueDate(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
+    localStorage.removeItem(INVOICE_DRAFT_KEY);
+  }, [getNextInvoiceNumber]);
+  
   const handleClearInvoice = () => {
     if (window.confirm("Are you sure you want to clear the entire invoice? This will remove all items and reset the form.")) {
-        setCustomItems([]);
-        setLoggedEntries([]);
-        setSelectedContactId('');
-        setTaxType('none');
-        setTaxRate(0);
-        setInvoiceNumber(`INV-${Date.now()}`);
-        setInvoiceDate(format(new Date(), 'yyyy-MM-dd'));
-        setDueDate(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
-        localStorage.removeItem(INVOICE_DRAFT_KEY);
+        clearInvoice();
         toast({ title: "Invoice Cleared" });
     }
   };
@@ -535,7 +565,38 @@ export function InvoiceGeneratorView() {
                       <Logo className="text-primary"/>
                       <div className="text-right">
                           <h1 className="text-4xl font-bold uppercase text-gray-700">Invoice</h1>
-                          <p className="text-gray-500"># <Input type="text" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className="inline-block w-32 p-0 border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p>
+                          <div className="flex items-center justify-end gap-1">
+                            <p className="text-gray-500">#</p>
+                            <Input type="text" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className="w-32 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" />
+                             <Dialog open={isInvoiceSettingsOpen} onOpenChange={setIsInvoiceSettingsOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6"><Settings className="h-4 w-4" /></Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader><DialogTitle>Invoice Number Settings</DialogTitle></DialogHeader>
+                                    <div className="py-4 space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="next-inv-num">Set Next Invoice Number</Label>
+                                            <Input id="next-inv-num" type="number" defaultValue={getNextInvoiceNumber()} onBlur={(e) => {
+                                                const num = parseInt(e.target.value, 10);
+                                                if (!isNaN(num)) {
+                                                    localStorage.setItem(INVOICE_NEXT_NUMBER_KEY, String(num));
+                                                }
+                                            }}/>
+                                        </div>
+                                        <Button variant="destructive" onClick={() => {
+                                            localStorage.setItem(INVOICE_NEXT_NUMBER_KEY, String(DEFAULT_INVOICE_START_NUMBER));
+                                            toast({ title: "Invoice numbering has been reset."});
+                                            setIsInvoiceSettingsOpen(false);
+                                            clearInvoice();
+                                        }}>Reset Numbering</Button>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button onClick={() => setIsInvoiceSettingsOpen(false)}>Done</Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                             </Dialog>
+                          </div>
                       </div>
                   </header>
                   
@@ -553,8 +614,8 @@ export function InvoiceGeneratorView() {
                           )}
                       </div>
                       <div className="text-right">
-                          <p><span className="font-bold text-gray-500">Invoice Date:</span> <Input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} className="inline-block w-40 p-0 border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p>
-                          <p><span className="font-bold text-gray-500">Due Date:</span> <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="inline-block w-40 p-0 border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p>
+                          <p><span className="font-bold text-gray-500">Invoice Date:</span> <Input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} className="inline-block w-40 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p>
+                          <p><span className="font-bold text-gray-500">Due Date:</span> <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="inline-block w-40 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p>
                       </div>
                   </section>
 
