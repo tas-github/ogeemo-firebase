@@ -262,10 +262,11 @@ export function InvoiceGeneratorView() {
             <CardTitle>Invoice Setup</CardTitle>
             <CardDescription>Configure the client, date range, and line items for this invoice.</CardDescription>
         </CardHeader>
-        <CardContent className="grid lg:grid-cols-3 gap-6">
-            <div className="space-y-6">
+        <CardContent className="space-y-6">
+            <div className="grid lg:grid-cols-2 gap-6">
+                {/* Left Column: Time Logs */}
                 <div className="space-y-4">
-                    <h4 className="font-semibold text-base">1. Fetch Time Logs</h4>
+                    <h4 className="font-semibold text-base">Fetch Time Logs</h4>
                     <div className="space-y-2">
                         <Label htmlFor="client-select">Client</Label>
                         <Select value={selectedContactId} onValueChange={setSelectedContactId}>
@@ -291,65 +292,70 @@ export function InvoiceGeneratorView() {
                     </div>
                     <Button className="w-full" onClick={fetchLoggedEntries}>Fetch Logged Activities</Button>
                 </div>
+                {/* Right Column: Line Items */}
                 <div className="space-y-4">
-                    <h4 className="font-semibold text-base">3. Configure Taxes</h4>
-                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="tax-type">Tax Type</Label>
-                            <Select value={taxType} onValueChange={setTaxType} id="tax-type">
-                                <SelectTrigger><SelectValue placeholder="Select tax type" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">No Tax</SelectItem>
-                                    <SelectItem value="vat">VAT</SelectItem>
-                                    <SelectItem value="gst">GST</SelectItem>
-                                    <SelectItem value="hst">HST</SelectItem>
-                                    <SelectItem value="dst">DST</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="tax-rate">Tax Rate (%)</Label>
-                            <Input 
-                                id="tax-rate"
-                                type="number" 
-                                placeholder="e.g., 20"
-                                value={taxRate || ''}
-                                onChange={(e) => setTaxRate(Number(e.target.value))}
-                                disabled={taxType === 'none'}
-                            />
-                        </div>
+                    <h4 className="font-semibold text-base">Add Line Items</h4>
+                    <div className="grid sm:grid-cols-[1fr_auto] gap-2">
+                        <Select onValueChange={addPredefinedItem}>
+                            <SelectTrigger><SelectValue placeholder="Select a predefined item..." /></SelectTrigger>
+                            <SelectContent>
+                                {predefinedItems.map(item => <SelectItem key={item.description} value={item.description}>{item.description}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Button variant="outline" onClick={addCustomItem}><Plus className="mr-2 h-4 w-4"/>Add Line Item</Button>
                     </div>
+                    <ScrollArea className="h-40">
+                        <div className="space-y-3 pr-3">
+                            {customItems.map(item => (
+                                <div key={item.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
+                                    <Input placeholder="Item description" value={item.description} onChange={e => updateCustomItem(item.id, 'description', e.target.value)} />
+                                    <div className="flex items-center gap-2">
+                                        <Label htmlFor={`qty-${item.id}`}>Qty</Label>
+                                        <Input id={`qty-${item.id}`} type="number" value={item.quantity} onChange={e => updateCustomItem(item.id, 'quantity', Number(e.target.value))} className="w-16" />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Label htmlFor={`price-${item.id}`}>$ Rate</Label>
+                                        <Input id={`price-${item.id}`} type="number" value={item.price} onChange={e => updateCustomItem(item.id, 'price', Number(e.target.value))} className="w-24" />
+                                    </div>
+                                    <Button variant="ghost" size="icon" onClick={() => removeCustomItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                                </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
                 </div>
             </div>
-            <div className="space-y-4 lg:col-span-2">
-                <h4 className="font-semibold text-base">2. Add Item</h4>
-                <div className="grid sm:grid-cols-[1fr_auto] gap-2">
-                    <Select onValueChange={addPredefinedItem}>
-                        <SelectTrigger><SelectValue placeholder="Select a predefined item..." /></SelectTrigger>
-                        <SelectContent>
-                            {predefinedItems.map(item => <SelectItem key={item.description} value={item.description}>{item.description}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                     <Button variant="outline" onClick={addCustomItem}><Plus className="mr-2 h-4 w-4"/>Add Line Item</Button>
-                </div>
-                <ScrollArea className="h-32">
-                    <div className="space-y-3 pr-3">
-                         {customItems.map(item => (
-                            <div key={item.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
-                                <Input placeholder="Item description" value={item.description} onChange={e => updateCustomItem(item.id, 'description', e.target.value)} />
-                                <div className="flex items-center gap-2">
-                                    <Label htmlFor={`qty-${item.id}`}>Qty</Label>
-                                    <Input id={`qty-${item.id}`} type="number" value={item.quantity} onChange={e => updateCustomItem(item.id, 'quantity', Number(e.target.value))} className="w-16" />
-                                </div>
-                                 <div className="flex items-center gap-2">
-                                    <Label htmlFor={`price-${item.id}`}>$ Rate</Label>
-                                    <Input id={`price-${item.id}`} type="number" value={item.price} onChange={e => updateCustomItem(item.id, 'price', Number(e.target.value))} className="w-24" />
-                                </div>
-                                <Button variant="ghost" size="icon" onClick={() => removeCustomItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
-                            </div>
-                        ))}
+            
+            <Separator />
+
+            {/* Tax Configuration */}
+            <div>
+                <h4 className="font-semibold text-base">Configure Taxes</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                    <div className="space-y-2">
+                        <Label htmlFor="tax-type">Tax Type</Label>
+                        <Select value={taxType} onValueChange={setTaxType} id="tax-type">
+                            <SelectTrigger><SelectValue placeholder="Select tax type" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">No Tax</SelectItem>
+                                <SelectItem value="vat">VAT</SelectItem>
+                                <SelectItem value="gst">GST</SelectItem>
+                                <SelectItem value="hst">HST</SelectItem>
+                                <SelectItem value="dst">DST</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
-                </ScrollArea>
+                    <div className="space-y-2">
+                        <Label htmlFor="tax-rate">Tax Rate (%)</Label>
+                        <Input 
+                            id="tax-rate"
+                            type="number" 
+                            placeholder="e.g., 20"
+                            value={taxRate || ''}
+                            onChange={(e) => setTaxRate(Number(e.target.value))}
+                            disabled={taxType === 'none'}
+                        />
+                    </div>
+                </div>
             </div>
         </CardContent>
       </Card>
