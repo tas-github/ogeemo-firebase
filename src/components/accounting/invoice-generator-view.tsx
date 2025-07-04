@@ -54,6 +54,16 @@ interface InvoiceTemplate {
   items: CustomLineItem[];
 }
 
+interface InvoiceDraft {
+  selectedContactId: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  dueDate: string;
+  taxType: string;
+  taxRate: number;
+  customItems: CustomLineItem[];
+}
+
 // Helper functions
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -67,6 +77,8 @@ const formatTime = (totalSeconds: number) => {
 
 const EDIT_INVOICE_TEMPLATE_KEY = 'editInvoiceTemplate';
 const INVOICE_TEMPLATES_KEY = 'invoiceTemplates';
+const INVOICE_DRAFT_KEY = 'ogeemo-invoice-draft';
+
 
 const predefinedItems = [
   { description: 'Consulting Services', price: 150.00 },
@@ -105,35 +117,78 @@ export function InvoiceGeneratorView() {
     setContacts(mockContacts);
   }, []);
   
+  // Effect to load either a template for editing, or a saved draft
   useEffect(() => {
     try {
       const templateToEditRaw = localStorage.getItem(EDIT_INVOICE_TEMPLATE_KEY);
       if (templateToEditRaw) {
+        // A template is being edited, which takes precedence over any draft.
         const templateToEdit: InvoiceTemplate = JSON.parse(templateToEditRaw);
         
         const itemsWithIds = templateToEdit.items.map(item => ({
           ...item,
           id: Date.now() + Math.random(),
         }));
-        setCustomItems(itemsWithIds);
         
+        // Reset the form and load template items
+        setCustomItems(itemsWithIds);
+        setSelectedContactId('');
+        setLoggedEntries([]);
+        setTaxType('none');
+        setTaxRate(0);
+        setInvoiceNumber(`INV-${Date.now()}`);
+        setInvoiceDate(format(new Date(), 'yyyy-MM-dd'));
+        setDueDate(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
+
         toast({
           title: "Template Loaded",
-          description: `You are editing the "${templateToEdit.name}" template. Make your changes and save it as a new template.`,
+          description: `You are editing the "${templateToEdit.name}" template.`,
         });
 
+        // Clean up keys
         localStorage.removeItem(EDIT_INVOICE_TEMPLATE_KEY);
+        localStorage.removeItem(INVOICE_DRAFT_KEY);
+        return; // Exit to prevent loading a draft
+      }
+      
+      // If not editing a template, try loading a saved draft
+      const savedDraftRaw = localStorage.getItem(INVOICE_DRAFT_KEY);
+      if (savedDraftRaw) {
+        const savedDraft: InvoiceDraft = JSON.parse(savedDraftRaw);
+        setSelectedContactId(savedDraft.selectedContactId);
+        setInvoiceNumber(savedDraft.invoiceNumber);
+        setInvoiceDate(savedDraft.invoiceDate);
+        setDueDate(savedDraft.dueDate);
+        setTaxType(savedDraft.taxType);
+        setTaxRate(savedDraft.taxRate);
+        setCustomItems(savedDraft.customItems);
       }
     } catch (error) {
-      console.error("Failed to load template for editing:", error);
-      toast({
-        variant: 'destructive',
-        title: 'Error Loading Template',
-        description: 'Could not load the template for editing.',
-      });
-      localStorage.removeItem(EDIT_INVOICE_TEMPLATE_KEY);
+      console.error("Failed to initialize invoice page:", error);
     }
   }, [toast]);
+  
+  // Effect to save draft to localStorage whenever relevant state changes
+  useEffect(() => {
+    // Do not save a draft if the user is in the process of editing a template.
+    const isEditingTemplate = !!localStorage.getItem(EDIT_INVOICE_TEMPLATE_KEY);
+    if (isEditingTemplate) return;
+
+    const draft: InvoiceDraft = {
+      selectedContactId,
+      invoiceNumber,
+      invoiceDate,
+      dueDate,
+      taxType,
+      taxRate,
+      customItems,
+    };
+    try {
+      localStorage.setItem(INVOICE_DRAFT_KEY, JSON.stringify(draft));
+    } catch (error) {
+      console.error("Failed to save invoice draft:", error);
+    }
+  }, [selectedContactId, invoiceNumber, invoiceDate, dueDate, taxType, taxRate, customItems]);
 
   useEffect(() => {
     if (taxType === 'none') {
@@ -219,6 +274,21 @@ export function InvoiceGeneratorView() {
   // Event handlers for actions
   const handlePrint = () => window.print();
   const handleEmail = () => toast({ title: "Email Sent (Simulated)", description: "The invoice has been sent to the client." });
+
+  const handleClearInvoice = () => {
+    if (window.confirm("Are you sure you want to clear the entire invoice? This will remove all items and reset the form.")) {
+        setCustomItems([]);
+        setLoggedEntries([]);
+        setSelectedContactId('');
+        setTaxType('none');
+        setTaxRate(0);
+        setInvoiceNumber(`INV-${Date.now()}`);
+        setInvoiceDate(format(new Date(), 'yyyy-MM-dd'));
+        setDueDate(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
+        localStorage.removeItem(INVOICE_DRAFT_KEY);
+        toast({ title: "Invoice Cleared" });
+    }
+  };
 
   const handleSaveTemplate = () => {
     if (!newTemplateName.trim()) {
@@ -400,6 +470,7 @@ export function InvoiceGeneratorView() {
           <CardHeader className="flex-row justify-between items-center">
               <CardTitle>Invoice Preview</CardTitle>
               <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={handleClearInvoice}><Trash2 className="mr-2 h-4 w-4" /> Clear</Button>
                   <Button variant="outline" onClick={handleEmail}><Mail className="mr-2 h-4 w-4" /> Email Invoice</Button>
                   <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
                    <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
