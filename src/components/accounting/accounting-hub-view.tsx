@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -25,7 +24,7 @@ export function AccountingHubView() {
     {
       icon: Receipt,
       title: "Transactions",
-      description: "View, manage, and categorize all your income and expenses in one place.",
+      description: "View, manage, and categorize all your transactions in one place.",
       href: "/accounting/transactions",
       cta: "View Hub",
     },
