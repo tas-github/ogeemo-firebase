@@ -247,18 +247,20 @@ export function LedgersView() {
                   <TabsTrigger value="income">Income Ledger</TabsTrigger>
                   <TabsTrigger value="expenses">Expense Ledger</TabsTrigger>
                 </TabsList>
-                <DialogTrigger asChild>
-                  <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Manage Categories</Button>
-                </DialogTrigger>
               </div>
               
               <TabsContent value="general">
                 <Card>
                   <CardHeader>
                     <div className="flex justify-between items-center">
-                      <Button variant="outline" onClick={() => { setNewTransactionType('income'); setIsAddTransactionDialogOpen(true); }}>
-                          <PlusCircle className="mr-2 h-4 w-4" /> Post Transaction
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={() => { setNewTransactionType('income'); setIsAddTransactionDialogOpen(true); }}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Post Transaction
+                        </Button>
+                        <DialogTrigger asChild>
+                           <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Manage Categories</Button>
+                        </DialogTrigger>
+                      </div>
                       <div className="flex-1 text-center">
                           <CardTitle>General Ledger</CardTitle>
                           <CardDescription>A combined view of all income and expense transactions.</CardDescription>
@@ -369,7 +371,7 @@ export function LedgersView() {
                       </TableBody>
                     </Table>
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="flex items-center gap-2">
                     <Button
                         variant="outline"
                         onClick={() => {
@@ -379,6 +381,9 @@ export function LedgersView() {
                     >
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Income
                     </Button>
+                    <DialogTrigger asChild>
+                        <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Manage Categories</Button>
+                    </DialogTrigger>
                   </CardFooter>
                 </Card>
               </TabsContent>
@@ -422,7 +427,7 @@ export function LedgersView() {
                       </TableBody>
                     </Table>
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="flex items-center gap-2">
                     <Button
                         variant="outline"
                         onClick={() => {
@@ -432,6 +437,9 @@ export function LedgersView() {
                     >
                         <PlusCircle className="mr-2 h-4 w-4" /> Add Expense
                     </Button>
+                     <DialogTrigger asChild>
+                        <Button variant="outline"><Settings className="mr-2 h-4 w-4" /> Manage Categories</Button>
+                    </DialogTrigger>
                   </CardFooter>
                 </Card>
               </TabsContent>
@@ -534,5 +542,3 @@ export function LedgersView() {
     </>
   );
 }
-
-    
