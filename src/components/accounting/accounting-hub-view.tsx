@@ -27,7 +27,7 @@ export function AccountingHubView() {
       title: "Transactions",
       description: "View, manage, and categorize all your income and expenses in one place.",
       href: "/accounting/transactions",
-      cta: "View Transactions",
+      cta: "View Hub",
     },
     {
       icon: Activity,
