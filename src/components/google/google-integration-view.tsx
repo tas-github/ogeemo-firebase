@@ -1,9 +1,9 @@
 
 "use client";
 
-import React from "react";
-import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import React, { useState } from "react";
+import { signOut, linkWithRedirect } from "firebase/auth";
+import { auth, provider } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,6 +19,7 @@ import { useAuth } from "@/context/auth-context";
 
 export function GoogleIntegrationView() {
   const { user, accessToken, isLoading: isAuthLoading } = useAuth();
+  const [isLinking, setIsLinking] = useState(false);
   const { toast } = useToast();
 
   const handleSignOut = async () => {
@@ -38,6 +39,30 @@ export function GoogleIntegrationView() {
          title: "Sign-Out Failed",
          description: error.message || "Could not disconnect from Google.",
        });
+    }
+  };
+
+  const handleLinkGoogleAccount = async () => {
+    if (!auth || !provider || !user) {
+      toast({ variant: "destructive", title: "Error", description: "Authentication service not ready. Please try again." });
+      return;
+    }
+    setIsLinking(true);
+    try {
+        await linkWithRedirect(user, provider);
+        // Page will redirect, user will come back to /auth/callback
+    } catch (error: any) {
+        console.error("Google Account Linking Error:", error);
+        let description = "An unexpected error occurred.";
+        if (error.code === 'auth/credential-already-in-use') {
+            description = "This Google account is already linked to another user.";
+        }
+        toast({
+            variant: "destructive",
+            title: "Could Not Link Account",
+            description,
+        });
+        setIsLinking(false);
     }
   };
 
@@ -90,13 +115,14 @@ export function GoogleIntegrationView() {
       <div className="flex flex-col items-center gap-6">
         <div className="flex items-center gap-4">
           <AlertTriangle className="h-8 w-8 text-amber-500" />
-          <p className="font-semibold text-lg text-center">Connection Incomplete</p>
+          <p className="font-semibold text-lg text-center">Connection Required</p>
         </div>
         <p className="text-center text-muted-foreground">
-          You are logged in, but Ogeemo does not have the required permissions to access your Google Workspace data. Please sign out and sign in again to grant access.
+          To enable full integration with Google services like Contacts and Calendar, please connect your Google account.
         </p>
-        <Button onClick={handleSignOut} size="lg" className="w-full">
-          Sign Out and Reconnect
+        <Button onClick={handleLinkGoogleAccount} size="lg" className="w-full bg-[#4285F4] text-white hover:bg-[#4285F4]/90" disabled={isLinking}>
+          {isLinking ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : null}
+          Connect to Google
         </Button>
       </div>
     );
