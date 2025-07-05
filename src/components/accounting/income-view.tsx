@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -15,7 +14,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
@@ -43,9 +41,14 @@ export function IncomeView() {
       </header>
       
       <Card>
-        <CardHeader>
-          <CardTitle>Income Transactions</CardTitle>
-          <CardDescription>A list of all recorded income.</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Income Transactions</CardTitle>
+            <CardDescription>A list of all recorded income.</CardDescription>
+          </div>
+          <Button variant="outline">
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Income
+          </Button>
         </CardHeader>
         <CardContent>
           <Table>
@@ -73,11 +76,6 @@ export function IncomeView() {
             </TableBody>
           </Table>
         </CardContent>
-        <CardFooter>
-            <Button variant="outline">
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Income
-            </Button>
-        </CardFooter>
       </Card>
     </div>
   );
