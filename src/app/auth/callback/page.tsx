@@ -3,7 +3,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getRedirectResult } from "firebase/auth";
+import { getRedirectResult, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle } from "lucide-react";
@@ -16,11 +16,22 @@ export default function AuthCallbackPage() {
     const processRedirect = async () => {
       try {
         if (!auth) throw new Error("Firebase not initialized.");
+        
         const result = await getRedirectResult(auth);
+        
         if (result) {
+          // Successfully signed in.
+          // Get the access token from the credential.
+          const credential = GoogleAuthProvider.credentialFromResult(result);
+          if (credential?.accessToken) {
+             // Store the access token in session storage so the AuthContext can pick it up.
+             sessionStorage.setItem('google_access_token', credential.accessToken);
+          }
+          
           router.push("/dashboard");
         } else {
-          // This can happen if the page is visited directly.
+          // This can happen if the page is visited directly or if the redirect result has already been used.
+          // It's safe to just send them to login.
           router.push("/login");
         }
       } catch (error) {

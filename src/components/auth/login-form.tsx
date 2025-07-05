@@ -9,11 +9,10 @@ import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword,
   signInWithRedirect,
-  GoogleAuthProvider,
 } from "firebase/auth";
 import { LoaderCircle } from "lucide-react";
 
-import { auth } from "@/lib/firebase";
+import { auth, provider } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,6 +59,7 @@ export function LoginForm() {
     try {
       if (!auth) throw new Error("Firebase Auth is not initialized.");
       await signInWithEmailAndPassword(auth, values.email, values.password);
+      // The redirect to dashboard is handled by the main app layout now.
     } catch (error: any) {
       console.error("Login Error:", error);
       toast({
@@ -70,13 +70,14 @@ export function LoginForm() {
             ? "Invalid email or password."
             : "An unexpected error occurred. Please try again.",
       });
-      setIsSigningIn(false);
+    } finally {
+        setIsSigningIn(false);
     }
   }
 
   const handleGoogleSignIn = async () => {
     setIsSigningIn(true);
-    if (!auth) {
+    if (!auth || !provider) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -87,23 +88,15 @@ export function LoginForm() {
     }
 
     try {
-      const provider = new GoogleAuthProvider();
-      // This is the crucial fix: we explicitly create a fresh provider and
-      // tell it EXACTLY where to redirect. This overrides any incorrect
-      // defaults from the main firebase config and forces the correct URI.
-      const callbackUrl = `${window.location.origin}/auth/callback`;
-      provider.setCustomParameters({
-        redirect_uri: callbackUrl,
-      });
-      
       await signInWithRedirect(auth, provider);
-
+      // The user will be redirected to Google, and then to our /auth/callback page.
+      // We don't need to do anything else here.
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
       toast({
         variant: "destructive",
         title: "Google Sign-In Failed",
-        description: "Could not initiate Google Sign-In. Please check the console.",
+        description: "Could not initiate Google Sign-In. Please check the console for errors.",
       });
       setIsSigningIn(false);
     }

@@ -38,9 +38,9 @@ if (firebaseConfig.apiKey) {
     db = getFirestore(app);
     storage = getStorage(app);
     provider = new GoogleAuthProvider();
-    provider.addScope('https://www.googleapis.com/auth/drive.file');
-    provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
+    // Add scopes required by the application for Google services
     provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
+    provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
     
   } catch (error) {
     console.error("Firebase initialization error:", error);
