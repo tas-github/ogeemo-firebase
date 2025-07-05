@@ -54,7 +54,7 @@ export default function LoginPage() {
         case 'auth/user-not-found':
         case 'auth/wrong-password':
         case 'auth/invalid-credential':
-          description = "Invalid email or password. Please try again.";
+          description = "Invalid email or password. If you signed up with Google, please use the 'Sign in with Google' button.";
           break;
         case 'auth/invalid-email':
           description = "The email address is not valid.";
@@ -82,10 +82,14 @@ export default function LoginPage() {
       // Redirect is handled by /auth/callback page
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
+      let description = error.message || "Could not start the Google Sign-In process.";
+      if (error.code === 'auth/unauthorized-domain') {
+          description = `This domain (${window.location.hostname}) is not authorized for OAuth operations. Please add it to the authorized domains in your Firebase console's authentication settings.`;
+      }
       toast({
         variant: "destructive",
         title: "Google Sign-In Failed",
-        description: error.message || "Could not start the Google Sign-In process.",
+        description: description,
       });
       setIsGoogleLoading(false);
     }
