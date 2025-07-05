@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth, GoogleAuthProvider, browserLocalPersistence, setPersistence } from "firebase/auth";
+import { getAuth, type Auth, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
@@ -31,20 +31,20 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
         throw new Error("Firebase client SDK can only be initialized in the browser.");
     }
 
+    // Auto-populate authDomain if missing, which is common in some environments.
+    if (!firebaseConfig.authDomain && firebaseConfig.projectId) {
+        firebaseConfig.authDomain = `${firebaseConfig.projectId}.firebaseapp.com`;
+    }
+
     if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
         const missingVars = [
             !firebaseConfig.apiKey && "NEXT_PUBLIC_FIREBASE_API_KEY",
             !firebaseConfig.projectId && "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
         ].filter(Boolean).join(", ");
         console.error(`Firebase configuration is missing: ${missingVars}. Firebase services will be disabled.`);
-        throw new Error("Firebase configuration is incomplete.");
+        throw new Error(`Firebase configuration is incomplete. Missing: ${missingVars}`);
     }
     
-    // Auto-populate authDomain if missing, which is common in some environments.
-    if (!firebaseConfig.authDomain && firebaseConfig.projectId) {
-        firebaseConfig.authDomain = `${firebaseConfig.projectId}.firebaseapp.com`;
-    }
-
     const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -57,6 +57,7 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
     return firebaseServices;
 }
 
+// This function is for server-side usage where persistence is not a concern.
 const getDbForServer = () => {
     if (!getApps().length) {
         if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
