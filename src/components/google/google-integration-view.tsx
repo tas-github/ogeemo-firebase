@@ -24,7 +24,7 @@ export function GoogleIntegrationView() {
 
   const handleSignOut = async () => {
     try {
-      const { auth } = initializeFirebase();
+      const { auth } = await initializeFirebase();
       await signOut(auth);
       toast({
         title: "Disconnected",
@@ -48,7 +48,7 @@ export function GoogleIntegrationView() {
     }
     setIsLinking(true);
     try {
-        const { auth, provider } = initializeFirebase();
+        const { auth, provider } = await initializeFirebase();
         await linkWithRedirect(user, provider);
         // Page will redirect, user will come back to /auth/callback
     } catch (error: any) {
