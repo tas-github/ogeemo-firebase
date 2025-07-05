@@ -1,32 +1,60 @@
-
 "use client";
 
-import type { ReactNode } from "react";
-import { useAuth } from "@/context/auth-context";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { getRedirectResult } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle } from "lucide-react";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
+  const [isVerifying, setIsVerifying] = useState(true);
 
   useEffect(() => {
-    if (!isLoading && user) {
-      router.push("/dashboard");
-    }
-  }, [user, isLoading, router]);
+    const checkRedirect = async () => {
+      try {
+        if (!auth) {
+          setIsVerifying(false);
+          return;
+        }
 
-  if (isLoading || user) {
-    // Show a loader while checking auth status or redirecting
+        const result = await getRedirectResult(auth);
+        
+        if (result) {
+          // A user was successfully signed in on redirect.
+          // It is now safe to redirect them to the dashboard.
+          router.push("/dashboard");
+        } else {
+          // No redirect result, so the user is visiting the page normally.
+          setIsVerifying(false);
+        }
+      } catch (error) {
+        console.error("Error during sign-in redirect check:", error);
+        toast({
+          variant: "destructive",
+          title: "Sign-In Failed",
+          description: "An unexpected error occurred during sign-in. Please try again.",
+        });
+        setIsVerifying(false);
+      }
+    };
+
+    checkRedirect();
+  }, [router, toast]);
+
+  if (isVerifying) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
         <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-lg font-medium text-foreground">
+          Verifying authentication...
+        </p>
       </div>
     );
   }
 
-  // Only show login/register page if not loading and no user
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       {children}

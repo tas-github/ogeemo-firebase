@@ -9,10 +9,11 @@ import { useRouter } from "next/navigation";
 import {
   signInWithEmailAndPassword,
   signInWithRedirect,
+  GoogleAuthProvider,
 } from "firebase/auth";
 import { LoaderCircle } from "lucide-react";
 
-import { auth, provider } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -57,11 +58,8 @@ export function LoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSigningIn(true);
     try {
-      if (!auth) {
-        throw new Error("Firebase Auth is not initialized.");
-      }
+      if (!auth) throw new Error("Firebase Auth is not initialized.");
       await signInWithEmailAndPassword(auth, values.email, values.password);
-      // The redirect to /dashboard is handled by the auth state listener
     } catch (error: any) {
       console.error("Login Error:", error);
       toast({
@@ -78,30 +76,36 @@ export function LoginForm() {
 
   const handleGoogleSignIn = async () => {
     setIsSigningIn(true);
+    if (!auth) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Authentication service not ready. Please try again.",
+      });
+      setIsSigningIn(false);
+      return;
+    }
+
     try {
-      if (!auth || !provider) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Authentication service not ready. Please try again."
-        });
-        setIsSigningIn(false);
-        return;
-      }
-      // Set a flag in session storage to indicate a redirect is in progress.
-      // This helps the callback page confirm the origin of the auth attempt.
-      sessionStorage.setItem('google_auth_in_progress', 'true');
-      // This will redirect the user to Google's sign-in page.
-      // The browser will then be redirected to /auth/callback to process the result.
+      const provider = new GoogleAuthProvider();
+      // This is the crucial fix: we explicitly create a fresh provider and
+      // tell it EXACTLY where to redirect. This overrides any incorrect
+      // defaults from the main firebase config and forces the correct URI.
+      const callbackUrl = `${window.location.origin}/auth/callback`;
+      provider.setCustomParameters({
+        redirect_uri: callbackUrl,
+      });
+      
       await signInWithRedirect(auth, provider);
+
     } catch (error: any) {
-        console.error("Google Sign-In Error:", error);
-        toast({
-            variant: "destructive",
-            title: "Google Sign-In Failed",
-            description: "Could not initiate Google Sign-In. Please check the console.",
-        });
-        setIsSigningIn(false);
+      console.error("Google Sign-In Error:", error);
+      toast({
+        variant: "destructive",
+        title: "Google Sign-In Failed",
+        description: "Could not initiate Google Sign-In. Please check the console.",
+      });
+      setIsSigningIn(false);
     }
   };
 
@@ -171,11 +175,8 @@ export function LoginForm() {
         Sign in with Google
       </Button>
 
-      {/* This dialog provides feedback to the user that the redirect is happening */}
       <Dialog open={isSigningIn}>
-        <DialogContent
-          className="sm:max-w-xs"
-        >
+        <DialogContent className="sm:max-w-xs">
           <DialogHeader>
             <DialogTitle className="sr-only">Signing In</DialogTitle>
             <DialogDescription className="sr-only">
@@ -184,8 +185,7 @@ export function LoginForm() {
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-8">
             <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
-            <p className="text-lg font-medium text-foreground">Signing in...</p>
-            <p className="text-sm text-muted-foreground">Redirecting to Google.</p>
+            <p className="text-lg font-medium text-foreground">Redirecting to Google...</p>
           </div>
         </DialogContent>
       </Dialog>
