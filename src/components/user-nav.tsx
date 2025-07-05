@@ -5,7 +5,7 @@ import Link from "next/link";
 import { LogOut, Settings, User as UserIcon, MoreHorizontal } from "lucide-react";
 import { signOut } from "firebase/auth";
 
-import { auth } from "@/lib/firebase";
+import { initializeFirebase } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,8 +25,11 @@ export function UserNav() {
   const { user } = useAuth();
 
   const handleLogout = async () => {
-    if (auth) {
+    try {
+      const { auth } = initializeFirebase();
       await signOut(auth);
+    } catch (error) {
+       console.error("Logout error:", error);
     }
     // The redirect to /login is handled by the listener in AppLayout
   };

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { signInWithRedirect } from "firebase/auth";
 import { LoaderCircle } from "lucide-react";
 
-import { auth, provider } from "@/lib/firebase";
+import { initializeFirebase } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,17 +33,8 @@ export function LoginForm() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleSigningIn(true);
-    if (!auth || !provider) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Authentication service not ready. Please check your Firebase configuration or refresh the page.",
-      });
-      setIsGoogleSigningIn(false);
-      return;
-    }
-
     try {
+      const { auth, provider } = initializeFirebase();
       await signInWithRedirect(auth, provider);
       // The user will be redirected to Google, and then to our /auth/callback page.
     } catch (error: any) {

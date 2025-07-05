@@ -3,7 +3,7 @@
 
 import React, { useState } from "react";
 import { signOut, linkWithRedirect } from "firebase/auth";
-import { auth, provider } from "@/lib/firebase";
+import { initializeFirebase } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,10 +23,9 @@ export function GoogleIntegrationView() {
   const { toast } = useToast();
 
   const handleSignOut = async () => {
-    if (!auth) return;
     try {
+      const { auth } = initializeFirebase();
       await signOut(auth);
-      // The AuthContext will clear the user and token via its onAuthStateChanged listener.
       toast({
         title: "Disconnected",
         description: "Successfully signed out.",
@@ -43,12 +42,13 @@ export function GoogleIntegrationView() {
   };
 
   const handleLinkGoogleAccount = async () => {
-    if (!auth || !provider || !user) {
+    if (!user) {
       toast({ variant: "destructive", title: "Error", description: "Authentication service not ready. Please try again." });
       return;
     }
     setIsLinking(true);
     try {
+        const { auth, provider } = initializeFirebase();
         await linkWithRedirect(user, provider);
         // Page will redirect, user will come back to /auth/callback
     } catch (error: any) {
