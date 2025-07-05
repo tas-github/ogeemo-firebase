@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -47,10 +48,17 @@ export function LoginForm() {
       // The user will be redirected to Google, and then to our /auth/callback page.
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
+      let description = "Could not initiate Google Sign-In. Please check the console for errors.";
+      if (error.code === 'auth/operation-not-allowed') {
+        description = "Google Sign-In is not enabled for this project. Please enable it in your Firebase console under Authentication > Sign-in method.";
+      }
+      if (error.code === 'auth/unauthorized-domain') {
+        description = "This domain is not authorized for OAuth operations. Please add localhost to the authorized domains in your Firebase console's Authentication settings.";
+      }
       toast({
         variant: "destructive",
         title: "Google Sign-In Failed",
-        description: "Could not initiate Google Sign-In. Please check the console for errors.",
+        description: description,
       });
       setIsGoogleSigningIn(false);
     }

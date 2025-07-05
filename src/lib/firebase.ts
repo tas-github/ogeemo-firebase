@@ -6,7 +6,8 @@ import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  // Use provided authDomain or construct it from projectId for resilience
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ? `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseapp.com` : undefined),
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
@@ -20,10 +21,8 @@ let storage: FirebaseStorage | null = null;
 let provider: GoogleAuthProvider | null = null;
 
 // Ensure Firebase is only initialized on the client-side
-if (typeof window !== "undefined" && firebaseConfig.apiKey) {
+if (typeof window !== "undefined" && firebaseConfig.apiKey && firebaseConfig.projectId) {
     try {
-        // By initializing on the client without manually setting authDomain,
-        // the Firebase SDK will automatically detect the correct domain (e.g., localhost).
         app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
         
         auth = getAuth(app);
@@ -39,9 +38,9 @@ if (typeof window !== "undefined" && firebaseConfig.apiKey) {
     } catch (error) {
         console.error("Firebase initialization error:", error);
     }
-} else if (typeof window !== "undefined" && !firebaseConfig.apiKey) {
+} else if (typeof window !== "undefined" && (!firebaseConfig.apiKey || !firebaseConfig.projectId)) {
     // Only show this warning on the client to avoid server-side noise
-    console.warn("Firebase configuration is missing. Firebase services will be disabled.");
+    console.warn("Firebase configuration is missing API Key or Project ID. Firebase services will be disabled.");
 }
 
 export { app, auth, db, storage, provider };
