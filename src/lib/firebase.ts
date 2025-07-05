@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth, setPersistence, browserLocalPersistence, inMemoryPersistence } from "firebase/auth";
+import { getAuth, type Auth, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
@@ -28,9 +28,8 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
     }
     
     if (typeof window === 'undefined') {
-        // This case should not be hit in client components, but it's a safeguard.
-        // For server components, we use the direct exports below.
         console.error("Firebase client SDK can only be initialized in the browser.");
+        // This is a safeguard; client components should prevent this.
         // @ts-ignore
         return {}; 
     }
@@ -45,6 +44,7 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
             !firebaseConfig.apiKey && "NEXT_PUBLIC_FIREBASE_API_KEY",
             !firebaseConfig.projectId && "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
         ].filter(Boolean).join(", ");
+        
         console.error(`Firebase configuration is missing: ${missingVars}. Firebase services will be disabled.`);
         throw new Error(`Firebase configuration is incomplete. Missing: ${missingVars}`);
     }
@@ -54,7 +54,8 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
     const db = getFirestore(app);
     const storage = getStorage(app);
     
-    // This is the key step that needs to be awaited.
+    // This is the key step that needs to be awaited. It ensures that
+    // the persistence layer is ready before any auth operations are attempted.
     await setPersistence(auth, browserLocalPersistence);
 
     firebaseServices = { app, auth, db, storage };
@@ -62,7 +63,8 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
     return firebaseServices;
 }
 
-// These server-side getters are for services that don't need browser persistence.
+// These server-side getters are for use in server components/actions
+// that do not rely on browser persistence.
 const getDbForServer = () => {
     if (!getApps().length) {
         if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
