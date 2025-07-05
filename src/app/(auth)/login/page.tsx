@@ -29,17 +29,18 @@ export default function LoginPage() {
     try {
       const { auth } = await initializeFirebase();
       const provider = new GoogleAuthProvider();
+      // This only asks for authentication, no extra permissions.
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
-      let description = "Could not initiate Google Sign-In. Please check the console for errors.";
+      let description = "Could not initiate sign-in. Please check the console for errors.";
       if (error.code === 'auth/unauthorized-domain') {
         const domain = typeof window !== 'undefined' ? window.location.hostname : 'your-domain.com';
         description = `This domain (${domain}) is not authorized for OAuth operations. Please add it to the authorized domains in your Firebase console's Authentication settings.`;
       }
       toast({
         variant: "destructive",
-        title: "Google Sign-In Failed",
+        title: "Sign-In Failed",
         description: description,
       });
       setIsSigningIn(false);
@@ -47,14 +48,14 @@ export default function LoginPage() {
   };
 
   return (
-    <>
+    <div className="flex flex-col items-center justify-center w-full max-w-sm">
       <Logo />
       <div className="space-y-2 text-center mt-6">
         <h1 className="text-2xl font-headline font-semibold">Ogeemo Firebase Console</h1>
         <p className="text-muted-foreground">Sign in to your account to continue.</p>
       </div>
       <Button
-        className="w-full max-w-xs mt-6 bg-[#4285F4] text-white hover:bg-[#4285F4]/90"
+        className="w-full mt-6"
         onClick={handleGoogleSignIn}
         disabled={isSigningIn}
       >
@@ -63,8 +64,8 @@ export default function LoginPage() {
         ) : (
           <GoogleIcon />
         )}
-        Sign in with Google
+        Sign in using Google
       </Button>
-    </>
+    </div>
   );
 }
