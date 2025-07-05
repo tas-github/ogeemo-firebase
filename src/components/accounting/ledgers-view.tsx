@@ -430,11 +430,9 @@ export function LedgersView() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Date</TableHead>
-                          <TableHead>Company</TableHead>
                           <TableHead>Source</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
-                          <TableHead>Explanation</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead><span className="sr-only">Actions</span></TableHead>
                         </TableRow>
@@ -443,7 +441,6 @@ export function LedgersView() {
                         {incomeLedger.map(item => (
                           <TableRow key={item.id}>
                             <TableCell>{item.date}</TableCell>
-                            <TableCell>{item.company}</TableCell>
                             <TableCell>{item.source}</TableCell>
                             <TableCell>{item.description}</TableCell>
                             <TableCell>
@@ -452,7 +449,6 @@ export function LedgersView() {
                                   <SelectContent>{incomeCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
                               </Select>
                             </TableCell>
-                            <TableCell>{item.explanation}</TableCell>
                             <TableCell className="text-right font-mono text-green-600">{item.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell>
                             <TableCell>
                                <DropdownMenu>
@@ -504,11 +500,9 @@ export function LedgersView() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Date</TableHead>
-                          <TableHead>Company</TableHead>
                           <TableHead>Vendor</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
-                          <TableHead>Explanation</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead><span className="sr-only">Actions</span></TableHead>
                         </TableRow>
@@ -517,7 +511,6 @@ export function LedgersView() {
                         {expenseLedger.map(item => (
                           <TableRow key={item.id}>
                             <TableCell>{item.date}</TableCell>
-                            <TableCell>{item.company}</TableCell>
                             <TableCell>{item.vendor}</TableCell>
                             <TableCell>{item.description}</TableCell>
                             <TableCell>
@@ -526,7 +519,6 @@ export function LedgersView() {
                                   <SelectContent>{expenseCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
                               </Select>
                             </TableCell>
-                            <TableCell>{item.explanation}</TableCell>
                             <TableCell className="text-right font-mono text-red-600">({item.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })})</TableCell>
                             <TableCell>
                                <DropdownMenu>
