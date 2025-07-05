@@ -11,7 +11,6 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   accessToken: string | null;
-  photoURL: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,7 +18,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [photoURL, setPhotoURL] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
 
@@ -30,11 +28,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { auth } = await initializeFirebase();
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
           setUser(currentUser);
-          setPhotoURL(currentUser?.photoURL || null);
           
           if (!currentUser) {
+            // If user logs out, clear everything
             setAccessToken(null);
-            // Clear any lingering tokens if the user logs out.
             sessionStorage.removeItem('google_access_token');
           }
           setIsLoading(false);
@@ -62,6 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
    // Effect for capturing the access token from sessionStorage after redirect
   useEffect(() => {
+    // This effect runs when the user object is available (i.e., they are logged in)
+    // and specifically after a page navigation (like the one from /auth/callback).
     if (user && !accessToken) {
       const storedToken = sessionStorage.getItem('google_access_token');
       if (storedToken) {
@@ -72,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, accessToken, pathname]); // Re-run on navigation to catch it
 
-  const value = { user, isLoading, accessToken, photoURL };
+  const value = { user, isLoading, accessToken };
 
   return (
     <AuthContext.Provider value={value}>

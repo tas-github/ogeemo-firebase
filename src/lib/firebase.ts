@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { getAuth, type Auth, setPersistence, browserLocalPersistence, inMemoryPersistence } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
@@ -28,7 +28,11 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
     }
     
     if (typeof window === 'undefined') {
-        throw new Error("Firebase client SDK can only be initialized in the browser.");
+        // This case should not be hit in client components, but it's a safeguard.
+        // For server components, we use the direct exports below.
+        console.error("Firebase client SDK can only be initialized in the browser.");
+        // @ts-ignore
+        return {}; 
     }
 
     // Auto-populate authDomain if missing, which is common in some environments.
