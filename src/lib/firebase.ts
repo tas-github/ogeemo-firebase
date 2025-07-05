@@ -4,17 +4,9 @@ import { getAuth, type Auth, GoogleAuthProvider, browserLocalPersistence } from 
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
-// Determine the correct authDomain based on the environment.
-// This is the core fix for the redirect_uri_mismatch error.
-let effectiveAuthDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
-if (typeof window !== "undefined") {
-  // In the browser, the auth domain MUST match the current site's hostname.
-  effectiveAuthDomain = window.location.hostname;
-}
-
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: effectiveAuthDomain,
+  // The authDomain is set dynamically below, only on the client-side.
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
@@ -27,25 +19,32 @@ let db: Firestore | null = null;
 let storage: FirebaseStorage | null = null;
 let provider: GoogleAuthProvider | null = null;
 
-if (firebaseConfig.apiKey) {
-  try {
-    // Initialize Firebase with the dynamically corrected config.
-    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-    
-    auth = getAuth(app);
-    auth.setPersistence(browserLocalPersistence);
+// Ensure Firebase is only initialized on the client-side
+if (typeof window !== "undefined" && firebaseConfig.apiKey) {
+    try {
+        const clientSideConfig = {
+            ...firebaseConfig,
+            authDomain: window.location.hostname,
+        };
 
-    db = getFirestore(app);
-    storage = getStorage(app);
-    provider = new GoogleAuthProvider();
-    // Add scopes required by the application for Google services
-    provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
-    provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
-    
-  } catch (error) {
-    console.error("Firebase initialization error:", error);
-  }
-} else {
+        app = !getApps().length ? initializeApp(clientSideConfig) : getApp();
+        
+        auth = getAuth(app);
+        // This must be client-side only.
+        auth.setPersistence(browserLocalPersistence);
+
+        db = getFirestore(app);
+        storage = getStorage(app);
+        provider = new GoogleAuthProvider();
+        
+        provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
+        provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
+        
+    } catch (error) {
+        console.error("Firebase initialization error:", error);
+    }
+} else if (typeof window !== "undefined" && !firebaseConfig.apiKey) {
+    // Only show this warning on the client to avoid server-side noise
     console.warn("Firebase configuration is missing. Firebase services will be disabled.");
 }
 
