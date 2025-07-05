@@ -37,7 +37,7 @@ export function LoginForm() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Authentication service not ready. Please check your Firebase configuration.",
+        description: "Authentication service not ready. Please check your Firebase configuration or refresh the page.",
       });
       setIsGoogleSigningIn(false);
       return;
@@ -53,7 +53,7 @@ export function LoginForm() {
         description = "Google Sign-In is not enabled for this project. Please enable it in your Firebase console under Authentication > Sign-in method.";
       }
       if (error.code === 'auth/unauthorized-domain') {
-        description = "This domain is not authorized for OAuth operations. Please add localhost to the authorized domains in your Firebase console's Authentication settings.";
+        description = "This domain is not authorized for OAuth operations. Please add it to the authorized domains in your Firebase console's Authentication settings.";
       }
       toast({
         variant: "destructive",
