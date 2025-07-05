@@ -6,45 +6,56 @@ import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ? `${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseapp.com` : undefined),
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// This structure allows for lazy initialization of Firebase services on the client side.
-let app: FirebaseApp | null = null;
-let auth: Auth | null = null;
-let db: Firestore | null = null;
-let storage: FirebaseStorage | null = null;
-let provider: GoogleAuthProvider | null = null;
+type FirebaseServices = {
+  app: FirebaseApp;
+  auth: Auth;
+  db: Firestore;
+  storage: FirebaseStorage;
+  provider: GoogleAuthProvider;
+};
 
-function initializeFirebase() {
-    if (typeof window !== "undefined") {
-        if (!getApps().length) {
-            if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-                 console.error("Firebase configuration is missing API Key or Project ID. Firebase services will be disabled.");
-                 return;
-            }
-            app = initializeApp(firebaseConfig);
-        } else {
-            app = getApp();
+let firebaseServices: FirebaseServices | null = null;
+
+export function initializeFirebase(): FirebaseServices {
+    if (typeof window === 'undefined') {
+        throw new Error("Firebase can only be initialized in a browser environment.");
+    }
+    
+    if (!firebaseServices) {
+        if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+            const missingVars = [
+                !firebaseConfig.apiKey && "NEXT_PUBLIC_FIREBASE_API_KEY",
+                !firebaseConfig.projectId && "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+            ].filter(Boolean).join(", ");
+            console.error(`Firebase configuration is missing: ${missingVars}. Firebase services will be disabled.`);
+            throw new Error("Firebase configuration is incomplete.");
+        }
+        
+        // Construct authDomain if not provided, which is common in some environments
+        if (!firebaseConfig.authDomain && firebaseConfig.projectId) {
+            firebaseConfig.authDomain = `${firebaseConfig.projectId}.firebaseapp.com`;
         }
 
-        auth = getAuth(app);
-        // Set persistence to avoid re-authentication on page refresh.
+        const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+        const auth = getAuth(app);
         setPersistence(auth, browserLocalPersistence);
-
-        db = getFirestore(app);
-        storage = getStorage(app);
-        provider = new GoogleAuthProvider();
+        
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+        
+        const provider = new GoogleAuthProvider();
         provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
         provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
+
+        firebaseServices = { app, auth, db, storage, provider };
     }
+    
+    return firebaseServices;
 }
-
-// Call initialization immediately so services are available for import.
-initializeFirebase();
-
-export { app, auth, db, storage, provider };

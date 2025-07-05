@@ -4,7 +4,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getRedirectResult, GoogleAuthProvider } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { initializeFirebase } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { LoaderCircle } from "lucide-react";
 
@@ -15,8 +15,7 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const processRedirect = async () => {
       try {
-        if (!auth) throw new Error("Firebase not initialized.");
-        
+        const { auth } = initializeFirebase();
         const result = await getRedirectResult(auth);
         
         if (result) {
