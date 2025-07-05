@@ -29,19 +29,13 @@ export default function LoginPage() {
     try {
       const { auth } = await initializeFirebase();
       const provider = new GoogleAuthProvider();
-      // This is a simple sign-in, no extra permissions are requested here.
       await signInWithRedirect(auth, provider);
-      // The user is redirected to Google, then to the /auth/callback page.
-      // The rest of the flow is handled there and in the AuthProvider.
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
       let description = "Could not initiate Google Sign-In. Please check the console for errors.";
       if (error.code === 'auth/unauthorized-domain') {
         const domain = typeof window !== 'undefined' ? window.location.hostname : 'your-domain.com';
         description = `This domain (${domain}) is not authorized for OAuth operations. Please add it to the authorized domains in your Firebase console's Authentication settings.`;
-      }
-      if (error.code === 'auth/operation-not-allowed') {
-        description = "Google Sign-In is not enabled for this project. Please enable it in your Firebase console under Authentication > Sign-in method.";
       }
       toast({
         variant: "destructive",
@@ -53,14 +47,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 text-center">
+    <>
       <Logo />
-      <div className="space-y-2">
-        <h1 className="text-2xl font-headline font-semibold">Welcome to Ogeemo</h1>
-        <p className="text-muted-foreground">Sign in with your Google account to continue.</p>
+      <div className="space-y-2 text-center mt-6">
+        <h1 className="text-2xl font-headline font-semibold">Ogeemo Firebase Console</h1>
+        <p className="text-muted-foreground">Sign in to your account to continue.</p>
       </div>
       <Button
-        className="w-full max-w-xs bg-[#4285F4] text-white hover:bg-[#4285F4]/90"
+        className="w-full max-w-xs mt-6 bg-[#4285F4] text-white hover:bg-[#4285F4]/90"
         onClick={handleGoogleSignIn}
         disabled={isSigningIn}
       >
@@ -71,6 +65,6 @@ export default function LoginPage() {
         )}
         Sign in with Google
       </Button>
-    </div>
+    </>
   );
 }
