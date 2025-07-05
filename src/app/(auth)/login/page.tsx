@@ -1,4 +1,3 @@
-import Link from "next/link";
 
 import {
   Card,
@@ -16,19 +15,13 @@ export default function LoginPage() {
       <Logo />
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl font-headline">Welcome back</CardTitle>
+          <CardTitle className="text-2xl font-headline">Ogeemo Console</CardTitle>
           <CardDescription>
-            Enter your email below to log in to your account.
+            Sign in with your Google account to continue.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <LoginForm />
-          <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{" "}
-            <Link href="/register" className="underline">
-              Sign up
-            </Link>
-          </div>
         </CardContent>
       </Card>
     </div>
