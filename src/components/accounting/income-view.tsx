@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -17,7 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreVertical, Pencil, Trash2, BookOpen } from "lucide-react";
+import { PlusCircle, MoreVertical, Pencil, Trash2, BookOpen, Settings, Plus } from "lucide-react";
 import { TransactionsPageHeader } from "@/components/accounting/transactions-page-header";
 import {
   DropdownMenu,
@@ -47,6 +48,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Mock data
 const initialIncomeData = [
@@ -58,17 +60,23 @@ const initialIncomeData = [
 
 type IncomeTransaction = typeof initialIncomeData[0];
 const INCOME_CATEGORIES_KEY = "accountingIncomeCategories";
+const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
 const defaultIncomeCategories = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income"];
+const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
 const emptyTransactionForm = { date: '', party: '', company: '', description: '', amount: '', category: '', explanation: '' };
 
 
 export function IncomeView() {
   const [incomeLedger, setIncomeLedger] = React.useState(initialIncomeData);
   const [incomeCategories, setIncomeCategories] = React.useState<string[]>([]);
+  const [expenseCategories, setExpenseCategories] = React.useState<string[]>([]);
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = React.useState(false);
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = React.useState(false);
   const [transactionToEdit, setTransactionToEdit] = React.useState<IncomeTransaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = React.useState<IncomeTransaction | null>(null);
   const [newTransaction, setNewTransaction] = React.useState(emptyTransactionForm);
+  const [newIncomeCategory, setNewIncomeCategory] = React.useState("");
+  const [newExpenseCategory, setNewExpenseCategory] = React.useState("");
   
   const { toast } = useToast();
 
@@ -76,9 +84,12 @@ export function IncomeView() {
     try {
       const savedIncome = localStorage.getItem(INCOME_CATEGORIES_KEY);
       setIncomeCategories(savedIncome ? JSON.parse(savedIncome) : defaultIncomeCategories);
+      const savedExpense = localStorage.getItem(EXPENSE_CATEGORIES_KEY);
+      setExpenseCategories(savedExpense ? JSON.parse(savedExpense) : defaultExpenseCategories);
     } catch (error) {
         console.error("Failed to load categories from localStorage", error);
         setIncomeCategories(defaultIncomeCategories);
+        setExpenseCategories(defaultExpenseCategories);
     }
   }, []);
   
@@ -138,6 +149,50 @@ export function IncomeView() {
     toast({ title: 'Transaction Deleted' });
     setTransactionToDelete(null);
   };
+
+  const handleAddCategory = (type: 'income' | 'expense') => {
+    if (type === 'income') {
+        const categoryToAdd = newIncomeCategory.trim();
+        if (!categoryToAdd) {
+            toast({ variant: 'destructive', title: 'Category name cannot be empty.' }); return;
+        }
+        if (incomeCategories.map(c => c.toLowerCase()).includes(categoryToAdd.toLowerCase())) {
+             toast({ variant: 'destructive', title: 'Duplicate Category', description: 'This category already exists.' }); return;
+        }
+        const updated = [...incomeCategories, categoryToAdd];
+        setIncomeCategories(updated);
+        localStorage.setItem(INCOME_CATEGORIES_KEY, JSON.stringify(updated));
+        setNewIncomeCategory("");
+    } else {
+        const categoryToAdd = newExpenseCategory.trim();
+        if (!categoryToAdd) {
+            toast({ variant: 'destructive', title: 'Category name cannot be empty.' }); return;
+        }
+        if (expenseCategories.map(c => c.toLowerCase()).includes(categoryToAdd.toLowerCase())) {
+             toast({ variant: 'destructive', title: 'Duplicate Category', description: 'This category already exists.' }); return;
+        }
+        const updated = [...expenseCategories, categoryToAdd];
+        setExpenseCategories(updated);
+        localStorage.setItem(EXPENSE_CATEGORIES_KEY, JSON.stringify(updated));
+        setNewExpenseCategory("");
+    }
+  };
+  
+  const handleDeleteCategory = (category: string, type: 'income' | 'expense') => {
+     if (type === 'income') {
+        if (incomeLedger.some(item => item.category === category)) {
+            toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This category is currently in use.' });
+            return;
+        }
+        const updated = incomeCategories.filter(c => c !== category);
+        setIncomeCategories(updated);
+        localStorage.setItem(INCOME_CATEGORIES_KEY, JSON.stringify(updated));
+     } else {
+        const updated = expenseCategories.filter(c => c !== category);
+        setExpenseCategories(updated);
+        localStorage.setItem(EXPENSE_CATEGORIES_KEY, JSON.stringify(updated));
+     }
+  };
   
   return (
     <>
@@ -158,9 +213,14 @@ export function IncomeView() {
               <CardTitle>Income Transactions</CardTitle>
               <CardDescription>A list of all recorded income.</CardDescription>
             </div>
-            <Button variant="outline" onClick={() => handleOpenTransactionDialog()}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Income
-            </Button>
+            <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => handleOpenTransactionDialog()}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Income
+                </Button>
+                <Button variant="outline" onClick={() => setIsCategoryDialogOpen(true)}>
+                    <Settings className="mr-2 h-4 w-4" /> Manage Categories
+                </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
@@ -268,6 +328,57 @@ export function IncomeView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+       <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Manage Categories</DialogTitle>
+                  <DialogDescription>Add, edit, or delete your income and expense categories.</DialogDescription>
+              </DialogHeader>
+              <Tabs defaultValue="income-cat" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="income-cat">Income Categories</TabsTrigger>
+                      <TabsTrigger value="expense-cat">Expense Categories</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="income-cat">
+                      <div className="space-y-4 py-4">
+                          <div className="flex gap-2">
+                              <Input value={newIncomeCategory} onChange={(e) => setNewIncomeCategory(e.target.value)} placeholder="New income category" onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory('income'); }}/>
+                              <Button onClick={() => handleAddCategory('income')}><Plus className="mr-2 h-4 w-4" /> Add</Button>
+                          </div>
+                          <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
+                              {incomeCategories.map(cat => (
+                                  <div key={cat} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                                      <span>{cat}</span>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteCategory(cat, 'income')}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  </TabsContent>
+                  <TabsContent value="expense-cat">
+                      <div className="space-y-4 py-4">
+                          <div className="flex gap-2">
+                              <Input value={newExpenseCategory} onChange={(e) => setNewExpenseCategory(e.target.value)} placeholder="New expense category" onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory('expense'); }}/>
+                              <Button onClick={() => handleAddCategory('expense')}><Plus className="mr-2 h-4 w-4" /> Add</Button>
+                          </div>
+                          <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
+                              {expenseCategories.map(cat => (
+                                  <div key={cat} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                                      <span>{cat}</span>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteCategory(cat, 'expense')}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  </TabsContent>
+              </Tabs>
+              <DialogFooter>
+                  <Button onClick={() => setIsCategoryDialogOpen(false)}>Done</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
     </>
   );
 }
+
