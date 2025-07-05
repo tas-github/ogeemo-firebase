@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
@@ -20,7 +21,11 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           return;
         }
 
-        const result = await getRedirectResult(auth);
+        // The getRedirectResult should be handled on a dedicated callback page
+        // to avoid race conditions. This layout now just ensures the user sees a loading state
+        // while the app figures out what's happening. The actual redirect result
+        // is processed on /auth/callback.
+        const result = await getRedirectResult(auth).catch(() => null);
         
         if (result) {
           // A user was successfully signed in on redirect.
