@@ -34,6 +34,8 @@ export function LoginForm() {
   const handleGoogleSignIn = async () => {
     setIsGoogleSigningIn(true);
     try {
+      // ALWAYS initialize firebase before using any of its services.
+      // This ensures the configuration is loaded and persistence is set.
       const { auth } = await initializeFirebase();
       const provider = new GoogleAuthProvider();
       // No extra scopes are requested here. Just simple sign-in.
@@ -42,11 +44,11 @@ export function LoginForm() {
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
       let description = "Could not initiate Google Sign-In. Please check the console for errors.";
+      if (error.code === 'auth/unauthorized-domain') {
+        description = `This domain (${window.location.hostname}) is not authorized for OAuth operations. Please add it to the authorized domains in your Firebase console's Authentication settings.`;
+      }
       if (error.code === 'auth/operation-not-allowed') {
         description = "Google Sign-In is not enabled for this project. Please enable it in your Firebase console under Authentication > Sign-in method.";
-      }
-      if (error.code === 'auth/unauthorized-domain') {
-        description = "This domain is not authorized for OAuth operations. Please add it to the authorized domains in your Firebase console's Authentication settings.";
       }
       toast({
         variant: "destructive",
