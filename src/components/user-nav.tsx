@@ -22,13 +22,13 @@ import {
 
 export function UserNav() {
   const { state: sidebarState } = useSidebar();
-  const { user, photoURL } = useAuth();
+  const { user } = useAuth();
 
   const handleLogout = async () => {
     if (auth) {
       await signOut(auth);
     }
-    // The redirect to /login is handled by the listener in ClientLayout
+    // The redirect to /login is handled by the listener in AppLayout
   };
 
   // If there's no user, don't render anything.
@@ -82,7 +82,7 @@ export function UserNav() {
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
             <Avatar className="h-8 w-8">
               <AvatarImage
-                src={photoURL || undefined}
+                src={user.photoURL || undefined}
                 alt={user.displayName || 'User avatar'}
               />
               <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
@@ -99,7 +99,7 @@ export function UserNav() {
       <div className="flex w-full items-center gap-2">
         <Avatar className="h-8 w-8">
            <AvatarImage
-              src={photoURL || undefined}
+              src={user.photoURL || undefined}
               alt={user.displayName || 'User avatar'}
             />
            <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
