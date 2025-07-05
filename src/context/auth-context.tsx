@@ -25,23 +25,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Effect for Firebase auth state (user object)
   useEffect(() => {
-    try {
-      const { auth } = initializeFirebase();
-      const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-        setUser(currentUser);
-        setPhotoURL(currentUser?.photoURL || null);
-        
-        if (!currentUser) {
-          setAccessToken(null);
-        }
-        setIsLoading(false);
-      });
+    const initAuthListener = async () => {
+      try {
+        const { auth } = await initializeFirebase();
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+          setUser(currentUser);
+          setPhotoURL(currentUser?.photoURL || null);
+          
+          if (!currentUser) {
+            setAccessToken(null);
+          }
+          setIsLoading(false);
+        });
 
-      return () => unsubscribe();
-    } catch (error) {
-        console.error("Auth context error:", error);
-        setIsLoading(false);
-        return () => {};
+        return unsubscribe;
+      } catch (error) {
+          console.error("Auth context error:", error);
+          setIsLoading(false);
+          return () => {};
+      }
+    };
+    
+    let unsubscribe: (() => void) | undefined;
+    initAuthListener().then(unsub => {
+      if (unsub) unsubscribe = unsub;
+    });
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
     }
   }, []);
   

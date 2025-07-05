@@ -34,7 +34,7 @@ export function LoginForm() {
   const handleGoogleSignIn = async () => {
     setIsGoogleSigningIn(true);
     try {
-      const { auth, provider } = initializeFirebase();
+      const { auth, provider } = await initializeFirebase();
       await signInWithRedirect(auth, provider);
       // The user will be redirected to Google, and then to our /auth/callback page.
     } catch (error: any) {
