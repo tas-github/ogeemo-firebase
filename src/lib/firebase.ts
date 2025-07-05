@@ -69,3 +69,15 @@ const getDbForServer = () => {
     return getFirestore();
 };
 export const db = getDbForServer();
+
+const getStorageForServer = () => {
+    if (!getApps().length) {
+        if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+           return null;
+        }
+        const app = initializeApp(firebaseConfig);
+        return getStorage(app);
+    }
+    return getStorage();
+};
+export const storage = getStorageForServer();
