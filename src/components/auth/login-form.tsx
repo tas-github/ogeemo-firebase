@@ -36,6 +36,7 @@ export function LoginForm() {
     try {
       const { auth } = await initializeFirebase();
       const provider = new GoogleAuthProvider();
+      // No extra scopes are requested here. Just simple sign-in.
       await signInWithRedirect(auth, provider);
       // The user will be redirected to Google, and then to our /auth/callback page.
     } catch (error: any) {

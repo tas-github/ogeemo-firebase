@@ -27,6 +27,9 @@ export default function AuthCallbackPage() {
              sessionStorage.setItem('google_access_token', credential.accessToken);
           }
           
+          // After a link operation, the user is already on the /google page,
+          // so redirecting to dashboard is safe.
+          // After a sign-in operation, this is also the desired destination.
           router.push("/dashboard");
         } else {
           // This can happen if the page is visited directly or if the redirect result has already been used.
