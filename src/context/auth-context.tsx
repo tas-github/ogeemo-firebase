@@ -25,7 +25,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initAuthListener = async () => {
       try {
+        // Await the full initialization before setting up the listener
         const { auth } = await initializeFirebase();
+        
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
           setUser(currentUser);
           
@@ -39,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         return unsubscribe;
       } catch (error) {
-          console.error("Auth context error:", error);
+          console.error("Auth context initialization error:", error);
           setIsLoading(false);
           return () => {};
       }
@@ -57,19 +59,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
   
-   // Effect for capturing the access token from sessionStorage after redirect
+   // Effect for capturing the access token from sessionStorage after redirect.
+   // This runs when the component mounts or after navigation, ensuring the
+   // token from the /auth/callback redirect is captured.
   useEffect(() => {
-    // This effect runs when the user object is available (i.e., they are logged in)
-    // and specifically after a page navigation (like the one from /auth/callback).
     if (user && !accessToken) {
       const storedToken = sessionStorage.getItem('google_access_token');
       if (storedToken) {
         setAccessToken(storedToken);
-        // We can optionally clean up the token here, but keeping it can be useful for debugging
-        // sessionStorage.removeItem('google_access_token');
       }
     }
-  }, [user, accessToken, pathname]); // Re-run on navigation to catch it
+  }, [user, accessToken, pathname]);
 
   const value = { user, isLoading, accessToken };
 
