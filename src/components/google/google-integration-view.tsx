@@ -62,6 +62,9 @@ export function GoogleIntegrationView() {
         const provider = new GoogleAuthProvider();
         provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
         
+        // Store the current path to redirect back here after auth
+        sessionStorage.setItem('google_auth_redirect', '/google');
+
         await linkWithRedirect(user, provider);
     } catch (error: any) {
         console.error("Google Account Linking Error:", error);
