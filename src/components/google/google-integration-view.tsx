@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { signOut, linkWithRedirect } from "firebase/auth";
+import { signOut, linkWithRedirect, GoogleAuthProvider } from "firebase/auth";
 import { initializeFirebase } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,7 +30,6 @@ export function GoogleIntegrationView() {
         title: "Disconnected",
         description: "Successfully signed out.",
       });
-      // The main layout will redirect to /login.
     } catch (error: any) {
        console.error("Google Sign-Out Error:", error);
        toast({
@@ -43,14 +42,16 @@ export function GoogleIntegrationView() {
 
   const handleLinkGoogleAccount = async () => {
     if (!user) {
-      toast({ variant: "destructive", title: "Error", description: "Authentication service not ready. Please try again." });
+      toast({ variant: "destructive", title: "Error", description: "You must be logged in to connect your account." });
       return;
     }
     setIsLinking(true);
     try {
-        const { auth, provider } = await initializeFirebase();
+        const { auth } = await initializeFirebase();
+        const provider = new GoogleAuthProvider();
+        provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
+        
         await linkWithRedirect(user, provider);
-        // Page will redirect, user will come back to /auth/callback
     } catch (error: any) {
         console.error("Google Account Linking Error:", error);
         let description = "An unexpected error occurred.";
@@ -75,7 +76,6 @@ export function GoogleIntegrationView() {
   }
   
   if (!user) {
-    // This case should be handled by the main layout, but as a fallback:
     return (
       <div className="flex h-full items-center justify-center">
         <p>Please log in to manage Google integration.</p>
@@ -85,7 +85,6 @@ export function GoogleIntegrationView() {
 
   const renderContent = () => {
     if (accessToken) {
-      // The happy path: user is logged in AND we have the token
       return (
         <div className="flex flex-col items-center gap-6">
           <div className="flex items-center gap-4">
@@ -110,7 +109,6 @@ export function GoogleIntegrationView() {
       );
     }
 
-    // Edge case: user is logged in but we don't have a token.
     return (
       <div className="flex flex-col items-center gap-6">
         <div className="flex items-center gap-4">

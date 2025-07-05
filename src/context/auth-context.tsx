@@ -34,6 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (!currentUser) {
             setAccessToken(null);
+            // Clear any lingering tokens if the user logs out.
+            sessionStorage.removeItem('google_access_token');
           }
           setIsLoading(false);
         });
@@ -64,8 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const storedToken = sessionStorage.getItem('google_access_token');
       if (storedToken) {
         setAccessToken(storedToken);
-        // Clean up the token from session storage once we have it in context
-        sessionStorage.removeItem('google_access_token');
+        // We can optionally clean up the token here, but keeping it can be useful for debugging
+        // sessionStorage.removeItem('google_access_token');
       }
     }
   }, [user, accessToken, pathname]); // Re-run on navigation to catch it

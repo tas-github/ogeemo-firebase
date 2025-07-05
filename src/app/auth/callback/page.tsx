@@ -19,7 +19,7 @@ export default function AuthCallbackPage() {
         const result = await getRedirectResult(auth);
         
         if (result) {
-          // Successfully signed in.
+          // Successfully signed in or linked.
           // Get the access token from the credential.
           const credential = GoogleAuthProvider.credentialFromResult(result);
           if (credential?.accessToken) {
