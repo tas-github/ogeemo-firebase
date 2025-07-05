@@ -23,39 +23,58 @@ type FirebaseServices = {
 
 let firebaseServices: FirebaseServices | null = null;
 
-export function initializeFirebase(): FirebaseServices {
-    if (typeof window === 'undefined') {
-        throw new Error("Firebase can only be initialized in a browser environment.");
+// This function is now async to properly handle persistence setup.
+export async function initializeFirebase(): Promise<FirebaseServices> {
+    if (firebaseServices) {
+        return firebaseServices;
     }
     
-    if (!firebaseServices) {
-        if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
-            const missingVars = [
-                !firebaseConfig.apiKey && "NEXT_PUBLIC_FIREBASE_API_KEY",
-                !firebaseConfig.projectId && "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-            ].filter(Boolean).join(", ");
-            console.error(`Firebase configuration is missing: ${missingVars}. Firebase services will be disabled.`);
-            throw new Error("Firebase configuration is incomplete.");
-        }
-        
-        // Construct authDomain if not provided, which is common in some environments
-        if (!firebaseConfig.authDomain && firebaseConfig.projectId) {
-            firebaseConfig.authDomain = `${firebaseConfig.projectId}.firebaseapp.com`;
-        }
-
-        const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-        const auth = getAuth(app);
-        setPersistence(auth, browserLocalPersistence);
-        
-        const db = getFirestore(app);
-        const storage = getStorage(app);
-        
-        const provider = new GoogleAuthProvider();
-        provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
-        provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
-
-        firebaseServices = { app, auth, db, storage, provider };
+    if (typeof window === 'undefined') {
+        // This case should ideally not be hit by client components.
+        // If a server component needs Firebase, it should use the Admin SDK.
+        throw new Error("Firebase client SDK can only be initialized in the browser.");
     }
+
+    if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+        const missingVars = [
+            !firebaseConfig.apiKey && "NEXT_PUBLIC_FIREBASE_API_KEY",
+            !firebaseConfig.projectId && "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+        ].filter(Boolean).join(", ");
+        console.error(`Firebase configuration is missing: ${missingVars}. Firebase services will be disabled.`);
+        throw new Error("Firebase configuration is incomplete.");
+    }
+    
+    if (!firebaseConfig.authDomain && firebaseConfig.projectId) {
+        firebaseConfig.authDomain = `${firebaseConfig.projectId}.firebaseapp.com`;
+    }
+
+    const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+    const provider = new GoogleAuthProvider();
+    provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
+    provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
+    
+    // Awaiting persistence ensures auth is ready before we use it.
+    await setPersistence(auth, browserLocalPersistence);
+
+    firebaseServices = { app, auth, db, storage, provider };
     
     return firebaseServices;
 }
+
+// A new getter for db to be used by server components (with caution).
+// This avoids client-side checks and async logic.
+// This is a workaround for the current architecture. A proper fix would involve the Admin SDK.
+const getDbForServer = () => {
+    if (!getApps().length) {
+        if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+           return null;
+        }
+        const app = initializeApp(firebaseConfig);
+        return getFirestore(app);
+    }
+    return getFirestore();
+};
+export const db = getDbForServer();

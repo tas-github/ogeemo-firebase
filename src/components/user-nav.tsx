@@ -26,7 +26,7 @@ export function UserNav() {
 
   const handleLogout = async () => {
     try {
-      const { auth } = initializeFirebase();
+      const { auth } = await initializeFirebase();
       await signOut(auth);
     } catch (error) {
        console.error("Logout error:", error);

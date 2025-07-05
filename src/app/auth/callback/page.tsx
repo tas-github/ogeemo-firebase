@@ -15,7 +15,7 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const processRedirect = async () => {
       try {
-        const { auth } = initializeFirebase();
+        const { auth } = await initializeFirebase();
         const result = await getRedirectResult(auth);
         
         if (result) {
