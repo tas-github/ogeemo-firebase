@@ -50,6 +50,7 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
     const db = getFirestore(app);
     const storage = getStorage(app);
     
+    // This is the key step that needs to be awaited.
     await setPersistence(auth, browserLocalPersistence);
 
     firebaseServices = { app, auth, db, storage };
@@ -57,7 +58,7 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
     return firebaseServices;
 }
 
-// This function is for server-side usage where persistence is not a concern.
+// These server-side getters are for services that don't need browser persistence.
 const getDbForServer = () => {
     if (!getApps().length) {
         if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
