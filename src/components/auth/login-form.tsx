@@ -44,7 +44,8 @@ const formSchema = z.object({
 export function LoginForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isEmailSigningIn, setIsEmailSigningIn] = useState(false);
+  const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -54,8 +55,10 @@ export function LoginForm() {
     },
   });
 
+  const isLoading = isEmailSigningIn || isGoogleSigningIn;
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsSigningIn(true);
+    setIsEmailSigningIn(true);
     try {
       if (!auth) throw new Error("Firebase Auth is not initialized.");
       await signInWithEmailAndPassword(auth, values.email, values.password);
@@ -71,19 +74,19 @@ export function LoginForm() {
             : "An unexpected error occurred. Please try again.",
       });
     } finally {
-        setIsSigningIn(false);
+        setIsEmailSigningIn(false);
     }
   }
 
   const handleGoogleSignIn = async () => {
-    setIsSigningIn(true);
+    setIsGoogleSigningIn(true);
     if (!auth || !provider) {
       toast({
         variant: "destructive",
         title: "Error",
         description: "Authentication service not ready. Please try again.",
       });
-      setIsSigningIn(false);
+      setIsGoogleSigningIn(false);
       return;
     }
 
@@ -98,7 +101,7 @@ export function LoginForm() {
         title: "Google Sign-In Failed",
         description: "Could not initiate Google Sign-In. Please check the console for errors.",
       });
-      setIsSigningIn(false);
+      setIsGoogleSigningIn(false);
     }
   };
 
@@ -116,7 +119,7 @@ export function LoginForm() {
                   <Input
                     placeholder="name@example.com"
                     {...field}
-                    disabled={isSigningIn}
+                    disabled={isLoading}
                   />
                 </FormControl>
                 <FormMessage />
@@ -134,15 +137,15 @@ export function LoginForm() {
                     type="password"
                     placeholder="••••••••"
                     {...field}
-                    disabled={isSigningIn}
+                    disabled={isLoading}
                   />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-          <Button type="submit" className="w-full" disabled={isSigningIn}>
-            {isSigningIn && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isEmailSigningIn && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
             Login
           </Button>
         </form>
@@ -162,18 +165,18 @@ export function LoginForm() {
       <Button
         className="w-full bg-[#4285F4] text-white hover:bg-[#4285F4]/90"
         onClick={handleGoogleSignIn}
-        disabled={isSigningIn}
+        disabled={isLoading}
       >
-        {isSigningIn && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+        {isGoogleSigningIn && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
         Sign in with Google
       </Button>
 
-      <Dialog open={isSigningIn}>
+      <Dialog open={isGoogleSigningIn}>
         <DialogContent className="sm:max-w-xs">
           <DialogHeader>
-            <DialogTitle className="sr-only">Signing In</DialogTitle>
+            <DialogTitle className="sr-only">Signing In with Google</DialogTitle>
             <DialogDescription className="sr-only">
-              Please wait while we are signing you in.
+              Please wait while we are redirecting you to Google for authentication.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-8">
