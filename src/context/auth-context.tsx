@@ -1,11 +1,11 @@
 
 'use client';
 
-import type { User, IdTokenResult } from 'firebase/auth';
-import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
+import type { User } from 'firebase/auth';
+import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { initializeFirebase } from '@/lib/firebase';
-import { onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 
 interface AuthContextType {
   user: User | null;
