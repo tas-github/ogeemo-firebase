@@ -59,7 +59,7 @@ export function LoginForm() {
     try {
       if (!auth) throw new Error("Firebase Auth is not initialized.");
       await signInWithEmailAndPassword(auth, values.email, values.password);
-      // The redirect to dashboard is handled by the main app layout now.
+      router.push("/dashboard");
     } catch (error: any) {
       console.error("Login Error:", error);
       toast({
