@@ -20,21 +20,14 @@ type FirebaseServices = {
   storage: FirebaseStorage;
 };
 
-let firebaseServices: FirebaseServices | null = null;
+// This promise will be resolved with the initialized services.
+let firebaseServicesPromise: Promise<FirebaseServices> | null = null;
 
-export async function initializeFirebase(): Promise<FirebaseServices> {
-    if (firebaseServices) {
-        return firebaseServices;
-    }
-    
+async function _initializeFirebase(): Promise<FirebaseServices> {
     if (typeof window === 'undefined') {
-        console.error("Firebase client SDK can only be initialized in the browser.");
-        // This is a safeguard; client components should prevent this.
-        // @ts-ignore
-        return {}; 
+        throw new Error("Firebase client SDK can only be initialized in the browser.");
     }
 
-    // Auto-populate authDomain if missing, which is common in some environments.
     if (!firebaseConfig.authDomain && firebaseConfig.projectId) {
         firebaseConfig.authDomain = `${firebaseConfig.projectId}.firebaseapp.com`;
     }
@@ -45,7 +38,6 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
             !firebaseConfig.projectId && "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
         ].filter(Boolean).join(", ");
         
-        console.error(`Firebase configuration is missing: ${missingVars}. Firebase services will be disabled.`);
         throw new Error(`Firebase configuration is incomplete. Missing: ${missingVars}`);
     }
     
@@ -58,9 +50,14 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
     // the persistence layer is ready before any auth operations are attempted.
     await setPersistence(auth, browserLocalPersistence);
 
-    firebaseServices = { app, auth, db, storage };
-    
-    return firebaseServices;
+    return { app, auth, db, storage };
+}
+
+export function initializeFirebase(): Promise<FirebaseServices> {
+    if (!firebaseServicesPromise) {
+        firebaseServicesPromise = _initializeFirebase();
+    }
+    return firebaseServicesPromise;
 }
 
 // These server-side getters are for use in server components/actions

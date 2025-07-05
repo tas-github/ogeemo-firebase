@@ -19,31 +19,28 @@ export default function AuthCallbackPage() {
         const result = await getRedirectResult(auth);
         
         if (result) {
+          // This was a successful sign-in or link.
           const credential = GoogleAuthProvider.credentialFromResult(result);
-          
-          // Check if this was a linking operation (indicated by presence of access token)
-          // or a simple sign-in.
           if (credential?.accessToken) {
-             // Store the access token in session storage so the AuthContext can pick it up.
+             // An access token is present, meaning this was likely a linking operation
+             // for additional scopes (e.g., from the Google integration page).
              sessionStorage.setItem('google_access_token', credential.accessToken);
-             // After a link operation, send the user back to the google page
              router.push("/google");
           } else {
-             // This was a simple sign-in. Send the user to the dashboard.
+             // No access token means it was a simple sign-in.
              router.push("/dashboard");
           }
-
         } else {
-          // This can happen if the page is visited directly or if the redirect result has already been used.
-          // It's safe to just send them to login.
-          router.push("/login");
+          // No result probably means the user is already signed in and just visited this page.
+          // Safely redirect them to the dashboard.
+          router.push("/dashboard");
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Authentication callback error:", error);
         toast({
           variant: "destructive",
-          title: "Sign-In Failed",
-          description: "An error occurred during authentication. Please try logging in again.",
+          title: "Authentication Failed",
+          description: error.message || "An error occurred during authentication. Please try logging in again.",
         });
         router.push("/login");
       }
