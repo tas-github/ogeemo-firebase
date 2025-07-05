@@ -3,23 +3,13 @@
 
 import { useState } from "react";
 import Link from 'next/link';
-import { signInWithEmailAndPassword, signInWithRedirect, GoogleAuthProvider } from "firebase/auth";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { signInWithRedirect, GoogleAuthProvider } from "firebase/auth";
 import { LoaderCircle } from "lucide-react";
 
 import { initializeFirebase } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-const formSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address." }),
-  password: z.string().min(1, { message: "Password is required." }),
-});
 
 function GoogleIcon() {
     return (
@@ -34,55 +24,21 @@ function GoogleIcon() {
 
 export default function LoginPage() {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: { email: "", password: "" },
-  });
-
-  const handleSignIn = async (values: z.infer<typeof formSchema>) => {
-    setIsLoading(true);
-    try {
-      const { auth } = await initializeFirebase();
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-    } catch (error: any) {
-      console.error("Sign-In Error:", error);
-      let description = "An unknown error occurred. Please try again.";
-      switch (error.code) {
-        case 'auth/user-not-found':
-        case 'auth/wrong-password':
-        case 'auth/invalid-credential':
-          description = "Invalid email or password. If you signed up with Google, please use the 'Sign in with Google' button.";
-          break;
-        case 'auth/invalid-email':
-          description = "The email address is not valid.";
-          break;
-        case 'auth/too-many-requests':
-          description = "Access to this account has been temporarily disabled due to many failed login attempts."
-          break;
-      }
-      toast({
-        variant: "destructive",
-        title: "Sign-In Failed",
-        description: description,
-      });
-    } finally {
-        setIsLoading(false);
-    }
-  };
-  
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
+      // The initializeFirebase() promise ensures the SDK is ready.
       const { auth } = await initializeFirebase();
       const provider = new GoogleAuthProvider();
+      // Use redirect flow which is more robust and recommended for most browsers.
       await signInWithRedirect(auth, provider);
-      // Redirect is handled by /auth/callback page
+      // The user will be redirected to the Google sign-in page,
+      // and then back to the /auth/callback page.
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
-      let description = error.message || "Could not start the Google Sign-In process.";
+      let description = `An unknown error occurred. Please check the console for details. (Code: ${error.code})`;
       if (error.code === 'auth/unauthorized-domain') {
           description = `This domain (${window.location.hostname}) is not authorized for OAuth operations. Please add it to the authorized domains in your Firebase console's authentication settings.`;
       }
@@ -95,60 +51,14 @@ export default function LoginPage() {
     }
   };
 
-  const anyLoading = isLoading || isGoogleLoading;
-
   return (
     <>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-headline font-semibold">Welcome Back</CardTitle>
-        <CardDescription>Enter your credentials to access your console.</CardDescription>
+        <CardTitle className="text-2xl font-headline font-semibold">Welcome to Ogeemo</CardTitle>
+        <CardDescription>Sign in to your account to continue.</CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSignIn)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="name@example.com" {...field} disabled={anyLoading} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} disabled={anyLoading} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full" disabled={anyLoading}>
-              {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-              Sign In
-            </Button>
-          </form>
-        </Form>
-        
-        <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t"></span>
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">Or</span>
-            </div>
-        </div>
-
-        <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={anyLoading}>
+        <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading}>
             {isGoogleLoading ? (
                 <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -156,13 +66,6 @@ export default function LoginPage() {
             )}
             Sign in with Google
         </Button>
-        
-        <div className="mt-4 text-center text-sm">
-          Don't have an account?{" "}
-          <Link href="/register" className="underline">
-            Sign up
-          </Link>
-        </div>
       </CardContent>
     </>
   );

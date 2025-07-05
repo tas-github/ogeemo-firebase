@@ -21,18 +21,20 @@ export default function AuthCallbackPage() {
         if (result) {
           // This was a successful sign-in or link.
           const credential = GoogleAuthProvider.credentialFromResult(result);
+          // Check if it was a sign-in or a link for more permissions
           if (credential?.accessToken) {
-             // An access token is present, meaning this was likely a linking operation
-             // for additional scopes (e.g., from the Google integration page).
              sessionStorage.setItem('google_access_token', credential.accessToken);
-             router.push("/google");
+             // If this was a linking action, redirect to the page that initiated it
+             const redirectPath = sessionStorage.getItem('google_auth_redirect') || "/google";
+             sessionStorage.removeItem('google_auth_redirect');
+             router.push(redirectPath);
           } else {
-             // No access token means it was a simple sign-in.
+             // This was a simple sign-in
              router.push("/dashboard");
           }
         } else {
-          // No result probably means the user is already signed in and just visited this page.
-          // Safely redirect them to the dashboard.
+          // No result likely means the user visited this page directly or was already signed in.
+          // Let's safely redirect them to the dashboard.
           router.push("/dashboard");
         }
       } catch (error: any) {
