@@ -37,7 +37,7 @@ export function LoginForm() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Authentication service not ready. Please try again.",
+        description: "Authentication service not ready. Please check your Firebase configuration.",
       });
       setIsGoogleSigningIn(false);
       return;
