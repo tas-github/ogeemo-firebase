@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { signInWithRedirect } from "firebase/auth";
+import { signInWithRedirect, GoogleAuthProvider } from "firebase/auth";
 import { LoaderCircle } from "lucide-react";
 
 import { initializeFirebase } from "@/lib/firebase";
@@ -34,7 +34,8 @@ export function LoginForm() {
   const handleGoogleSignIn = async () => {
     setIsGoogleSigningIn(true);
     try {
-      const { auth, provider } = await initializeFirebase();
+      const { auth } = await initializeFirebase();
+      const provider = new GoogleAuthProvider();
       await signInWithRedirect(auth, provider);
       // The user will be redirected to Google, and then to our /auth/callback page.
     } catch (error: any) {

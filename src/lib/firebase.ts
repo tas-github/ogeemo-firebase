@@ -18,7 +18,6 @@ type FirebaseServices = {
   auth: Auth;
   db: Firestore;
   storage: FirebaseStorage;
-  provider: GoogleAuthProvider;
 };
 
 let firebaseServices: FirebaseServices | null = null;
@@ -41,6 +40,7 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
         throw new Error("Firebase configuration is incomplete.");
     }
     
+    // Auto-populate authDomain if missing, which is common in some environments.
     if (!firebaseConfig.authDomain && firebaseConfig.projectId) {
         firebaseConfig.authDomain = `${firebaseConfig.projectId}.firebaseapp.com`;
     }
@@ -50,13 +50,9 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
     const db = getFirestore(app);
     const storage = getStorage(app);
     
-    // Default provider for basic login.
-    const provider = new GoogleAuthProvider();
-    provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
-    
     await setPersistence(auth, browserLocalPersistence);
 
-    firebaseServices = { app, auth, db, storage, provider };
+    firebaseServices = { app, auth, db, storage };
     
     return firebaseServices;
 }
