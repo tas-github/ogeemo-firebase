@@ -23,15 +23,12 @@ type FirebaseServices = {
 
 let firebaseServices: FirebaseServices | null = null;
 
-// This function is now async to properly handle persistence setup.
 export async function initializeFirebase(): Promise<FirebaseServices> {
     if (firebaseServices) {
         return firebaseServices;
     }
     
     if (typeof window === 'undefined') {
-        // This case should ideally not be hit by client components.
-        // If a server component needs Firebase, it should use the Admin SDK.
         throw new Error("Firebase client SDK can only be initialized in the browser.");
     }
 
@@ -52,11 +49,11 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
     const auth = getAuth(app);
     const db = getFirestore(app);
     const storage = getStorage(app);
+    
+    // Default provider for basic login.
     const provider = new GoogleAuthProvider();
     provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
-    provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
     
-    // Awaiting persistence ensures auth is ready before we use it.
     await setPersistence(auth, browserLocalPersistence);
 
     firebaseServices = { app, auth, db, storage, provider };
@@ -64,9 +61,6 @@ export async function initializeFirebase(): Promise<FirebaseServices> {
     return firebaseServices;
 }
 
-// A new getter for db to be used by server components (with caution).
-// This avoids client-side checks and async logic.
-// This is a workaround for the current architecture. A proper fix would involve the Admin SDK.
 const getDbForServer = () => {
     if (!getApps().length) {
         if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
