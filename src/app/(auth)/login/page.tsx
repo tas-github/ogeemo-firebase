@@ -1,17 +1,9 @@
-
 "use client";
 
 import { useState } from "react";
 import { signInWithRedirect, GoogleAuthProvider } from "firebase/auth";
 import { LoaderCircle } from "lucide-react";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Logo } from "@/components/logo";
 import { initializeFirebase } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
@@ -61,30 +53,24 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center gap-6">
+    <div className="flex flex-col items-center gap-6 text-center">
       <Logo />
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-2xl font-headline">Ogeemo Console</CardTitle>
-          <CardDescription>
-            Sign in with your Google account to continue.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button
-            className="w-full bg-[#4285F4] text-white hover:bg-[#4285F4]/90"
-            onClick={handleGoogleSignIn}
-            disabled={isSigningIn}
-          >
-            {isSigningIn ? (
-              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <GoogleIcon />
-            )}
-            Sign in with Google
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="space-y-2">
+        <h1 className="text-2xl font-headline font-semibold">Welcome to Ogeemo</h1>
+        <p className="text-muted-foreground">Sign in with your Google account to continue.</p>
+      </div>
+      <Button
+        className="w-full max-w-xs bg-[#4285F4] text-white hover:bg-[#4285F4]/90"
+        onClick={handleGoogleSignIn}
+        disabled={isSigningIn}
+      >
+        {isSigningIn ? (
+          <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <GoogleIcon />
+        )}
+        Sign in with Google
+      </Button>
     </div>
   );
 }
