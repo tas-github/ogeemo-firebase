@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { signOut, linkWithRedirect, GoogleAuthProvider } from "firebase/auth";
+import { signOut, linkWithRedirect, GoogleAuthProvider, getAuth, onAuthStateChanged } from "firebase/auth";
 import { initializeFirebase } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +37,6 @@ export function GoogleIntegrationView() {
     try {
       const { auth } = await initializeFirebase();
       await signOut(auth);
-      // AuthProvider will handle state cleanup
       toast({
         title: "Signed Out",
         description: "Successfully signed out.",
@@ -61,12 +60,9 @@ export function GoogleIntegrationView() {
     try {
         const { auth } = await initializeFirebase();
         const provider = new GoogleAuthProvider();
-        // Request specific permissions needed for app features
         provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
         
-        // Use linkWithRedirect to start the authorization flow
         await linkWithRedirect(user, provider);
-        // User is redirected to Google, then back to /auth/callback
     } catch (error: any) {
         console.error("Google Account Linking Error:", error);
         let description = "An unexpected error occurred.";
