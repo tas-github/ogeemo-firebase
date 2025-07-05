@@ -19,18 +19,20 @@ export default function AuthCallbackPage() {
         const result = await getRedirectResult(auth);
         
         if (result) {
-          // Successfully signed in or linked.
-          // Get the access token from the credential.
           const credential = GoogleAuthProvider.credentialFromResult(result);
+          
+          // Check if this was a linking operation (indicated by presence of access token)
+          // or a simple sign-in.
           if (credential?.accessToken) {
              // Store the access token in session storage so the AuthContext can pick it up.
              sessionStorage.setItem('google_access_token', credential.accessToken);
+             // After a link operation, send the user back to the google page
+             router.push("/google");
+          } else {
+             // This was a simple sign-in. Send the user to the dashboard.
+             router.push("/dashboard");
           }
-          
-          // After a link operation, the user is already on the /google page,
-          // so redirecting to dashboard is safe.
-          // After a sign-in operation, this is also the desired destination.
-          router.push("/dashboard");
+
         } else {
           // This can happen if the page is visited directly or if the redirect result has already been used.
           // It's safe to just send them to login.
