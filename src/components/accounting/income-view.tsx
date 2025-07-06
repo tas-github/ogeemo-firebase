@@ -2,6 +2,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -18,7 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreVertical, Pencil, Trash2, BookOpen, Settings, Plus } from "lucide-react";
+import { PlusCircle, MoreVertical, Pencil, Trash2, BookOpen, Settings, Plus, TrendingDown } from "lucide-react";
 import { TransactionsPageHeader } from "@/components/accounting/transactions-page-header";
 import {
   DropdownMenu,
@@ -214,6 +215,11 @@ export function IncomeView() {
               <CardDescription>A list of all recorded income.</CardDescription>
             </div>
             <div className="flex items-center gap-2">
+                <Button asChild variant="outline">
+                    <Link href="/accounting/transactions/expenses">
+                        <TrendingDown className="mr-2 h-4 w-4" /> Go to Expenses
+                    </Link>
+                </Button>
                 <Button variant="outline" onClick={() => handleOpenTransactionDialog()}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Income
                 </Button>
@@ -381,4 +387,3 @@ export function IncomeView() {
     </>
   );
 }
-
