@@ -46,10 +46,14 @@ export function GoogleIntegrationView() {
         await signInWithRedirect(auth, provider);
     } catch(error: any) {
         console.error("Google connection error:", error);
+        let description = error.message || "An unknown error occurred.";
+        if (error.code === 'auth/unauthorized-domain') {
+            description = `This domain (${window.location.hostname}) is not authorized for OAuth operations. Please add it to the authorized domains in your Firebase console's authentication settings.`;
+        }
         toast({
             variant: "destructive",
             title: "Connection Failed",
-            description: error.message || "An unknown error occurred."
+            description: description,
         });
         setIsConnecting(false);
     }
