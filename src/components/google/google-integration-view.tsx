@@ -39,8 +39,10 @@ export function GoogleIntegrationView() {
         const { auth } = await initializeFirebase();
         const provider = new GoogleAuthProvider();
         
+        // This scope asks for permission to read the user's contacts.
         provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
         
+        // This tells our callback page where to redirect after a successful connection.
         sessionStorage.setItem('google_auth_redirect', '/google');
 
         await signInWithRedirect(auth, provider);
@@ -72,7 +74,7 @@ export function GoogleIntegrationView() {
         <CardHeader>
           <CardTitle>Google Integration</CardTitle>
           <CardDescription>
-            Connect your Google account to integrate services like Contacts and Calendar directly into Ogeemo.
+            Connect your Google account to integrate services like Contacts. This will request read-only access to your Google Contacts list.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -98,7 +100,7 @@ export function GoogleIntegrationView() {
                 </div>
             )}
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex-col items-start gap-4">
             {accessToken ? (
                 <Button variant="destructive" onClick={handleDisconnect}>
                     <LogOut className="mr-2 h-4 w-4" /> Disconnect Google Account
@@ -109,6 +111,9 @@ export function GoogleIntegrationView() {
                     Connect Google Account
                 </Button>
             )}
+            <p className="text-xs text-muted-foreground">
+                If you encounter an error, ensure your app's domain is authorized in Firebase and the necessary APIs/scopes are enabled in your Google Cloud Console's OAuth consent screen.
+            </p>
         </CardFooter>
       </Card>
     </div>
