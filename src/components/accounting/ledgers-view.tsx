@@ -343,10 +343,9 @@ export function LedgersView() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Date</TableHead>
-                          <TableHead>Company</TableHead>
+                          <TableHead>Party</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
-                          <TableHead>Explanation</TableHead>
                           <TableHead>Type</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead><span className="sr-only">Actions</span></TableHead>
@@ -356,7 +355,7 @@ export function LedgersView() {
                         {generalLedger.map((item) => (
                           <TableRow key={item.id}>
                             <TableCell>{item.date}</TableCell>
-                            <TableCell>{item.company}</TableCell>
+                            <TableCell>{item.source}</TableCell>
                             <TableCell>{item.description}</TableCell>
                             <TableCell>
                               <Select
@@ -371,7 +370,6 @@ export function LedgersView() {
                                 </SelectContent>
                               </Select>
                             </TableCell>
-                            <TableCell>{(item as any).explanation}</TableCell>
                             <TableCell>
                               <Badge variant={item.type === 'income' ? 'secondary' : 'destructive'} className={cn(item.type === 'income' && 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200')}>
                                 {item.type}
