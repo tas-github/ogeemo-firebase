@@ -11,19 +11,10 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { LoaderCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 
 export function GoogleIntegrationView() {
   const { isLoading: isAuthLoading } = useAuth();
-  const { toast } = useToast();
-
-  const handleLoginClick = () => {
-    toast({
-      title: "Login Initiated",
-      description: "Next, we will add the logic to handle the Google Sign-In.",
-    });
-  };
 
   if (isAuthLoading) {
     return (
@@ -43,8 +34,10 @@ export function GoogleIntegrationView() {
           <p>testing</p>
         </CardContent>
         <CardFooter>
-          <Button onClick={handleLoginClick} className="w-full">
-            Click here to log into your google account
+          <Button asChild className="w-full">
+            <a href="https://accounts.google.com" target="_blank" rel="noopener noreferrer">
+                Click here to log into your google account
+            </a>
           </Button>
         </CardFooter>
       </Card>
