@@ -50,13 +50,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // Mock data
 const initialIncomeData = [
-  { id: "inc_1", date: "2024-07-25", source: "Client Alpha", company: "Alpha Inc.", description: "Web Development Services", amount: 5000, category: "Service Revenue", explanation: "Contracted services", documentNumber: "INV-2024-001" },
-  { id: "inc_2", date: "2024-07-24", source: "Client Beta", company: "Beta Corp.", description: "Consulting Retainer - July", amount: 2500, category: "Consulting", explanation: "Monthly retainer", documentNumber: "INV-2024-002" },
-  { id: "inc_3", date: "2024-07-22", source: "E-commerce Store", company: "Ogeemo Store", description: "Product Sales", amount: 850.75, category: "Sales Revenue", explanation: "Online sales", documentNumber: "SALE-9876" },
-  { id: "inc_4", date: "2024-07-20", source: "Affiliate Payout", company: "PartnerStack", description: "Q2 Affiliate Earnings", amount: 320.50, category: "Other Income", explanation: "Referral commissions", documentNumber: "PS-PAY-Q2" },
+  { id: "inc_1", date: "2024-07-25", source: "Client Alpha", company: "Alpha Inc.", description: "Web Development Services", amount: 5000, category: "Service Revenue", explanation: "Contracted services", documentNumber: "INV-2024-001", type: "business" as "business" | "personal" },
+  { id: "inc_2", date: "2024-07-24", source: "Client Beta", company: "Beta Corp.", description: "Consulting Retainer - July", amount: 2500, category: "Consulting", explanation: "Monthly retainer", documentNumber: "INV-2024-002", type: "business" as "business" | "personal" },
+  { id: "inc_3", date: "2024-07-22", source: "E-commerce Store", company: "Ogeemo Store", description: "Product Sales", amount: 850.75, category: "Sales Revenue", explanation: "Online sales", documentNumber: "SALE-9876", type: "business" as "business" | "personal" },
+  { id: "inc_4", date: "2024-07-20", source: "Affiliate Payout", company: "PartnerStack", description: "Q2 Affiliate Earnings", amount: 320.50, category: "Other Income", explanation: "Referral commissions", documentNumber: "PS-PAY-Q2", type: "business" as "business" | "personal" },
 ];
 
 type IncomeTransaction = typeof initialIncomeData[0];
@@ -64,7 +65,7 @@ const INCOME_CATEGORIES_KEY = "accountingIncomeCategories";
 const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
 const defaultIncomeCategories = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income"];
 const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
-const emptyTransactionForm = { date: '', party: '', company: '', description: '', amount: '', category: '', explanation: '', documentNumber: '' };
+const emptyTransactionForm = { date: '', party: '', company: '', description: '', amount: '', category: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal' };
 
 
 export function IncomeView() {
@@ -106,6 +107,7 @@ export function IncomeView() {
             category: transaction.category,
             explanation: transaction.explanation || '',
             documentNumber: transaction.documentNumber || '',
+            type: transaction.type || 'business',
         });
     } else {
         setTransactionToEdit(null);
@@ -130,6 +132,7 @@ export function IncomeView() {
         explanation: newTransaction.explanation.trim(),
         source: newTransaction.party.trim(),
         documentNumber: newTransaction.documentNumber.trim(),
+        type: newTransaction.type,
     };
 
     if (transactionToEdit) { // Handle editing existing transaction
@@ -328,6 +331,24 @@ export function IncomeView() {
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-explanation" className="text-right">Explanation</Label>
               <Input id="tx-explanation" value={newTransaction.explanation} onChange={(e) => setNewTransaction(prev => ({...prev, explanation: e.target.value}))} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="tx-type" className="text-right">Type</Label>
+                <RadioGroup
+                    value={newTransaction.type}
+                    onValueChange={(value: 'business' | 'personal') => setNewTransaction(prev => ({ ...prev, type: value }))}
+                    className="col-span-3 flex items-center space-x-4"
+                    id="tx-type"
+                >
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="business" id="type-business-inc" />
+                        <Label htmlFor="type-business-inc">Business</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="personal" id="type-personal-inc" />
+                        <Label htmlFor="type-personal-inc">Personal</Label>
+                    </div>
+                </RadioGroup>
             </div>
           </div>
           <DialogFooter>
