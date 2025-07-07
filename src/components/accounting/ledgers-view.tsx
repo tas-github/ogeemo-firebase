@@ -64,17 +64,17 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 // --- MOCK DATA & TYPES ---
 
 const initialIncomeData = [
-  { id: "inc_1", date: "2024-07-25", source: "Client Alpha", company: "Alpha Inc.", description: "Web Development Services", amount: 5000, category: "Service Revenue", explanation: "Contracted services" },
-  { id: "inc_2", date: "2024-07-24", source: "Client Beta", company: "Beta Corp.", description: "Consulting Retainer - July", amount: 2500, category: "Consulting", explanation: "Monthly retainer" },
-  { id: "inc_3", date: "2024-07-22", source: "E-commerce Store", company: "Ogeemo Store", description: "Product Sales", amount: 850.75, category: "Sales Revenue", explanation: "Online sales" },
-  { id: "inc_4", date: "2024-07-20", source: "Affiliate Payout", company: "PartnerStack", description: "Q2 Affiliate Earnings", amount: 320.50, category: "Other Income", explanation: "Referral commissions" },
+  { id: "inc_1", date: "2024-07-25", source: "Client Alpha", company: "Alpha Inc.", description: "Web Development Services", amount: 5000, category: "Service Revenue", explanation: "Contracted services", documentNumber: "INV-2024-001" },
+  { id: "inc_2", date: "2024-07-24", source: "Client Beta", company: "Beta Corp.", description: "Consulting Retainer - July", amount: 2500, category: "Consulting", explanation: "Monthly retainer", documentNumber: "INV-2024-002" },
+  { id: "inc_3", date: "2024-07-22", source: "E-commerce Store", company: "Ogeemo Store", description: "Product Sales", amount: 850.75, category: "Sales Revenue", explanation: "Online sales", documentNumber: "SALE-9876" },
+  { id: "inc_4", date: "2024-07-20", source: "Affiliate Payout", company: "PartnerStack", description: "Q2 Affiliate Earnings", amount: 320.50, category: "Other Income", explanation: "Referral commissions", documentNumber: "PS-PAY-Q2" },
 ];
 
 const initialExpenseData = [
-  { id: "exp_1", date: "2024-07-25", vendor: "Cloud Hosting Inc.", company: "Cloud Hosting Inc.", description: "Server Costs - July", amount: 150, category: "Utilities", explanation: "Monthly server maintenance" },
-  { id: "exp_2", date: "2024-07-23", vendor: "SaaS Tools Co.", company: "SaaS Tools Co.", description: "Software Subscriptions", amount: 75.99, category: "Software", explanation: "Team software licenses" },
-  { id: "exp_3", date: "2024-07-21", vendor: "Office Supply Hub", company: "Office Supply Hub", description: "Stationery and Supplies", amount: 45.30, category: "Office Supplies", explanation: "Restocking office supplies" },
-  { id: "exp_4", date: "2024-07-20", vendor: "Freelance Designer", company: "Jane Designs", description: "Logo Design", amount: 800, category: "Contractors", explanation: "New logo design for marketing campaign" },
+  { id: "exp_1", date: "2024-07-25", vendor: "Cloud Hosting Inc.", company: "Cloud Hosting Inc.", description: "Server Costs - July", amount: 150, category: "Utilities", explanation: "Monthly server maintenance", documentNumber: "CH-98765" },
+  { id: "exp_2", date: "2024-07-23", vendor: "SaaS Tools Co.", company: "SaaS Tools Co.", description: "Software Subscriptions", amount: 75.99, category: "Software", explanation: "Team software licenses", documentNumber: "STC-11223" },
+  { id: "exp_3", date: "2024-07-21", vendor: "Office Supply Hub", company: "Office Supply Hub", description: "Stationery and Supplies", amount: 45.30, category: "Office Supplies", explanation: "Restocking office supplies", documentNumber: "OSH-5543" },
+  { id: "exp_4", date: "2024-07-20", vendor: "Freelance Designer", company: "Jane Designs", description: "Logo Design", amount: 800, category: "Contractors", explanation: "New logo design for marketing campaign", documentNumber: "INV-JD-001" },
 ];
 
 type IncomeTransaction = typeof initialIncomeData[0];
@@ -87,7 +87,7 @@ const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
 const defaultIncomeCategories = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income"];
 const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
 
-const emptyTransactionForm = { date: '', party: '', company: '', description: '', amount: '', category: '', explanation: '' };
+const emptyTransactionForm = { date: '', party: '', company: '', description: '', amount: '', category: '', explanation: '', documentNumber: '' };
 
 
 // --- COMPONENT ---
@@ -218,6 +218,7 @@ export function LedgersView() {
                 amount: String(transaction.amount),
                 category: transaction.category,
                 explanation: (transaction as any).explanation || '',
+                documentNumber: transaction.documentNumber || '',
             });
         } else {
             setTransactionToEdit(null);
@@ -240,6 +241,7 @@ export function LedgersView() {
             category: newTransaction.category,
             company: newTransaction.company.trim(),
             explanation: newTransaction.explanation.trim(),
+            documentNumber: newTransaction.documentNumber.trim(),
         };
 
         if (transactionToEdit) { // Handle editing existing transaction
@@ -615,6 +617,10 @@ export function LedgersView() {
              <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-company" className="text-right">Company</Label>
               <Input id="tx-company" value={newTransaction.company} onChange={(e) => setNewTransaction(prev => ({...prev, company: e.target.value}))} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="tx-doc-number" className="text-right">Document #</Label>
+              <Input id="tx-doc-number" value={newTransaction.documentNumber} onChange={(e) => setNewTransaction(prev => ({...prev, documentNumber: e.target.value}))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-description" className="text-right">Description</Label>
