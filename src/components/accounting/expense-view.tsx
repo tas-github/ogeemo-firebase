@@ -50,13 +50,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // Mock data
 const initialExpenseData = [
-  { id: "exp_1", date: "2024-07-25", vendor: "Cloud Hosting Inc.", company: "Cloud Hosting Inc.", description: "Server Costs - July", amount: 150, category: "Utilities", explanation: "Monthly server maintenance", documentNumber: "CH-98765" },
-  { id: "exp_2", date: "2024-07-23", vendor: "SaaS Tools Co.", company: "SaaS Tools Co.", description: "Software Subscriptions", amount: 75.99, category: "Software", explanation: "Team software licenses", documentNumber: "STC-11223" },
-  { id: "exp_3", date: "2024-07-21", vendor: "Office Supply Hub", company: "Office Supply Hub", description: "Stationery and Supplies", amount: 45.30, category: "Office Supplies", explanation: "Restocking office supplies", documentNumber: "OSH-5543" },
-  { id: "exp_4", date: "2024-07-20", vendor: "Freelance Designer", company: "Jane Designs", description: "Logo Design", amount: 800, category: "Contractors", explanation: "New logo design for marketing campaign", documentNumber: "INV-JD-001" },
+  { id: "exp_1", date: "2024-07-25", vendor: "Cloud Hosting Inc.", company: "Cloud Hosting Inc.", description: "Server Costs - July", amount: 150, category: "Utilities", explanation: "Monthly server maintenance", documentNumber: "CH-98765", type: "business" as "business" | "personal" },
+  { id: "exp_2", date: "2024-07-23", vendor: "SaaS Tools Co.", company: "SaaS Tools Co.", description: "Software Subscriptions", amount: 75.99, category: "Software", explanation: "Team software licenses", documentNumber: "STC-11223", type: "business" as "business" | "personal" },
+  { id: "exp_3", date: "2024-07-21", vendor: "Office Supply Hub", company: "Office Supply Hub", description: "Stationery and Supplies", amount: 45.30, category: "Office Supplies", explanation: "Restocking office supplies", documentNumber: "OSH-5543", type: "business" as "business" | "personal" },
+  { id: "exp_4", date: "2024-07-20", vendor: "Freelance Designer", company: "Jane Designs", description: "Logo Design", amount: 800, category: "Contractors", explanation: "New logo design for marketing campaign", documentNumber: "INV-JD-001", type: "business" as "business" | "personal" },
 ];
 
 type ExpenseTransaction = typeof initialExpenseData[0];
@@ -64,7 +65,7 @@ const INCOME_CATEGORIES_KEY = "accountingIncomeCategories";
 const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
 const defaultIncomeCategories = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income"];
 const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
-const emptyTransactionForm = { date: '', party: '', company: '', description: '', amount: '', category: '', explanation: '', documentNumber: '' };
+const emptyTransactionForm = { date: '', party: '', company: '', description: '', amount: '', category: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal' };
 
 
 export function ExpenseView() {
@@ -106,6 +107,7 @@ export function ExpenseView() {
             category: transaction.category,
             explanation: transaction.explanation || '',
             documentNumber: transaction.documentNumber || '',
+            type: transaction.type || 'business',
         });
     } else {
         setTransactionToEdit(null);
@@ -130,6 +132,7 @@ export function ExpenseView() {
         explanation: newTransaction.explanation.trim(),
         vendor: newTransaction.party.trim(),
         documentNumber: newTransaction.documentNumber.trim(),
+        type: newTransaction.type,
     };
 
     if (transactionToEdit) { // Handle editing existing transaction
@@ -328,6 +331,24 @@ export function ExpenseView() {
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-explanation" className="text-right">Explanation</Label>
               <Input id="tx-explanation" value={newTransaction.explanation} onChange={(e) => setNewTransaction(prev => ({...prev, explanation: e.target.value}))} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="tx-type" className="text-right">Type</Label>
+                <RadioGroup
+                    value={newTransaction.type}
+                    onValueChange={(value: 'business' | 'personal') => setNewTransaction(prev => ({ ...prev, type: value }))}
+                    className="col-span-3 flex items-center space-x-4"
+                    id="tx-type"
+                >
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="business" id="type-business-exp" />
+                        <Label htmlFor="type-business-exp">Business</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="personal" id="type-personal-exp" />
+                        <Label htmlFor="type-personal-exp">Personal</Label>
+                    </div>
+                </RadioGroup>
             </div>
           </div>
           <DialogFooter>
