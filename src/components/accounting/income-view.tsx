@@ -303,7 +303,18 @@ export function IncomeView() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-amount" className="text-right">Amount</Label>
-              <Input id="tx-amount" type="number" value={newTransaction.amount} onChange={(e) => setNewTransaction(prev => ({...prev, amount: e.target.value}))} className="col-span-3" />
+              <div className="relative col-span-3">
+                  <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                  <Input
+                      id="tx-amount"
+                      type="number"
+                      value={newTransaction.amount}
+                      onChange={(e) => setNewTransaction(prev => ({...prev, amount: e.target.value}))}
+                      className="pl-7"
+                      step="0.01"
+                      placeholder="0.00"
+                  />
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-category" className="text-right">Category</Label>
