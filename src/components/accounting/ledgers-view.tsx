@@ -32,7 +32,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
     AlertDialog,
@@ -79,19 +78,17 @@ const initialExpenseData = [
 
 type IncomeTransaction = typeof initialIncomeData[0];
 type ExpenseTransaction = typeof initialExpenseData[0];
-type GeneralTransaction = (Omit<IncomeTransaction, 'company'> & { type: 'income'; party: string }) | (Omit<ExpenseTransaction, 'company'> & { type: 'expense'; party: string });
+type GeneralTransaction = (Omit<IncomeTransaction, 'company'> & { type: 'income'; company: string; category: string }) | (Omit<ExpenseTransaction, 'company'> & { type: 'expense'; company: string; category: string });
 
 const INCOME_TYPES_KEY = "accountingIncomeTypes";
 const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
-const SUPPLIERS_KEY = "accountingSuppliers";
 const COMPANIES_KEY = "accountingCompanies";
 
 const defaultIncomeTypes = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income"];
 const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
-const defaultSuppliers = ["Client Alpha", "Client Beta", "E-commerce Store", "Affiliate Payout"];
-const defaultCompanies = ["Cloud Hosting Inc.", "SaaS Tools Co.", "Office Supply Hub", "Jane Designs"];
+const defaultCompanies = ["Client Alpha", "Client Beta", "E-commerce Store", "Affiliate Payout", "Cloud Hosting Inc.", "SaaS Tools Co.", "Office Supply Hub", "Jane Designs"];
 
-const emptyTransactionForm = { date: '', party: '', description: '', amount: '', category: '', incomeType: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal', depositedTo: '' };
+const emptyTransactionForm = { date: '', company: '', description: '', amount: '', category: '', incomeType: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal', depositedTo: '' };
 
 
 // --- COMPONENT ---
@@ -102,18 +99,15 @@ export function LedgersView() {
 
   const [incomeTypes, setIncomeTypes] = React.useState<string[]>([]);
   const [expenseCategories, setExpenseCategories] = React.useState<string[]>([]);
-  const [suppliers, setSuppliers] = React.useState<string[]>([]);
   const [companies, setCompanies] = React.useState<string[]>([]);
   
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = React.useState(false);
-  const [isSupplierDialogOpen, setIsSupplierDialogOpen] = React.useState(false);
   const [isCompanyDialogOpen, setIsCompanyDialogOpen] = React.useState(false);
   
   const [newIncomeType, setNewIncomeType] = React.useState("");
   const [newExpenseCategory, setNewExpenseCategory] = React.useState("");
-  const [newSupplier, setNewSupplier] = React.useState("");
   const [newCompany, setNewCompany] = React.useState("");
-  const [editingSupplier, setEditingSupplier] = React.useState<string | null>(null);
+  const [editingCompany, setEditingCompany] = React.useState<string | null>(null);
   const [editingValue, setEditingValue] = React.useState("");
 
   
@@ -134,8 +128,6 @@ export function LedgersView() {
       setIncomeTypes(savedIncomeTypes ? JSON.parse(savedIncomeTypes) : defaultIncomeTypes);
       const savedExpenseCat = localStorage.getItem(EXPENSE_CATEGORIES_KEY);
       setExpenseCategories(savedExpenseCat ? JSON.parse(savedExpenseCat) : defaultExpenseCategories);
-      const savedSuppliers = localStorage.getItem(SUPPLIERS_KEY);
-      setSuppliers(savedSuppliers ? JSON.parse(savedSuppliers) : defaultSuppliers);
       const savedCompanies = localStorage.getItem(COMPANIES_KEY);
       setCompanies(savedCompanies ? JSON.parse(savedCompanies) : defaultCompanies);
     } catch (error) {
@@ -145,8 +137,8 @@ export function LedgersView() {
 
   const generalLedger = React.useMemo(() => {
     const combined: GeneralTransaction[] = [
-      ...incomeLedger.map(item => ({ ...item, party: item.company, category: item.incomeType, type: 'income' as const })),
-      ...expenseLedger.map(item => ({ ...item, party: item.company, type: 'expense' as const })),
+      ...incomeLedger.map(item => ({ ...item, type: 'income' as const, category: item.incomeType })),
+      ...expenseLedger.map(item => ({ ...item, type: 'expense' as const })),
     ];
     return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [incomeLedger, expenseLedger]);
@@ -213,7 +205,7 @@ export function LedgersView() {
             setTransactionToEdit(transaction);
             setNewTransaction({
                 date: transaction.date,
-                party: transaction.party,
+                company: transaction.company,
                 description: transaction.description,
                 amount: String(transaction.amount),
                 category: transaction.category,
@@ -232,7 +224,7 @@ export function LedgersView() {
 
     const handleSaveTransaction = () => {
         const amountNum = parseFloat(newTransaction.amount);
-        if (!newTransaction.date || !newTransaction.party || (!newTransaction.incomeType && newTransactionType === 'income') || (!newTransaction.category && newTransactionType === 'expense') || !newTransaction.amount || isNaN(amountNum) || amountNum <= 0) {
+        if (!newTransaction.date || !newTransaction.company || (!newTransaction.incomeType && newTransactionType === 'income') || (!newTransaction.category && newTransactionType === 'expense') || !newTransaction.amount || isNaN(amountNum) || amountNum <= 0) {
             toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please fill all required fields correctly.' });
             return;
         }
@@ -245,7 +237,7 @@ export function LedgersView() {
                     amount: amountNum,
                     incomeType: newTransaction.incomeType,
                     depositedTo: newTransaction.depositedTo,
-                    company: newTransaction.party.trim(),
+                    company: newTransaction.company.trim(),
                     explanation: newTransaction.explanation.trim(),
                     documentNumber: newTransaction.documentNumber.trim(),
                     type: newTransaction.type,
@@ -258,7 +250,7 @@ export function LedgersView() {
                     description: newTransaction.description.trim(),
                     amount: amountNum,
                     category: newTransaction.category,
-                    company: newTransaction.party.trim(),
+                    company: newTransaction.company.trim(),
                     explanation: newTransaction.explanation.trim(),
                     documentNumber: newTransaction.documentNumber.trim(),
                     type: newTransaction.type,
@@ -268,11 +260,11 @@ export function LedgersView() {
             }
         } else {
             if (newTransactionType === 'income') {
-                const newEntry: IncomeTransaction = { id: `inc_${Date.now()}`, date: newTransaction.date, company: newTransaction.party, description: newTransaction.description, amount: amountNum, incomeType: newTransaction.incomeType, depositedTo: newTransaction.depositedTo, explanation: newTransaction.explanation, documentNumber: newTransaction.documentNumber, type: newTransaction.type };
+                const newEntry: IncomeTransaction = { id: `inc_${Date.now()}`, date: newTransaction.date, company: newTransaction.company, description: newTransaction.description, amount: amountNum, incomeType: newTransaction.incomeType, depositedTo: newTransaction.depositedTo, explanation: newTransaction.explanation, documentNumber: newTransaction.documentNumber, type: newTransaction.type };
                 setIncomeLedger(prev => [newEntry, ...prev]);
                 toast({ title: "Income Transaction Added" });
             } else {
-                const newEntry: ExpenseTransaction = { id: `exp_${Date.now()}`, date: newTransaction.date, company: newTransaction.party, description: newTransaction.description, amount: amountNum, category: newTransaction.category, explanation: newTransaction.explanation, documentNumber: newTransaction.documentNumber, type: newTransaction.type };
+                const newEntry: ExpenseTransaction = { id: `exp_${Date.now()}`, date: newTransaction.date, company: newTransaction.company, description: newTransaction.description, amount: amountNum, category: newTransaction.category, explanation: newTransaction.explanation, documentNumber: newTransaction.documentNumber, type: newTransaction.type };
                 setExpenseLedger(prev => [newEntry, ...prev]);
                 toast({ title: "Expense Transaction Added" });
             }
@@ -294,54 +286,6 @@ export function LedgersView() {
         setTransactionToDelete(null);
     };
     
-    const handleAddSupplier = () => {
-      const supplierToAdd = newSupplier.trim();
-      if (!supplierToAdd) { toast({ variant: 'destructive', title: 'Supplier name cannot be empty.' }); return; }
-      if (suppliers.map(c => c.toLowerCase()).includes(supplierToAdd.toLowerCase())) { toast({ variant: 'destructive', title: 'Duplicate Supplier' }); return; }
-      const updated = [...suppliers, supplierToAdd];
-      setSuppliers(updated);
-      localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(updated));
-      setNewSupplier("");
-    };
-
-    const handleDeleteSupplier = (supplierToDelete: string) => {
-      if (incomeLedger.some(item => item.company === supplierToDelete)) { toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This supplier is in use.' }); return; }
-      const updated = suppliers.filter(c => c !== supplierToDelete);
-      setSuppliers(updated);
-      localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(updated));
-      toast({ title: 'Supplier Deleted' });
-    };
-  
-    const handleEditSupplier = (type: string) => {
-      setEditingSupplier(type);
-      setEditingValue(type);
-    };
-
-    const handleCancelEdit = () => {
-        setEditingSupplier(null);
-        setEditingValue("");
-    };
-
-    const handleUpdateSupplier = () => {
-        if (!editingSupplier || !editingValue.trim() || editingSupplier === editingValue.trim()) {
-            handleCancelEdit();
-            return;
-        }
-        const trimmedValue = editingValue.trim();
-        if (suppliers.map(c => c.toLowerCase()).includes(trimmedValue.toLowerCase())) {
-            toast({ variant: 'destructive', title: 'Duplicate Supplier' }); return;
-        }
-        const updatedSuppliers = suppliers.map(t => t === editingSupplier ? trimmedValue : t);
-        setSuppliers(updatedSuppliers);
-        localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(updatedSuppliers));
-        setIncomeLedger(prev => prev.map(item => item.company === editingSupplier ? { ...item, company: trimmedValue } : item));
-        if (newTransaction.party === editingSupplier) {
-            setNewTransaction(prev => ({...prev, party: trimmedValue }));
-        }
-        toast({ title: 'Supplier Updated' });
-        handleCancelEdit();
-    };
-    
     const handleAddCompany = () => {
       const companyToAdd = newCompany.trim();
       if (!companyToAdd) { toast({ variant: 'destructive', title: 'Company name cannot be empty.' }); return; }
@@ -351,12 +295,48 @@ export function LedgersView() {
       localStorage.setItem(COMPANIES_KEY, JSON.stringify(updated));
       setNewCompany("");
     };
-  
+
     const handleDeleteCompany = (companyToDelete: string) => {
-      if (expenseLedger.some(item => item.company === companyToDelete)) { toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This company is in use.' }); return; }
+      if (incomeLedger.some(item => item.company === companyToDelete) || expenseLedger.some(item => item.company === companyToDelete)) { 
+          toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This company is in use.' }); return;
+      }
       const updated = companies.filter(c => c !== companyToDelete);
       setCompanies(updated);
       localStorage.setItem(COMPANIES_KEY, JSON.stringify(updated));
+      toast({ title: 'Company Deleted' });
+    };
+  
+    const handleEditCompany = (type: string) => {
+      setEditingCompany(type);
+      setEditingValue(type);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingCompany(null);
+        setEditingValue("");
+    };
+
+    const handleUpdateCompany = () => {
+        if (!editingCompany || !editingValue.trim() || editingCompany === editingValue.trim()) {
+            handleCancelEdit();
+            return;
+        }
+        const trimmedValue = editingValue.trim();
+        if (companies.map(c => c.toLowerCase()).includes(trimmedValue.toLowerCase())) {
+            toast({ variant: 'destructive', title: 'Duplicate Company' }); return;
+        }
+        const updatedCompanies = companies.map(t => t === editingCompany ? trimmedValue : t);
+        setCompanies(updatedCompanies);
+        localStorage.setItem(COMPANIES_KEY, JSON.stringify(updatedCompanies));
+        
+        setIncomeLedger(prev => prev.map(item => item.company === editingCompany ? { ...item, company: trimmedValue } : item));
+        setExpenseLedger(prev => prev.map(item => item.company === editingCompany ? { ...item, company: trimmedValue } : item));
+        
+        if (newTransaction.company === editingCompany) {
+            setNewTransaction(prev => ({...prev, company: trimmedValue }));
+        }
+        toast({ title: 'Company Updated' });
+        handleCancelEdit();
     };
 
   return (
@@ -436,7 +416,7 @@ export function LedgersView() {
                         {generalLedger.map((item) => (
                           <TableRow key={item.id}>
                             <TableCell>{item.date}</TableCell>
-                            <TableCell>{item.party}</TableCell>
+                            <TableCell>{item.company}</TableCell>
                             <TableCell>{item.description}</TableCell>
                             <TableCell>
                               <Select
@@ -541,9 +521,9 @@ export function LedgersView() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', { ...item, party: item.company, category: item.incomeType, type: 'income' })}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
-                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', { ...item, party: item.company, category: item.incomeType, type: 'income' })}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({ ...item, party: item.company, category: item.incomeType, type: 'income' })}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', { ...item, company: item.company, category: item.incomeType, type: 'income' })}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', { ...item, company: item.company, category: item.incomeType, type: 'income' })}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({ ...item, company: item.company, category: item.incomeType, type: 'income' })}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>
@@ -611,9 +591,9 @@ export function LedgersView() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('expense', { ...item, party: item.company, type: 'expense' })}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
-                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('expense', { ...item, party: item.company, type: 'expense' })}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({ ...item, party: item.company, type: 'expense' })}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('expense', { ...item, company: item.company, type: 'expense' })}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('expense', { ...item, company: item.company, type: 'expense' })}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({ ...item, company: item.company, type: 'expense' })}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>
@@ -680,7 +660,7 @@ export function LedgersView() {
       <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{transactionToEdit ? 'Edit Transaction' : 'Post New Transaction'}</DialogTitle>
+            <DialogTitle>{transactionToEdit ? 'Edit Transaction' : `Post New ${newTransactionType === 'income' ? 'Income' : 'Expense'} Transaction`}</DialogTitle>
             <DialogDescription>Select the transaction type and fill in the details.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -693,23 +673,17 @@ export function LedgersView() {
               <Input id="tx-date-gl" type="date" value={newTransaction.date} onChange={(e) => setNewTransaction(prev => ({...prev, date: e.target.value}))} className="col-span-3" />
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="tx-party-gl" className="text-right">Company <span className="text-destructive">*</span></Label>
+                <Label htmlFor="tx-company-gl" className="text-right">Company <span className="text-destructive">*</span></Label>
                 <div className="col-span-3 flex items-center gap-2">
-                    <Select value={newTransaction.party} onValueChange={(value) => setNewTransaction(prev => ({...prev, party: value}))}>
-                        <SelectTrigger id="tx-party-gl" className="w-full">
+                    <Select value={newTransaction.company} onValueChange={(value) => setNewTransaction(prev => ({...prev, company: value}))}>
+                        <SelectTrigger id="tx-company-gl" className="w-full">
                             <SelectValue placeholder={`Select a company`} />
                         </SelectTrigger>
                         <SelectContent>
-                            {(newTransactionType === 'income' ? suppliers : companies).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                            {companies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                         </SelectContent>
                     </Select>
-                    <Button type="button" size="icon" variant="outline" onClick={() => {
-                        if (newTransactionType === 'income') {
-                            setIsSupplierDialogOpen(true);
-                        } else {
-                            setIsCompanyDialogOpen(true);
-                        }
-                    }} className="flex-shrink-0">
+                    <Button type="button" size="icon" variant="outline" onClick={() => setIsCompanyDialogOpen(true)} className="flex-shrink-0">
                         <Settings className="h-4 w-4"/>
                         <span className="sr-only">Manage Items</span>
                     </Button>
@@ -800,7 +774,7 @@ export function LedgersView() {
         </AlertDialogContent>
       </AlertDialog>
       
-      <Dialog open={isSupplierDialogOpen} onOpenChange={setIsSupplierDialogOpen}>
+      <Dialog open={isCompanyDialogOpen} onOpenChange={setIsCompanyDialogOpen}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Manage Companies</DialogTitle>
@@ -808,49 +782,23 @@ export function LedgersView() {
             </DialogHeader>
             <div className="space-y-4 py-4">
                 <div className="flex gap-2">
-                    <Input value={newSupplier} onChange={(e) => setNewSupplier(e.target.value)} placeholder="New company" onKeyDown={(e) => { if (e.key === 'Enter') handleAddSupplier(); }}/>
-                    <Button onClick={handleAddSupplier}><Plus className="mr-2 h-4 w-4" /> Add</Button>
-                </div>
-                <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
-                    {suppliers.map(c => (
-                        <div key={c} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                            {editingSupplier === c ? (
-                              <Input value={editingValue} onChange={(e) => setEditingValue(e.target.value)} onBlur={handleUpdateSupplier} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateSupplier(); if (e.key === 'Escape') handleCancelEdit(); }} autoFocus className="h-8" />
-                            ) : (
-                              <>
-                                <span>{c}</span>
-                                <div className="flex items-center">
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditSupplier(c)}><Pencil className="h-4 w-4" /></Button>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteSupplier(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                </div>
-                              </>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
-            <DialogFooter>
-                <Button onClick={() => setIsSupplierDialogOpen(false)}>Done</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isCompanyDialogOpen} onOpenChange={setIsCompanyDialogOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Manage Companies</DialogTitle>
-                <DialogDescription>Add or remove companies from your list.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-                <div className="flex gap-2">
-                    <Input value={newCompany} onChange={(e) => setNewCompany(e.target.value)} placeholder="New company name" onKeyDown={(e) => { if (e.key === 'Enter') handleAddCompany(); }}/>
+                    <Input value={newCompany} onChange={(e) => setNewCompany(e.target.value)} placeholder="New company" onKeyDown={(e) => { if (e.key === 'Enter') handleAddCompany(); }}/>
                     <Button onClick={handleAddCompany}><Plus className="mr-2 h-4 w-4" /> Add</Button>
                 </div>
                 <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
                     {companies.map(c => (
                         <div key={c} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                            <span>{c}</span>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteCompany(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                            {editingCompany === c ? (
+                              <Input value={editingValue} onChange={(e) => setEditingValue(e.target.value)} onBlur={handleUpdateCompany} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateCompany(); if (e.key === 'Escape') handleCancelEdit(); }} autoFocus className="h-8" />
+                            ) : (
+                              <>
+                                <span>{c}</span>
+                                <div className="flex items-center">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditCompany(c)}><Pencil className="h-4 w-4" /></Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteCompany(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                </div>
+                              </>
+                            )}
                         </div>
                     ))}
                 </div>
