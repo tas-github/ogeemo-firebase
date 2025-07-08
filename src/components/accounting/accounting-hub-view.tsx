@@ -68,7 +68,7 @@ export function AccountingHubView() {
       icon: BookText,
       title: "Bookkeeping Kept Simple",
       description: "BKS is for those who want to KISS.",
-      href: "/accounting/transactions",
+      href: "/accounting/bks-info",
       cta: "Go to BKS",
     },
   ];

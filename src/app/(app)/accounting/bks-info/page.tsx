@@ -1,24 +1,22 @@
 
-import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { ArrowRight, BookText, TrendingDown, TrendingUp } from "lucide-react";
+import { ArrowRight, TrendingDown, TrendingUp, ShieldCheck } from "lucide-react";
 
-export default function BksInfoPage() {
+export default function BksWelcomePage() {
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <AccountingPageHeader pageTitle="BKS Info" />
-      <header className="text-center mb-6">
-        <h1 className="text-3xl font-bold font-headline text-primary">
-          Bookkeeping Kept Simple (BKS)
+    <div className="p-4 sm:p-6 space-y-8 flex flex-col items-center">
+      <header className="text-center max-w-3xl">
+        <h1 className="text-4xl font-bold font-headline text-primary">
+          Bookkeeping Kept Simple
         </h1>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-            Your straightforward path to financial clarity. We believe that managing your books does not have to be complicated.
+        <p className="text-lg text-muted-foreground mt-2">
+            Your straightforward path to financial clarity. Start with the basics, expand when you're ready.
         </p>
       </header>
       
-      <Card className="max-w-3xl mx-auto">
+      <Card className="w-full max-w-3xl">
         <CardHeader>
             <CardTitle>The Core Concept</CardTitle>
         </CardHeader>
@@ -29,45 +27,51 @@ export default function BksInfoPage() {
             <p className="leading-relaxed">
                 By consistently recording all the money that comes in (income) and all the money that goes out (expenses), you will capture the essential information required for tax preparation and gain a clear picture of your business's financial health.
             </p>
-            <p className="leading-relaxed">
-                When you're ready to take your accounting to the next level, all the advanced tools you need are waiting for you right here in the main Accounting Hub.
-            </p>
         </CardContent>
       </Card>
 
-      <div className="max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
+      <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="border-2 border-primary/20 shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg"><TrendingUp className="h-5 w-5 text-primary"/></div>
-                    <CardTitle className="text-lg">Manage Income</CardTitle>
+                    <div className="p-3 bg-primary/10 rounded-lg"><TrendingUp className="h-6 w-6 text-primary"/></div>
+                    <CardTitle className="text-xl">Manage Income</CardTitle>
                 </div>
             </CardHeader>
             <CardContent>
-                <p className="text-sm text-muted-foreground">Record all incoming revenue from sales, services, and other sources.</p>
+                <p className="text-muted-foreground">Record all incoming revenue from sales, services, and other sources.</p>
             </CardContent>
             <CardContent>
-                 <Button asChild className="w-full">
+                 <Button asChild className="w-full text-lg py-6">
                     <Link href="/accounting/transactions/income">Go to Income <ArrowRight className="ml-2 h-4 w-4"/></Link>
                 </Button>
             </CardContent>
         </Card>
-        <Card>
+        <Card className="border-2 border-primary/20 shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader>
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg"><TrendingDown className="h-5 w-5 text-primary"/></div>
-                    <CardTitle className="text-lg">Manage Expenses</CardTitle>
+                    <div className="p-3 bg-primary/10 rounded-lg"><TrendingDown className="h-6 w-6 text-primary"/></div>
+                    <CardTitle className="text-xl">Manage Expenses</CardTitle>
                 </div>
             </CardHeader>
             <CardContent>
-                <p className="text-sm text-muted-foreground">Track all business expenditures, from supplies to software.</p>
+                <p className="text-muted-foreground">Track all business expenditures, from supplies to software.</p>
             </CardContent>
             <CardContent>
-                 <Button asChild className="w-full">
+                 <Button asChild className="w-full text-lg py-6">
                     <Link href="/accounting/transactions/expenses">Go to Expenses <ArrowRight className="ml-2 h-4 w-4"/></Link>
                 </Button>
             </CardContent>
         </Card>
+      </div>
+
+      <div className="text-center mt-4">
+          <p className="text-muted-foreground">Ready for more?</p>
+          <Button asChild variant="link" className="text-base">
+              <Link href="/accounting">
+                Explore Advanced Accounting Tools <ShieldCheck className="ml-2 h-4 w-4" />
+              </Link>
+          </Button>
       </div>
     </div>
   );
