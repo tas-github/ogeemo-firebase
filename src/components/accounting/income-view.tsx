@@ -54,44 +54,69 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // Mock data
 const initialIncomeData = [
-  { id: "inc_1", date: "2024-07-25", source: "Client Alpha", company: "Alpha Inc.", description: "Web Development Services", amount: 5000, category: "Service Revenue", explanation: "Contracted services", documentNumber: "INV-2024-001", type: "business" as "business" | "personal" },
-  { id: "inc_2", date: "2024-07-24", source: "Client Beta", company: "Beta Corp.", description: "Consulting Retainer - July", amount: 2500, category: "Consulting", explanation: "Monthly retainer", documentNumber: "INV-2024-002", type: "business" as "business" | "personal" },
-  { id: "inc_3", date: "2024-07-22", source: "E-commerce Store", company: "Ogeemo Store", description: "Product Sales", amount: 850.75, category: "Sales Revenue", explanation: "Online sales", documentNumber: "SALE-9876", type: "business" as "business" | "personal" },
-  { id: "inc_4", date: "2024-07-20", source: "Affiliate Payout", company: "PartnerStack", description: "Q2 Affiliate Earnings", amount: 320.50, category: "Other Income", explanation: "Referral commissions", documentNumber: "PS-PAY-Q2", type: "business" as "business" | "personal" },
+  { id: "inc_1", date: "2024-07-25", incomeType: "Client Alpha", company: "Alpha Inc.", description: "Web Development Services", amount: 5000, category: "Service Revenue", depositedTo: "Bank Account #1", explanation: "Contracted services", documentNumber: "INV-2024-001", type: "business" as "business" | "personal" },
+  { id: "inc_2", date: "2024-07-24", incomeType: "Client Beta", company: "Beta Corp.", description: "Consulting Retainer - July", amount: 2500, category: "Consulting", depositedTo: "Bank Account #1", explanation: "Monthly retainer", documentNumber: "INV-2024-002", type: "business" as "business" | "personal" },
+  { id: "inc_3", date: "2024-07-22", incomeType: "E-commerce Store", company: "Ogeemo Store", description: "Product Sales", amount: 850.75, category: "Sales Revenue", depositedTo: "Credit Card #1", explanation: "Online sales", documentNumber: "SALE-9876", type: "business" as "business" | "personal" },
+  { id: "inc_4", date: "2024-07-20", incomeType: "Affiliate Payout", company: "PartnerStack", description: "Q2 Affiliate Earnings", amount: 320.50, category: "Other Income", depositedTo: "Cash Account", explanation: "Referral commissions", documentNumber: "PS-PAY-Q2", type: "business" as "business" | "personal" },
 ];
 
 type IncomeTransaction = typeof initialIncomeData[0];
 const INCOME_CATEGORIES_KEY = "accountingIncomeCategories";
 const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
+const INCOME_TYPES_KEY = "accountingIncomeTypes";
+const DEPOSIT_ACCOUNTS_KEY = "accountingDepositAccounts";
+
 const defaultIncomeCategories = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income"];
 const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
-const emptyTransactionForm = { date: '', party: '', company: '', description: '', amount: '', category: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal' };
+const defaultIncomeTypes = ["Client Alpha", "Client Beta", "E-commerce Store", "Affiliate Payout"];
+const defaultDepositAccounts = ["Bank Account #1", "Credit Card #1", "Cash Account"];
+
+const emptyTransactionForm = { date: '', incomeType: '', company: '', description: '', amount: '', category: '', depositedTo: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal' };
 
 
 export function IncomeView() {
   const [incomeLedger, setIncomeLedger] = React.useState(initialIncomeData);
   const [incomeCategories, setIncomeCategories] = React.useState<string[]>([]);
   const [expenseCategories, setExpenseCategories] = React.useState<string[]>([]);
+  const [incomeTypes, setIncomeTypes] = React.useState<string[]>([]);
+  const [depositAccounts, setDepositAccounts] = React.useState<string[]>([]);
+  
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = React.useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = React.useState(false);
+  const [isIncomeTypeDialogOpen, setIsIncomeTypeDialogOpen] = React.useState(false);
+  const [isDepositAccountDialogOpen, setIsDepositAccountDialogOpen] = React.useState(false);
+
   const [transactionToEdit, setTransactionToEdit] = React.useState<IncomeTransaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = React.useState<IncomeTransaction | null>(null);
+  
   const [newTransaction, setNewTransaction] = React.useState(emptyTransactionForm);
   const [newIncomeCategory, setNewIncomeCategory] = React.useState("");
   const [newExpenseCategory, setNewExpenseCategory] = React.useState("");
+  const [newIncomeType, setNewIncomeType] = React.useState("");
+  const [newDepositAccount, setNewDepositAccount] = React.useState("");
   
   const { toast } = useToast();
 
   React.useEffect(() => {
     try {
-      const savedIncome = localStorage.getItem(INCOME_CATEGORIES_KEY);
-      setIncomeCategories(savedIncome ? JSON.parse(savedIncome) : defaultIncomeCategories);
-      const savedExpense = localStorage.getItem(EXPENSE_CATEGORIES_KEY);
-      setExpenseCategories(savedExpense ? JSON.parse(savedExpense) : defaultExpenseCategories);
+      const savedIncomeCat = localStorage.getItem(INCOME_CATEGORIES_KEY);
+      setIncomeCategories(savedIncomeCat ? JSON.parse(savedIncomeCat) : defaultIncomeCategories);
+      
+      const savedExpenseCat = localStorage.getItem(EXPENSE_CATEGORIES_KEY);
+      setExpenseCategories(savedExpenseCat ? JSON.parse(savedExpenseCat) : defaultExpenseCategories);
+
+      const savedIncomeTypes = localStorage.getItem(INCOME_TYPES_KEY);
+      setIncomeTypes(savedIncomeTypes ? JSON.parse(savedIncomeTypes) : defaultIncomeTypes);
+      
+      const savedDepositAccounts = localStorage.getItem(DEPOSIT_ACCOUNTS_KEY);
+      setDepositAccounts(savedDepositAccounts ? JSON.parse(savedDepositAccounts) : defaultDepositAccounts);
+
     } catch (error) {
-        console.error("Failed to load categories from localStorage", error);
+        console.error("Failed to load data from localStorage", error);
         setIncomeCategories(defaultIncomeCategories);
         setExpenseCategories(defaultExpenseCategories);
+        setIncomeTypes(defaultIncomeTypes);
+        setDepositAccounts(defaultDepositAccounts);
     }
   }, []);
   
@@ -100,11 +125,12 @@ export function IncomeView() {
         setTransactionToEdit(transaction);
         setNewTransaction({
             date: transaction.date,
-            party: transaction.source,
+            incomeType: transaction.incomeType,
             company: transaction.company || '',
             description: transaction.description,
             amount: String(transaction.amount),
             category: transaction.category,
+            depositedTo: transaction.depositedTo,
             explanation: transaction.explanation || '',
             documentNumber: transaction.documentNumber || '',
             type: transaction.type || 'business',
@@ -118,27 +144,28 @@ export function IncomeView() {
 
   const handleSaveTransaction = () => {
     const amountNum = parseFloat(newTransaction.amount);
-    if (!newTransaction.date || !newTransaction.party || !newTransaction.category || !newTransaction.amount || isNaN(amountNum) || amountNum <= 0) {
+    if (!newTransaction.date || !newTransaction.incomeType || !newTransaction.category || !newTransaction.amount || isNaN(amountNum) || amountNum <= 0) {
         toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please fill all required fields correctly.' });
         return;
     }
 
     const transactionData = {
         date: newTransaction.date,
+        incomeType: newTransaction.incomeType,
         description: newTransaction.description.trim(),
         amount: amountNum,
         category: newTransaction.category,
+        depositedTo: newTransaction.depositedTo,
         company: newTransaction.company.trim(),
         explanation: newTransaction.explanation.trim(),
-        source: newTransaction.party.trim(),
         documentNumber: newTransaction.documentNumber.trim(),
         type: newTransaction.type,
     };
 
-    if (transactionToEdit) { // Handle editing existing transaction
+    if (transactionToEdit) {
         setIncomeLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, ...transactionData } : item));
         toast({ title: "Income Transaction Updated" });
-    } else { // Handle adding new transaction
+    } else {
         const newEntry: IncomeTransaction = { id: `inc_${Date.now()}`, ...transactionData };
         setIncomeLedger(prev => [newEntry, ...prev]);
         toast({ title: "Income Transaction Added" });
@@ -159,24 +186,16 @@ export function IncomeView() {
   const handleAddCategory = (type: 'income' | 'expense') => {
     if (type === 'income') {
         const categoryToAdd = newIncomeCategory.trim();
-        if (!categoryToAdd) {
-            toast({ variant: 'destructive', title: 'Category name cannot be empty.' }); return;
-        }
-        if (incomeCategories.map(c => c.toLowerCase()).includes(categoryToAdd.toLowerCase())) {
-             toast({ variant: 'destructive', title: 'Duplicate Category', description: 'This category already exists.' }); return;
-        }
+        if (!categoryToAdd) { toast({ variant: 'destructive', title: 'Category name cannot be empty.' }); return; }
+        if (incomeCategories.map(c => c.toLowerCase()).includes(categoryToAdd.toLowerCase())) { toast({ variant: 'destructive', title: 'Duplicate Category', description: 'This category already exists.' }); return; }
         const updated = [...incomeCategories, categoryToAdd];
         setIncomeCategories(updated);
         localStorage.setItem(INCOME_CATEGORIES_KEY, JSON.stringify(updated));
         setNewIncomeCategory("");
     } else {
         const categoryToAdd = newExpenseCategory.trim();
-        if (!categoryToAdd) {
-            toast({ variant: 'destructive', title: 'Category name cannot be empty.' }); return;
-        }
-        if (expenseCategories.map(c => c.toLowerCase()).includes(categoryToAdd.toLowerCase())) {
-             toast({ variant: 'destructive', title: 'Duplicate Category', description: 'This category already exists.' }); return;
-        }
+        if (!categoryToAdd) { toast({ variant: 'destructive', title: 'Category name cannot be empty.' }); return; }
+        if (expenseCategories.map(c => c.toLowerCase()).includes(categoryToAdd.toLowerCase())) { toast({ variant: 'destructive', title: 'Duplicate Category', description: 'This category already exists.' }); return; }
         const updated = [...expenseCategories, categoryToAdd];
         setExpenseCategories(updated);
         localStorage.setItem(EXPENSE_CATEGORIES_KEY, JSON.stringify(updated));
@@ -186,10 +205,7 @@ export function IncomeView() {
   
   const handleDeleteCategory = (category: string, type: 'income' | 'expense') => {
      if (type === 'income') {
-        if (incomeLedger.some(item => item.category === category)) {
-            toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This category is currently in use.' });
-            return;
-        }
+        if (incomeLedger.some(item => item.category === category)) { toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This category is currently in use.' }); return; }
         const updated = incomeCategories.filter(c => c !== category);
         setIncomeCategories(updated);
         localStorage.setItem(INCOME_CATEGORIES_KEY, JSON.stringify(updated));
@@ -198,6 +214,40 @@ export function IncomeView() {
         setExpenseCategories(updated);
         localStorage.setItem(EXPENSE_CATEGORIES_KEY, JSON.stringify(updated));
      }
+  };
+
+  const handleAddIncomeType = () => {
+    const typeToAdd = newIncomeType.trim();
+    if (!typeToAdd) { toast({ variant: 'destructive', title: 'Income type name cannot be empty.' }); return; }
+    if (incomeTypes.map(c => c.toLowerCase()).includes(typeToAdd.toLowerCase())) { toast({ variant: 'destructive', title: 'Duplicate Type', description: 'This income type already exists.' }); return; }
+    const updated = [...incomeTypes, typeToAdd];
+    setIncomeTypes(updated);
+    localStorage.setItem(INCOME_TYPES_KEY, JSON.stringify(updated));
+    setNewIncomeType("");
+  };
+
+  const handleDeleteIncomeType = (typeToDelete: string) => {
+    if (incomeLedger.some(item => item.incomeType === typeToDelete)) { toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This income type is currently in use.' }); return; }
+    const updated = incomeTypes.filter(c => c !== typeToDelete);
+    setIncomeTypes(updated);
+    localStorage.setItem(INCOME_TYPES_KEY, JSON.stringify(updated));
+  };
+  
+  const handleAddDepositAccount = () => {
+    const accountToAdd = newDepositAccount.trim();
+    if (!accountToAdd) { toast({ variant: 'destructive', title: 'Account name cannot be empty.' }); return; }
+    if (depositAccounts.map(c => c.toLowerCase()).includes(accountToAdd.toLowerCase())) { toast({ variant: 'destructive', title: 'Duplicate Account', description: 'This account already exists.' }); return; }
+    const updated = [...depositAccounts, accountToAdd];
+    setDepositAccounts(updated);
+    localStorage.setItem(DEPOSIT_ACCOUNTS_KEY, JSON.stringify(updated));
+    setNewDepositAccount("");
+  };
+
+  const handleDeleteDepositAccount = (accountToDelete: string) => {
+    if (incomeLedger.some(item => item.depositedTo === accountToDelete)) { toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This account is currently in use.' }); return; }
+    const updated = depositAccounts.filter(c => c !== accountToDelete);
+    setDepositAccounts(updated);
+    localStorage.setItem(DEPOSIT_ACCOUNTS_KEY, JSON.stringify(updated));
   };
   
   return (
@@ -238,7 +288,7 @@ export function IncomeView() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Source</TableHead>
+                  <TableHead>Income Type</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
@@ -249,7 +299,7 @@ export function IncomeView() {
                 {incomeLedger.map(item => (
                   <TableRow key={item.id}>
                     <TableCell>{item.date}</TableCell>
-                    <TableCell>{item.source}</TableCell>
+                    <TableCell>{item.incomeType}</TableCell>
                     <TableCell>{item.description}</TableCell>
                     <TableCell>{item.category}</TableCell>
                     <TableCell className="text-right font-mono text-green-600">
@@ -288,9 +338,20 @@ export function IncomeView() {
               <Label htmlFor="tx-date" className="text-right">Date <span className="text-destructive">*</span></Label>
               <Input id="tx-date" type="date" value={newTransaction.date} onChange={(e) => setNewTransaction(prev => ({...prev, date: e.target.value}))} className="col-span-3" />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-party" className="text-right">Source <span className="text-destructive">*</span></Label>
-              <Input id="tx-party" value={newTransaction.party} onChange={(e) => setNewTransaction(prev => ({...prev, party: e.target.value}))} className="col-span-3" />
+             <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="tx-income-type" className="text-right">Income Type <span className="text-destructive">*</span></Label>
+              <div className="col-span-3 flex items-center gap-2">
+                  <Select value={newTransaction.incomeType} onValueChange={(value) => setNewTransaction(prev => ({...prev, incomeType: value}))}>
+                    <SelectTrigger id="tx-income-type" className="w-full"><SelectValue placeholder="Select a type" /></SelectTrigger>
+                    <SelectContent>
+                      {incomeTypes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" size="icon" variant="outline" onClick={() => setIsIncomeTypeDialogOpen(true)} className="flex-shrink-0">
+                      <Settings className="h-4 w-4"/>
+                      <span className="sr-only">Manage Income Types</span>
+                  </Button>
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-company" className="text-right">Company</Label>
@@ -317,6 +378,21 @@ export function IncomeView() {
                       step="0.01"
                       placeholder="0.00"
                   />
+              </div>
+            </div>
+             <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="tx-deposit-account" className="text-right">Deposited To</Label>
+              <div className="col-span-3 flex items-center gap-2">
+                  <Select value={newTransaction.depositedTo} onValueChange={(value) => setNewTransaction(prev => ({...prev, depositedTo: value}))}>
+                    <SelectTrigger id="tx-deposit-account" className="w-full"><SelectValue placeholder="Select an account" /></SelectTrigger>
+                    <SelectContent>
+                      {depositAccounts.map(acc => <SelectItem key={acc} value={acc}>{acc}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" size="icon" variant="outline" onClick={() => setIsDepositAccountDialogOpen(true)} className="flex-shrink-0">
+                      <Settings className="h-4 w-4"/>
+                      <span className="sr-only">Manage Accounts</span>
+                  </Button>
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -427,6 +503,58 @@ export function IncomeView() {
                   <Button onClick={() => setIsCategoryDialogOpen(false)}>Done</Button>
               </DialogFooter>
           </DialogContent>
+      </Dialog>
+
+      <Dialog open={isIncomeTypeDialogOpen} onOpenChange={setIsIncomeTypeDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Manage Income Types</DialogTitle>
+                <DialogDescription>Add or remove income types from your list.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="flex gap-2">
+                    <Input value={newIncomeType} onChange={(e) => setNewIncomeType(e.target.value)} placeholder="New income type" onKeyDown={(e) => { if (e.key === 'Enter') handleAddIncomeType(); }}/>
+                    <Button onClick={handleAddIncomeType}><Plus className="mr-2 h-4 w-4" /> Add</Button>
+                </div>
+                <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
+                    {incomeTypes.map(c => (
+                        <div key={c} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                            <span>{c}</span>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteIncomeType(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <DialogFooter>
+                <Button onClick={() => setIsIncomeTypeDialogOpen(false)}>Done</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isDepositAccountDialogOpen} onOpenChange={setIsDepositAccountDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Manage Deposit Accounts</DialogTitle>
+                <DialogDescription>Add or remove accounts from your list.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="flex gap-2">
+                    <Input value={newDepositAccount} onChange={(e) => setNewDepositAccount(e.target.value)} placeholder="New account name" onKeyDown={(e) => { if (e.key === 'Enter') handleAddDepositAccount(); }}/>
+                    <Button onClick={handleAddDepositAccount}><Plus className="mr-2 h-4 w-4" /> Add</Button>
+                </div>
+                <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
+                    {depositAccounts.map(c => (
+                        <div key={c} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                            <span>{c}</span>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteDepositAccount(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <DialogFooter>
+                <Button onClick={() => setIsDepositAccountDialogOpen(false)}>Done</Button>
+            </DialogFooter>
+        </DialogContent>
       </Dialog>
     </>
   );
