@@ -660,14 +660,20 @@ export function LedgersView() {
       {/* Add/Edit Transaction Dialog */}
       <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader className="text-center sm:text-center">
             <DialogTitle>{transactionToEdit ? 'Edit Transaction' : `Post New ${newTransactionType === 'income' ? 'Income' : 'Expense'} Transaction`}</DialogTitle>
             <DialogDescription>Select the transaction type and fill in the details.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <RadioGroup value={newTransactionType} onValueChange={(value) => setNewTransactionType(value as 'income' | 'expense')} className="grid grid-cols-2 gap-4">
-                <div><RadioGroupItem value="income" id="r-income" className="peer sr-only" /><Label htmlFor="r-income" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">Income</Label></div>
-                <div><RadioGroupItem value="expense" id="r-expense" className="peer sr-only" /><Label htmlFor="r-expense" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">Expense</Label></div>
+                <div>
+                    <RadioGroupItem value="income" id="r-income" className="peer sr-only" />
+                    <Label htmlFor="r-income" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-green-600 peer-data-[state=checked]:bg-green-50 dark:peer-data-[state=checked]:bg-green-900/20">Income</Label>
+                </div>
+                <div>
+                    <RadioGroupItem value="expense" id="r-expense" className="peer sr-only" />
+                    <Label htmlFor="r-expense" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-red-600 peer-data-[state=checked]:bg-red-50 dark:peer-data-[state=checked]:bg-red-900/20">Expense</Label>
+                </div>
             </RadioGroup>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-date-gl" className="text-right">Date <span className="text-destructive">*</span></Label>
