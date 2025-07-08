@@ -313,7 +313,7 @@ export function ExpenseView() {
 
       <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
         <DialogContent>
-          <DialogHeader className="text-center">
+          <DialogHeader className="text-center sm:text-center">
             <DialogTitle className="text-2xl text-primary">{transactionToEdit ? 'Edit Expense' : 'Add Expense'}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
