@@ -63,7 +63,7 @@ const initialIncomeData = [
 type IncomeTransaction = typeof initialIncomeData[0];
 const INCOME_TYPES_KEY = "accountingIncomeTypes";
 const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
-const COMPANIES_KEY = "accountingSuppliers"; // Keep separate key for income companies
+const COMPANIES_KEY = "accountingCompanies";
 const DEPOSIT_ACCOUNTS_KEY = "accountingDepositAccounts";
 
 const defaultIncomeTypes = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income"];
@@ -378,8 +378,8 @@ export function IncomeView() {
 
       <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{transactionToEdit ? 'Edit Income' : 'Add Income'}</DialogTitle>
+          <DialogHeader className="text-center">
+            <DialogTitle className="text-2xl text-primary">{transactionToEdit ? 'Edit Income' : 'Add Income'}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
@@ -390,7 +390,7 @@ export function IncomeView() {
               <Label htmlFor="tx-company" className="text-right">Company <span className="text-destructive">*</span></Label>
               <div className="col-span-3 flex items-center gap-2">
                   <Select value={newTransaction.company} onValueChange={(value) => setNewTransaction(prev => ({...prev, company: value}))}>
-                    <SelectTrigger id="tx-company" className="w-full"><SelectValue placeholder="Select a company" /></SelectTrigger>
+                    <SelectTrigger id="tx-company" className="w-full"><SelectValue placeholder="Select or add a company" /></SelectTrigger>
                     <SelectContent>
                       {companies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                     </SelectContent>
