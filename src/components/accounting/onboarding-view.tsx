@@ -35,13 +35,13 @@ const expenseCategories = [
 interface BusinessInfo {
   name: string;
   address: string;
-  ein: string;
+  businessNumber: string;
   method: 'cash' | 'accrual';
 }
 
 export function OnboardingView() {
     const { toast } = useToast();
-    const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({ name: '', address: '', ein: '', method: 'cash' });
+    const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({ name: '', address: '', businessNumber: '', method: 'cash' });
     const [bankAccounts, setBankAccounts] = useState<string[]>([]);
     const [newBankAccount, setNewBankAccount] = useState("");
     const [creditCards, setCreditCards] = useState<string[]>([]);
@@ -191,8 +191,8 @@ export function OnboardingView() {
                                                 <Input id="biz-address" value={businessInfo.address} onChange={e => setBusinessInfo(p => ({...p, address: e.target.value}))} onBlur={handleSaveBusinessInfo}/>
                                             </div>
                                             <div className="space-y-2">
-                                                <Label htmlFor="biz-ein">Employer ID Number (EIN)</Label>
-                                                <Input id="biz-ein" value={businessInfo.ein} onChange={e => setBusinessInfo(p => ({...p, ein: e.target.value}))} onBlur={handleSaveBusinessInfo}/>
+                                                <Label htmlFor="biz-number">Business Number</Label>
+                                                <Input id="biz-number" value={businessInfo.businessNumber} onChange={e => setBusinessInfo(p => ({...p, businessNumber: e.target.value}))} onBlur={handleSaveBusinessInfo}/>
                                             </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="biz-method">Accounting Method</Label>
