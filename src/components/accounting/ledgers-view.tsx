@@ -64,30 +64,34 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 // --- MOCK DATA & TYPES ---
 
 const initialIncomeData = [
-  { id: "inc_1", date: "2024-07-25", source: "Client Alpha", company: "Alpha Inc.", description: "Web Development Services", amount: 5000, category: "Service Revenue", explanation: "Contracted services", documentNumber: "INV-2024-001", type: "business" as "business" | "personal" },
-  { id: "inc_2", date: "2024-07-24", source: "Client Beta", company: "Beta Corp.", description: "Consulting Retainer - July", amount: 2500, category: "Consulting", explanation: "Monthly retainer", documentNumber: "INV-2024-002", type: "business" as "business" | "personal" },
-  { id: "inc_3", date: "2024-07-22", source: "E-commerce Store", company: "Ogeemo Store", description: "Product Sales", amount: 850.75, category: "Sales Revenue", explanation: "Online sales", documentNumber: "SALE-9876", type: "business" as "business" | "personal" },
-  { id: "inc_4", date: "2024-07-20", source: "Affiliate Payout", company: "PartnerStack", description: "Q2 Affiliate Earnings", amount: 320.50, category: "Other Income", explanation: "Referral commissions", documentNumber: "PS-PAY-Q2", type: "business" as "business" | "personal" },
+  { id: "inc_1", date: "2024-07-25", incomeType: "Client Alpha", company: "Alpha Inc.", description: "Web Development Services", amount: 5000, category: "Service Revenue", depositedTo: "Bank Account #1", explanation: "Contracted services", documentNumber: "INV-2024-001", type: "business" as "business" | "personal" },
+  { id: "inc_2", date: "2024-07-24", incomeType: "Client Beta", company: "Beta Corp.", description: "Consulting Retainer - July", amount: 2500, category: "Consulting", depositedTo: "Bank Account #1", explanation: "Monthly retainer", documentNumber: "INV-2024-002", type: "business" as "business" | "personal" },
+  { id: "inc_3", date: "2024-07-22", incomeType: "E-commerce Store", company: "Ogeemo Store", description: "Product Sales", amount: 850.75, category: "Sales Revenue", depositedTo: "Credit Card #1", explanation: "Online sales", documentNumber: "SALE-9876", type: "business" as "business" | "personal" },
+  { id: "inc_4", date: "2024-07-20", incomeType: "Affiliate Payout", company: "PartnerStack", description: "Q2 Affiliate Earnings", amount: 320.50, category: "Other Income", depositedTo: "Cash Account", explanation: "Referral commissions", documentNumber: "PS-PAY-Q2", type: "business" as "business" | "personal" },
 ];
 
 const initialExpenseData = [
-  { id: "exp_1", date: "2024-07-25", vendor: "Cloud Hosting Inc.", company: "Cloud Hosting Inc.", description: "Server Costs - July", amount: 150, category: "Utilities", explanation: "Monthly server maintenance", documentNumber: "CH-98765", type: "business" as "business" | "personal" },
-  { id: "exp_2", date: "2024-07-23", vendor: "SaaS Tools Co.", company: "SaaS Tools Co.", description: "Software Subscriptions", amount: 75.99, category: "Software", explanation: "Team software licenses", documentNumber: "STC-11223", type: "business" as "business" | "personal" },
-  { id: "exp_3", date: "2024-07-21", vendor: "Office Supply Hub", company: "Office Supply Hub", description: "Stationery and Supplies", amount: 45.30, category: "Office Supplies", explanation: "Restocking office supplies", documentNumber: "OSH-5543", type: "business" as "business" | "personal" },
-  { id: "exp_4", date: "2024-07-20", vendor: "Freelance Designer", company: "Jane Designs", description: "Logo Design", amount: 800, category: "Contractors", explanation: "New logo design for marketing campaign", documentNumber: "INV-JD-001", type: "business" as "business" | "personal" },
+  { id: "exp_1", date: "2024-07-25", company: "Cloud Hosting Inc.", description: "Server Costs - July", amount: 150, category: "Utilities", explanation: "Monthly server maintenance", documentNumber: "CH-98765", type: "business" as "business" | "personal" },
+  { id: "exp_2", date: "2024-07-23", company: "SaaS Tools Co.", description: "Software Subscriptions", amount: 75.99, category: "Software", explanation: "Team software licenses", documentNumber: "STC-11223", type: "business" as "business" | "personal" },
+  { id: "exp_3", date: "2024-07-21", company: "Office Supply Hub", description: "Stationery and Supplies", amount: 45.30, category: "Office Supplies", explanation: "Restocking office supplies", documentNumber: "OSH-5543", type: "business" as "business" | "personal" },
+  { id: "exp_4", date: "2024-07-20", company: "Jane Designs", description: "Logo Design", amount: 800, category: "Contractors", explanation: "New logo design for marketing campaign", documentNumber: "INV-JD-001", type: "business" as "business" | "personal" },
 ];
 
 type IncomeTransaction = typeof initialIncomeData[0];
 type ExpenseTransaction = typeof initialExpenseData[0];
-type GeneralTransaction = (IncomeTransaction & { type: 'income' }) | (ExpenseTransaction & { type: 'expense', source: string });
+type GeneralTransaction = (Omit<IncomeTransaction, 'incomeType'> & { type: 'income'; party: string }) | (Omit<ExpenseTransaction, 'company'> & { type: 'expense'; party: string });
 
 const INCOME_CATEGORIES_KEY = "accountingIncomeCategories";
 const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
+const INCOME_TYPES_KEY = "accountingIncomeTypes";
+const COMPANIES_KEY = "accountingCompanies";
 
 const defaultIncomeCategories = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income"];
 const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
+const defaultIncomeTypes = ["Client Alpha", "Client Beta", "E-commerce Store", "Affiliate Payout"];
+const defaultCompanies = ["Cloud Hosting Inc.", "SaaS Tools Co.", "Office Supply Hub", "Jane Designs"];
 
-const emptyTransactionForm = { date: '', party: '', company: '', description: '', amount: '', category: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal' };
+const emptyTransactionForm = { date: '', party: '', company: '', description: '', amount: '', category: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal', depositedTo: '' };
 
 
 // --- COMPONENT ---
@@ -98,10 +102,20 @@ export function LedgersView() {
 
   const [incomeCategories, setIncomeCategories] = React.useState<string[]>([]);
   const [expenseCategories, setExpenseCategories] = React.useState<string[]>([]);
+  const [incomeTypes, setIncomeTypes] = React.useState<string[]>([]);
+  const [companies, setCompanies] = React.useState<string[]>([]);
   
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = React.useState(false);
+  const [isIncomeTypeDialogOpen, setIsIncomeTypeDialogOpen] = React.useState(false);
+  const [isCompanyDialogOpen, setIsCompanyDialogOpen] = React.useState(false);
+  
   const [newIncomeCategory, setNewIncomeCategory] = React.useState("");
   const [newExpenseCategory, setNewExpenseCategory] = React.useState("");
+  const [newIncomeType, setNewIncomeType] = React.useState("");
+  const [newCompany, setNewCompany] = React.useState("");
+  const [editingIncomeType, setEditingIncomeType] = React.useState<string | null>(null);
+  const [editingValue, setEditingValue] = React.useState("");
+
   
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = React.useState(false);
   const [transactionToEdit, setTransactionToEdit] = React.useState<GeneralTransaction | null>(null);
@@ -116,22 +130,23 @@ export function LedgersView() {
 
   React.useEffect(() => {
     try {
-      const savedIncome = localStorage.getItem(INCOME_CATEGORIES_KEY);
-      setIncomeCategories(savedIncome ? JSON.parse(savedIncome) : defaultIncomeCategories);
-
-      const savedExpense = localStorage.getItem(EXPENSE_CATEGORIES_KEY);
-      setExpenseCategories(savedExpense ? JSON.parse(savedExpense) : defaultExpenseCategories);
+      const savedIncomeCat = localStorage.getItem(INCOME_CATEGORIES_KEY);
+      setIncomeCategories(savedIncomeCat ? JSON.parse(savedIncomeCat) : defaultIncomeCategories);
+      const savedExpenseCat = localStorage.getItem(EXPENSE_CATEGORIES_KEY);
+      setExpenseCategories(savedExpenseCat ? JSON.parse(savedExpenseCat) : defaultExpenseCategories);
+      const savedIncomeTypes = localStorage.getItem(INCOME_TYPES_KEY);
+      setIncomeTypes(savedIncomeTypes ? JSON.parse(savedIncomeTypes) : defaultIncomeTypes);
+      const savedCompanies = localStorage.getItem(COMPANIES_KEY);
+      setCompanies(savedCompanies ? JSON.parse(savedCompanies) : defaultCompanies);
     } catch (error) {
-        console.error("Failed to load categories from localStorage", error);
-        setIncomeCategories(defaultIncomeCategories);
-        setExpenseCategories(defaultExpenseCategories);
+        console.error("Failed to load data from localStorage", error);
     }
   }, []);
 
   const generalLedger = React.useMemo(() => {
-    const combined = [
-      ...incomeLedger.map(item => ({ ...item, type: 'income' as const })),
-      ...expenseLedger.map(item => ({ ...item, source: item.vendor, type: 'expense' as const })),
+    const combined: GeneralTransaction[] = [
+      ...incomeLedger.map(item => ({ ...item, party: item.incomeType, type: 'income' as const })),
+      ...expenseLedger.map(item => ({ ...item, party: item.company, type: 'expense' as const })),
     ];
     return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [incomeLedger, expenseLedger]);
@@ -161,24 +176,16 @@ export function LedgersView() {
   const handleAddCategory = (type: 'income' | 'expense') => {
     if (type === 'income') {
         const categoryToAdd = newIncomeCategory.trim();
-        if (!categoryToAdd) {
-            toast({ variant: 'destructive', title: 'Category name cannot be empty.' }); return;
-        }
-        if (incomeCategories.map(c => c.toLowerCase()).includes(categoryToAdd.toLowerCase())) {
-             toast({ variant: 'destructive', title: 'Duplicate Category', description: 'This category already exists.' }); return;
-        }
+        if (!categoryToAdd) { toast({ variant: 'destructive', title: 'Category name cannot be empty.' }); return; }
+        if (incomeCategories.map(c => c.toLowerCase()).includes(categoryToAdd.toLowerCase())) { toast({ variant: 'destructive', title: 'Duplicate Category' }); return; }
         const updated = [...incomeCategories, categoryToAdd];
         setIncomeCategories(updated);
         localStorage.setItem(INCOME_CATEGORIES_KEY, JSON.stringify(updated));
         setNewIncomeCategory("");
     } else {
         const categoryToAdd = newExpenseCategory.trim();
-        if (!categoryToAdd) {
-            toast({ variant: 'destructive', title: 'Category name cannot be empty.' }); return;
-        }
-        if (expenseCategories.map(c => c.toLowerCase()).includes(categoryToAdd.toLowerCase())) {
-             toast({ variant: 'destructive', title: 'Duplicate Category', description: 'This category already exists.' }); return;
-        }
+        if (!categoryToAdd) { toast({ variant: 'destructive', title: 'Category name cannot be empty.' }); return; }
+        if (expenseCategories.map(c => c.toLowerCase()).includes(categoryToAdd.toLowerCase())) { toast({ variant: 'destructive', title: 'Duplicate Category' }); return; }
         const updated = [...expenseCategories, categoryToAdd];
         setExpenseCategories(updated);
         localStorage.setItem(EXPENSE_CATEGORIES_KEY, JSON.stringify(updated));
@@ -188,18 +195,12 @@ export function LedgersView() {
   
   const handleDeleteCategory = (category: string, type: 'income' | 'expense') => {
      if (type === 'income') {
-        if (incomeLedger.some(item => item.category === category)) {
-            toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This category is currently in use in the income ledger.' });
-            return;
-        }
+        if (incomeLedger.some(item => item.category === category)) { toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This category is currently in use.' }); return; }
         const updated = incomeCategories.filter(c => c !== category);
         setIncomeCategories(updated);
         localStorage.setItem(INCOME_CATEGORIES_KEY, JSON.stringify(updated));
      } else {
-        if (expenseLedger.some(item => item.category === category)) {
-            toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This category is currently in use in the expense ledger.' });
-            return;
-        }
+        if (expenseLedger.some(item => item.category === category)) { toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This category is in use.' }); return; }
         const updated = expenseCategories.filter(c => c !== category);
         setExpenseCategories(updated);
         localStorage.setItem(EXPENSE_CATEGORIES_KEY, JSON.stringify(updated));
@@ -212,14 +213,15 @@ export function LedgersView() {
             setTransactionToEdit(transaction);
             setNewTransaction({
                 date: transaction.date,
-                party: transaction.source,
+                party: transaction.party,
                 company: transaction.company || '',
                 description: transaction.description,
                 amount: String(transaction.amount),
                 category: transaction.category,
-                explanation: (transaction as any).explanation || '',
+                explanation: transaction.explanation || '',
                 documentNumber: transaction.documentNumber || '',
-                type: (transaction as any).type || 'business',
+                type: transaction.type || 'business',
+                depositedTo: (transaction as any).depositedTo || '',
             });
         } else {
             setTransactionToEdit(null);
@@ -240,27 +242,26 @@ export function LedgersView() {
             description: newTransaction.description.trim(),
             amount: amountNum,
             category: newTransaction.category,
-            company: newTransaction.company.trim(),
             explanation: newTransaction.explanation.trim(),
             documentNumber: newTransaction.documentNumber.trim(),
             type: newTransaction.type,
         };
 
-        if (transactionToEdit) { // Handle editing existing transaction
+        if (transactionToEdit) {
             if (transactionToEdit.type === 'income') {
-                setIncomeLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, ...transactionData, source: newTransaction.party.trim() } : item));
+                setIncomeLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, ...transactionData, incomeType: newTransaction.party.trim(), company: newTransaction.company.trim(), depositedTo: newTransaction.depositedTo } : item));
                 toast({ title: "Income Transaction Updated" });
             } else {
-                setExpenseLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, ...transactionData, vendor: newTransaction.party.trim() } : item));
+                setExpenseLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, ...transactionData, company: newTransaction.party.trim() } : item));
                 toast({ title: "Expense Transaction Updated" });
             }
-        } else { // Handle adding new transaction
+        } else {
             if (newTransactionType === 'income') {
-                const newEntry: IncomeTransaction = { id: `inc_${Date.now()}`, ...transactionData, source: newTransaction.party.trim() };
+                const newEntry: IncomeTransaction = { id: `inc_${Date.now()}`, ...transactionData, incomeType: newTransaction.party.trim(), company: newTransaction.company.trim(), depositedTo: newTransaction.depositedTo };
                 setIncomeLedger(prev => [newEntry, ...prev]);
                 toast({ title: "Income Transaction Added" });
             } else {
-                const newEntry: ExpenseTransaction = { id: `exp_${Date.now()}`, ...transactionData, vendor: newTransaction.party.trim() };
+                const newEntry: ExpenseTransaction = { id: `exp_${Date.now()}`, ...transactionData, company: newTransaction.party.trim() };
                 setExpenseLedger(prev => [newEntry, ...prev]);
                 toast({ title: "Expense Transaction Added" });
             }
@@ -280,6 +281,71 @@ export function LedgersView() {
         }
         toast({ title: 'Transaction Deleted' });
         setTransactionToDelete(null);
+    };
+    
+    const handleAddIncomeType = () => {
+      const typeToAdd = newIncomeType.trim();
+      if (!typeToAdd) { toast({ variant: 'destructive', title: 'Income type name cannot be empty.' }); return; }
+      if (incomeTypes.map(c => c.toLowerCase()).includes(typeToAdd.toLowerCase())) { toast({ variant: 'destructive', title: 'Duplicate Type' }); return; }
+      const updated = [...incomeTypes, typeToAdd];
+      setIncomeTypes(updated);
+      localStorage.setItem(INCOME_TYPES_KEY, JSON.stringify(updated));
+      setNewIncomeType("");
+    };
+
+    const handleDeleteIncomeType = (typeToDelete: string) => {
+      if (incomeLedger.some(item => item.incomeType === typeToDelete)) { toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This type is in use.' }); return; }
+      const updated = incomeTypes.filter(c => c !== typeToDelete);
+      setIncomeTypes(updated);
+      localStorage.setItem(INCOME_TYPES_KEY, JSON.stringify(updated));
+      toast({ title: 'Income Type Deleted' });
+    };
+  
+    const handleEditIncomeType = (type: string) => {
+      setEditingIncomeType(type);
+      setEditingValue(type);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingIncomeType(null);
+        setEditingValue("");
+    };
+
+    const handleUpdateIncomeType = () => {
+        if (!editingIncomeType || !editingValue.trim() || editingIncomeType === editingValue.trim()) {
+            handleCancelEdit();
+            return;
+        }
+        const trimmedValue = editingValue.trim();
+        if (incomeTypes.map(c => c.toLowerCase()).includes(trimmedValue.toLowerCase())) {
+            toast({ variant: 'destructive', title: 'Duplicate Type' }); return;
+        }
+        const updatedTypes = incomeTypes.map(t => t === editingIncomeType ? trimmedValue : t);
+        setIncomeTypes(updatedTypes);
+        localStorage.setItem(INCOME_TYPES_KEY, JSON.stringify(updatedTypes));
+        setIncomeLedger(prev => prev.map(item => item.incomeType === editingIncomeType ? { ...item, incomeType: trimmedValue } : item));
+        if (newTransaction.party === editingIncomeType) {
+            setNewTransaction(prev => ({...prev, party: trimmedValue }));
+        }
+        toast({ title: 'Income Type Updated' });
+        handleCancelEdit();
+    };
+    
+    const handleAddCompany = () => {
+      const companyToAdd = newCompany.trim();
+      if (!companyToAdd) { toast({ variant: 'destructive', title: 'Company name cannot be empty.' }); return; }
+      if (companies.map(c => c.toLowerCase()).includes(companyToAdd.toLowerCase())) { toast({ variant: 'destructive', title: 'Duplicate Company' }); return; }
+      const updated = [...companies, companyToAdd];
+      setCompanies(updated);
+      localStorage.setItem(COMPANIES_KEY, JSON.stringify(updated));
+      setNewCompany("");
+    };
+  
+    const handleDeleteCompany = (companyToDelete: string) => {
+      if (expenseLedger.some(item => item.company === companyToDelete)) { toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This company is in use.' }); return; }
+      const updated = companies.filter(c => c !== companyToDelete);
+      setCompanies(updated);
+      localStorage.setItem(COMPANIES_KEY, JSON.stringify(updated));
     };
 
   return (
@@ -347,7 +413,7 @@ export function LedgersView() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Date</TableHead>
-                          <TableHead>Party</TableHead>
+                          <TableHead>Source / Vendor</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
                           <TableHead>Type</TableHead>
@@ -359,7 +425,7 @@ export function LedgersView() {
                         {generalLedger.map((item) => (
                           <TableRow key={item.id}>
                             <TableCell>{item.date}</TableCell>
-                            <TableCell>{item.source}</TableCell>
+                            <TableCell>{item.party}</TableCell>
                             <TableCell>{item.description}</TableCell>
                             <TableCell>
                               <Select
@@ -432,7 +498,7 @@ export function LedgersView() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Date</TableHead>
-                          <TableHead>Source</TableHead>
+                          <TableHead>Income Type</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
@@ -443,7 +509,7 @@ export function LedgersView() {
                         {incomeLedger.map(item => (
                           <TableRow key={item.id}>
                             <TableCell>{item.date}</TableCell>
-                            <TableCell>{item.source}</TableCell>
+                            <TableCell>{item.incomeType}</TableCell>
                             <TableCell>{item.description}</TableCell>
                             <TableCell>
                               <Select value={item.category} onValueChange={(newCategory) => handleCategoryChange(item.id, newCategory, 'income')}>
@@ -461,9 +527,9 @@ export function LedgersView() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', { ...item, type: 'income' })}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
-                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', { ...item, type: 'income' })}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({ ...item, type: 'income' })}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', { ...item, party: item.incomeType, type: 'income' })}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', { ...item, party: item.incomeType, type: 'income' })}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({ ...item, party: item.incomeType, type: 'income' })}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>
@@ -502,7 +568,7 @@ export function LedgersView() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Date</TableHead>
-                          <TableHead>Vendor</TableHead>
+                          <TableHead>Company</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
@@ -513,7 +579,7 @@ export function LedgersView() {
                         {expenseLedger.map(item => (
                           <TableRow key={item.id}>
                             <TableCell>{item.date}</TableCell>
-                            <TableCell>{item.vendor}</TableCell>
+                            <TableCell>{item.company}</TableCell>
                             <TableCell>{item.description}</TableCell>
                             <TableCell>
                               <Select value={item.category} onValueChange={(newCategory) => handleCategoryChange(item.id, newCategory, 'expense')}>
@@ -531,9 +597,9 @@ export function LedgersView() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('expense', { ...item, source: item.vendor, type: 'expense' })}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
-                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('expense', { ...item, source: item.vendor, type: 'expense' })}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({ ...item, source: item.vendor, type: 'expense' })}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('expense', { ...item, party: item.company, type: 'expense' })}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('expense', { ...item, party: item.company, type: 'expense' })}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({ ...item, party: item.company, type: 'expense' })}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>
@@ -612,14 +678,33 @@ export function LedgersView() {
               <Label htmlFor="tx-date-gl" className="text-right">Date <span className="text-destructive">*</span></Label>
               <Input id="tx-date-gl" type="date" value={newTransaction.date} onChange={(e) => setNewTransaction(prev => ({...prev, date: e.target.value}))} className="col-span-3" />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-party-gl" className="text-right">{newTransactionType === 'income' ? 'Source' : 'Vendor'} <span className="text-destructive">*</span></Label>
-              <Input id="tx-party-gl" value={newTransaction.party} onChange={(e) => setNewTransaction(prev => ({...prev, party: e.target.value}))} className="col-span-3" />
-            </div>
              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="tx-party-gl" className="text-right">{newTransactionType === 'income' ? 'Income Type' : 'Company'} <span className="text-destructive">*</span></Label>
+                <div className="col-span-3 flex items-center gap-2">
+                    <Select value={newTransaction.party} onValueChange={(value) => setNewTransaction(prev => ({...prev, party: value}))}>
+                        <SelectTrigger id="tx-party-gl" className="w-full">
+                            <SelectValue placeholder={`Select a ${newTransactionType === 'income' ? 'type' : 'company'}`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {(newTransactionType === 'income' ? incomeTypes : companies).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Button type="button" size="icon" variant="outline" onClick={() => {
+                        if (newTransactionType === 'income') {
+                            setIsIncomeTypeDialogOpen(true);
+                        } else {
+                            setIsCompanyDialogOpen(true);
+                        }
+                    }} className="flex-shrink-0">
+                        <Settings className="h-4 w-4"/>
+                        <span className="sr-only">Manage Items</span>
+                    </Button>
+                </div>
+            </div>
+             {newTransactionType === 'income' && <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-company-gl" className="text-right">Company</Label>
               <Input id="tx-company-gl" value={newTransaction.company} onChange={(e) => setNewTransaction(prev => ({...prev, company: e.target.value}))} className="col-span-3" />
-            </div>
+            </div>}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-doc-number-gl" className="text-right">Document #</Label>
               <Input id="tx-doc-number-gl" value={newTransaction.documentNumber} onChange={(e) => setNewTransaction(prev => ({...prev, documentNumber: e.target.value}))} className="col-span-3" />
@@ -652,10 +737,12 @@ export function LedgersView() {
                     {(newTransactionType === 'income' ? incomeCategories : expenseCategories).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                <Button type="button" size="icon" variant="outline" onClick={() => setIsCategoryDialogOpen(true)} className="flex-shrink-0">
-                    <Settings className="h-4 w-4"/>
-                    <span className="sr-only">Manage Categories</span>
-                </Button>
+                <DialogTrigger asChild>
+                    <Button type="button" size="icon" variant="outline" className="flex-shrink-0">
+                        <Settings className="h-4 w-4"/>
+                        <span className="sr-only">Manage Categories</span>
+                    </Button>
+                </DialogTrigger>
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -688,7 +775,6 @@ export function LedgersView() {
         </DialogContent>
       </Dialog>
       
-      {/* Delete Confirmation Dialog */}
        <AlertDialog open={!!transactionToDelete} onOpenChange={() => setTransactionToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -703,6 +789,69 @@ export function LedgersView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      <Dialog open={isIncomeTypeDialogOpen} onOpenChange={setIsIncomeTypeDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Manage Income Types</DialogTitle>
+                <DialogDescription>Add, edit, or remove income types from your list.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="flex gap-2">
+                    <Input value={newIncomeType} onChange={(e) => setNewIncomeType(e.target.value)} placeholder="New income type" onKeyDown={(e) => { if (e.key === 'Enter') handleAddIncomeType(); }}/>
+                    <Button onClick={handleAddIncomeType}><Plus className="mr-2 h-4 w-4" /> Add</Button>
+                </div>
+                <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
+                    {incomeTypes.map(c => (
+                        <div key={c} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                            {editingIncomeType === c ? (
+                              <Input value={editingValue} onChange={(e) => setEditingValue(e.target.value)} onBlur={handleUpdateIncomeType} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateIncomeType(); if (e.key === 'Escape') handleCancelEdit(); }} autoFocus className="h-8" />
+                            ) : (
+                              <>
+                                <span>{c}</span>
+                                <div className="flex items-center">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditIncomeType(c)}><Pencil className="h-4 w-4" /></Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteIncomeType(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                </div>
+                              </>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <DialogFooter>
+                <Button onClick={() => setIsIncomeTypeDialogOpen(false)}>Done</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCompanyDialogOpen} onOpenChange={setIsCompanyDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Manage Companies</DialogTitle>
+                <DialogDescription>Add or remove companies from your list.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="flex gap-2">
+                    <Input value={newCompany} onChange={(e) => setNewCompany(e.target.value)} placeholder="New company name" onKeyDown={(e) => { if (e.key === 'Enter') handleAddCompany(); }}/>
+                    <Button onClick={handleAddCompany}><Plus className="mr-2 h-4 w-4" /> Add</Button>
+                </div>
+                <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
+                    {companies.map(c => (
+                        <div key={c} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                            <span>{c}</span>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteCompany(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <DialogFooter>
+                <Button onClick={() => setIsCompanyDialogOpen(false)}>Done</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
+
+    
