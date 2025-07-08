@@ -378,7 +378,7 @@ export function IncomeView() {
 
       <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
         <DialogContent>
-          <DialogHeader className="text-center">
+          <DialogHeader className="text-center sm:text-center">
             <DialogTitle className="text-2xl text-primary">{transactionToEdit ? 'Edit Income' : 'Add Income'}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
