@@ -54,31 +54,39 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // Mock data
 const initialExpenseData = [
-  { id: "exp_1", date: "2024-07-25", vendor: "Cloud Hosting Inc.", company: "Cloud Hosting Inc.", description: "Server Costs - July", amount: 150, category: "Utilities", explanation: "Monthly server maintenance", documentNumber: "CH-98765", type: "business" as "business" | "personal" },
-  { id: "exp_2", date: "2024-07-23", vendor: "SaaS Tools Co.", company: "SaaS Tools Co.", description: "Software Subscriptions", amount: 75.99, category: "Software", explanation: "Team software licenses", documentNumber: "STC-11223", type: "business" as "business" | "personal" },
-  { id: "exp_3", date: "2024-07-21", vendor: "Office Supply Hub", company: "Office Supply Hub", description: "Stationery and Supplies", amount: 45.30, category: "Office Supplies", explanation: "Restocking office supplies", documentNumber: "OSH-5543", type: "business" as "business" | "personal" },
-  { id: "exp_4", date: "2024-07-20", vendor: "Freelance Designer", company: "Jane Designs", description: "Logo Design", amount: 800, category: "Contractors", explanation: "New logo design for marketing campaign", documentNumber: "INV-JD-001", type: "business" as "business" | "personal" },
+  { id: "exp_1", date: "2024-07-25", company: "Cloud Hosting Inc.", description: "Server Costs - July", amount: 150, category: "Utilities", explanation: "Monthly server maintenance", documentNumber: "CH-98765", type: "business" as "business" | "personal" },
+  { id: "exp_2", date: "2024-07-23", company: "SaaS Tools Co.", description: "Software Subscriptions", amount: 75.99, category: "Software", explanation: "Team software licenses", documentNumber: "STC-11223", type: "business" as "business" | "personal" },
+  { id: "exp_3", date: "2024-07-21", company: "Office Supply Hub", description: "Stationery and Supplies", amount: 45.30, category: "Office Supplies", explanation: "Restocking office supplies", documentNumber: "OSH-5543", type: "business" as "business" | "personal" },
+  { id: "exp_4", date: "2024-07-20", company: "Jane Designs", description: "Logo Design", amount: 800, category: "Contractors", explanation: "New logo design for marketing campaign", documentNumber: "INV-JD-001", type: "business" as "business" | "personal" },
 ];
 
 type ExpenseTransaction = typeof initialExpenseData[0];
 const INCOME_CATEGORIES_KEY = "accountingIncomeCategories";
 const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
+const COMPANIES_KEY = "accountingCompanies";
 const defaultIncomeCategories = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income"];
 const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
-const emptyTransactionForm = { date: '', party: '', company: '', description: '', amount: '', category: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal' };
+const defaultCompanies = ["Cloud Hosting Inc.", "SaaS Tools Co.", "Office Supply Hub", "Jane Designs"];
+const emptyTransactionForm = { date: '', company: '', description: '', amount: '', category: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal' };
 
 
 export function ExpenseView() {
   const [expenseLedger, setExpenseLedger] = React.useState(initialExpenseData);
   const [incomeCategories, setIncomeCategories] = React.useState<string[]>([]);
   const [expenseCategories, setExpenseCategories] = React.useState<string[]>([]);
+  const [companies, setCompanies] = React.useState<string[]>([]);
+  
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = React.useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = React.useState(false);
+  const [isCompanyDialogOpen, setIsCompanyDialogOpen] = React.useState(false);
+
   const [transactionToEdit, setTransactionToEdit] = React.useState<ExpenseTransaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = React.useState<ExpenseTransaction | null>(null);
   const [newTransaction, setNewTransaction] = React.useState(emptyTransactionForm);
   const [newIncomeCategory, setNewIncomeCategory] = React.useState("");
   const [newExpenseCategory, setNewExpenseCategory] = React.useState("");
+  const [newCompany, setNewCompany] = React.useState("");
+
 
   const { toast } = useToast();
 
@@ -88,10 +96,13 @@ export function ExpenseView() {
       setIncomeCategories(savedIncome ? JSON.parse(savedIncome) : defaultIncomeCategories);
       const savedExpense = localStorage.getItem(EXPENSE_CATEGORIES_KEY);
       setExpenseCategories(savedExpense ? JSON.parse(savedExpense) : defaultExpenseCategories);
+      const savedCompanies = localStorage.getItem(COMPANIES_KEY);
+      setCompanies(savedCompanies ? JSON.parse(savedCompanies) : defaultCompanies);
     } catch (error) {
         console.error("Failed to load categories from localStorage", error);
         setIncomeCategories(defaultIncomeCategories);
         setExpenseCategories(defaultExpenseCategories);
+        setCompanies(defaultCompanies);
     }
   }, []);
 
@@ -100,8 +111,7 @@ export function ExpenseView() {
         setTransactionToEdit(transaction);
         setNewTransaction({
             date: transaction.date,
-            party: transaction.vendor,
-            company: transaction.company || '',
+            company: transaction.company,
             description: transaction.description,
             amount: String(transaction.amount),
             category: transaction.category,
@@ -118,7 +128,7 @@ export function ExpenseView() {
 
   const handleSaveTransaction = () => {
     const amountNum = parseFloat(newTransaction.amount);
-    if (!newTransaction.date || !newTransaction.party || !newTransaction.category || !newTransaction.amount || isNaN(amountNum) || amountNum <= 0) {
+    if (!newTransaction.date || !newTransaction.company || !newTransaction.category || !newTransaction.amount || isNaN(amountNum) || amountNum <= 0) {
         toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please fill all required fields correctly.' });
         return;
     }
@@ -130,7 +140,6 @@ export function ExpenseView() {
         category: newTransaction.category,
         company: newTransaction.company.trim(),
         explanation: newTransaction.explanation.trim(),
-        vendor: newTransaction.party.trim(),
         documentNumber: newTransaction.documentNumber.trim(),
         type: newTransaction.type,
     };
@@ -200,6 +209,30 @@ export function ExpenseView() {
      }
   };
 
+  const handleAddCompany = () => {
+    const companyToAdd = newCompany.trim();
+    if (!companyToAdd) {
+        toast({ variant: 'destructive', title: 'Company name cannot be empty.' }); return;
+    }
+    if (companies.map(c => c.toLowerCase()).includes(companyToAdd.toLowerCase())) {
+         toast({ variant: 'destructive', title: 'Duplicate Company', description: 'This company already exists.' }); return;
+    }
+    const updated = [...companies, companyToAdd];
+    setCompanies(updated);
+    localStorage.setItem(COMPANIES_KEY, JSON.stringify(updated));
+    setNewCompany("");
+  };
+  
+  const handleDeleteCompany = (companyToDelete: string) => {
+    if (expenseLedger.some(item => item.company === companyToDelete)) {
+        toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This company is currently in use in the expense ledger.' });
+        return;
+    }
+    const updated = companies.filter(c => c !== companyToDelete);
+    setCompanies(updated);
+    localStorage.setItem(COMPANIES_KEY, JSON.stringify(updated));
+  };
+
   return (
     <>
       <div className="p-4 sm:p-6 space-y-6">
@@ -238,7 +271,7 @@ export function ExpenseView() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Vendor</TableHead>
+                  <TableHead>Company</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
@@ -249,7 +282,7 @@ export function ExpenseView() {
                 {expenseLedger.map(item => (
                   <TableRow key={item.id}>
                     <TableCell>{item.date}</TableCell>
-                    <TableCell>{item.vendor}</TableCell>
+                    <TableCell>{item.company}</TableCell>
                     <TableCell>{item.description}</TableCell>
                     <TableCell>{item.category}</TableCell>
                     <TableCell className="text-right font-mono text-red-600">
@@ -289,12 +322,19 @@ export function ExpenseView() {
               <Input id="tx-date" type="date" value={newTransaction.date} onChange={(e) => setNewTransaction(prev => ({...prev, date: e.target.value}))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-party" className="text-right">Vendor <span className="text-destructive">*</span></Label>
-              <Input id="tx-party" value={newTransaction.party} onChange={(e) => setNewTransaction(prev => ({...prev, party: e.target.value}))} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-company" className="text-right">Company</Label>
-              <Input id="tx-company" value={newTransaction.company} onChange={(e) => setNewTransaction(prev => ({...prev, company: e.target.value}))} className="col-span-3" />
+              <Label htmlFor="tx-company" className="text-right">Company <span className="text-destructive">*</span></Label>
+              <div className="col-span-3 flex items-center gap-2">
+                <Select value={newTransaction.company} onValueChange={(value) => setNewTransaction(prev => ({...prev, company: value}))}>
+                  <SelectTrigger id="tx-company" className="w-full"><SelectValue placeholder="Select a company" /></SelectTrigger>
+                  <SelectContent>
+                    {companies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                 <Button type="button" size="icon" variant="outline" onClick={() => setIsCompanyDialogOpen(true)} className="flex-shrink-0">
+                    <Settings className="h-4 w-4"/>
+                    <span className="sr-only">Manage Companies</span>
+                </Button>
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-doc-number" className="text-right">Document #</Label>
@@ -427,6 +467,32 @@ export function ExpenseView() {
                   <Button onClick={() => setIsCategoryDialogOpen(false)}>Done</Button>
               </DialogFooter>
           </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCompanyDialogOpen} onOpenChange={setIsCompanyDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Manage Companies</DialogTitle>
+                <DialogDescription>Add or remove companies from your list.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+                <div className="flex gap-2">
+                    <Input value={newCompany} onChange={(e) => setNewCompany(e.target.value)} placeholder="New company name" onKeyDown={(e) => { if (e.key === 'Enter') handleAddCompany(); }}/>
+                    <Button onClick={handleAddCompany}><Plus className="mr-2 h-4 w-4" /> Add</Button>
+                </div>
+                <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
+                    {companies.map(c => (
+                        <div key={c} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                            <span>{c}</span>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteCompany(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <DialogFooter>
+                <Button onClick={() => setIsCompanyDialogOpen(false)}>Done</Button>
+            </DialogFooter>
+        </DialogContent>
       </Dialog>
     </>
   );
