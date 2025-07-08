@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 export function Logo({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <Link href="/login">
+    <Link href="https://studio.firebase.google.com/studio-6489696380">
       <div className={cn("flex items-center gap-2 cursor-pointer", className)} {...props}>
         <Image
           src="/images/Ogeemo-Logo-BonT.png"
