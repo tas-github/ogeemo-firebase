@@ -285,11 +285,11 @@ export function IncomeView() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-date" className="text-right">Date</Label>
+              <Label htmlFor="tx-date" className="text-right">Date <span className="text-destructive">*</span></Label>
               <Input id="tx-date" type="date" value={newTransaction.date} onChange={(e) => setNewTransaction(prev => ({...prev, date: e.target.value}))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-party" className="text-right">Source</Label>
+              <Label htmlFor="tx-party" className="text-right">Source <span className="text-destructive">*</span></Label>
               <Input id="tx-party" value={newTransaction.party} onChange={(e) => setNewTransaction(prev => ({...prev, party: e.target.value}))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -305,7 +305,7 @@ export function IncomeView() {
               <Input id="tx-description" value={newTransaction.description} onChange={(e) => setNewTransaction(prev => ({...prev, description: e.target.value}))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-amount" className="text-right">Amount</Label>
+              <Label htmlFor="tx-amount" className="text-right">Amount <span className="text-destructive">*</span></Label>
               <div className="relative col-span-3">
                   <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
                   <Input
@@ -320,7 +320,7 @@ export function IncomeView() {
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-category" className="text-right">Category</Label>
+              <Label htmlFor="tx-category" className="text-right">Category <span className="text-destructive">*</span></Label>
               <Select value={newTransaction.category} onValueChange={(value) => setNewTransaction(prev => ({...prev, category: value}))}>
                 <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a category" /></SelectTrigger>
                 <SelectContent>
