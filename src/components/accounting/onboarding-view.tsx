@@ -23,6 +23,7 @@ const BUSINESS_INFO_KEY = "accountingOnboardingBusinessInfo";
 const BANK_ACCOUNTS_KEY = "accountingBankAccounts";
 const CREDIT_CARDS_KEY = "accountingCreditCards";
 const CASH_ACCOUNT_KEY = "accountingCashAccount";
+const CUSTOM_BUSINESS_FIELDS_KEY = "accountingCustomBusinessFields";
 
 const expenseCategories = [
   "Advertising", "Car & Truck Expenses", "Commissions & Fees",
@@ -39,6 +40,12 @@ interface BusinessInfo {
   method: 'cash' | 'accrual';
 }
 
+interface CustomField {
+    id: number;
+    label: string;
+    value: string;
+}
+
 export function OnboardingView() {
     const { toast } = useToast();
     const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({ name: '', address: '', businessNumber: '', method: 'cash' });
@@ -47,6 +54,8 @@ export function OnboardingView() {
     const [creditCards, setCreditCards] = useState<string[]>([]);
     const [newCreditCard, setNewCreditCard] = useState("");
     const [cashAccount, setCashAccount] = useState("");
+    const [customBusinessFields, setCustomBusinessFields] = useState<CustomField[]>([]);
+
 
     useEffect(() => {
         try {
@@ -61,6 +70,9 @@ export function OnboardingView() {
 
             const savedCashAccount = localStorage.getItem(CASH_ACCOUNT_KEY);
             if (savedCashAccount) setCashAccount(JSON.parse(savedCashAccount));
+            
+            const savedCustomFields = localStorage.getItem(CUSTOM_BUSINESS_FIELDS_KEY);
+            if (savedCustomFields) setCustomBusinessFields(JSON.parse(savedCustomFields));
 
         } catch (error) {
             console.error("Failed to load onboarding data from localStorage", error);
@@ -75,6 +87,33 @@ export function OnboardingView() {
             toast({ variant: 'destructive', title: "Save Failed", description: "Could not save business info." });
         }
     };
+    
+    const handleSaveCustomFields = (fields: CustomField[]) => {
+        try {
+            setCustomBusinessFields(fields);
+            localStorage.setItem(CUSTOM_BUSINESS_FIELDS_KEY, JSON.stringify(fields));
+        } catch (error) {
+            toast({ variant: 'destructive', title: "Save Failed", description: "Could not save custom fields." });
+        }
+    };
+
+    const handleAddCustomField = () => {
+        const newFields = [...customBusinessFields, { id: Date.now(), label: "", value: "" }];
+        handleSaveCustomFields(newFields);
+    };
+
+    const handleUpdateCustomField = (id: number, key: 'label' | 'value', updatedValue: string) => {
+        const newFields = customBusinessFields.map(field => 
+            field.id === id ? { ...field, [key]: updatedValue } : field
+        );
+        handleSaveCustomFields(newFields);
+    };
+
+    const handleDeleteCustomField = (id: number) => {
+        const newFields = customBusinessFields.filter(field => field.id !== id);
+        handleSaveCustomFields(newFields);
+    };
+
 
     const handleAccountListChange = (type: 'bank' | 'card', newList: string[]) => {
         try {
@@ -203,6 +242,38 @@ export function OnboardingView() {
                                                         <SelectItem value="accrual">Accrual</SelectItem>
                                                     </SelectContent>
                                                 </Select>
+                                            </div>
+                                            <Separator />
+                                            <div className="space-y-4">
+                                                <h5 className="font-medium text-sm text-foreground">Additional Information</h5>
+                                                {customBusinessFields.map((field, index) => (
+                                                    <div key={field.id} className="grid grid-cols-10 gap-2 items-end">
+                                                        <div className="space-y-2 col-span-4">
+                                                            {index === 0 && <Label>Field Label</Label>}
+                                                            <Input 
+                                                                placeholder="e.g., Website" 
+                                                                value={field.label}
+                                                                onChange={(e) => handleUpdateCustomField(field.id, 'label', e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-2 col-span-5">
+                                                            {index === 0 && <Label>Field Value</Label>}
+                                                            <Input 
+                                                                placeholder="e.g., https://example.com" 
+                                                                value={field.value}
+                                                                onChange={(e) => handleUpdateCustomField(field.id, 'value', e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="col-span-1">
+                                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteCustomField(field.id)} title="Delete field">
+                                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                <Button variant="outline" size="sm" onClick={handleAddCustomField}>
+                                                    <Plus className="mr-2 h-4 w-4" /> Add Custom Field
+                                                </Button>
                                             </div>
                                         </div>
 
