@@ -684,7 +684,7 @@ export function LedgersView() {
                 <div className="col-span-3 flex items-center gap-2">
                     <Select value={newTransaction.company} onValueChange={(value) => setNewTransaction(prev => ({...prev, company: value}))}>
                         <SelectTrigger id="tx-company-gl" className="w-full">
-                            <SelectValue placeholder={`Select a company`} />
+                            <SelectValue placeholder="Select or add a company" />
                         </SelectTrigger>
                         <SelectContent>
                             {companies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
