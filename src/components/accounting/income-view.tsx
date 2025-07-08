@@ -94,6 +94,8 @@ export function IncomeView() {
   const [newExpenseCategory, setNewExpenseCategory] = React.useState("");
   const [newIncomeType, setNewIncomeType] = React.useState("");
   const [newDepositAccount, setNewDepositAccount] = React.useState("");
+  const [editingIncomeType, setEditingIncomeType] = React.useState<string | null>(null);
+  const [editingValue, setEditingValue] = React.useState("");
   
   const { toast } = useToast();
 
@@ -231,6 +233,43 @@ export function IncomeView() {
     const updated = incomeTypes.filter(c => c !== typeToDelete);
     setIncomeTypes(updated);
     localStorage.setItem(INCOME_TYPES_KEY, JSON.stringify(updated));
+    toast({ title: 'Income Type Deleted' });
+  };
+  
+  const handleEditIncomeType = (type: string) => {
+    setEditingIncomeType(type);
+    setEditingValue(type);
+  };
+
+  const handleCancelEdit = () => {
+      setEditingIncomeType(null);
+      setEditingValue("");
+  };
+
+  const handleUpdateIncomeType = () => {
+      if (!editingIncomeType || !editingValue.trim() || editingIncomeType === editingValue.trim()) {
+          handleCancelEdit();
+          return;
+      }
+
+      const trimmedValue = editingValue.trim();
+      if (incomeTypes.map(c => c.toLowerCase()).includes(trimmedValue.toLowerCase())) {
+          toast({ variant: 'destructive', title: 'Duplicate Type', description: 'This income type already exists.' });
+          return;
+      }
+
+      const updatedTypes = incomeTypes.map(t => t === editingIncomeType ? trimmedValue : t);
+      setIncomeTypes(updatedTypes);
+      localStorage.setItem(INCOME_TYPES_KEY, JSON.stringify(updatedTypes));
+
+      setIncomeLedger(prev => prev.map(item => item.incomeType === editingIncomeType ? { ...item, incomeType: trimmedValue } : item));
+
+      if (newTransaction.incomeType === editingIncomeType) {
+          setNewTransaction(prev => ({...prev, incomeType: trimmedValue }));
+      }
+
+      toast({ title: 'Income Type Updated' });
+      handleCancelEdit();
   };
   
   const handleAddDepositAccount = () => {
@@ -509,7 +548,7 @@ export function IncomeView() {
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Manage Income Types</DialogTitle>
-                <DialogDescription>Add or remove income types from your list.</DialogDescription>
+                <DialogDescription>Add, edit, or remove income types from your list.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
                 <div className="flex gap-2">
@@ -519,8 +558,27 @@ export function IncomeView() {
                 <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
                     {incomeTypes.map(c => (
                         <div key={c} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                            <span>{c}</span>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteIncomeType(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                            {editingIncomeType === c ? (
+                              <Input
+                                value={editingValue}
+                                onChange={(e) => setEditingValue(e.target.value)}
+                                onBlur={handleUpdateIncomeType}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleUpdateIncomeType();
+                                  if (e.key === 'Escape') handleCancelEdit();
+                                }}
+                                autoFocus
+                                className="h-8"
+                              />
+                            ) : (
+                              <>
+                                <span>{c}</span>
+                                <div className="flex items-center">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditIncomeType(c)}><Pencil className="h-4 w-4" /></Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteIncomeType(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                </div>
+                              </>
+                            )}
                         </div>
                     ))}
                 </div>
