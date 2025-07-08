@@ -21,6 +21,7 @@ export async function askSimpleChat(input: SimpleChatInput): Promise<SimpleChatO
   console.log("askSimpleChat invoked with:", input.message);
   try {
     const { text } = await ai.generate({
+      model: 'googleai/gemini-1.5-pro',
       prompt: `This is a test. The user said: "${input.message}". Respond with: "Message received."`,
     });
 

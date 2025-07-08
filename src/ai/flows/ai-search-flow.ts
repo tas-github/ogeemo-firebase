@@ -57,7 +57,7 @@ The user's query is: "${query}"
 `;
 
     const { output } = await ai.generate({
-      model: 'googleai/gemini-1.5-flash',
+      model: 'googleai/gemini-1.5-pro',
       prompt: prompt,
       output: { schema: AiSearchOutputSchema },
       config: {
