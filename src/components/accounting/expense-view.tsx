@@ -313,8 +313,8 @@ export function ExpenseView() {
 
       <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{transactionToEdit ? 'Edit Expense' : 'Add Expense'}</DialogTitle>
+          <DialogHeader className="text-center">
+            <DialogTitle className="text-2xl text-primary">{transactionToEdit ? 'Edit Expense' : 'Add Expense'}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
@@ -325,7 +325,7 @@ export function ExpenseView() {
               <Label htmlFor="tx-company" className="text-right">Company <span className="text-destructive">*</span></Label>
               <div className="col-span-3 flex items-center gap-2">
                 <Select value={newTransaction.company} onValueChange={(value) => setNewTransaction(prev => ({...prev, company: value}))}>
-                  <SelectTrigger id="tx-company" className="w-full"><SelectValue placeholder="Select a company" /></SelectTrigger>
+                  <SelectTrigger id="tx-company" className="w-full"><SelectValue placeholder="Select or add a company" /></SelectTrigger>
                   <SelectContent>
                     {companies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
