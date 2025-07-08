@@ -54,36 +54,36 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // Mock data
 const initialIncomeData = [
-  { id: "inc_1", date: "2024-07-25", supplier: "Client Alpha", description: "Web Development Services", amount: 5000, incomeType: "Service Revenue", depositedTo: "Bank Account #1", explanation: "Contracted services", documentNumber: "INV-2024-001", type: "business" as "business" | "personal" },
-  { id: "inc_2", date: "2024-07-24", supplier: "Client Beta", description: "Consulting Retainer - July", amount: 2500, incomeType: "Consulting", depositedTo: "Bank Account #1", explanation: "Monthly retainer", documentNumber: "INV-2024-002", type: "business" as "business" | "personal" },
-  { id: "inc_3", date: "2024-07-22", supplier: "E-commerce Store", description: "Product Sales", amount: 850.75, incomeType: "Sales Revenue", depositedTo: "Credit Card #1", explanation: "Online sales", documentNumber: "SALE-9876", type: "business" as "business" | "personal" },
-  { id: "inc_4", date: "2024-07-20", supplier: "Affiliate Payout", description: "Q2 Affiliate Earnings", amount: 320.50, incomeType: "Other Income", depositedTo: "Cash Account", explanation: "Referral commissions", documentNumber: "PS-PAY-Q2", type: "business" as "business" | "personal" },
+  { id: "inc_1", date: "2024-07-25", company: "Client Alpha", description: "Web Development Services", amount: 5000, incomeType: "Service Revenue", depositedTo: "Bank Account #1", explanation: "Contracted services", documentNumber: "INV-2024-001", type: "business" as "business" | "personal" },
+  { id: "inc_2", date: "2024-07-24", company: "Client Beta", description: "Consulting Retainer - July", amount: 2500, incomeType: "Consulting", depositedTo: "Bank Account #1", explanation: "Monthly retainer", documentNumber: "INV-2024-002", type: "business" as "business" | "personal" },
+  { id: "inc_3", date: "2024-07-22", company: "E-commerce Store", description: "Product Sales", amount: 850.75, incomeType: "Sales Revenue", depositedTo: "Credit Card #1", explanation: "Online sales", documentNumber: "SALE-9876", type: "business" as "business" | "personal" },
+  { id: "inc_4", date: "2024-07-20", company: "Affiliate Payout", description: "Q2 Affiliate Earnings", amount: 320.50, incomeType: "Other Income", depositedTo: "Cash Account", explanation: "Referral commissions", documentNumber: "PS-PAY-Q2", type: "business" as "business" | "personal" },
 ];
 
 type IncomeTransaction = typeof initialIncomeData[0];
 const INCOME_TYPES_KEY = "accountingIncomeTypes";
 const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
-const SUPPLIERS_KEY = "accountingSuppliers";
+const COMPANIES_KEY = "accountingSuppliers"; // Keep separate key for income companies
 const DEPOSIT_ACCOUNTS_KEY = "accountingDepositAccounts";
 
 const defaultIncomeTypes = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income"];
 const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
-const defaultSuppliers = ["Client Alpha", "Client Beta", "E-commerce Store", "Affiliate Payout"];
+const defaultCompanies = ["Client Alpha", "Client Beta", "E-commerce Store", "Affiliate Payout"];
 const defaultDepositAccounts = ["Bank Account #1", "Credit Card #1", "Cash Account"];
 
-const emptyTransactionForm = { date: '', supplier: '', description: '', amount: '', incomeType: '', depositedTo: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal' };
+const emptyTransactionForm = { date: '', company: '', description: '', amount: '', incomeType: '', depositedTo: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal' };
 
 
 export function IncomeView() {
   const [incomeLedger, setIncomeLedger] = React.useState(initialIncomeData);
   const [incomeTypes, setIncomeTypes] = React.useState<string[]>([]);
   const [expenseCategories, setExpenseCategories] = React.useState<string[]>([]);
-  const [suppliers, setSuppliers] = React.useState<string[]>([]);
+  const [companies, setCompanies] = React.useState<string[]>([]);
   const [depositAccounts, setDepositAccounts] = React.useState<string[]>([]);
   
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = React.useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = React.useState(false);
-  const [isSupplierDialogOpen, setIsSupplierDialogOpen] = React.useState(false);
+  const [isCompanyDialogOpen, setIsCompanyDialogOpen] = React.useState(false);
   const [isDepositAccountDialogOpen, setIsDepositAccountDialogOpen] = React.useState(false);
 
   const [transactionToEdit, setTransactionToEdit] = React.useState<IncomeTransaction | null>(null);
@@ -92,9 +92,9 @@ export function IncomeView() {
   const [newTransaction, setNewTransaction] = React.useState(emptyTransactionForm);
   const [newIncomeType, setNewIncomeType] = React.useState("");
   const [newExpenseCategory, setNewExpenseCategory] = React.useState("");
-  const [newSupplier, setNewSupplier] = React.useState("");
+  const [newCompany, setNewCompany] = React.useState("");
   const [newDepositAccount, setNewDepositAccount] = React.useState("");
-  const [editingItem, setEditingItem] = React.useState<{type: 'incomeType' | 'supplier', value: string} | null>(null);
+  const [editingItem, setEditingItem] = React.useState<{type: 'incomeType' | 'company', value: string} | null>(null);
   const [editingValue, setEditingValue] = React.useState("");
   
   const { toast } = useToast();
@@ -107,8 +107,8 @@ export function IncomeView() {
       const savedExpenseCat = localStorage.getItem(EXPENSE_CATEGORIES_KEY);
       setExpenseCategories(savedExpenseCat ? JSON.parse(savedExpenseCat) : defaultExpenseCategories);
 
-      const savedSuppliers = localStorage.getItem(SUPPLIERS_KEY);
-      setSuppliers(savedSuppliers ? JSON.parse(savedSuppliers) : defaultSuppliers);
+      const savedCompanies = localStorage.getItem(COMPANIES_KEY);
+      setCompanies(savedCompanies ? JSON.parse(savedCompanies) : defaultCompanies);
       
       const savedDepositAccounts = localStorage.getItem(DEPOSIT_ACCOUNTS_KEY);
       setDepositAccounts(savedDepositAccounts ? JSON.parse(savedDepositAccounts) : defaultDepositAccounts);
@@ -117,7 +117,7 @@ export function IncomeView() {
         console.error("Failed to load data from localStorage", error);
         setIncomeTypes(defaultIncomeTypes);
         setExpenseCategories(defaultExpenseCategories);
-        setSuppliers(defaultSuppliers);
+        setCompanies(defaultCompanies);
         setDepositAccounts(defaultDepositAccounts);
     }
   }, []);
@@ -127,7 +127,7 @@ export function IncomeView() {
         setTransactionToEdit(transaction);
         setNewTransaction({
             date: transaction.date,
-            supplier: transaction.supplier,
+            company: transaction.company,
             description: transaction.description,
             amount: String(transaction.amount),
             incomeType: transaction.incomeType,
@@ -145,14 +145,14 @@ export function IncomeView() {
 
   const handleSaveTransaction = () => {
     const amountNum = parseFloat(newTransaction.amount);
-    if (!newTransaction.date || !newTransaction.supplier || !newTransaction.incomeType || !newTransaction.amount || isNaN(amountNum) || amountNum <= 0) {
+    if (!newTransaction.date || !newTransaction.company || !newTransaction.incomeType || !newTransaction.amount || isNaN(amountNum) || amountNum <= 0) {
         toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please fill all required fields correctly.' });
         return;
     }
 
     const transactionData = {
         date: newTransaction.date,
-        supplier: newTransaction.supplier,
+        company: newTransaction.company,
         description: newTransaction.description.trim(),
         amount: amountNum,
         incomeType: newTransaction.incomeType,
@@ -216,25 +216,25 @@ export function IncomeView() {
      }
   };
 
-  const handleAddSupplier = () => {
-    const supplierToAdd = newSupplier.trim();
-    if (!supplierToAdd) { toast({ variant: 'destructive', title: 'Supplier name cannot be empty.' }); return; }
-    if (suppliers.map(c => c.toLowerCase()).includes(supplierToAdd.toLowerCase())) { toast({ variant: 'destructive', title: 'Duplicate Supplier', description: 'This supplier already exists.' }); return; }
-    const updated = [...suppliers, supplierToAdd];
-    setSuppliers(updated);
-    localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(updated));
-    setNewSupplier("");
+  const handleAddCompany = () => {
+    const companyToAdd = newCompany.trim();
+    if (!companyToAdd) { toast({ variant: 'destructive', title: 'Company name cannot be empty.' }); return; }
+    if (companies.map(c => c.toLowerCase()).includes(companyToAdd.toLowerCase())) { toast({ variant: 'destructive', title: 'Duplicate Company', description: 'This company already exists.' }); return; }
+    const updated = [...companies, companyToAdd];
+    setCompanies(updated);
+    localStorage.setItem(COMPANIES_KEY, JSON.stringify(updated));
+    setNewCompany("");
   };
 
-  const handleDeleteSupplier = (supplierToDelete: string) => {
-    if (incomeLedger.some(item => item.supplier === supplierToDelete)) { toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This supplier is currently in use.' }); return; }
-    const updated = suppliers.filter(c => c !== supplierToDelete);
-    setSuppliers(updated);
-    localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(updated));
-    toast({ title: 'Supplier Deleted' });
+  const handleDeleteCompany = (companyToDelete: string) => {
+    if (incomeLedger.some(item => item.company === companyToDelete)) { toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This company is currently in use.' }); return; }
+    const updated = companies.filter(c => c !== companyToDelete);
+    setCompanies(updated);
+    localStorage.setItem(COMPANIES_KEY, JSON.stringify(updated));
+    toast({ title: 'Company Deleted' });
   };
   
-  const handleEditItem = (type: 'incomeType' | 'supplier', value: string) => {
+  const handleEditItem = (type: 'incomeType' | 'company', value: string) => {
     setEditingItem({ type, value });
     setEditingValue(value);
   };
@@ -264,18 +264,18 @@ export function IncomeView() {
               setNewTransaction(prev => ({...prev, incomeType: trimmedValue }));
           }
           toast({ title: 'Income Type Updated' });
-      } else if (editingItem.type === 'supplier') {
-          if (suppliers.map(c => c.toLowerCase()).includes(trimmedValue.toLowerCase())) {
-              toast({ variant: 'destructive', title: 'Duplicate Supplier' }); return;
+      } else if (editingItem.type === 'company') {
+          if (companies.map(c => c.toLowerCase()).includes(trimmedValue.toLowerCase())) {
+              toast({ variant: 'destructive', title: 'Duplicate Company' }); return;
           }
-          const updated = suppliers.map(t => t === editingItem.value ? trimmedValue : t);
-          setSuppliers(updated);
-          localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(updated));
-          setIncomeLedger(prev => prev.map(item => item.supplier === editingItem.value ? { ...item, supplier: trimmedValue } : item));
-          if (newTransaction.supplier === editingItem.value) {
-              setNewTransaction(prev => ({...prev, supplier: trimmedValue }));
+          const updated = companies.map(t => t === editingItem.value ? trimmedValue : t);
+          setCompanies(updated);
+          localStorage.setItem(COMPANIES_KEY, JSON.stringify(updated));
+          setIncomeLedger(prev => prev.map(item => item.company === editingItem.value ? { ...item, company: trimmedValue } : item));
+          if (newTransaction.company === editingItem.value) {
+              setNewTransaction(prev => ({...prev, company: trimmedValue }));
           }
-          toast({ title: 'Supplier Updated' });
+          toast({ title: 'Company Updated' });
       }
 
       handleCancelEdit();
@@ -336,7 +336,7 @@ export function IncomeView() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
-                  <TableHead>Supplier</TableHead>
+                  <TableHead>Company</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Income Type</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
@@ -347,7 +347,7 @@ export function IncomeView() {
                 {incomeLedger.map(item => (
                   <TableRow key={item.id}>
                     <TableCell>{item.date}</TableCell>
-                    <TableCell>{item.supplier}</TableCell>
+                    <TableCell>{item.company}</TableCell>
                     <TableCell>{item.description}</TableCell>
                     <TableCell>{item.incomeType}</TableCell>
                     <TableCell className="text-right font-mono text-green-600">
@@ -387,17 +387,17 @@ export function IncomeView() {
               <Input id="tx-date" type="date" value={newTransaction.date} onChange={(e) => setNewTransaction(prev => ({...prev, date: e.target.value}))} className="col-span-3" />
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-supplier" className="text-right">Supplier <span className="text-destructive">*</span></Label>
+              <Label htmlFor="tx-company" className="text-right">Company <span className="text-destructive">*</span></Label>
               <div className="col-span-3 flex items-center gap-2">
-                  <Select value={newTransaction.supplier} onValueChange={(value) => setNewTransaction(prev => ({...prev, supplier: value}))}>
-                    <SelectTrigger id="tx-supplier" className="w-full"><SelectValue placeholder="Select a supplier" /></SelectTrigger>
+                  <Select value={newTransaction.company} onValueChange={(value) => setNewTransaction(prev => ({...prev, company: value}))}>
+                    <SelectTrigger id="tx-company" className="w-full"><SelectValue placeholder="Select a company" /></SelectTrigger>
                     <SelectContent>
-                      {suppliers.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      {companies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <Button type="button" size="icon" variant="outline" onClick={() => setIsSupplierDialogOpen(true)} className="flex-shrink-0">
+                  <Button type="button" size="icon" variant="outline" onClick={() => setIsCompanyDialogOpen(true)} className="flex-shrink-0">
                       <Settings className="h-4 w-4"/>
-                      <span className="sr-only">Manage Suppliers</span>
+                      <span className="sr-only">Manage Companies</span>
                   </Button>
               </div>
             </div>
@@ -558,28 +558,28 @@ export function IncomeView() {
           </DialogContent>
       </Dialog>
 
-      <Dialog open={isSupplierDialogOpen} onOpenChange={setIsSupplierDialogOpen}>
+      <Dialog open={isCompanyDialogOpen} onOpenChange={setIsCompanyDialogOpen}>
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>Manage Suppliers</DialogTitle>
-                <DialogDescription>Add, edit, or remove suppliers from your list.</DialogDescription>
+                <DialogTitle>Manage Companies</DialogTitle>
+                <DialogDescription>Add, edit, or remove companies from your list.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
                 <div className="flex gap-2">
-                    <Input value={newSupplier} onChange={(e) => setNewSupplier(e.target.value)} placeholder="New supplier" onKeyDown={(e) => { if (e.key === 'Enter') handleAddSupplier(); }}/>
-                    <Button onClick={handleAddSupplier}><Plus className="mr-2 h-4 w-4" /> Add</Button>
+                    <Input value={newCompany} onChange={(e) => setNewCompany(e.target.value)} placeholder="New company" onKeyDown={(e) => { if (e.key === 'Enter') handleAddCompany(); }}/>
+                    <Button onClick={handleAddCompany}><Plus className="mr-2 h-4 w-4" /> Add</Button>
                 </div>
                 <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
-                    {suppliers.map(c => (
+                    {companies.map(c => (
                         <div key={c} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                            {editingItem?.type === 'supplier' && editingItem.value === c ? (
+                            {editingItem?.type === 'company' && editingItem.value === c ? (
                               <Input value={editingValue} onChange={(e) => setEditingValue(e.target.value)} onBlur={handleUpdateItem} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateItem(); if (e.key === 'Escape') handleCancelEdit(); }} autoFocus className="h-8" />
                             ) : (
                               <>
                                 <span>{c}</span>
                                 <div className="flex items-center">
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditItem('supplier', c)}><Pencil className="h-4 w-4" /></Button>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteSupplier(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditItem('company', c)}><Pencil className="h-4 w-4" /></Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteCompany(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                 </div>
                               </>
                             )}
@@ -588,7 +588,7 @@ export function IncomeView() {
                 </div>
             </div>
             <DialogFooter>
-                <Button onClick={() => setIsSupplierDialogOpen(false)}>Done</Button>
+                <Button onClick={() => setIsCompanyDialogOpen(false)}>Done</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -64,10 +64,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 // --- MOCK DATA & TYPES ---
 
 const initialIncomeData = [
-  { id: "inc_1", date: "2024-07-25", supplier: "Client Alpha", description: "Web Development Services", amount: 5000, incomeType: "Service Revenue", depositedTo: "Bank Account #1", explanation: "Contracted services", documentNumber: "INV-2024-001", type: "business" as "business" | "personal" },
-  { id: "inc_2", date: "2024-07-24", supplier: "Client Beta", description: "Consulting Retainer - July", amount: 2500, incomeType: "Consulting", depositedTo: "Bank Account #1", explanation: "Monthly retainer", documentNumber: "INV-2024-002", type: "business" as "business" | "personal" },
-  { id: "inc_3", date: "2024-07-22", supplier: "E-commerce Store", description: "Product Sales", amount: 850.75, incomeType: "Sales Revenue", depositedTo: "Credit Card #1", explanation: "Online sales", documentNumber: "SALE-9876", type: "business" as "business" | "personal" },
-  { id: "inc_4", date: "2024-07-20", supplier: "Affiliate Payout", description: "Q2 Affiliate Earnings", amount: 320.50, incomeType: "Other Income", depositedTo: "Cash Account", explanation: "Referral commissions", documentNumber: "PS-PAY-Q2", type: "business" as "business" | "personal" },
+  { id: "inc_1", date: "2024-07-25", company: "Client Alpha", description: "Web Development Services", amount: 5000, incomeType: "Service Revenue", depositedTo: "Bank Account #1", explanation: "Contracted services", documentNumber: "INV-2024-001", type: "business" as "business" | "personal" },
+  { id: "inc_2", date: "2024-07-24", company: "Client Beta", description: "Consulting Retainer - July", amount: 2500, incomeType: "Consulting", depositedTo: "Bank Account #1", explanation: "Monthly retainer", documentNumber: "INV-2024-002", type: "business" as "business" | "personal" },
+  { id: "inc_3", date: "2024-07-22", company: "E-commerce Store", description: "Product Sales", amount: 850.75, incomeType: "Sales Revenue", depositedTo: "Credit Card #1", explanation: "Online sales", documentNumber: "SALE-9876", type: "business" as "business" | "personal" },
+  { id: "inc_4", date: "2024-07-20", company: "Affiliate Payout", description: "Q2 Affiliate Earnings", amount: 320.50, incomeType: "Other Income", depositedTo: "Cash Account", explanation: "Referral commissions", documentNumber: "PS-PAY-Q2", type: "business" as "business" | "personal" },
 ];
 
 const initialExpenseData = [
@@ -79,7 +79,7 @@ const initialExpenseData = [
 
 type IncomeTransaction = typeof initialIncomeData[0];
 type ExpenseTransaction = typeof initialExpenseData[0];
-type GeneralTransaction = (Omit<IncomeTransaction, 'supplier'> & { type: 'income'; party: string }) | (Omit<ExpenseTransaction, 'company'> & { type: 'expense'; party: string });
+type GeneralTransaction = (Omit<IncomeTransaction, 'company'> & { type: 'income'; party: string }) | (Omit<ExpenseTransaction, 'company'> & { type: 'expense'; party: string });
 
 const INCOME_TYPES_KEY = "accountingIncomeTypes";
 const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
@@ -145,7 +145,7 @@ export function LedgersView() {
 
   const generalLedger = React.useMemo(() => {
     const combined: GeneralTransaction[] = [
-      ...incomeLedger.map(item => ({ ...item, party: item.supplier, category: item.incomeType, type: 'income' as const })),
+      ...incomeLedger.map(item => ({ ...item, party: item.company, category: item.incomeType, type: 'income' as const })),
       ...expenseLedger.map(item => ({ ...item, party: item.company, type: 'expense' as const })),
     ];
     return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -245,7 +245,7 @@ export function LedgersView() {
                     amount: amountNum,
                     incomeType: newTransaction.incomeType,
                     depositedTo: newTransaction.depositedTo,
-                    supplier: newTransaction.party.trim(),
+                    company: newTransaction.party.trim(),
                     explanation: newTransaction.explanation.trim(),
                     documentNumber: newTransaction.documentNumber.trim(),
                     type: newTransaction.type,
@@ -268,7 +268,7 @@ export function LedgersView() {
             }
         } else {
             if (newTransactionType === 'income') {
-                const newEntry: IncomeTransaction = { id: `inc_${Date.now()}`, date: newTransaction.date, supplier: newTransaction.party, description: newTransaction.description, amount: amountNum, incomeType: newTransaction.incomeType, depositedTo: newTransaction.depositedTo, explanation: newTransaction.explanation, documentNumber: newTransaction.documentNumber, type: newTransaction.type };
+                const newEntry: IncomeTransaction = { id: `inc_${Date.now()}`, date: newTransaction.date, company: newTransaction.party, description: newTransaction.description, amount: amountNum, incomeType: newTransaction.incomeType, depositedTo: newTransaction.depositedTo, explanation: newTransaction.explanation, documentNumber: newTransaction.documentNumber, type: newTransaction.type };
                 setIncomeLedger(prev => [newEntry, ...prev]);
                 toast({ title: "Income Transaction Added" });
             } else {
@@ -305,7 +305,7 @@ export function LedgersView() {
     };
 
     const handleDeleteSupplier = (supplierToDelete: string) => {
-      if (incomeLedger.some(item => item.supplier === supplierToDelete)) { toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This supplier is in use.' }); return; }
+      if (incomeLedger.some(item => item.company === supplierToDelete)) { toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This supplier is in use.' }); return; }
       const updated = suppliers.filter(c => c !== supplierToDelete);
       setSuppliers(updated);
       localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(updated));
@@ -334,7 +334,7 @@ export function LedgersView() {
         const updatedSuppliers = suppliers.map(t => t === editingSupplier ? trimmedValue : t);
         setSuppliers(updatedSuppliers);
         localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(updatedSuppliers));
-        setIncomeLedger(prev => prev.map(item => item.supplier === editingSupplier ? { ...item, supplier: trimmedValue } : item));
+        setIncomeLedger(prev => prev.map(item => item.company === editingSupplier ? { ...item, company: trimmedValue } : item));
         if (newTransaction.party === editingSupplier) {
             setNewTransaction(prev => ({...prev, party: trimmedValue }));
         }
@@ -424,7 +424,7 @@ export function LedgersView() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Date</TableHead>
-                          <TableHead>Source / Vendor</TableHead>
+                          <TableHead>Company</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
                           <TableHead>Type</TableHead>
@@ -512,7 +512,7 @@ export function LedgersView() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Date</TableHead>
-                          <TableHead>Supplier</TableHead>
+                          <TableHead>Company</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Income Type</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
@@ -523,7 +523,7 @@ export function LedgersView() {
                         {incomeLedger.map(item => (
                           <TableRow key={item.id}>
                             <TableCell>{item.date}</TableCell>
-                            <TableCell>{item.supplier}</TableCell>
+                            <TableCell>{item.company}</TableCell>
                             <TableCell>{item.description}</TableCell>
                             <TableCell>
                               <Select value={item.incomeType} onValueChange={(newCategory) => handleCategoryChange(item.id, newCategory, 'income')}>
@@ -541,9 +541,9 @@ export function LedgersView() {
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', { ...item, party: item.supplier, category: item.incomeType, type: 'income' })}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
-                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', { ...item, party: item.supplier, category: item.incomeType, type: 'income' })}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
-                                  <DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({ ...item, party: item.supplier, category: item.incomeType, type: 'income' })}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', { ...item, party: item.company, category: item.incomeType, type: 'income' })}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', { ...item, party: item.company, category: item.incomeType, type: 'income' })}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({ ...item, party: item.company, category: item.incomeType, type: 'income' })}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>
@@ -693,11 +693,11 @@ export function LedgersView() {
               <Input id="tx-date-gl" type="date" value={newTransaction.date} onChange={(e) => setNewTransaction(prev => ({...prev, date: e.target.value}))} className="col-span-3" />
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="tx-party-gl" className="text-right">{newTransactionType === 'income' ? 'Supplier' : 'Company'} <span className="text-destructive">*</span></Label>
+                <Label htmlFor="tx-party-gl" className="text-right">Company <span className="text-destructive">*</span></Label>
                 <div className="col-span-3 flex items-center gap-2">
                     <Select value={newTransaction.party} onValueChange={(value) => setNewTransaction(prev => ({...prev, party: value}))}>
                         <SelectTrigger id="tx-party-gl" className="w-full">
-                            <SelectValue placeholder={`Select a ${newTransactionType === 'income' ? 'supplier' : 'company'}`} />
+                            <SelectValue placeholder={`Select a company`} />
                         </SelectTrigger>
                         <SelectContent>
                             {(newTransactionType === 'income' ? suppliers : companies).map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -803,12 +803,12 @@ export function LedgersView() {
       <Dialog open={isSupplierDialogOpen} onOpenChange={setIsSupplierDialogOpen}>
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>Manage Suppliers</DialogTitle>
-                <DialogDescription>Add, edit, or remove suppliers from your list.</DialogDescription>
+                <DialogTitle>Manage Companies</DialogTitle>
+                <DialogDescription>Add, edit, or remove companies from your list.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
                 <div className="flex gap-2">
-                    <Input value={newSupplier} onChange={(e) => setNewSupplier(e.target.value)} placeholder="New supplier" onKeyDown={(e) => { if (e.key === 'Enter') handleAddSupplier(); }}/>
+                    <Input value={newSupplier} onChange={(e) => setNewSupplier(e.target.value)} placeholder="New company" onKeyDown={(e) => { if (e.key === 'Enter') handleAddSupplier(); }}/>
                     <Button onClick={handleAddSupplier}><Plus className="mr-2 h-4 w-4" /> Add</Button>
                 </div>
                 <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
