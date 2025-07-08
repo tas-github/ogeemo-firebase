@@ -609,31 +609,31 @@ export function LedgersView() {
                 <div><RadioGroupItem value="expense" id="r-expense" className="peer sr-only" /><Label htmlFor="r-expense" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">Expense</Label></div>
             </RadioGroup>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-date" className="text-right">Date</Label>
-              <Input id="tx-date" type="date" value={newTransaction.date} onChange={(e) => setNewTransaction(prev => ({...prev, date: e.target.value}))} className="col-span-3" />
+              <Label htmlFor="tx-date-gl" className="text-right">Date <span className="text-destructive">*</span></Label>
+              <Input id="tx-date-gl" type="date" value={newTransaction.date} onChange={(e) => setNewTransaction(prev => ({...prev, date: e.target.value}))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-party" className="text-right">{newTransactionType === 'income' ? 'Source' : 'Vendor'}</Label>
-              <Input id="tx-party" value={newTransaction.party} onChange={(e) => setNewTransaction(prev => ({...prev, party: e.target.value}))} className="col-span-3" />
+              <Label htmlFor="tx-party-gl" className="text-right">{newTransactionType === 'income' ? 'Source' : 'Vendor'} <span className="text-destructive">*</span></Label>
+              <Input id="tx-party-gl" value={newTransaction.party} onChange={(e) => setNewTransaction(prev => ({...prev, party: e.target.value}))} className="col-span-3" />
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-company" className="text-right">Company</Label>
-              <Input id="tx-company" value={newTransaction.company} onChange={(e) => setNewTransaction(prev => ({...prev, company: e.target.value}))} className="col-span-3" />
+              <Label htmlFor="tx-company-gl" className="text-right">Company</Label>
+              <Input id="tx-company-gl" value={newTransaction.company} onChange={(e) => setNewTransaction(prev => ({...prev, company: e.target.value}))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-doc-number" className="text-right">Document #</Label>
-              <Input id="tx-doc-number" value={newTransaction.documentNumber} onChange={(e) => setNewTransaction(prev => ({...prev, documentNumber: e.target.value}))} className="col-span-3" />
+              <Label htmlFor="tx-doc-number-gl" className="text-right">Document #</Label>
+              <Input id="tx-doc-number-gl" value={newTransaction.documentNumber} onChange={(e) => setNewTransaction(prev => ({...prev, documentNumber: e.target.value}))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-description" className="text-right">Description</Label>
-              <Input id="tx-description" value={newTransaction.description} onChange={(e) => setNewTransaction(prev => ({...prev, description: e.target.value}))} className="col-span-3" />
+              <Label htmlFor="tx-description-gl" className="text-right">Description</Label>
+              <Input id="tx-description-gl" value={newTransaction.description} onChange={(e) => setNewTransaction(prev => ({...prev, description: e.target.value}))} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-amount" className="text-right">Amount</Label>
+              <Label htmlFor="tx-amount-gl" className="text-right">Amount <span className="text-destructive">*</span></Label>
               <div className="relative col-span-3">
                   <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
                   <Input
-                      id="tx-amount"
+                      id="tx-amount-gl"
                       type="number"
                       value={newTransaction.amount}
                       onChange={(e) => setNewTransaction(prev => ({...prev, amount: e.target.value}))}
@@ -644,17 +644,17 @@ export function LedgersView() {
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-category" className="text-right">Category</Label>
+              <Label htmlFor="tx-category-gl" className="text-right">Category <span className="text-destructive">*</span></Label>
               <Select value={newTransaction.category} onValueChange={(value) => setNewTransaction(prev => ({...prev, category: value}))}>
-                <SelectTrigger className="col-span-3"><SelectValue placeholder="Select a category" /></SelectTrigger>
+                <SelectTrigger className="col-span-3" id="tx-category-gl"><SelectValue placeholder="Select a category" /></SelectTrigger>
                 <SelectContent>
                   {(newTransactionType === 'income' ? incomeCategories : expenseCategories).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-explanation" className="text-right">Explanation</Label>
-              <Input id="tx-explanation" value={newTransaction.explanation} onChange={(e) => setNewTransaction(prev => ({...prev, explanation: e.target.value}))} className="col-span-3" />
+              <Label htmlFor="tx-explanation-gl" className="text-right">Explanation</Label>
+              <Input id="tx-explanation-gl" value={newTransaction.explanation} onChange={(e) => setNewTransaction(prev => ({...prev, explanation: e.target.value}))} className="col-span-3" />
             </div>
              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="tx-type-gl" className="text-right">Type</Label>
