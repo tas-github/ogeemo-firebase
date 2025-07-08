@@ -343,11 +343,11 @@ export function LedgersView() {
   return (
     <>
       <div className="p-4 sm:p-6 space-y-6">
-        <AccountingPageHeader pageTitle="General Ledgers" />
+        <AccountingPageHeader pageTitle="General Ledger" />
         <div className="flex flex-col">
           <header className="text-center mb-6 w-full mx-auto">
             <h1 className="text-3xl font-bold font-headline text-primary">
-              General Ledgers
+              General Ledger
             </h1>
             <p className="text-muted-foreground">
               A unified view of your income and expenses. Categorize transactions to keep your books in order.
@@ -661,18 +661,18 @@ export function LedgersView() {
       <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
         <DialogContent>
           <DialogHeader className="text-center sm:text-center">
-            <DialogTitle>{transactionToEdit ? 'Edit Transaction' : `Post New ${newTransactionType === 'income' ? 'Income' : 'Expense'} Transaction`}</DialogTitle>
+            <DialogTitle className="text-2xl text-primary font-bold">{transactionToEdit ? 'Edit Transaction' : `Post New ${newTransactionType === 'income' ? 'Income' : 'Expense'} Transaction`}</DialogTitle>
             <DialogDescription>Select the transaction type and fill in the details.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <RadioGroup value={newTransactionType} onValueChange={(value) => setNewTransactionType(value as 'income' | 'expense')} className="grid grid-cols-2 gap-4">
                 <div>
                     <RadioGroupItem value="income" id="r-income" className="peer sr-only" />
-                    <Label htmlFor="r-income" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-green-600 peer-data-[state=checked]:bg-green-50 dark:peer-data-[state=checked]:bg-green-900/20">Income</Label>
+                    <Label htmlFor="r-income" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-green-600 peer-data-[state=checked]:text-green-600 peer-data-[state=checked]:bg-green-50 dark:peer-data-[state=checked]:bg-green-900/20 [&:has([data-state=checked])]:border-green-600">Income</Label>
                 </div>
                 <div>
                     <RadioGroupItem value="expense" id="r-expense" className="peer sr-only" />
-                    <Label htmlFor="r-expense" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-red-600 peer-data-[state=checked]:bg-red-50 dark:peer-data-[state=checked]:bg-red-900/20">Expense</Label>
+                    <Label htmlFor="r-expense" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-red-600 peer-data-[state=checked]:text-red-600 peer-data-[state=checked]:bg-red-50 dark:peer-data-[state=checked]:bg-red-900/20 [&:has([data-state=checked])]:border-red-600">Expense</Label>
                 </div>
             </RadioGroup>
             <div className="grid grid-cols-4 items-center gap-4">

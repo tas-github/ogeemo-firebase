@@ -38,10 +38,10 @@ export function AccountingHubView() {
     },
     {
       icon: BookText,
-      title: "General Ledgers",
+      title: "General Ledger",
       description: "Review detailed income and expense ledgers with customizable views.",
       href: "/accounting/ledgers",
-      cta: "View Ledgers",
+      cta: "View Ledger",
     },
     {
       icon: WalletCards,
