@@ -54,10 +54,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 // Mock data
 const initialIncomeData = [
-  { id: "inc_1", date: "2024-07-25", supplier: "Client Alpha", company: "Alpha Inc.", description: "Web Development Services", amount: 5000, incomeType: "Service Revenue", depositedTo: "Bank Account #1", explanation: "Contracted services", documentNumber: "INV-2024-001", type: "business" as "business" | "personal" },
-  { id: "inc_2", date: "2024-07-24", supplier: "Client Beta", company: "Beta Corp.", description: "Consulting Retainer - July", amount: 2500, incomeType: "Consulting", depositedTo: "Bank Account #1", explanation: "Monthly retainer", documentNumber: "INV-2024-002", type: "business" as "business" | "personal" },
-  { id: "inc_3", date: "2024-07-22", supplier: "E-commerce Store", company: "Ogeemo Store", description: "Product Sales", amount: 850.75, incomeType: "Sales Revenue", depositedTo: "Credit Card #1", explanation: "Online sales", documentNumber: "SALE-9876", type: "business" as "business" | "personal" },
-  { id: "inc_4", date: "2024-07-20", supplier: "Affiliate Payout", company: "PartnerStack", description: "Q2 Affiliate Earnings", amount: 320.50, incomeType: "Other Income", depositedTo: "Cash Account", explanation: "Referral commissions", documentNumber: "PS-PAY-Q2", type: "business" as "business" | "personal" },
+  { id: "inc_1", date: "2024-07-25", supplier: "Client Alpha", description: "Web Development Services", amount: 5000, incomeType: "Service Revenue", depositedTo: "Bank Account #1", explanation: "Contracted services", documentNumber: "INV-2024-001", type: "business" as "business" | "personal" },
+  { id: "inc_2", date: "2024-07-24", supplier: "Client Beta", description: "Consulting Retainer - July", amount: 2500, incomeType: "Consulting", depositedTo: "Bank Account #1", explanation: "Monthly retainer", documentNumber: "INV-2024-002", type: "business" as "business" | "personal" },
+  { id: "inc_3", date: "2024-07-22", supplier: "E-commerce Store", description: "Product Sales", amount: 850.75, incomeType: "Sales Revenue", depositedTo: "Credit Card #1", explanation: "Online sales", documentNumber: "SALE-9876", type: "business" as "business" | "personal" },
+  { id: "inc_4", date: "2024-07-20", supplier: "Affiliate Payout", description: "Q2 Affiliate Earnings", amount: 320.50, incomeType: "Other Income", depositedTo: "Cash Account", explanation: "Referral commissions", documentNumber: "PS-PAY-Q2", type: "business" as "business" | "personal" },
 ];
 
 type IncomeTransaction = typeof initialIncomeData[0];
@@ -71,7 +71,7 @@ const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "C
 const defaultSuppliers = ["Client Alpha", "Client Beta", "E-commerce Store", "Affiliate Payout"];
 const defaultDepositAccounts = ["Bank Account #1", "Credit Card #1", "Cash Account"];
 
-const emptyTransactionForm = { date: '', supplier: '', company: '', description: '', amount: '', incomeType: '', depositedTo: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal' };
+const emptyTransactionForm = { date: '', supplier: '', description: '', amount: '', incomeType: '', depositedTo: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal' };
 
 
 export function IncomeView() {
@@ -94,7 +94,7 @@ export function IncomeView() {
   const [newExpenseCategory, setNewExpenseCategory] = React.useState("");
   const [newSupplier, setNewSupplier] = React.useState("");
   const [newDepositAccount, setNewDepositAccount] = React.useState("");
-  const [editingSupplier, setEditingSupplier] = React.useState<string | null>(null);
+  const [editingItem, setEditingItem] = React.useState<{type: 'incomeType' | 'supplier', value: string} | null>(null);
   const [editingValue, setEditingValue] = React.useState("");
   
   const { toast } = useToast();
@@ -128,7 +128,6 @@ export function IncomeView() {
         setNewTransaction({
             date: transaction.date,
             supplier: transaction.supplier,
-            company: transaction.company || '',
             description: transaction.description,
             amount: String(transaction.amount),
             incomeType: transaction.incomeType,
@@ -158,7 +157,6 @@ export function IncomeView() {
         amount: amountNum,
         incomeType: newTransaction.incomeType,
         depositedTo: newTransaction.depositedTo,
-        company: newTransaction.company.trim(),
         explanation: newTransaction.explanation.trim(),
         documentNumber: newTransaction.documentNumber.trim(),
         type: newTransaction.type,
@@ -236,39 +234,50 @@ export function IncomeView() {
     toast({ title: 'Supplier Deleted' });
   };
   
-  const handleEditSupplier = (type: string) => {
-    setEditingSupplier(type);
-    setEditingValue(type);
+  const handleEditItem = (type: 'incomeType' | 'supplier', value: string) => {
+    setEditingItem({ type, value });
+    setEditingValue(value);
   };
 
   const handleCancelEdit = () => {
-      setEditingSupplier(null);
+      setEditingItem(null);
       setEditingValue("");
   };
 
-  const handleUpdateSupplier = () => {
-      if (!editingSupplier || !editingValue.trim() || editingSupplier === editingValue.trim()) {
+  const handleUpdateItem = () => {
+      if (!editingItem || !editingValue.trim() || editingItem.value === editingValue.trim()) {
           handleCancelEdit();
           return;
       }
 
       const trimmedValue = editingValue.trim();
-      if (suppliers.map(c => c.toLowerCase()).includes(trimmedValue.toLowerCase())) {
-          toast({ variant: 'destructive', title: 'Duplicate Supplier', description: 'This supplier already exists.' });
-          return;
+      
+      if (editingItem.type === 'incomeType') {
+          if (incomeTypes.map(c => c.toLowerCase()).includes(trimmedValue.toLowerCase())) {
+              toast({ variant: 'destructive', title: 'Duplicate Type' }); return;
+          }
+          const updated = incomeTypes.map(t => t === editingItem.value ? trimmedValue : t);
+          setIncomeTypes(updated);
+          localStorage.setItem(INCOME_TYPES_KEY, JSON.stringify(updated));
+          setIncomeLedger(prev => prev.map(item => item.incomeType === editingItem.value ? { ...item, incomeType: trimmedValue } : item));
+          if (newTransaction.incomeType === editingItem.value) {
+              setNewTransaction(prev => ({...prev, incomeType: trimmedValue }));
+          }
+          toast({ title: 'Income Type Updated' });
+      } else if (editingItem.type === 'supplier') {
+          if (suppliers.map(c => c.toLowerCase()).includes(trimmedValue.toLowerCase())) {
+              toast({ variant: 'destructive', title: 'Duplicate Supplier' }); return;
+          }
+          const updated = suppliers.map(t => t === editingItem.value ? trimmedValue : t);
+          setSuppliers(updated);
+          localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(updated));
+          setIncomeLedger(prev => prev.map(item => item.supplier === editingItem.value ? { ...item, supplier: trimmedValue } : item));
+          if (newTransaction.supplier === editingItem.value) {
+              setNewTransaction(prev => ({...prev, supplier: trimmedValue }));
+          }
+          toast({ title: 'Supplier Updated' });
       }
 
-      const updatedSuppliers = suppliers.map(t => t === editingSupplier ? trimmedValue : t);
-      setSuppliers(updatedSuppliers);
-      localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(updatedSuppliers));
-
-      setIncomeLedger(prev => prev.map(item => item.supplier === editingSupplier ? { ...item, supplier: trimmedValue } : item));
-
-      if (newTransaction.supplier === editingSupplier) {
-          setNewTransaction(prev => ({...prev, supplier: trimmedValue }));
-      }
-
-      toast({ title: 'Supplier Updated' });
       handleCancelEdit();
   };
   
@@ -393,10 +402,6 @@ export function IncomeView() {
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-company" className="text-right">Company</Label>
-              <Input id="tx-company" value={newTransaction.company} onChange={(e) => setNewTransaction(prev => ({...prev, company: e.target.value}))} className="col-span-3" />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-doc-number" className="text-right">Document #</Label>
               <Input id="tx-doc-number" value={newTransaction.documentNumber} onChange={(e) => setNewTransaction(prev => ({...prev, documentNumber: e.target.value}))} className="col-span-3" />
             </div>
@@ -514,8 +519,17 @@ export function IncomeView() {
                           <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
                               {incomeTypes.map(cat => (
                                   <div key={cat} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                                      <span>{cat}</span>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteCategory(cat, 'income')}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                      {editingItem?.type === 'incomeType' && editingItem.value === cat ? (
+                                        <Input value={editingValue} onChange={(e) => setEditingValue(e.target.value)} onBlur={handleUpdateItem} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateItem(); if (e.key === 'Escape') handleCancelEdit(); }} autoFocus className="h-8" />
+                                      ) : (
+                                        <>
+                                            <span>{cat}</span>
+                                            <div className="flex items-center">
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditItem('incomeType', cat)}><Pencil className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteCategory(cat, 'income')}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                            </div>
+                                        </>
+                                      )}
                                   </div>
                               ))}
                           </div>
@@ -558,23 +572,13 @@ export function IncomeView() {
                 <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
                     {suppliers.map(c => (
                         <div key={c} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                            {editingSupplier === c ? (
-                              <Input
-                                value={editingValue}
-                                onChange={(e) => setEditingValue(e.target.value)}
-                                onBlur={handleUpdateSupplier}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleUpdateSupplier();
-                                  if (e.key === 'Escape') handleCancelEdit();
-                                }}
-                                autoFocus
-                                className="h-8"
-                              />
+                            {editingItem?.type === 'supplier' && editingItem.value === c ? (
+                              <Input value={editingValue} onChange={(e) => setEditingValue(e.target.value)} onBlur={handleUpdateItem} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateItem(); if (e.key === 'Escape') handleCancelEdit(); }} autoFocus className="h-8" />
                             ) : (
                               <>
                                 <span>{c}</span>
                                 <div className="flex items-center">
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditSupplier(c)}><Pencil className="h-4 w-4" /></Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditItem('supplier', c)}><Pencil className="h-4 w-4" /></Button>
                                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteSupplier(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                 </div>
                               </>

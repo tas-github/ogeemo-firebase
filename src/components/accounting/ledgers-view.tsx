@@ -64,10 +64,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 // --- MOCK DATA & TYPES ---
 
 const initialIncomeData = [
-  { id: "inc_1", date: "2024-07-25", supplier: "Client Alpha", company: "Alpha Inc.", description: "Web Development Services", amount: 5000, incomeType: "Service Revenue", depositedTo: "Bank Account #1", explanation: "Contracted services", documentNumber: "INV-2024-001", type: "business" as "business" | "personal" },
-  { id: "inc_2", date: "2024-07-24", supplier: "Client Beta", company: "Beta Corp.", description: "Consulting Retainer - July", amount: 2500, incomeType: "Consulting", depositedTo: "Bank Account #1", explanation: "Monthly retainer", documentNumber: "INV-2024-002", type: "business" as "business" | "personal" },
-  { id: "inc_3", date: "2024-07-22", supplier: "E-commerce Store", company: "Ogeemo Store", description: "Product Sales", amount: 850.75, incomeType: "Sales Revenue", depositedTo: "Credit Card #1", explanation: "Online sales", documentNumber: "SALE-9876", type: "business" as "business" | "personal" },
-  { id: "inc_4", date: "2024-07-20", supplier: "Affiliate Payout", company: "PartnerStack", description: "Q2 Affiliate Earnings", amount: 320.50, incomeType: "Other Income", depositedTo: "Cash Account", explanation: "Referral commissions", documentNumber: "PS-PAY-Q2", type: "business" as "business" | "personal" },
+  { id: "inc_1", date: "2024-07-25", supplier: "Client Alpha", description: "Web Development Services", amount: 5000, incomeType: "Service Revenue", depositedTo: "Bank Account #1", explanation: "Contracted services", documentNumber: "INV-2024-001", type: "business" as "business" | "personal" },
+  { id: "inc_2", date: "2024-07-24", supplier: "Client Beta", description: "Consulting Retainer - July", amount: 2500, incomeType: "Consulting", depositedTo: "Bank Account #1", explanation: "Monthly retainer", documentNumber: "INV-2024-002", type: "business" as "business" | "personal" },
+  { id: "inc_3", date: "2024-07-22", supplier: "E-commerce Store", description: "Product Sales", amount: 850.75, incomeType: "Sales Revenue", depositedTo: "Credit Card #1", explanation: "Online sales", documentNumber: "SALE-9876", type: "business" as "business" | "personal" },
+  { id: "inc_4", date: "2024-07-20", supplier: "Affiliate Payout", description: "Q2 Affiliate Earnings", amount: 320.50, incomeType: "Other Income", depositedTo: "Cash Account", explanation: "Referral commissions", documentNumber: "PS-PAY-Q2", type: "business" as "business" | "personal" },
 ];
 
 const initialExpenseData = [
@@ -91,7 +91,7 @@ const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "C
 const defaultSuppliers = ["Client Alpha", "Client Beta", "E-commerce Store", "Affiliate Payout"];
 const defaultCompanies = ["Cloud Hosting Inc.", "SaaS Tools Co.", "Office Supply Hub", "Jane Designs"];
 
-const emptyTransactionForm = { date: '', party: '', company: '', description: '', amount: '', category: '', incomeType: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal', depositedTo: '' };
+const emptyTransactionForm = { date: '', party: '', description: '', amount: '', category: '', incomeType: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal', depositedTo: '' };
 
 
 // --- COMPONENT ---
@@ -214,7 +214,6 @@ export function LedgersView() {
             setNewTransaction({
                 date: transaction.date,
                 party: transaction.party,
-                company: (transaction as any).company || '',
                 description: transaction.description,
                 amount: String(transaction.amount),
                 category: transaction.category,
@@ -246,7 +245,6 @@ export function LedgersView() {
                     amount: amountNum,
                     incomeType: newTransaction.incomeType,
                     depositedTo: newTransaction.depositedTo,
-                    company: newTransaction.company.trim(),
                     supplier: newTransaction.party.trim(),
                     explanation: newTransaction.explanation.trim(),
                     documentNumber: newTransaction.documentNumber.trim(),
@@ -270,7 +268,7 @@ export function LedgersView() {
             }
         } else {
             if (newTransactionType === 'income') {
-                const newEntry: IncomeTransaction = { id: `inc_${Date.now()}`, date: newTransaction.date, supplier: newTransaction.party, company: newTransaction.company, description: newTransaction.description, amount: amountNum, incomeType: newTransaction.incomeType, depositedTo: newTransaction.depositedTo, explanation: newTransaction.explanation, documentNumber: newTransaction.documentNumber, type: newTransaction.type };
+                const newEntry: IncomeTransaction = { id: `inc_${Date.now()}`, date: newTransaction.date, supplier: newTransaction.party, description: newTransaction.description, amount: amountNum, incomeType: newTransaction.incomeType, depositedTo: newTransaction.depositedTo, explanation: newTransaction.explanation, documentNumber: newTransaction.documentNumber, type: newTransaction.type };
                 setIncomeLedger(prev => [newEntry, ...prev]);
                 toast({ title: "Income Transaction Added" });
             } else {
@@ -717,10 +715,6 @@ export function LedgersView() {
                     </Button>
                 </div>
             </div>
-             {newTransactionType === 'income' && <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tx-company-gl" className="text-right">Company</Label>
-              <Input id="tx-company-gl" value={newTransaction.company} onChange={(e) => setNewTransaction(prev => ({...prev, company: e.target.value}))} className="col-span-3" />
-            </div>}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-doc-number-gl" className="text-right">Document #</Label>
               <Input id="tx-doc-number-gl" value={newTransaction.documentNumber} onChange={(e) => setNewTransaction(prev => ({...prev, documentNumber: e.target.value}))} className="col-span-3" />
@@ -869,5 +863,3 @@ export function LedgersView() {
     </>
   );
 }
-
-    
