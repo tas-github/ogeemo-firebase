@@ -645,12 +645,18 @@ export function LedgersView() {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-category-gl" className="text-right">Category <span className="text-destructive">*</span></Label>
-              <Select value={newTransaction.category} onValueChange={(value) => setNewTransaction(prev => ({...prev, category: value}))}>
-                <SelectTrigger className="col-span-3" id="tx-category-gl"><SelectValue placeholder="Select a category" /></SelectTrigger>
-                <SelectContent>
-                  {(newTransactionType === 'income' ? incomeCategories : expenseCategories).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="col-span-3 flex items-center gap-2">
+                <Select value={newTransaction.category} onValueChange={(value) => setNewTransaction(prev => ({...prev, category: value}))}>
+                  <SelectTrigger id="tx-category-gl" className="w-full"><SelectValue placeholder="Select a category" /></SelectTrigger>
+                  <SelectContent>
+                    {(newTransactionType === 'income' ? incomeCategories : expenseCategories).map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button type="button" size="icon" variant="outline" onClick={() => setIsCategoryDialogOpen(true)} className="flex-shrink-0">
+                    <Settings className="h-4 w-4"/>
+                    <span className="sr-only">Manage Categories</span>
+                </Button>
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="tx-explanation-gl" className="text-right">Explanation</Label>
