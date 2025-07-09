@@ -3,13 +3,25 @@
 
 import { useState } from "react";
 import Link from 'next/link';
-import { signInWithRedirect, GoogleAuthProvider } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { signInWithRedirect, GoogleAuthProvider, signInWithEmailAndPassword } from "firebase/auth";
 import { LoaderCircle } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { initializeFirebase } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+
+const loginSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email." }),
+  password: z.string().min(1, { message: "Password is required." }),
+});
 
 function GoogleIcon() {
     return (
@@ -24,23 +36,48 @@ function GoogleIcon() {
 
 export default function LoginPage() {
   const { toast } = useToast();
+  const router = useRouter();
+  const [isEmailLoading, setIsEmailLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const form = useForm<z.infer<typeof loginSchema>>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+  });
+
+  async function handleEmailSignIn(values: z.infer<typeof loginSchema>) {
+    setIsEmailLoading(true);
+    try {
+      const { auth } = await initializeFirebase();
+      await signInWithEmailAndPassword(auth, values.email, values.password);
+      router.push("/dashboard");
+    } catch (error: any) {
+      let description = "An unknown error occurred. Please try again.";
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        description = "Invalid email or password. Please check your credentials and try again.";
+      }
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: description,
+      });
+    } finally {
+      setIsEmailLoading(false);
+    }
+  }
+
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
-      // The initializeFirebase() promise ensures the SDK is ready.
       const { auth } = await initializeFirebase();
       const provider = new GoogleAuthProvider();
-      // Use redirect flow which is more robust and recommended for most browsers.
       await signInWithRedirect(auth, provider);
-      // The user will be redirected to the Google sign-in page,
-      // and then back to the /auth/callback page.
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
-      let description = `An unknown error occurred. Please check the console for details. (Code: ${error.code})`;
+      let description = `An unknown error occurred. (Code: ${error.code})`;
       if (error.code === 'auth/unauthorized-domain') {
-          description = `This domain (${window.location.hostname}) is not authorized for OAuth operations. Please add it to the authorized domains in your Firebase console's authentication settings.`;
+          description = `This domain (${window.location.hostname}) is not authorized for OAuth operations. Please add it to your Firebase console's authentication settings.`;
       }
       toast({
         variant: "destructive",
@@ -51,14 +88,58 @@ export default function LoginPage() {
     }
   };
 
+  const isLoading = isEmailLoading || isGoogleLoading;
+
   return (
     <>
       <CardHeader className="text-center">
         <CardTitle className="text-2xl font-headline font-semibold">Welcome to Ogeemo</CardTitle>
         <CardDescription>Sign in to your account to continue.</CardDescription>
       </CardHeader>
-      <CardContent>
-        <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading}>
+      <CardContent className="space-y-4">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleEmailSignIn)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="name@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••••" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isEmailLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+              Sign In
+            </Button>
+          </form>
+        </Form>
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <Separator />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+          </div>
+        </div>
+        <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
             {isGoogleLoading ? (
                 <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -67,6 +148,14 @@ export default function LoginPage() {
             Sign in with Google
         </Button>
       </CardContent>
+      <CardFooter className="justify-center text-sm">
+        <p>
+            Don't have an account?{' '}
+            <Link href="/register" className="font-medium text-primary hover:underline">
+                Sign up
+            </Link>
+        </p>
+      </CardFooter>
     </>
   );
 }
