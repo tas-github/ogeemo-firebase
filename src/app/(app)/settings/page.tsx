@@ -1,5 +1,5 @@
 
-import { UserNav } from "@/components/user-nav";
+import { ProfileCard } from "@/components/settings/profile-card";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
 export default function SettingsPage() {
@@ -13,10 +13,10 @@ export default function SettingsPage() {
         <Card>
             <CardHeader>
                 <CardTitle>My Profile</CardTitle>
-                <CardDescription>Your user profile information. Click to edit.</CardDescription>
+                <CardDescription>Your user profile information.</CardDescription>
             </CardHeader>
             <CardContent>
-                <UserNav />
+                <ProfileCard />
             </CardContent>
         </Card>
       </div>
