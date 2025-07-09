@@ -61,12 +61,12 @@ interface InvoiceTemplate {
 }
 
 interface FinalizedInvoice {
-    id: string;
-    invoiceNumber: string;
-    clientName: string;
-    amount: number;
-    dueDate: string;
-    status: 'Paid' | 'Outstanding' | 'Overdue';
+  id: string;
+  invoiceNumber: string;
+  clientName: string;
+  originalAmount: number;
+  amountPaid: number;
+  dueDate: string;
 }
 
 interface InvoiceDraft {
@@ -97,6 +97,7 @@ const formatTime = (totalSeconds: number) => {
 
 // LocalStorage Keys
 const EDIT_INVOICE_TEMPLATE_KEY = 'editInvoiceTemplate';
+const EDIT_INVOICE_ID_KEY = 'editInvoiceId';
 const INVOICE_TEMPLATES_KEY = 'invoiceTemplates';
 const INVOICE_DRAFT_KEY = 'ogeemo-invoice-draft';
 const DEFAULT_INVOICE_TAX_KEY = 'ogeemo-default-tax';
@@ -138,6 +139,7 @@ export function InvoiceGeneratorView() {
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dueDate, setDueDate] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
 
   const [taxType, setTaxType] = useState('none');
   const [taxRate, setTaxRate] = useState(0);
@@ -197,6 +199,29 @@ export function InvoiceGeneratorView() {
   // Effect to load either a template for editing, or a saved draft
   useEffect(() => {
     try {
+      const invoiceToEditId = localStorage.getItem(EDIT_INVOICE_ID_KEY);
+      if (invoiceToEditId) {
+          const allInvoicesRaw = localStorage.getItem(FINALIZED_INVOICES_KEY);
+          const allInvoices: FinalizedInvoice[] = allInvoicesRaw ? JSON.parse(allInvoicesRaw) : [];
+          const invoiceToEdit = allInvoices.find(inv => inv.id === invoiceToEditId);
+          if (invoiceToEdit) {
+              const contact = contacts.find(c => c.name === invoiceToEdit.clientName);
+              if (contact) setSelectedContactId(contact.id);
+              
+              setInvoiceNumber(invoiceToEdit.invoiceNumber);
+              setDueDate(invoiceToEdit.dueDate);
+              setEditingInvoiceId(invoiceToEdit.id);
+              // Simplified editing: we cannot reconstruct line items perfectly,
+              // so we create one line item for the original amount for editing.
+              setCustomItems([{ id: Date.now(), description: `Editing Invoice ${invoiceToEdit.invoiceNumber}`, quantity: 1, price: invoiceToEdit.originalAmount }]);
+              setLoggedEntries([]);
+
+              toast({ title: "Editing Invoice", description: `Loaded invoice ${invoiceToEdit.invoiceNumber} for editing.` });
+          }
+          localStorage.removeItem(EDIT_INVOICE_ID_KEY);
+          return;
+      }
+      
       const templateToEditRaw = localStorage.getItem(EDIT_INVOICE_TEMPLATE_KEY);
       if (templateToEditRaw) {
         const templateToEdit: InvoiceTemplate = JSON.parse(templateToEditRaw);
@@ -248,10 +273,12 @@ export function InvoiceGeneratorView() {
     } catch (error) {
       console.error("Failed to initialize invoice page:", error);
     }
-  }, [toast, getNextInvoiceNumber]);
+  }, [toast, getNextInvoiceNumber, contacts]);
   
   // Effect to save draft to localStorage whenever relevant state changes
   useEffect(() => {
+    if (editingInvoiceId) return; // Don't save draft if we are editing an existing invoice
+
     const isEditingTemplate = !!localStorage.getItem(EDIT_INVOICE_TEMPLATE_KEY);
     if (isEditingTemplate) return;
 
@@ -269,7 +296,7 @@ export function InvoiceGeneratorView() {
     } catch (error) {
       console.error("Failed to save invoice draft:", error);
     }
-  }, [selectedContactId, invoiceNumber, invoiceDate, dueDate, taxType, taxRate, customItems]);
+  }, [selectedContactId, invoiceNumber, invoiceDate, dueDate, taxType, taxRate, customItems, editingInvoiceId]);
 
   useEffect(() => {
     if (taxType === 'none') {
@@ -357,6 +384,7 @@ export function InvoiceGeneratorView() {
     setSelectedContactId('');
     setTaxType('none');
     setTaxRate(0);
+    setEditingInvoiceId(null);
     setInvoiceNumber(`INV-${getNextInvoiceNumber()}`);
     setInvoiceDate(format(new Date(), 'yyyy-MM-dd'));
     setDueDate(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
@@ -374,25 +402,39 @@ export function InvoiceGeneratorView() {
     }
     
     try {
-        const newInvoice: FinalizedInvoice = {
-            id: `inv-${Date.now()}`,
-            invoiceNumber,
-            clientName: selectedContact.name,
-            amount: total,
-            dueDate,
-            status: 'Outstanding',
-        };
-
         const existingInvoicesRaw = localStorage.getItem(FINALIZED_INVOICES_KEY);
         const existingInvoices: FinalizedInvoice[] = existingInvoicesRaw ? JSON.parse(existingInvoicesRaw) : [];
-        const updatedInvoices = [newInvoice, ...existingInvoices];
-        localStorage.setItem(FINALIZED_INVOICES_KEY, JSON.stringify(updatedInvoices));
+        let updatedInvoices: FinalizedInvoice[];
 
-        const nextNum = getNextInvoiceNumber();
-        localStorage.setItem(INVOICE_NEXT_NUMBER_KEY, String(nextNum + 1));
+        if (editingInvoiceId) {
+            updatedInvoices = existingInvoices.map(inv => {
+                if (inv.id === editingInvoiceId) {
+                    return {
+                        ...inv,
+                        invoiceNumber,
+                        clientName: selectedContact.name,
+                        originalAmount: total,
+                        dueDate,
+                    };
+                }
+                return inv;
+            });
+            toast({ title: "Invoice Updated", description: `Invoice ${invoiceNumber} has been saved.` });
+        } else {
+            const newInvoice: FinalizedInvoice = {
+                id: `inv-${Date.now()}`,
+                invoiceNumber,
+                clientName: selectedContact.name,
+                originalAmount: total,
+                amountPaid: 0,
+                dueDate,
+            };
+            updatedInvoices = [newInvoice, ...existingInvoices];
+            localStorage.setItem(INVOICE_NEXT_NUMBER_KEY, String(getNextInvoiceNumber() + 1));
+            toast({ title: "Invoice Finalized", description: `Invoice ${invoiceNumber} has been saved.` });
+        }
         
-        toast({ title: "Invoice Finalized", description: `Invoice ${invoiceNumber} has been saved.` });
-        
+        localStorage.setItem(FINALIZED_INVOICES_KEY, JSON.stringify(updatedInvoices));
         clearInvoice();
 
     } catch (error) {
@@ -640,10 +682,10 @@ export function InvoiceGeneratorView() {
 
         <Card>
             <CardHeader className="flex-row justify-between items-center">
-                <CardTitle>Invoice Preview</CardTitle>
+                <CardTitle>{editingInvoiceId ? "Editing Invoice" : "Invoice Preview"}</CardTitle>
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="sm" onClick={handleClearInvoice}><Trash2 className="mr-2 h-4 w-4" /> Clear</Button>
-                    <Button variant="outline" onClick={handleFinalizeInvoice}><Mail className="mr-2 h-4 w-4" /> Finalize & Send</Button>
+                    <Button variant="outline" onClick={handleFinalizeInvoice}><Mail className="mr-2 h-4 w-4" /> {editingInvoiceId ? 'Save Changes' : 'Finalize & Send'}</Button>
                     <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
                     <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
                         <DialogTrigger asChild>

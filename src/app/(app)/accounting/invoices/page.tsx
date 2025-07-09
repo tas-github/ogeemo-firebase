@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -38,9 +39,9 @@ interface FinalizedInvoice {
   id: string;
   invoiceNumber: string;
   clientName: string;
-  amount: number;
+  originalAmount: number;
+  amountPaid: number;
   dueDate: string;
-  status: 'Paid' | 'Outstanding' | 'Overdue';
 }
 
 export default function InvoicesHubPage() {
@@ -51,9 +52,17 @@ export default function InvoicesHubPage() {
   useEffect(() => {
     try {
       const savedInvoicesRaw = localStorage.getItem(FINALIZED_INVOICES_KEY);
-      if (savedInvoicesRaw) {
-        setInvoices(JSON.parse(savedInvoicesRaw));
-      }
+      const savedInvoices = savedInvoicesRaw ? JSON.parse(savedInvoicesRaw) : [];
+       // Simple migration for old data structure
+       const migratedInvoices = savedInvoices.map((inv: any) => ({
+          id: inv.id,
+          invoiceNumber: inv.invoiceNumber,
+          clientName: inv.clientName,
+          originalAmount: inv.originalAmount || inv.amount,
+          amountPaid: inv.amountPaid || (inv.status === 'Paid' ? (inv.originalAmount || inv.amount) : 0),
+          dueDate: inv.dueDate,
+      }));
+      setInvoices(migratedInvoices);
     } catch (error) {
       console.error("Failed to load invoices:", error);
       toast({
@@ -64,15 +73,18 @@ export default function InvoicesHubPage() {
     }
   }, [toast]);
   
-  const getStatusBadge = (status: FinalizedInvoice['status']) => {
-    switch (status) {
-        case 'Paid':
-            return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">Paid</Badge>;
-        case 'Outstanding':
-            return <Badge variant="outline" className="border-orange-400 text-orange-500">Outstanding</Badge>;
-        case 'Overdue':
-            return <Badge variant="destructive">Overdue</Badge>;
-    }
+  const getStatusInfo = (invoice: FinalizedInvoice): { status: string; badgeVariant: "secondary" | "destructive" | "outline" } => {
+      const balanceDue = invoice.originalAmount - invoice.amountPaid;
+      if (balanceDue <= 0) {
+          return { status: "Paid", badgeVariant: "secondary" };
+      }
+      if (invoice.amountPaid > 0) {
+          return { status: "Partially Paid", badgeVariant: "outline" };
+      }
+      if (new Date(invoice.dueDate) < new Date()) {
+          return { status: "Overdue", badgeVariant: "destructive" };
+      }
+      return { status: "Outstanding", badgeVariant: "outline" };
   };
 
   const handleDeleteInvoice = () => {
@@ -170,9 +182,9 @@ export default function InvoicesHubPage() {
                     <Banknote className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                    <CardTitle>Post Invoice Payments</CardTitle>
+                    <CardTitle>Manage Invoice Payments</CardTitle>
                     <CardDescription>
-                    When an invoice is paid, record it here, and Ogeemo will also update the income ledger.
+                      Review statuses, post payments from clients, and manage existing invoices.
                     </CardDescription>
                 </div>
                 </div>
@@ -181,7 +193,7 @@ export default function InvoicesHubPage() {
             <div className="p-6 pt-0">
                 <Button asChild className="w-full">
                 <Link href="/accounting/invoices/payments">
-                    Go to Posting Payment
+                    Manage Payments
                     <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
                 </Button>
@@ -216,40 +228,43 @@ export default function InvoicesHubPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {invoices.length > 0 ? invoices.map((invoice) => (
-                                    <TableRow key={invoice.id}>
-                                        <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                                        <TableCell>{invoice.clientName}</TableCell>
-                                        <TableCell>{invoice.dueDate}</TableCell>
-                                        <TableCell className="text-right font-mono">
-                                            {invoice.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            {getStatusBadge(invoice.status)}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <MoreVertical className="h-4 w-4" />
-                                                        <span className="sr-only">Open menu for invoice {invoice.invoiceNumber}</span>
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onSelect={() => toast({ title: "Feature coming soon!", description: "Opening invoices is not yet implemented." })}>
-                                                        <Eye className="mr-2 h-4 w-4" /> Open
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onSelect={() => toast({ title: "Feature coming soon!", description: "Editing invoices is not yet implemented." })}>
-                                                        <Pencil className="mr-2 h-4 w-4" /> Edit
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onSelect={() => setInvoiceToDelete(invoice)} className="text-destructive focus:text-destructive">
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                )) : (
+                                {invoices.length > 0 ? invoices.map((invoice) => {
+                                    const { status, badgeVariant } = getStatusInfo(invoice);
+                                    return (
+                                        <TableRow key={invoice.id}>
+                                            <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
+                                            <TableCell>{invoice.clientName}</TableCell>
+                                            <TableCell>{invoice.dueDate}</TableCell>
+                                            <TableCell className="text-right font-mono">
+                                                {invoice.originalAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <Badge variant={badgeVariant} className={badgeVariant === 'secondary' ? 'bg-green-100 text-green-800' : ''}>{status}</Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                            <MoreVertical className="h-4 w-4" />
+                                                            <span className="sr-only">Open menu for invoice {invoice.invoiceNumber}</span>
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onSelect={() => toast({ title: "Feature coming soon!", description: "Opening invoices is not yet implemented." })}>
+                                                            <Eye className="mr-2 h-4 w-4" /> Open
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onSelect={() => toast({ title: "Feature coming soon!", description: "Editing invoices is not yet implemented." })}>
+                                                            <Pencil className="mr-2 h-4 w-4" /> Edit
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onSelect={() => setInvoiceToDelete(invoice)} className="text-destructive focus:text-destructive">
+                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                }) : (
                                     <TableRow>
                                         <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
                                             No finalized invoices found.
