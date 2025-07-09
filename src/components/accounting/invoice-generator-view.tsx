@@ -54,6 +54,15 @@ interface InvoiceTemplate {
   items: CustomLineItem[];
 }
 
+interface FinalizedInvoice {
+    id: string;
+    invoiceNumber: string;
+    clientName: string;
+    amount: number;
+    dueDate: string;
+    status: 'Paid' | 'Outstanding' | 'Overdue';
+}
+
 interface InvoiceDraft {
   selectedContactId: string;
   invoiceNumber: string;
@@ -86,6 +95,7 @@ const INVOICE_TEMPLATES_KEY = 'invoiceTemplates';
 const INVOICE_DRAFT_KEY = 'ogeemo-invoice-draft';
 const DEFAULT_INVOICE_TAX_KEY = 'ogeemo-default-tax';
 const INVOICE_NEXT_NUMBER_KEY = 'ogeemo-invoice-next-number';
+const FINALIZED_INVOICES_KEY = 'ogeemo-finalized-invoices';
 const DEFAULT_INVOICE_START_NUMBER = 101;
 
 
@@ -293,18 +303,6 @@ export function InvoiceGeneratorView() {
 
   const handlePrint = () => window.print();
 
-  const handleEmail = () => {
-    toast({ title: "Email Sent (Simulated)", description: "The invoice has been sent to the client." });
-    try {
-        const nextNum = getNextInvoiceNumber();
-        localStorage.setItem(INVOICE_NEXT_NUMBER_KEY, String(nextNum + 1));
-        // We don't automatically load the next number here, we clear the form instead.
-        // The next number will be picked up on the next component mount or manual clear.
-    } catch(e) {
-        console.error("Could not update invoice number", e);
-    }
-  };
-
   const clearInvoice = useCallback(() => {
     setCustomItems([]);
     setLoggedEntries([]);
@@ -317,6 +315,44 @@ export function InvoiceGeneratorView() {
     localStorage.removeItem(INVOICE_DRAFT_KEY);
   }, [getNextInvoiceNumber]);
   
+  const handleFinalizeInvoice = () => {
+    if (!selectedContact) {
+      toast({ variant: 'destructive', title: 'Client Required', description: 'Please select a client.' });
+      return;
+    }
+    if (loggedEntries.length === 0 && customItems.length === 0) {
+      toast({ variant: 'destructive', title: 'Empty Invoice', description: 'Please add at least one line item.' });
+      return;
+    }
+    
+    try {
+        const newInvoice: FinalizedInvoice = {
+            id: `inv-${Date.now()}`,
+            invoiceNumber,
+            clientName: selectedContact.name,
+            amount: total,
+            dueDate,
+            status: 'Outstanding',
+        };
+
+        const existingInvoicesRaw = localStorage.getItem(FINALIZED_INVOICES_KEY);
+        const existingInvoices: FinalizedInvoice[] = existingInvoicesRaw ? JSON.parse(existingInvoicesRaw) : [];
+        const updatedInvoices = [newInvoice, ...existingInvoices];
+        localStorage.setItem(FINALIZED_INVOICES_KEY, JSON.stringify(updatedInvoices));
+
+        const nextNum = getNextInvoiceNumber();
+        localStorage.setItem(INVOICE_NEXT_NUMBER_KEY, String(nextNum + 1));
+        
+        toast({ title: "Invoice Finalized", description: `Invoice ${invoiceNumber} has been saved.` });
+        
+        clearInvoice();
+
+    } catch (error) {
+        console.error("Failed to finalize invoice:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save the finalized invoice.' });
+    }
+  };
+
   const handleClearInvoice = () => {
     if (window.confirm("Are you sure you want to clear the entire invoice? This will remove all items and reset the form.")) {
         clearInvoice();
@@ -393,7 +429,7 @@ export function InvoiceGeneratorView() {
                     <Tooltip>
                         <TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
                         <TooltipContent>
-                            <p className="max-w-xs">Use this section to build your invoice. Fetch logged time for a client, add custom items, and set taxes before printing or emailing.</p>
+                            <p className="max-w-xs">Use this section to build your invoice. Fetch logged time for a client, add custom items, and set taxes before printing or finalizing.</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
@@ -528,7 +564,7 @@ export function InvoiceGeneratorView() {
               <CardTitle>Invoice Preview</CardTitle>
               <div className="flex items-center gap-2">
                   <Button variant="ghost" size="sm" onClick={handleClearInvoice}><Trash2 className="mr-2 h-4 w-4" /> Clear</Button>
-                  <Button variant="outline" onClick={handleEmail}><Mail className="mr-2 h-4 w-4" /> Email Invoice</Button>
+                  <Button variant="outline" onClick={handleFinalizeInvoice}><Mail className="mr-2 h-4 w-4" /> Finalize & Send</Button>
                   <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
                    <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
                       <DialogTrigger asChild>
