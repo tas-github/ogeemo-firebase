@@ -61,12 +61,13 @@ const initialIncomeData = [
 ];
 
 type IncomeTransaction = typeof initialIncomeData[0];
+const INCOME_LEDGER_KEY = "accountingIncomeLedger";
 const INCOME_TYPES_KEY = "accountingIncomeTypes";
 const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
 const COMPANIES_KEY = "accountingCompanies";
 const DEPOSIT_ACCOUNTS_KEY = "accountingDepositAccounts";
 
-const defaultIncomeTypes = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income"];
+const defaultIncomeTypes = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income", "Invoice Payment"];
 const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
 const defaultCompanies = ["Client Alpha", "Client Beta", "E-commerce Store", "Affiliate Payout"];
 const defaultDepositAccounts = ["Bank Account #1", "Credit Card #1", "Cash Account"];
@@ -75,7 +76,7 @@ const emptyTransactionForm = { date: '', company: '', description: '', amount: '
 
 
 export function IncomeView() {
-  const [incomeLedger, setIncomeLedger] = React.useState(initialIncomeData);
+  const [incomeLedger, setIncomeLedger] = React.useState<IncomeTransaction[]>([]);
   const [incomeTypes, setIncomeTypes] = React.useState<string[]>([]);
   const [expenseCategories, setExpenseCategories] = React.useState<string[]>([]);
   const [companies, setCompanies] = React.useState<string[]>([]);
@@ -101,6 +102,9 @@ export function IncomeView() {
 
   React.useEffect(() => {
     try {
+      const savedLedger = localStorage.getItem(INCOME_LEDGER_KEY);
+      setIncomeLedger(savedLedger ? JSON.parse(savedLedger) : initialIncomeData);
+      
       const savedIncomeTypes = localStorage.getItem(INCOME_TYPES_KEY);
       setIncomeTypes(savedIncomeTypes ? JSON.parse(savedIncomeTypes) : defaultIncomeTypes);
       
@@ -115,6 +119,7 @@ export function IncomeView() {
 
     } catch (error) {
         console.error("Failed to load data from localStorage", error);
+        setIncomeLedger(initialIncomeData);
         setIncomeTypes(defaultIncomeTypes);
         setExpenseCategories(defaultExpenseCategories);
         setCompanies(defaultCompanies);
@@ -122,6 +127,14 @@ export function IncomeView() {
     }
   }, []);
   
+  React.useEffect(() => {
+      try {
+          localStorage.setItem(INCOME_LEDGER_KEY, JSON.stringify(incomeLedger));
+      } catch (error) {
+          console.error("Failed to save income ledger to localStorage", error);
+      }
+  }, [incomeLedger]);
+
   const handleOpenTransactionDialog = (transaction?: IncomeTransaction) => {
     if (transaction) {
         setTransactionToEdit(transaction);
