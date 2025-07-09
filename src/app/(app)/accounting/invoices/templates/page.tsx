@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Plus, Trash2, Pencil } from 'lucide-react';
-import { AccountingPageHeader } from '@/components/accounting/page-header';
+import { InvoicePageHeader } from '@/components/accounting/invoice-page-header';
 import { useToast } from '@/hooks/use-toast';
 
 interface TemplateItem {
@@ -80,7 +80,7 @@ export default function InvoiceTemplatesPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <AccountingPageHeader pageTitle="Invoice Templates" />
+      <InvoicePageHeader pageTitle="Invoice Templates" />
       <header className="text-center">
         <h1 className="text-3xl font-bold font-headline text-primary">
           Invoice Templates
