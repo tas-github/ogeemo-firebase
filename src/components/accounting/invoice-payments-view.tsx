@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -21,138 +22,169 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical, Edit, Trash2, HandCoins } from 'lucide-react';
 import { InvoicePageHeader } from "@/components/accounting/invoice-page-header";
 import { useToast } from '@/hooks/use-toast';
 import { format as formatDate } from "date-fns";
 
-// Define types and localStorage keys
 const FINALIZED_INVOICES_KEY = 'ogeemo-finalized-invoices';
 const INCOME_LEDGER_KEY = "accountingIncomeLedger";
-const DEPOSIT_ACCOUNTS_KEY = "accountingDepositAccounts";
+const EDIT_INVOICE_ID_KEY = 'editInvoiceId';
 
 interface FinalizedInvoice {
   id: string;
   invoiceNumber: string;
   clientName: string;
-  amount: number;
+  originalAmount: number;
+  amountPaid: number;
   dueDate: string;
-  status: 'Paid' | 'Outstanding' | 'Overdue';
 }
 
 export function InvoicePaymentsView() {
     const [invoices, setInvoices] = useState<FinalizedInvoice[]>([]);
-    const [depositAccounts, setDepositAccounts] = useState<string[]>([]);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [invoiceToPay, setInvoiceToPay] = useState<FinalizedInvoice | null>(null);
-    const [paymentDate, setPaymentDate] = useState(formatDate(new Date(), 'yyyy-MM-dd'));
-    const [depositAccount, setDepositAccount] = useState('');
+    const [paymentAmount, setPaymentAmount] = useState<number | ''>('');
+    const [invoiceToDelete, setInvoiceToDelete] = useState<FinalizedInvoice | null>(null);
     const { toast } = useToast();
+    const router = useRouter();
 
     useEffect(() => {
         try {
             const savedInvoicesRaw = localStorage.getItem(FINALIZED_INVOICES_KEY);
             const savedInvoices = savedInvoicesRaw ? JSON.parse(savedInvoicesRaw) : [];
-            setInvoices(savedInvoices);
-
-            const savedAccountsRaw = localStorage.getItem(DEPOSIT_ACCOUNTS_KEY);
-            const savedAccounts = savedAccountsRaw ? JSON.parse(savedAccountsRaw) : ["Bank Account #1", "Credit Card #1"];
-            setDepositAccounts(savedAccounts);
-            if (savedAccounts.length > 0) {
-                setDepositAccount(savedAccounts[0]);
-            }
+            // Simple migration for old data structure
+            const migratedInvoices = savedInvoices.map((inv: any) => ({
+                id: inv.id,
+                invoiceNumber: inv.invoiceNumber,
+                clientName: inv.clientName,
+                originalAmount: inv.originalAmount || inv.amount,
+                amountPaid: inv.amountPaid || (inv.status === 'Paid' ? (inv.originalAmount || inv.amount) : 0),
+                dueDate: inv.dueDate,
+            }));
+            setInvoices(migratedInvoices);
         } catch (error) {
-            console.error("Failed to load data from localStorage", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not load invoice or account data.' });
+            console.error("Failed to load invoice data:", error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not load invoice data.' });
         }
     }, [toast]);
+    
+    const updateInvoices = (updatedInvoices: FinalizedInvoice[]) => {
+        setInvoices(updatedInvoices);
+        localStorage.setItem(FINALIZED_INVOICES_KEY, JSON.stringify(updatedInvoices));
+    };
 
     const handleOpenPaymentDialog = (invoice: FinalizedInvoice) => {
         setInvoiceToPay(invoice);
-        setPaymentDate(formatDate(new Date(), 'yyyy-MM-dd'));
-        if (depositAccounts.length > 0) {
-            setDepositAccount(depositAccounts[0]);
-        }
+        const balanceDue = invoice.originalAmount - invoice.amountPaid;
+        setPaymentAmount(balanceDue > 0 ? parseFloat(balanceDue.toFixed(2)) : '');
         setIsPaymentDialogOpen(true);
     };
 
     const handleConfirmPayment = () => {
-        if (!invoiceToPay || !paymentDate || !depositAccount) {
-            toast({ variant: 'destructive', title: 'Missing Information', description: 'Please provide all payment details.' });
+        if (!invoiceToPay || paymentAmount === '' || Number(paymentAmount) <= 0) {
+            toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Please enter a valid payment amount.' });
             return;
         }
 
         try {
-            // Update invoice status
+            // Update invoice
             const updatedInvoices = invoices.map(inv => 
-                inv.id === invoiceToPay.id ? { ...inv, status: 'Paid' as const } : inv
+                inv.id === invoiceToPay.id ? { ...inv, amountPaid: inv.amountPaid + Number(paymentAmount) } : inv
             );
-            localStorage.setItem(FINALIZED_INVOICES_KEY, JSON.stringify(updatedInvoices));
-            setInvoices(updatedInvoices);
-
+            updateInvoices(updatedInvoices);
+            
             // Add to income ledger
             const incomeLedgerRaw = localStorage.getItem(INCOME_LEDGER_KEY);
             const incomeLedger = incomeLedgerRaw ? JSON.parse(incomeLedgerRaw) : [];
-
             const newIncomeTransaction = {
-                id: `inc_pmt_${invoiceToPay.id}`,
-                date: paymentDate,
+                id: `inc_pmt_${invoiceToPay.id}_${Date.now()}`,
+                date: formatDate(new Date(), 'yyyy-MM-dd'),
                 company: invoiceToPay.clientName,
                 description: `Payment for Invoice #${invoiceToPay.invoiceNumber}`,
-                amount: invoiceToPay.amount,
+                amount: Number(paymentAmount),
                 incomeType: "Invoice Payment",
-                depositedTo: depositAccount,
+                depositedTo: "Bank Account #1", // Defaulting for simplicity
                 explanation: `Payment recorded on ${formatDate(new Date(), 'PP')}`,
                 documentNumber: invoiceToPay.invoiceNumber,
                 type: 'business',
             };
-
             const updatedLedger = [newIncomeTransaction, ...incomeLedger];
             localStorage.setItem(INCOME_LEDGER_KEY, JSON.stringify(updatedLedger));
 
-            toast({
-                title: 'Payment Recorded',
-                description: `Payment for ${invoiceToPay.invoiceNumber} has been successfully recorded.`
-            });
+            toast({ title: 'Payment Recorded', description: `Payment of ${Number(paymentAmount).toLocaleString('en-US', { style: 'currency', currency: 'USD' })} recorded.` });
             
             setIsPaymentDialogOpen(false);
             setInvoiceToPay(null);
-
+            setPaymentAmount('');
         } catch (error) {
             console.error("Failed to record payment:", error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not record payment.' });
         }
     };
-
-
-    const getStatusBadge = (status: FinalizedInvoice['status']) => {
-        switch (status) {
-            case 'Paid':
-                return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">Paid</Badge>;
-            case 'Outstanding':
-                return <Badge variant="outline" className="border-orange-400 text-orange-500">Outstanding</Badge>;
-            case 'Overdue':
-                return <Badge variant="destructive">Overdue</Badge>;
+    
+    const handleEditInvoice = (invoice: FinalizedInvoice) => {
+        try {
+            localStorage.setItem(EDIT_INVOICE_ID_KEY, invoice.id);
+            router.push('/accounting/invoices/create');
+        } catch (error) {
+            console.error('Failed to set invoice for editing:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not prepare the invoice for editing.' });
         }
+    };
+    
+    const handleDeleteInvoice = () => {
+        if (!invoiceToDelete) return;
+        const updatedInvoices = invoices.filter(inv => inv.id !== invoiceToDelete.id);
+        updateInvoices(updatedInvoices);
+        toast({ title: "Invoice Deleted", description: `Invoice ${invoiceToDelete.invoiceNumber} has been removed.` });
+        setInvoiceToDelete(null);
+    };
+
+    const getStatusInfo = (invoice: FinalizedInvoice): { status: string; badgeVariant: "secondary" | "destructive" | "outline" } => {
+        const balanceDue = invoice.originalAmount - invoice.amountPaid;
+        if (balanceDue <= 0.001) { // Use a small epsilon for float comparison
+            return { status: "Paid", badgeVariant: "secondary" };
+        }
+        if (invoice.amountPaid > 0) {
+            return { status: "Partially Paid", badgeVariant: "outline" };
+        }
+        if (new Date(invoice.dueDate) < new Date()) {
+            return { status: "Overdue", badgeVariant: "destructive" };
+        }
+        return { status: "Outstanding", badgeVariant: "outline" };
     };
 
     return (
         <>
             <div className="p-4 sm:p-6 space-y-6">
-                <InvoicePageHeader pageTitle="Post Invoice Payments" />
+                <InvoicePageHeader pageTitle="Manage Invoice Payments" />
                 <header className="text-center">
-                    <h1 className="text-3xl font-bold font-headline text-primary">Post Invoice Payments</h1>
+                    <h1 className="text-3xl font-bold font-headline text-primary">Manage Invoice Payments</h1>
                     <p className="text-muted-foreground max-w-2xl mx-auto">
-                        When an invoice is paid, record it here. Ogeemo will also update the income ledger.
+                        Review invoice statuses, post payments from clients, and manage existing invoices.
                     </p>
                 </header>
 
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Invoices</CardTitle>
-                        <CardDescription>A list of all finalized invoices.</CardDescription>
-                    </CardHeader>
+                    <CardHeader><CardTitle>Finalized Invoices</CardTitle></CardHeader>
                     <CardContent>
                         <div className="border rounded-md">
                             <Table>
@@ -161,35 +193,42 @@ export function InvoicePaymentsView() {
                                         <TableHead>Invoice #</TableHead>
                                         <TableHead>Client</TableHead>
                                         <TableHead>Due Date</TableHead>
-                                        <TableHead className="text-right">Amount</TableHead>
+                                        <TableHead className="text-right">Original Amount</TableHead>
+                                        <TableHead className="text-right">Amount Paid</TableHead>
+                                        <TableHead className="text-right">Balance Due</TableHead>
                                         <TableHead className="text-center">Status</TableHead>
-                                        <TableHead className="text-right">Action</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {invoices.length > 0 ? invoices.map((invoice) => (
-                                        <TableRow key={invoice.id}>
-                                            <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                                            <TableCell>{invoice.clientName}</TableCell>
-                                            <TableCell>{invoice.dueDate}</TableCell>
-                                            <TableCell className="text-right font-mono">
-                                                {invoice.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                {getStatusBadge(invoice.status)}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                {invoice.status !== 'Paid' && (
-                                                    <Button variant="outline" size="sm" onClick={() => handleOpenPaymentDialog(invoice)}>Record Payment</Button>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    )) : (
-                                        <TableRow>
-                                            <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">
-                                                No finalized invoices found. Create one from the Invoice Generator.
-                                            </TableCell>
-                                        </TableRow>
+                                    {invoices.length > 0 ? invoices.map((invoice) => {
+                                        const { status, badgeVariant } = getStatusInfo(invoice);
+                                        const balanceDue = invoice.originalAmount - invoice.amountPaid;
+                                        return (
+                                            <TableRow key={invoice.id}>
+                                                <TableCell>{invoice.invoiceNumber}</TableCell>
+                                                <TableCell>{invoice.clientName}</TableCell>
+                                                <TableCell>{invoice.dueDate}</TableCell>
+                                                <TableCell className="text-right font-mono">{invoice.originalAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell>
+                                                <TableCell className="text-right font-mono text-green-600">{invoice.amountPaid.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell>
+                                                <TableCell className="text-right font-mono">{balanceDue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell>
+                                                <TableCell className="text-center"><Badge variant={badgeVariant} className={badgeVariant === 'secondary' ? 'bg-green-100 text-green-800' : ''}>{status}</Badge></TableCell>
+                                                <TableCell className="text-right">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onSelect={() => handleOpenPaymentDialog(invoice)} disabled={status === 'Paid'}><HandCoins className="mr-2 h-4 w-4"/>Post Payment</DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => handleEditInvoice(invoice)}><Edit className="mr-2 h-4 w-4"/>Edit Invoice</DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => setInvoiceToDelete(invoice)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete Invoice</DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    }) : (
+                                        <TableRow><TableCell colSpan={8} className="text-center h-24 text-muted-foreground">No invoices found.</TableCell></TableRow>
                                     )}
                                 </TableBody>
                             </Table>
@@ -201,30 +240,29 @@ export function InvoicePaymentsView() {
             <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Record Payment for {invoiceToPay?.invoiceNumber}</DialogTitle>
-                        <DialogDescription>Confirm the payment details. This will update the invoice status and add a transaction to your income ledger.</DialogDescription>
+                        <DialogTitle>Post Payment for {invoiceToPay?.invoiceNumber}</DialogTitle>
+                        <DialogDescription>Enter the amount received. This will be added to your income ledger.</DialogDescription>
                     </DialogHeader>
-                    <div className="py-4 space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="payment-date">Payment Date</Label>
-                            <Input id="payment-date" type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="deposit-account">Deposit To</Label>
-                            <Select value={depositAccount} onValueChange={setDepositAccount}>
-                                <SelectTrigger id="deposit-account"><SelectValue placeholder="Select an account" /></SelectTrigger>
-                                <SelectContent>
-                                    {depositAccounts.map(acc => <SelectItem key={acc} value={acc}>{acc}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                    <div className="py-4 space-y-2">
+                        <Label htmlFor="payment-amount">Payment Amount</Label>
+                        <div className="relative">
+                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                            <Input id="payment-amount" type="number" placeholder="0.00" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value === '' ? '' : Number(e.target.value))} className="pl-7"/>
                         </div>
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setIsPaymentDialogOpen(false)}>Cancel</Button>
-                        <Button onClick={handleConfirmPayment}>Confirm Payment</Button>
+                        <Button onClick={handleConfirmPayment}>Post Payment</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            
+            <AlertDialog open={!!invoiceToDelete} onOpenChange={() => setInvoiceToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete invoice {invoiceToDelete?.invoiceNumber}.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteInvoice} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }
