@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FilePlus, FileText, ArrowRight } from "lucide-react";
+import { FilePlus, FileText, ArrowRight, Banknote } from "lucide-react";
 import { AccountingPageHeader } from "@/components/accounting/page-header";
 
 export default function InvoicesHubPage() {
@@ -24,7 +24,7 @@ export default function InvoicesHubPage() {
         </p>
       </header>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-4">
@@ -74,6 +74,32 @@ export default function InvoicesHubPage() {
             </Button>
           </div>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <Banknote className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Post Invoice Payments</CardTitle>
+                <CardDescription>
+                  When an invoice is paid, record it here, and Ogeemo will also update the income ledger.
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1" />
+          <div className="p-6 pt-0">
+            <Button asChild className="w-full">
+              <Link href="/accounting/invoices/payments">
+                Go to Posting Payment
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </Card>
+
       </div>
     </div>
   );
