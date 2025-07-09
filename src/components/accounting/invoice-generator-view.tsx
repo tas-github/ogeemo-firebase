@@ -13,10 +13,10 @@ import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
 import { type DateRange } from 'react-day-picker';
 import { format, addDays } from 'date-fns';
-import { Calendar as CalendarIcon, Plus, Trash2, Printer, Save, Mail, Info, Settings } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, Printer, Save, Mail, Info, Settings, PlusCircle, LoaderCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { mockContacts, type Contact } from '@/data/contacts';
+import { type Contact, type FolderData } from '@/data/contacts';
 import { AccountingPageHeader } from './page-header';
 import { Logo } from '../logo';
 import { ScrollArea } from '../ui/scroll-area';
@@ -31,6 +31,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAuth } from '@/context/auth-context';
+import { getContacts, getFolders, addContact } from '@/services/contact-service';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 
 // Types
@@ -107,9 +113,20 @@ const predefinedItems = [
   { description: 'Monthly Retainer', price: 2500.00 },
 ];
 
+const newContactSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  email: z.string().email({ message: "Please enter a valid email." }),
+  folderId: z.string({ required_error: "Please select a folder." }),
+});
+
+
 export function InvoiceGeneratorView() {
+  const { user } = useAuth();
   // State hooks
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [folders, setFolders] = useState<FolderData[]>([]);
+  const [isDataLoading, setIsDataLoading] = useState(true);
+
   const [selectedContactId, setSelectedContactId] = useState<string>('');
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: addDays(new Date(), -30),
@@ -126,16 +143,47 @@ export function InvoiceGeneratorView() {
   const [taxRate, setTaxRate] = useState(0);
 
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [isNewContactDialogOpen, setIsNewContactDialogOpen] = useState(false);
   const [isInvoiceSettingsOpen, setIsInvoiceSettingsOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
 
   const { toast } = useToast();
   const printRef = useRef<HTMLDivElement>(null);
+  
+  const newContactForm = useForm<z.infer<typeof newContactSchema>>({
+    resolver: zodResolver(newContactSchema),
+    defaultValues: { name: "", email: "", folderId: "" },
+  });
 
   // Effects for data loading and initialization
   useEffect(() => {
-    setContacts(mockContacts);
-  }, []);
+    async function loadContactData() {
+        if (!user) {
+            setIsDataLoading(false);
+            return;
+        }
+        setIsDataLoading(true);
+        try {
+            const [fetchedContacts, fetchedFolders] = await Promise.all([
+                getContacts(user.uid),
+                getFolders(user.uid)
+            ]);
+            setContacts(fetchedContacts);
+            setFolders(fetchedFolders);
+            // set default folder for new contact form
+            if (fetchedFolders.length > 0) {
+              const mainFolder = fetchedFolders.find(f => !f.parentId) || fetchedFolders[0];
+              newContactForm.setValue('folderId', mainFolder.id);
+            }
+        } catch (error) {
+            console.error("Failed to load contact data:", error);
+            toast({ variant: 'destructive', title: "Error", description: "Could not load contact data." });
+        } finally {
+            setIsDataLoading(false);
+        }
+    }
+    loadContactData();
+  }, [user, toast, newContactForm]);
   
   const getNextInvoiceNumber = useCallback(() => {
     try {
@@ -411,311 +459,365 @@ export function InvoiceGeneratorView() {
     }
   };
 
+  async function handleCreateNewContact(values: z.infer<typeof newContactSchema>) {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to create a contact.' });
+        return;
+    }
+
+    try {
+        const newContact = await addContact({ ...values, userId: user.uid });
+        setContacts(prev => [...prev, newContact].sort((a,b) => a.name.localeCompare(b.name)));
+        setSelectedContactId(newContact.id); // Select the new contact
+        
+        newContactForm.reset();
+        setIsNewContactDialogOpen(false);
+    
+        toast({ title: 'Contact Created', description: `${newContact.name} has been added.` });
+    } catch(error: any) {
+        console.error("Failed to save contact:", error);
+        toast({ variant: "destructive", title: "Save Failed", description: error.message });
+    }
+  }
+
+
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <AccountingPageHeader pageTitle="Invoice Generator" />
-      <header className="text-center">
-        <h1 className="text-3xl font-bold font-headline text-primary">Create an Invoice</h1>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          Generate professional invoices by fetching logged activities or adding items manually.
-        </p>
-      </header>
+    <>
+      <div className="p-4 sm:p-6 space-y-6">
+        <AccountingPageHeader pageTitle="Invoice Generator" />
+        <header className="text-center">
+          <h1 className="text-3xl font-bold font-headline text-primary">Create an Invoice</h1>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Generate professional invoices by fetching logged activities or adding items manually.
+          </p>
+        </header>
 
-      <Card>
-        <CardHeader className="text-center">
-            <CardTitle className="flex items-center justify-center gap-2">
-                Invoice Setup
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
-                        <TooltipContent>
-                            <p className="max-w-xs">Use this section to build your invoice. Fetch logged time for a client, add custom items, and set taxes before printing or finalizing.</p>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="space-y-2 lg:col-span-2">
-                    <Label htmlFor="client-select">Client</Label>
-                    <Select value={selectedContactId} onValueChange={setSelectedContactId}>
-                        <SelectTrigger id="client-select"><SelectValue placeholder="Select a client..." /></SelectTrigger>
-                        <SelectContent>
-                            {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="tax-type">Tax Type</Label>
-                    <Select value={taxType} onValueChange={setTaxType} id="tax-type">
-                        <SelectTrigger><SelectValue placeholder="Select tax type" /></SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="none">No Tax</SelectItem>
-                            <SelectItem value="vat">VAT</SelectItem>
-                            <SelectItem value="gst">GST</SelectItem>
-                            <SelectItem value="hst">HST</SelectItem>
-                            <SelectItem value="dst">DST</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="tax-rate">Tax Rate (%)</Label>
-                    <div className="flex items-center gap-2">
-                        <Input 
-                            id="tax-rate"
-                            type="number" 
-                            placeholder="e.g., 20"
-                            value={taxRate || ''}
-                            onChange={(e) => setTaxRate(Number(e.target.value))}
-                            disabled={taxType === 'none'}
-                        />
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={handleSetDefaultTax}
-                                        disabled={taxType === 'none'}
-                                    >
-                                        <Save className="h-4 w-4" />
-                                        <span className="sr-only">Set as Default</span>
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>Set as default tax rate</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                <div className="space-y-2 lg:col-span-2">
-                    <Label>Date Range for Time Logs</Label>
-                    <Popover>
-                    <PopoverTrigger asChild>
-                        <Button id="date" variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange?.from ? (dateRange.to ? <>{format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}</> : format(dateRange.from, "LLL dd, y")) : <span>Pick a date range</span>}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={1}/>
-                    </PopoverContent>
-                    </Popover>
-                </div>
-                <div className="lg:col-span-2">
-                    <Button className="w-full" onClick={fetchLoggedEntries}>Fetch Logged Activities</Button>
-                </div>
-            </div>
-            
-            <Separator />
-
-            <div>
-                <h4 className="font-semibold text-base mb-2">Add to Invoice</h4>
-                <div className="flex flex-wrap items-end gap-2 mb-4">
-                    <div className="flex-1 min-w-[200px] space-y-2">
-                         <Label>Add Predefined Item</Label>
-                        <Select onValueChange={addPredefinedItem}>
-                            <SelectTrigger><SelectValue placeholder="Select a predefined item..." /></SelectTrigger>
-                            <SelectContent>
-                                {predefinedItems.map(item => <SelectItem key={item.description} value={item.description}>{item.description}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <p className="text-sm text-muted-foreground self-center px-2">or</p>
-                    <Button variant="outline" onClick={addCustomItem}><Plus className="mr-2 h-4 w-4"/>Add Line Item</Button>
-                </div>
-
-                {customItems.length > 0 && (
-                    <div className="space-y-3">
-                        <h4 className="font-semibold text-base mb-2 sr-only">Custom Line Items</h4>
-                        <ScrollArea className="h-40 w-full pr-3 border rounded-md">
-                            <div className="p-2 space-y-3">
-                                {customItems.map(item => (
-                                    <div key={item.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-start">
-                                        <Textarea placeholder="Item description" value={item.description} onChange={e => updateCustomItem(item.id, 'description', e.target.value)} rows={1} className="min-h-[40px] resize-y" />
-                                        <div className="space-y-1">
-                                            <Label htmlFor={`qty-${item.id}`} className="text-xs">Qty</Label>
-                                            <Input id={`qty-${item.id}`} type="number" value={item.quantity} onChange={e => updateCustomItem(item.id, 'quantity', Number(e.target.value))} className="w-20 h-8" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label htmlFor={`price-${item.id}`} className="text-xs">$ Rate</Label>
-                                            <Input id={`price-${item.id}`} type="number" value={item.price} onChange={e => updateCustomItem(item.id, 'price', Number(e.target.value))} className="w-24 h-8" />
-                                        </div>
-                                        <Button variant="ghost" size="icon" onClick={() => removeCustomItem(item.id)} className="self-center mt-3"><Trash2 className="h-4 w-4" /></Button>
-                                    </div>
-                                ))}
-                            </div>
-                        </ScrollArea>
-                    </div>
-                )}
-            </div>
-        </CardContent>
-      </Card>
-
-
-      <Card>
-          <CardHeader className="flex-row justify-between items-center">
-              <CardTitle>Invoice Preview</CardTitle>
-              <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" onClick={handleClearInvoice}><Trash2 className="mr-2 h-4 w-4" /> Clear</Button>
-                  <Button variant="outline" onClick={handleFinalizeInvoice}><Mail className="mr-2 h-4 w-4" /> Finalize & Send</Button>
-                  <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
-                   <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
-                      <DialogTrigger asChild>
-                          <Button variant="outline"><Save className="mr-2 h-4 w-4" /> Save as Template</Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                          <DialogHeader>
-                              <DialogTitle>Save Invoice as Template</DialogTitle>
-                              <DialogDescription>
-                              Enter a name for this template. It will save the custom line items.
-                              </DialogDescription>
-                          </DialogHeader>
-                          <div className="py-4">
-                              <Label htmlFor="template-name">Template Name</Label>
-                              <Input
-                                  id="template-name"
-                                  value={newTemplateName}
-                                  onChange={(e) => setNewTemplateName(e.target.value)}
-                                  placeholder="e.g., 'Standard Consulting Invoice'"
-                                  onKeyDown={(e) => { if (e.key === 'Enter') handleSaveTemplate() }}
-                              />
-                          </div>
-                          <DialogFooter>
-                              <Button variant="ghost" onClick={() => setIsTemplateDialogOpen(false)}>Cancel</Button>
-                              <Button onClick={handleSaveTemplate}>Save Template</Button>
-                          </DialogFooter>
-                      </DialogContent>
-                  </Dialog>
-              </div>
+        <Card>
+          <CardHeader className="text-center">
+              <CardTitle className="flex items-center justify-center gap-2">
+                  Invoice Setup
+                  <TooltipProvider>
+                      <Tooltip>
+                          <TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground" /></TooltipTrigger>
+                          <TooltipContent>
+                              <p className="max-w-xs">Use this section to build your invoice. Fetch logged time for a client, add custom items, and set taxes before printing or finalizing.</p>
+                          </TooltipContent>
+                      </Tooltip>
+                  </TooltipProvider>
+              </CardTitle>
           </CardHeader>
-          <CardContent>
-              <div id="invoice-preview" ref={printRef} className="bg-white text-black p-8 border rounded-lg shadow-sm w-full font-sans">
-                  <header className="flex justify-between items-start pb-6 border-b">
-                      <Logo className="text-primary"/>
-                      <div className="text-right">
-                          <h1 className="text-4xl font-bold uppercase text-gray-700">Invoice</h1>
-                          <div className="flex items-center justify-end gap-1">
-                            <p className="text-gray-500">#</p>
-                            <Input type="text" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className="w-32 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" />
-                             <Dialog open={isInvoiceSettingsOpen} onOpenChange={setIsInvoiceSettingsOpen}>
-                                <DialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6"><Settings className="h-4 w-4" /></Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                    <DialogHeader><DialogTitle>Invoice Number Settings</DialogTitle></DialogHeader>
-                                    <div className="py-4 space-y-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="next-inv-num">Set Next Invoice Number</Label>
-                                            <Input id="next-inv-num" type="number" defaultValue={getNextInvoiceNumber()} onBlur={(e) => {
-                                                const num = parseInt(e.target.value, 10);
-                                                if (!isNaN(num)) {
-                                                    localStorage.setItem(INVOICE_NEXT_NUMBER_KEY, String(num));
-                                                }
-                                            }}/>
-                                        </div>
-                                        <Button variant="destructive" onClick={() => {
-                                            localStorage.setItem(INVOICE_NEXT_NUMBER_KEY, String(DEFAULT_INVOICE_START_NUMBER));
-                                            toast({ title: "Invoice numbering has been reset."});
-                                            setIsInvoiceSettingsOpen(false);
-                                            clearInvoice();
-                                        }}>Reset Numbering</Button>
-                                    </div>
-                                    <DialogFooter>
-                                        <Button onClick={() => setIsInvoiceSettingsOpen(false)}>Done</Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                             </Dialog>
-                          </div>
+          <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-2 lg:col-span-2">
+                      <Label htmlFor="client-select">Client</Label>
+                       <div className="flex items-center gap-2">
+                          <Select value={selectedContactId} onValueChange={setSelectedContactId} disabled={isDataLoading}>
+                              <SelectTrigger id="client-select">
+                                  <SelectValue placeholder={isDataLoading ? "Loading contacts..." : "Select a client..."} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                              </SelectContent>
+                          </Select>
+                          <Button type="button" variant="outline" size="icon" onClick={() => setIsNewContactDialogOpen(true)} disabled={isDataLoading}>
+                              <PlusCircle className="h-4 w-4" />
+                              <span className="sr-only">Add New Client</span>
+                          </Button>
                       </div>
-                  </header>
-                  
-                  <section className="flex justify-between mt-6">
-                      <div>
-                          <h2 className="font-bold text-gray-500 uppercase mb-2">Bill To</h2>
-                          {selectedContact ? (
-                              <>
-                                  <p className="font-bold text-lg">{selectedContact.name}</p>
-                                  <p>{selectedContact.email}</p>
-                                  <p>{selectedContact.cellPhone || selectedContact.businessPhone}</p>
-                              </>
-                          ) : (
-                              <p className="text-gray-500">Select a client</p>
-                          )}
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="tax-type">Tax Type</Label>
+                      <Select value={taxType} onValueChange={setTaxType} id="tax-type">
+                          <SelectTrigger><SelectValue placeholder="Select tax type" /></SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="none">No Tax</SelectItem>
+                              <SelectItem value="vat">VAT</SelectItem>
+                              <SelectItem value="gst">GST</SelectItem>
+                              <SelectItem value="hst">HST</SelectItem>
+                              <SelectItem value="dst">DST</SelectItem>
+                          </SelectContent>
+                      </Select>
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="tax-rate">Tax Rate (%)</Label>
+                      <div className="flex items-center gap-2">
+                          <Input 
+                              id="tax-rate"
+                              type="number" 
+                              placeholder="e.g., 20"
+                              value={taxRate || ''}
+                              onChange={(e) => setTaxRate(Number(e.target.value))}
+                              disabled={taxType === 'none'}
+                          />
+                          <TooltipProvider>
+                              <Tooltip>
+                                  <TooltipTrigger asChild>
+                                      <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="icon"
+                                          onClick={handleSetDefaultTax}
+                                          disabled={taxType === 'none'}
+                                      >
+                                          <Save className="h-4 w-4" />
+                                          <span className="sr-only">Set as Default</span>
+                                      </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                      <p>Set as default tax rate</p>
+                                  </TooltipContent>
+                              </Tooltip>
+                          </TooltipProvider>
                       </div>
-                      <div className="text-right">
-                          <p><span className="font-bold text-gray-500">Invoice Date:</span> <Input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} className="inline-block w-40 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p>
-                          <p><span className="font-bold text-gray-500">Due Date:</span> <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="inline-block w-40 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p>
-                      </div>
-                  </section>
+                  </div>
+              </div>
 
-                  <section className="mt-8">
-                      <Table className="text-sm">
-                          <TableHeader className="bg-gray-100">
-                              <TableRow>
-                                  <TableHead className="w-12 text-center text-gray-600">#</TableHead>
-                                  <TableHead className="w-1/2 text-gray-600">Description</TableHead>
-                                  <TableHead className="text-center text-gray-600">Rate / Price</TableHead>
-                                  <TableHead className="text-center text-gray-600">Hours / Qty</TableHead>
-                                  <TableHead className="text-right text-gray-600">Total</TableHead>
-                              </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                              {loggedEntries.map((entry, index) => (
-                                  <TableRow key={entry.id}>
-                                      <TableCell className="text-center">{index + 1}</TableCell>
-                                      <TableCell>{entry.subject}</TableCell>
-                                      <TableCell className="text-center">{formatCurrency(entry.billableRate)}</TableCell>
-                                      <TableCell className="text-center">{formatTime(entry.duration)}</TableCell>
-                                      <TableCell className="text-right">{formatCurrency((entry.duration / 3600) * entry.billableRate)}</TableCell>
-                                  </TableRow>
-                              ))}
-                              {customItems.map((item, index) => (
-                                   <TableRow key={item.id}>
-                                      <TableCell className="text-center">{loggedEntries.length + index + 1}</TableCell>
-                                      <TableCell className="whitespace-pre-wrap">{item.description}</TableCell>
-                                      <TableCell className="text-center">{formatCurrency(item.price)}</TableCell>
-                                      <TableCell className="text-center">{item.quantity}</TableCell>
-                                      <TableCell className="text-right">{formatCurrency(item.quantity * item.price)}</TableCell>
-                                  </TableRow>
-                              ))}
-                          </TableBody>
-                      </Table>
-                  </section>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                  <div className="space-y-2 lg:col-span-2">
+                      <Label>Date Range for Time Logs</Label>
+                      <Popover>
+                      <PopoverTrigger asChild>
+                          <Button id="date" variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateRange?.from ? (dateRange.to ? <>{format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}</> : format(dateRange.from, "LLL dd, y")) : <span>Pick a date range</span>}
+                          </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={1}/>
+                      </PopoverContent>
+                      </Popover>
+                  </div>
+                  <div className="lg:col-span-2">
+                      <Button className="w-full" onClick={fetchLoggedEntries}>Fetch Logged Activities</Button>
+                  </div>
+              </div>
+              
+              <Separator />
 
-                  <section className="flex justify-end mt-6">
-                      <div className="w-full max-w-sm space-y-2">
-                          <div className="flex justify-between">
-                              <span className="text-gray-500">Subtotal:</span>
-                              <span>{formatCurrency(subtotal)}</span>
-                          </div>
-                          <Separator />
-                          <div className="flex justify-between">
-                            <span className="text-gray-500">
-                                {taxType !== 'none' ? `Tax (${taxType.toUpperCase()} @ ${taxRate || 0}%)` : 'Tax:'}
-                            </span>
-                            <span>{formatCurrency(taxAmount)}</span>
-                          </div>
-                          <Separator />
-                          <div className="flex justify-between font-bold text-lg">
-                              <span className="text-gray-600">Total Due:</span>
-                              <span>{formatCurrency(total)}</span>
-                          </div>
+              <div>
+                  <h4 className="font-semibold text-base mb-2">Add to Invoice</h4>
+                  <div className="flex flex-wrap items-end gap-2 mb-4">
+                      <div className="flex-1 min-w-[200px] space-y-2">
+                          <Label>Add Predefined Item</Label>
+                          <Select onValueChange={addPredefinedItem}>
+                              <SelectTrigger><SelectValue placeholder="Select a predefined item..." /></SelectTrigger>
+                              <SelectContent>
+                                  {predefinedItems.map(item => <SelectItem key={item.description} value={item.description}>{item.description}</SelectItem>)}
+                              </SelectContent>
+                          </Select>
                       </div>
-                  </section>
+                      <p className="text-sm text-muted-foreground self-center px-2">or</p>
+                      <Button variant="outline" onClick={addCustomItem}><Plus className="mr-2 h-4 w-4"/>Add Line Item</Button>
+                  </div>
 
-                  <footer className="mt-12 pt-6 border-t text-center text-xs text-gray-400">
-                      <p>Thank you for your business!</p>
-                  </footer>
+                  {customItems.length > 0 && (
+                      <div className="space-y-3">
+                          <h4 className="font-semibold text-base mb-2 sr-only">Custom Line Items</h4>
+                          <ScrollArea className="h-40 w-full pr-3 border rounded-md">
+                              <div className="p-2 space-y-3">
+                                  {customItems.map(item => (
+                                      <div key={item.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-start">
+                                          <Textarea placeholder="Item description" value={item.description} onChange={e => updateCustomItem(item.id, 'description', e.target.value)} rows={1} className="min-h-[40px] resize-y" />
+                                          <div className="space-y-1">
+                                              <Label htmlFor={`qty-${item.id}`} className="text-xs">Qty</Label>
+                                              <Input id={`qty-${item.id}`} type="number" value={item.quantity} onChange={e => updateCustomItem(item.id, 'quantity', Number(e.target.value))} className="w-20 h-8" />
+                                          </div>
+                                          <div className="space-y-1">
+                                              <Label htmlFor={`price-${item.id}`} className="text-xs">$ Rate</Label>
+                                              <Input id={`price-${item.id}`} type="number" value={item.price} onChange={e => updateCustomItem(item.id, 'price', Number(e.target.value))} className="w-24 h-8" />
+                                          </div>
+                                          <Button variant="ghost" size="icon" onClick={() => removeCustomItem(item.id)} className="self-center mt-3"><Trash2 className="h-4 w-4" /></Button>
+                                      </div>
+                                  ))}
+                              </div>
+                          </ScrollArea>
+                      </div>
+                  )}
               </div>
           </CardContent>
-      </Card>
-    </div>
+        </Card>
+
+
+        <Card>
+            <CardHeader className="flex-row justify-between items-center">
+                <CardTitle>Invoice Preview</CardTitle>
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={handleClearInvoice}><Trash2 className="mr-2 h-4 w-4" /> Clear</Button>
+                    <Button variant="outline" onClick={handleFinalizeInvoice}><Mail className="mr-2 h-4 w-4" /> Finalize & Send</Button>
+                    <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
+                    <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline"><Save className="mr-2 h-4 w-4" /> Save as Template</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Save Invoice as Template</DialogTitle>
+                                <DialogDescription>
+                                Enter a name for this template. It will save the custom line items.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4">
+                                <Label htmlFor="template-name">Template Name</Label>
+                                <Input
+                                    id="template-name"
+                                    value={newTemplateName}
+                                    onChange={(e) => setNewTemplateName(e.target.value)}
+                                    placeholder="e.g., 'Standard Consulting Invoice'"
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveTemplate() }}
+                                />
+                            </div>
+                            <DialogFooter>
+                                <Button variant="ghost" onClick={() => setIsTemplateDialogOpen(false)}>Cancel</Button>
+                                <Button onClick={handleSaveTemplate}>Save Template</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div id="invoice-preview" ref={printRef} className="bg-white text-black p-8 border rounded-lg shadow-sm w-full font-sans">
+                    <header className="flex justify-between items-start pb-6 border-b">
+                        <Logo className="text-primary"/>
+                        <div className="text-right">
+                            <h1 className="text-4xl font-bold uppercase text-gray-700">Invoice</h1>
+                            <div className="flex items-center justify-end gap-1">
+                              <p className="text-gray-500">#</p>
+                              <Input type="text" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className="w-32 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" />
+                              <Dialog open={isInvoiceSettingsOpen} onOpenChange={setIsInvoiceSettingsOpen}>
+                                  <DialogTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-6 w-6"><Settings className="h-4 w-4" /></Button>
+                                  </DialogTrigger>
+                                  <DialogContent>
+                                      <DialogHeader><DialogTitle>Invoice Number Settings</DialogTitle></DialogHeader>
+                                      <div className="py-4 space-y-4">
+                                          <div className="space-y-2">
+                                              <Label htmlFor="next-inv-num">Set Next Invoice Number</Label>
+                                              <Input id="next-inv-num" type="number" defaultValue={getNextInvoiceNumber()} onBlur={(e) => {
+                                                  const num = parseInt(e.target.value, 10);
+                                                  if (!isNaN(num)) {
+                                                      localStorage.setItem(INVOICE_NEXT_NUMBER_KEY, String(num));
+                                                  }
+                                              }}/>
+                                          </div>
+                                          <Button variant="destructive" onClick={() => {
+                                              localStorage.setItem(INVOICE_NEXT_NUMBER_KEY, String(DEFAULT_INVOICE_START_NUMBER));
+                                              toast({ title: "Invoice numbering has been reset."});
+                                              setIsInvoiceSettingsOpen(false);
+                                              clearInvoice();
+                                          }}>Reset Numbering</Button>
+                                      </div>
+                                      <DialogFooter>
+                                          <Button onClick={() => setIsInvoiceSettingsOpen(false)}>Done</Button>
+                                      </DialogFooter>
+                                  </DialogContent>
+                              </Dialog>
+                            </div>
+                        </div>
+                    </header>
+                    
+                    <section className="flex justify-between mt-6">
+                        <div>
+                            <h2 className="font-bold text-gray-500 uppercase mb-2">Bill To</h2>
+                            {selectedContact ? (
+                                <>
+                                    <p className="font-bold text-lg">{selectedContact.name}</p>
+                                    <p>{selectedContact.email}</p>
+                                    <p>{selectedContact.cellPhone || selectedContact.businessPhone}</p>
+                                </>
+                            ) : (
+                                <p className="text-gray-500">Select a client</p>
+                            )}
+                        </div>
+                        <div className="text-right">
+                            <p><span className="font-bold text-gray-500">Invoice Date:</span> <Input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} className="inline-block w-40 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p>
+                            <p><span className="font-bold text-gray-500">Due Date:</span> <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="inline-block w-40 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p>
+                        </div>
+                    </section>
+
+                    <section className="mt-8">
+                        <Table className="text-sm">
+                            <TableHeader className="bg-gray-100">
+                                <TableRow>
+                                    <TableHead className="w-12 text-center text-gray-600">#</TableHead>
+                                    <TableHead className="w-1/2 text-gray-600">Description</TableHead>
+                                    <TableHead className="text-center text-gray-600">Rate / Price</TableHead>
+                                    <TableHead className="text-center text-gray-600">Hours / Qty</TableHead>
+                                    <TableHead className="text-right text-gray-600">Total</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {loggedEntries.map((entry, index) => (
+                                    <TableRow key={entry.id}>
+                                        <TableCell className="text-center">{index + 1}</TableCell>
+                                        <TableCell>{entry.subject}</TableCell>
+                                        <TableCell className="text-center">{formatCurrency(entry.billableRate)}</TableCell>
+                                        <TableCell className="text-center">{formatTime(entry.duration)}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency((entry.duration / 3600) * entry.billableRate)}</TableCell>
+                                    </TableRow>
+                                ))}
+                                {customItems.map((item, index) => (
+                                    <TableRow key={item.id}>
+                                        <TableCell className="text-center">{loggedEntries.length + index + 1}</TableCell>
+                                        <TableCell className="whitespace-pre-wrap">{item.description}</TableCell>
+                                        <TableCell className="text-center">{formatCurrency(item.price)}</TableCell>
+                                        <TableCell className="text-center">{item.quantity}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(item.quantity * item.price)}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </section>
+
+                    <section className="flex justify-end mt-6">
+                        <div className="w-full max-w-sm space-y-2">
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Subtotal:</span>
+                                <span>{formatCurrency(subtotal)}</span>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">
+                                  {taxType !== 'none' ? `Tax (${taxType.toUpperCase()} @ ${taxRate || 0}%)` : 'Tax:'}
+                              </span>
+                              <span>{formatCurrency(taxAmount)}</span>
+                            </div>
+                            <Separator />
+                            <div className="flex justify-between font-bold text-lg">
+                                <span className="text-gray-600">Total Due:</span>
+                                <span>{formatCurrency(total)}</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <footer className="mt-12 pt-6 border-t text-center text-xs text-gray-400">
+                        <p>Thank you for your business!</p>
+                    </footer>
+                </div>
+            </CardContent>
+        </Card>
+      </div>
+
+      <Dialog open={isNewContactDialogOpen} onOpenChange={setIsNewContactDialogOpen}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Create New Contact</DialogTitle>
+                  <DialogDescription>
+                  This contact will be added to your contact list and selected for this invoice.
+                  </DialogDescription>
+              </DialogHeader>
+              <Form {...newContactForm}>
+                  <form onSubmit={newContactForm.handleSubmit(handleCreateNewContact)} className="space-y-4 py-4">
+                      <FormField control={newContactForm.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                      <FormField control={newContactForm.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                      <FormField control={newContactForm.control} name="folderId" render={({ field }) => ( <FormItem> <FormLabel>Folder</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a folder" /></SelectTrigger></FormControl><SelectContent>{folders.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
+                      <DialogFooter className="pt-4 !mt-0">
+                          <Button type="button" variant="ghost" onClick={() => setIsNewContactDialogOpen(false)}>Cancel</Button>
+                          <Button type="submit">Create Contact</Button>
+                      </DialogFooter>
+                  </form>
+              </Form>
+          </DialogContent>
+      </Dialog>
+    </>
   );
 }
