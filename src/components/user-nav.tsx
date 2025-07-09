@@ -31,7 +31,7 @@ export function UserNav() {
     } catch (error) {
        console.error("Logout error:", error);
     }
-    // The redirect to /login is handled by the listener in AppLayout
+    // The redirect to /login is handled by the listener in AuthProvider
   };
 
   // If there's no user, don't render anything.
