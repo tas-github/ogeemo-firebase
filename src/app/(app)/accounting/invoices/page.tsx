@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -102,7 +101,7 @@ export default function InvoicesHubPage() {
 
   return (
     <>
-        <div className="p-4 sm:p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <AccountingPageHeader pageTitle="Invoice Manager" />
         <header className="text-center mb-6">
             <h1 className="text-3xl font-bold font-headline text-primary">
@@ -263,21 +262,21 @@ export default function InvoicesHubPage() {
                 </CardContent>
             </Card>
         </div>
-        </div>
+      </div>
 
-        <AlertDialog open={!!invoiceToDelete} onOpenChange={() => setInvoiceToDelete(null)}>
-            <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                This action will permanently delete invoice {invoiceToDelete?.invoiceNumber}. This action cannot be undone.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteInvoice} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-            </AlertDialogFooter>
-            </AlertDialogContent>
+      <AlertDialog open={!!invoiceToDelete} onOpenChange={() => setInvoiceToDelete(null)}>
+        <AlertDialogContent>
+        <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+            This action will permanently delete invoice {invoiceToDelete?.invoiceNumber}. This action cannot be undone.
+            </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteInvoice} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+        </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
     </>
   );
