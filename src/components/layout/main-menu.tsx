@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "firebase/auth";
 import {
   Database,
   FilePlus2,
@@ -25,6 +26,7 @@ import {
   Bell,
   Bug,
   HeartPulse,
+  LogOut,
 } from "lucide-react";
 
 import {
@@ -32,6 +34,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
+import { initializeFirebase } from "@/lib/firebase";
 
 export function MainMenu() {
   const pathname = usePathname();
@@ -42,6 +45,17 @@ export function MainMenu() {
     }
     return pathname === path;
   };
+  
+  const handleLogout = async () => {
+    try {
+      const { auth } = await initializeFirebase();
+      await signOut(auth);
+    } catch (error) {
+       console.error("Logout error:", error);
+    }
+    // The redirect to /login is handled by the listener in AuthProvider
+  };
+
 
   return (
     <SidebarMenu>
@@ -256,6 +270,15 @@ export function MainMenu() {
             <FilePlus2 />
             <span>Forms</span>
           </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          onClick={handleLogout}
+          tooltip="Logout"
+        >
+          <LogOut />
+          <span>Logout</span>
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
