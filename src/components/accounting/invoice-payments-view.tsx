@@ -40,7 +40,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Edit, Trash2, HandCoins } from 'lucide-react';
-import { InvoicePageHeader } from "@/components/accounting/invoice-page-header";
+import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { useToast } from '@/hooks/use-toast';
 import { format as formatDate } from "date-fns";
 
@@ -175,16 +175,16 @@ export function InvoicePaymentsView() {
     return (
         <>
             <div className="p-4 sm:p-6 space-y-6">
-                <InvoicePageHeader pageTitle="Manage Invoice Payments" />
+                <AccountingPageHeader pageTitle="Accounts Receivable" />
                 <header className="text-center">
-                    <h1 className="text-3xl font-bold font-headline text-primary">Manage Invoice Payments</h1>
+                    <h1 className="text-3xl font-bold font-headline text-primary">Accounts Receivable</h1>
                     <p className="text-muted-foreground max-w-2xl mx-auto">
-                        Review invoice statuses, post payments from clients, and manage existing invoices.
+                        Manage all outstanding invoices and payments due from clients.
                     </p>
                 </header>
 
                 <Card>
-                    <CardHeader><CardTitle>Finalized Invoices</CardTitle></CardHeader>
+                    <CardHeader><CardTitle>Outstanding Invoices</CardTitle></CardHeader>
                     <CardContent>
                         <div className="border rounded-md">
                             <Table>

@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Receipt, Activity, BarChart3, ArrowRight, BookText, WalletCards, FileDigit } from "lucide-react";
+import { UserPlus, Receipt, Activity, BarChart3, ArrowRight, BookText, WalletCards, FileDigit, FileOutput, FileInput } from "lucide-react";
 
 export function AccountingHubView() {
   const features = [
@@ -51,6 +51,20 @@ export function AccountingHubView() {
       cta: "Manage Statements",
     },
     {
+      icon: FileOutput,
+      title: "Accounts Receivable",
+      description: "Track money owed to you by clients from outstanding invoices.",
+      href: "/accounting/invoices/payments",
+      cta: "Manage Receivables",
+    },
+    {
+      icon: FileInput,
+      title: "Accounts Payable",
+      description: "Track money you owe to vendors and suppliers from bills.",
+      href: "/accounting/accounts-payable",
+      cta: "Manage Payables",
+    },
+    {
       icon: FileDigit,
       title: "Invoice Manager",
       description: "Create and manage professional invoices for your clients.",
@@ -73,6 +87,11 @@ export function AccountingHubView() {
     },
   ];
 
+  const sortedFeatures = features.sort((a,b) => {
+      const order = ["Client Onboarding", "Accounts Receivable", "Accounts Payable", "Transactions", "General Ledger", "Bank Statements", "Financial Vitals", "Invoice Manager", "Reporting Hub", "Bookkeeping Kept Simple"];
+      return order.indexOf(a.title) - order.indexOf(b.title);
+  });
+
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <header className="text-center mb-4">
@@ -85,7 +104,7 @@ export function AccountingHubView() {
       </header>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-6xl mx-auto">
-        {features.map((feature) => (
+        {sortedFeatures.map((feature) => (
           <Card key={feature.title} className="flex flex-col">
             <CardHeader className="p-4 flex flex-row items-start gap-3">
               <div className="p-2 bg-primary/10 rounded-lg shrink-0">
