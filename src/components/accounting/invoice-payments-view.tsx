@@ -226,7 +226,7 @@ export function InvoicePaymentsView() {
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
                                                             <DropdownMenuItem onSelect={() => handleOpenPaymentDialog(invoice)} disabled={status === 'Paid'}><HandCoins className="mr-2 h-4 w-4"/>Post Payment</DropdownMenuItem>
-                                                            <DropdownMenuItem onSelect={() => handleEmailReceipt(invoice)} disabled={invoice.amountPaid <= 0}><Mail className="mr-2 h-4 w-4"/>Email Receipt</DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => handleEmailReceipt(invoice)} disabled={invoice.amountPaid <= 0}><Mail className="mr-2 h-4 w-4"/>Create Receipt</DropdownMenuItem>
                                                             <DropdownMenuItem onSelect={() => handleEditInvoice(invoice)}><Edit className="mr-2 h-4 w-4"/>Edit Invoice</DropdownMenuItem>
                                                             <DropdownMenuItem onSelect={() => setInvoiceToDelete(invoice)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete Invoice</DropdownMenuItem>
                                                         </DropdownMenuContent>
