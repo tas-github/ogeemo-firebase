@@ -8,6 +8,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription
 } from "@/components/ui/card";
 import {
   Table,
@@ -38,94 +39,72 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Edit, Trash2, HandCoins, FileText } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, HandCoins, FileText, LoaderCircle } from 'lucide-react';
 import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { useToast } from '@/hooks/use-toast';
 import { format as formatDate } from "date-fns";
-import { addContact } from '@/services/contact-service';
+import { useAuth } from '@/context/auth-context';
+import { getInvoices, updateInvoice, deleteInvoice, type Invoice } from '@/services/accounting-service';
 
-const FINALIZED_INVOICES_KEY = 'ogeemo-finalized-invoices';
-const INCOME_LEDGER_KEY = "accountingIncomeLedger";
 const EDIT_INVOICE_ID_KEY = 'editInvoiceId';
 const RECEIPT_DATA_KEY = 'ogeemo-receipt-data';
 
-export interface FinalizedInvoice {
-  id: string;
-  invoiceNumber: string;
-  clientName: string;
-  originalAmount: number;
-  amountPaid: number;
-  dueDate: string;
-}
-
 export function InvoicePaymentsView() {
-    const [invoices, setInvoices] = useState<FinalizedInvoice[]>([]);
+    const [invoices, setInvoices] = useState<Invoice[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-    const [invoiceToPay, setInvoiceToPay] = useState<FinalizedInvoice | null>(null);
+    const [invoiceToPay, setInvoiceToPay] = useState<Invoice | null>(null);
     const [paymentAmount, setPaymentAmount] = useState<number | ''>('');
-    const [invoiceToDelete, setInvoiceToDelete] = useState<FinalizedInvoice | null>(null);
+    const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
     const { toast } = useToast();
     const router = useRouter();
+    const { user } = useAuth();
 
     useEffect(() => {
-        try {
-            const savedInvoicesRaw = localStorage.getItem(FINALIZED_INVOICES_KEY);
-            const savedInvoices = savedInvoicesRaw ? JSON.parse(savedInvoicesRaw) : [];
-            const migratedInvoices = savedInvoices.map((inv: any) => ({
-                id: inv.id,
-                invoiceNumber: inv.invoiceNumber,
-                clientName: inv.clientName,
-                originalAmount: inv.originalAmount || inv.amount,
-                amountPaid: inv.amountPaid || (inv.status === 'Paid' ? (inv.originalAmount || inv.amount) : 0),
-                dueDate: inv.dueDate,
-            }));
-            setInvoices(migratedInvoices);
-        } catch (error) {
-            console.error("Failed to load invoice data:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not load invoice data.' });
+        async function loadInvoices() {
+            if (!user) {
+                setIsLoading(false);
+                return;
+            }
+            setIsLoading(true);
+            try {
+                const fetchedInvoices = await getInvoices(user.uid);
+                setInvoices(fetchedInvoices);
+            } catch (error) {
+                console.error("Failed to load invoice data:", error);
+                toast({ variant: 'destructive', title: 'Error', description: 'Could not load invoice data.' });
+            } finally {
+                setIsLoading(false);
+            }
         }
-    }, [toast]);
-    
-    const updateInvoices = (updatedInvoices: FinalizedInvoice[]) => {
-        setInvoices(updatedInvoices);
-        localStorage.setItem(FINALIZED_INVOICES_KEY, JSON.stringify(updatedInvoices));
-    };
+        loadInvoices();
+    }, [toast, user]);
 
-    const handleOpenPaymentDialog = (invoice: FinalizedInvoice) => {
+    const handleOpenPaymentDialog = (invoice: Invoice) => {
         setInvoiceToPay(invoice);
         const balanceDue = invoice.originalAmount - invoice.amountPaid;
         setPaymentAmount(balanceDue > 0 ? parseFloat(balanceDue.toFixed(2)) : '');
         setIsPaymentDialogOpen(true);
     };
 
-    const handleConfirmPayment = () => {
+    const handleConfirmPayment = async () => {
         if (!invoiceToPay || paymentAmount === '' || Number(paymentAmount) <= 0) {
             toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Please enter a valid payment amount.' });
             return;
         }
 
         try {
-            const updatedInvoices = invoices.map(inv => 
-                inv.id === invoiceToPay.id ? { ...inv, amountPaid: inv.amountPaid + Number(paymentAmount) } : inv
+            const newAmountPaid = invoiceToPay.amountPaid + Number(paymentAmount);
+            await updateInvoice(invoiceToPay.id, { amountPaid: newAmountPaid });
+
+            setInvoices(prev => 
+                prev.map(inv => 
+                    inv.id === invoiceToPay.id ? { ...inv, amountPaid: newAmountPaid } : inv
+                )
             );
-            updateInvoices(updatedInvoices);
             
-            const incomeLedgerRaw = localStorage.getItem(INCOME_LEDGER_KEY);
-            const incomeLedger = incomeLedgerRaw ? JSON.parse(incomeLedgerRaw) : [];
-            const newIncomeTransaction = {
-                id: `inc_pmt_${invoiceToPay.id}_${Date.now()}`,
-                date: formatDate(new Date(), 'yyyy-MM-dd'),
-                company: invoiceToPay.clientName,
-                description: `Payment for Invoice #${invoiceToPay.invoiceNumber}`,
-                amount: Number(paymentAmount),
-                incomeType: "Invoice Payment",
-                depositedTo: "Bank Account #1",
-                explanation: `Payment recorded on ${formatDate(new Date(), 'PP')}`,
-                documentNumber: invoiceToPay.invoiceNumber,
-                type: 'business',
-            };
-            const updatedLedger = [newIncomeTransaction, ...incomeLedger];
-            localStorage.setItem(INCOME_LEDGER_KEY, JSON.stringify(updatedLedger));
+            // TODO: Add to income ledger via accounting service
+            // await addIncomeTransaction(...)
 
             toast({ title: 'Payment Recorded', description: `Payment of ${Number(paymentAmount).toLocaleString('en-US', { style: 'currency', currency: 'USD' })} recorded.` });
             
@@ -138,7 +117,7 @@ export function InvoicePaymentsView() {
         }
     };
     
-    const handleEditInvoice = (invoice: FinalizedInvoice) => {
+    const handleEditInvoice = (invoice: Invoice) => {
         try {
             localStorage.setItem(EDIT_INVOICE_ID_KEY, invoice.id);
             router.push('/accounting/invoices/create');
@@ -148,15 +127,20 @@ export function InvoicePaymentsView() {
         }
     };
     
-    const handleDeleteInvoice = () => {
+    const handleDeleteInvoice = async () => {
         if (!invoiceToDelete) return;
-        const updatedInvoices = invoices.filter(inv => inv.id !== invoiceToDelete.id);
-        updateInvoices(updatedInvoices);
-        toast({ title: "Invoice Deleted", description: `Invoice ${invoiceToDelete.invoiceNumber} has been removed.` });
-        setInvoiceToDelete(null);
+        try {
+            await deleteInvoice(invoiceToDelete.id);
+            setInvoices(prev => prev.filter(inv => inv.id !== invoiceToDelete.id));
+            toast({ title: "Invoice Deleted", description: `Invoice ${invoiceToDelete.invoiceNumber} has been removed.` });
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Delete Failed", description: error.message });
+        } finally {
+            setInvoiceToDelete(null);
+        }
     };
 
-    const handleCreateReceipt = (invoice: FinalizedInvoice) => {
+    const handleCreateReceipt = (invoice: Invoice) => {
         const otherInvoices = invoices.filter(i => i.clientName === invoice.clientName && i.id !== invoice.id);
         const carryForwardAmount = otherInvoices.reduce((acc, curr) => {
             return acc + (curr.originalAmount - curr.amountPaid);
@@ -164,7 +148,7 @@ export function InvoicePaymentsView() {
         
         try {
             const receiptPayload = {
-                invoice,
+                invoice: { ...invoice, dueDate: invoice.dueDate.toISOString() }, // Serialize date
                 carryForwardAmount
             };
             sessionStorage.setItem(RECEIPT_DATA_KEY, JSON.stringify(receiptPayload));
@@ -175,7 +159,7 @@ export function InvoicePaymentsView() {
         }
     };
 
-    const getStatusInfo = (invoice: FinalizedInvoice): { status: string; badgeVariant: "secondary" | "destructive" | "outline" } => {
+    const getStatusInfo = (invoice: Invoice): { status: string; badgeVariant: "secondary" | "destructive" | "outline" } => {
         const balanceDue = invoice.originalAmount - invoice.amountPaid;
         if (balanceDue <= 0.001) {
             return { status: "Paid", badgeVariant: "secondary" };
@@ -201,7 +185,10 @@ export function InvoicePaymentsView() {
                 </header>
 
                 <Card>
-                    <CardHeader><CardTitle>Outstanding Invoices</CardTitle></CardHeader>
+                    <CardHeader>
+                        <CardTitle>Outstanding Invoices</CardTitle>
+                        <CardDescription>A list of all client invoices from the database.</CardDescription>
+                    </CardHeader>
                     <CardContent>
                         <div className="border rounded-md">
                             <Table>
@@ -218,14 +205,16 @@ export function InvoicePaymentsView() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {invoices.length > 0 ? invoices.map((invoice) => {
+                                    {isLoading ? (
+                                        <TableRow><TableCell colSpan={8} className="text-center h-24"><LoaderCircle className="mx-auto h-6 w-6 animate-spin" /></TableCell></TableRow>
+                                    ) : invoices.length > 0 ? invoices.map((invoice) => {
                                         const { status, badgeVariant } = getStatusInfo(invoice);
                                         const balanceDue = invoice.originalAmount - invoice.amountPaid;
                                         return (
                                             <TableRow key={invoice.id}>
                                                 <TableCell>{invoice.invoiceNumber}</TableCell>
                                                 <TableCell>{invoice.clientName}</TableCell>
-                                                <TableCell>{invoice.dueDate}</TableCell>
+                                                <TableCell>{formatDate(new Date(invoice.dueDate), 'PP')}</TableCell>
                                                 <TableCell className="text-right font-mono">{invoice.originalAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell>
                                                 <TableCell className="text-right font-mono text-green-600">{invoice.amountPaid.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell>
                                                 <TableCell className="text-right font-mono">{balanceDue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell>
