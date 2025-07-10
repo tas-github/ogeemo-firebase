@@ -43,12 +43,13 @@ import { MoreVertical, Edit, Trash2, HandCoins, Mail } from 'lucide-react';
 import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { useToast } from '@/hooks/use-toast';
 import { format as formatDate } from "date-fns";
+import { ViewInvoiceDialog } from './view-invoice-dialog';
 
 const FINALIZED_INVOICES_KEY = 'ogeemo-finalized-invoices';
 const INCOME_LEDGER_KEY = "accountingIncomeLedger";
 const EDIT_INVOICE_ID_KEY = 'editInvoiceId';
 
-interface FinalizedInvoice {
+export interface FinalizedInvoice {
   id: string;
   invoiceNumber: string;
   clientName: string;
@@ -63,6 +64,7 @@ export function InvoicePaymentsView() {
     const [invoiceToPay, setInvoiceToPay] = useState<FinalizedInvoice | null>(null);
     const [paymentAmount, setPaymentAmount] = useState<number | ''>('');
     const [invoiceToDelete, setInvoiceToDelete] = useState<FinalizedInvoice | null>(null);
+    const [invoiceToView, setInvoiceToView] = useState<FinalizedInvoice | null>(null);
     const { toast } = useToast();
     const router = useRouter();
 
@@ -158,6 +160,10 @@ export function InvoicePaymentsView() {
         setInvoiceToDelete(null);
     };
 
+    const handleEmailReceipt = (invoice: FinalizedInvoice) => {
+        setInvoiceToView(invoice);
+    };
+
     const getStatusInfo = (invoice: FinalizedInvoice): { status: string; badgeVariant: "secondary" | "destructive" | "outline" } => {
         const balanceDue = invoice.originalAmount - invoice.amountPaid;
         if (balanceDue <= 0.001) { // Use a small epsilon for float comparison
@@ -171,13 +177,6 @@ export function InvoicePaymentsView() {
         }
         return { status: "Outstanding", badgeVariant: "outline" };
     };
-
-    const handleEmailReceipt = (invoice: FinalizedInvoice) => {
-        toast({
-            title: "Feature coming soon",
-            description: `Emailing a receipt for invoice ${invoice.invoiceNumber} is not yet implemented.`,
-        });
-    }
 
     return (
         <>
@@ -271,6 +270,14 @@ export function InvoicePaymentsView() {
                     <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteInvoice} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            
+            {invoiceToView && (
+                <ViewInvoiceDialog
+                    isOpen={!!invoiceToView}
+                    onOpenChange={() => setInvoiceToView(null)}
+                    invoice={invoiceToView}
+                />
+            )}
         </>
     );
 }
