@@ -43,11 +43,11 @@ import { MoreVertical, Edit, Trash2, HandCoins, Mail } from 'lucide-react';
 import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { useToast } from '@/hooks/use-toast';
 import { format as formatDate } from "date-fns";
-import { ViewInvoiceDialog } from './view-invoice-dialog';
 
 const FINALIZED_INVOICES_KEY = 'ogeemo-finalized-invoices';
 const INCOME_LEDGER_KEY = "accountingIncomeLedger";
 const EDIT_INVOICE_ID_KEY = 'editInvoiceId';
+const RECEIPT_DATA_KEY = 'ogeemo-receipt-data';
 
 export interface FinalizedInvoice {
   id: string;
@@ -58,19 +58,12 @@ export interface FinalizedInvoice {
   dueDate: string;
 }
 
-interface ViewDialogState {
-    invoice: FinalizedInvoice;
-    carryForwardAmount: number;
-}
-
-
 export function InvoicePaymentsView() {
     const [invoices, setInvoices] = useState<FinalizedInvoice[]>([]);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [invoiceToPay, setInvoiceToPay] = useState<FinalizedInvoice | null>(null);
     const [paymentAmount, setPaymentAmount] = useState<number | ''>('');
     const [invoiceToDelete, setInvoiceToDelete] = useState<FinalizedInvoice | null>(null);
-    const [viewDialogState, setViewDialogState] = useState<ViewDialogState | null>(null);
     const { toast } = useToast();
     const router = useRouter();
 
@@ -171,8 +164,14 @@ export function InvoicePaymentsView() {
         const carryForwardAmount = otherInvoices.reduce((acc, curr) => {
             return acc + (curr.originalAmount - curr.amountPaid);
         }, 0);
-
-        setViewDialogState({ invoice, carryForwardAmount });
+        
+        try {
+            sessionStorage.setItem(RECEIPT_DATA_KEY, JSON.stringify({ invoice, carryForwardAmount }));
+            router.push('/accounting/invoices/receipt');
+        } catch (error) {
+            console.error('Failed to set receipt data:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not generate the receipt.' });
+        }
     };
 
     const getStatusInfo = (invoice: FinalizedInvoice): { status: string; badgeVariant: "secondary" | "destructive" | "outline" } => {
@@ -281,15 +280,6 @@ export function InvoicePaymentsView() {
                     <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteInvoice} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            
-            {viewDialogState && (
-                <ViewInvoiceDialog
-                    isOpen={!!viewDialogState}
-                    onOpenChange={() => setViewDialogState(null)}
-                    invoice={viewDialogState.invoice}
-                    carryForwardAmount={viewDialogState.carryForwardAmount}
-                />
-            )}
         </>
     );
 }
