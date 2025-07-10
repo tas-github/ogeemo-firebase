@@ -147,7 +147,7 @@ export function ViewInvoiceDialog({ isOpen, onOpenChange, invoice }: ViewInvoice
             <section className="flex justify-end mt-6">
                 <div className="w-full max-w-sm space-y-2">
                     <div className="flex justify-between">
-                        <span className="text-gray-500">Subtotal:</span>
+                        <span className="text-gray-500">Original Invoice Amount:</span>
                         <span>{formatCurrency(invoice.originalAmount)}</span>
                     </div>
                      <div className="flex justify-between">
