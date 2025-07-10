@@ -18,6 +18,15 @@ import type { Contact, FolderData } from '@/data/contacts';
 
 const FOLDERS_COLLECTION = 'contactFolders';
 const CONTACTS_COLLECTION = 'contacts';
+const CLIENT_ACCOUNTS_COLLECTION = 'clientAccounts'; // New collection for client accounts
+
+interface ClientAccount {
+  id: string;
+  name: string;
+  contactId: string;
+  userId: string;
+  createdAt: Date;
+}
 
 function checkDb() {
   if (!db) {
@@ -29,7 +38,20 @@ function checkDb() {
 const docToFolder = (doc: QueryDocumentSnapshot<DocumentData>): FolderData => ({ id: doc.id, ...doc.data() } as FolderData);
 const docToContact = (doc: QueryDocumentSnapshot<DocumentData>): Contact => ({ id: doc.id, ...doc.data() } as Contact);
 
-// Folder functions
+// --- Client Account Function (New) ---
+async function createClientAccount(userId: string, contactId: string, contactName: string): Promise<void> {
+    checkDb();
+    const accountData = {
+        name: contactName,
+        contactId,
+        userId,
+        createdAt: new Date(),
+    };
+    await addDoc(collection(db, CLIENT_ACCOUNTS_COLLECTION), accountData);
+}
+
+
+// --- Folder functions ---
 export async function getFolders(userId: string): Promise<FolderData[]> {
   checkDb();
   const q = query(collection(db, FOLDERS_COLLECTION), where("userId", "==", userId));
@@ -89,7 +111,7 @@ export async function deleteFolderAndContents(userId: string, folderId: string):
 }
 
 
-// Contact functions
+// --- Contact functions ---
 export async function getContacts(userId: string): Promise<Contact[]> {
   checkDb();
   const q = query(collection(db, CONTACTS_COLLECTION), where("userId", "==", userId));
@@ -100,6 +122,10 @@ export async function getContacts(userId: string): Promise<Contact[]> {
 export async function addContact(contactData: Omit<Contact, 'id'>): Promise<Contact> {
   checkDb();
   const docRef = await addDoc(collection(db, CONTACTS_COLLECTION), contactData);
+  
+  // Automatically create a client account when a new contact is added
+  await createClientAccount(contactData.userId, docRef.id, contactData.name);
+
   return { id: docRef.id, ...contactData };
 }
 
@@ -113,9 +139,19 @@ export async function deleteContacts(contactIds: string[]): Promise<void> {
     checkDb();
     if (contactIds.length === 0) return;
     const batch = writeBatch(db);
+    
+    // Also delete associated client accounts
+    const accountsQuery = query(collection(db, CLIENT_ACCOUNTS_COLLECTION), where('contactId', 'in', contactIds));
+    const accountsSnapshot = await getDocs(accountsQuery);
+    accountsSnapshot.forEach(accountDoc => {
+        batch.delete(accountDoc.ref);
+    });
+    
+    // Delete contacts
     contactIds.forEach(id => {
         const contactRef = doc(db, CONTACTS_COLLECTION, id);
         batch.delete(contactRef);
     });
+
     await batch.commit();
 }
