@@ -11,12 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
-import { type DateRange } from 'react-day-picker';
 import { format, addDays } from 'date-fns';
 import { Calendar as CalendarIcon, Plus, Trash2, Printer, Save, Mail, Info, Settings, PlusCircle, LoaderCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { type Contact, type FolderData } from '@/data/contacts';
 import { AccountingPageHeader } from './page-header';
 import { Logo } from '../logo';
 import { ScrollArea } from '../ui/scroll-area';
@@ -32,7 +30,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/context/auth-context';
-import { getContacts, getFolders, addContact } from '@/services/contact-service';
+import { getContacts, getFolders, addContact, type Contact, type FolderData } from '@/services/contact-service';
 import { addInvoice, getInvoices, type Invoice } from '@/services/accounting-service';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -53,11 +51,6 @@ interface InvoiceTemplate {
   items: CustomLineItem[];
 }
 
-interface DefaultTaxSettings {
-  taxType: string;
-  taxRate: number;
-}
-
 // Helper functions
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -65,7 +58,6 @@ const formatCurrency = (amount: number) => {
 
 // LocalStorage Keys
 const INVOICE_TEMPLATES_KEY = 'invoiceTemplates';
-const DEFAULT_INVOICE_TAX_KEY = 'ogeemo-default-tax';
 
 
 const predefinedItems = [
@@ -134,7 +126,7 @@ export function InvoiceGeneratorView() {
                 const num = parseInt(inv.invoiceNumber.replace(/\D/g, ''), 10);
                 return isNaN(num) ? max : Math.max(max, num);
             }, 0);
-            const nextNum = maxInvoiceNum + 1;
+            const nextNum = maxInvoiceNum > 0 ? maxInvoiceNum + 1 : 101;
             setNextInvoiceNumber(nextNum);
             setInvoiceNumber(`INV-${nextNum}`);
 
@@ -202,7 +194,7 @@ export function InvoiceGeneratorView() {
 
   const total = useMemo(() => {
     return subtotal + taxAmount;
-  }, [subtotal, taxAmount]);
+  }, [subtotal, taxRate]);
 
   const handlePrint = () => window.print();
   
@@ -286,20 +278,6 @@ export function InvoiceGeneratorView() {
     }
   };
   
-  const handleSetDefaultTax = () => {
-    const settings: DefaultTaxSettings = { taxType, taxRate };
-    try {
-        localStorage.setItem(DEFAULT_INVOICE_TAX_KEY, JSON.stringify(settings));
-        toast({
-            title: 'Default Tax Rate Saved',
-            description: `Future invoices will default to ${taxRate}% ${taxType.toUpperCase()}.`
-        });
-    } catch (error) {
-        console.error("Failed to save default tax settings:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not save default tax settings.' });
-    }
-  };
-
   async function handleCreateNewContact(values: z.infer<typeof newContactSchema>) {
     if (!user) {
         toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to create a contact.' });
@@ -390,25 +368,6 @@ export function InvoiceGeneratorView() {
                               onChange={(e) => setTaxRate(Number(e.target.value))}
                               disabled={taxType === 'none'}
                           />
-                          <TooltipProvider>
-                              <Tooltip>
-                                  <TooltipTrigger asChild>
-                                      <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="icon"
-                                          onClick={handleSetDefaultTax}
-                                          disabled={taxType === 'none'}
-                                      >
-                                          <Save className="h-4 w-4" />
-                                          <span className="sr-only">Set as Default</span>
-                                      </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                      <p>Set as default tax rate</p>
-                                  </TooltipContent>
-                              </Tooltip>
-                          </TooltipProvider>
                       </div>
                   </div>
               </div>

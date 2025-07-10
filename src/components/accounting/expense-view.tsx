@@ -19,7 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreVertical, Pencil, Trash2, BookOpen, Settings, Plus, TrendingUp } from "lucide-react";
+import { PlusCircle, MoreVertical, Pencil, Trash2, BookOpen, Settings, Plus, TrendingUp, LoaderCircle } from "lucide-react";
 import { TransactionsPageHeader } from "@/components/accounting/transactions-page-header";
 import {
   DropdownMenu,
@@ -49,62 +49,53 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useAuth } from "@/context/auth-context";
+import { getExpenseTransactions, addExpenseTransaction, updateExpenseTransaction, deleteExpenseTransaction, type ExpenseTransaction } from "@/services/accounting-service";
 
-// Mock data
-const initialExpenseData = [
-  { id: "exp_1", date: "2024-07-25", company: "Cloud Hosting Inc.", description: "Server Costs - July", amount: 150, category: "Utilities", explanation: "Monthly server maintenance", documentNumber: "CH-98765", type: "business" as "business" | "personal" },
-  { id: "exp_2", date: "2024-07-23", company: "SaaS Tools Co.", description: "Software Subscriptions", amount: 75.99, category: "Software", explanation: "Team software licenses", documentNumber: "STC-11223", type: "business" as "business" | "personal" },
-  { id: "exp_3", date: "2024-07-21", company: "Office Supply Hub", description: "Stationery and Supplies", amount: 45.30, category: "Office Supplies", explanation: "Restocking office supplies", documentNumber: "OSH-5543", type: "business" as "business" | "personal" },
-  { id: "exp_4", date: "2024-07-20", company: "Jane Designs", description: "Logo Design", amount: 800, category: "Contractors", explanation: "New logo design for marketing campaign", documentNumber: "INV-JD-001", type: "business" as "business" | "personal" },
-];
 
-type ExpenseTransaction = typeof initialExpenseData[0];
-const INCOME_CATEGORIES_KEY = "accountingIncomeCategories";
-const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
-const COMPANIES_KEY = "accountingCompanies";
-const defaultIncomeCategories = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income"];
-const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
-const defaultCompanies = ["Cloud Hosting Inc.", "SaaS Tools Co.", "Office Supply Hub", "Jane Designs"];
 const emptyTransactionForm = { date: '', company: '', description: '', amount: '', category: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal' };
 
+// TODO: These should be moved to a settings service
+const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
+const defaultCompanies = ["Cloud Hosting Inc.", "SaaS Tools Co.", "Office Supply Hub", "Jane Designs"];
 
 export function ExpenseView() {
-  const [expenseLedger, setExpenseLedger] = React.useState(initialExpenseData);
-  const [incomeCategories, setIncomeCategories] = React.useState<string[]>([]);
-  const [expenseCategories, setExpenseCategories] = React.useState<string[]>([]);
-  const [companies, setCompanies] = React.useState<string[]>([]);
+  const [expenseLedger, setExpenseLedger] = React.useState<ExpenseTransaction[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const { user } = useAuth();
+  
+  const [expenseCategories, setExpenseCategories] = React.useState<string[]>(defaultExpenseCategories);
+  const [companies, setCompanies] = React.useState<string[]>(defaultCompanies);
   
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = React.useState(false);
-  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = React.useState(false);
-  const [isCompanyDialogOpen, setIsCompanyDialogOpen] = React.useState(false);
-
   const [transactionToEdit, setTransactionToEdit] = React.useState<ExpenseTransaction | null>(null);
   const [transactionToDelete, setTransactionToDelete] = React.useState<ExpenseTransaction | null>(null);
+  
   const [newTransaction, setNewTransaction] = React.useState(emptyTransactionForm);
-  const [newIncomeCategory, setNewIncomeCategory] = React.useState("");
   const [newExpenseCategory, setNewExpenseCategory] = React.useState("");
-  const [newCompany, setNewCompany] = React.useState("");
-
-
+  
   const { toast } = useToast();
 
   React.useEffect(() => {
-    try {
-      const savedIncome = localStorage.getItem(INCOME_CATEGORIES_KEY);
-      setIncomeCategories(savedIncome ? JSON.parse(savedIncome) : defaultIncomeCategories);
-      const savedExpense = localStorage.getItem(EXPENSE_CATEGORIES_KEY);
-      setExpenseCategories(savedExpense ? JSON.parse(savedExpense) : defaultExpenseCategories);
-      const savedCompanies = localStorage.getItem(COMPANIES_KEY);
-      setCompanies(savedCompanies ? JSON.parse(savedCompanies) : defaultCompanies);
-    } catch (error) {
-        console.error("Failed to load categories from localStorage", error);
-        setIncomeCategories(defaultIncomeCategories);
-        setExpenseCategories(defaultExpenseCategories);
-        setCompanies(defaultCompanies);
+    if (!user) {
+      setIsLoading(false);
+      return;
     }
-  }, []);
+    const loadData = async () => {
+        setIsLoading(true);
+        try {
+            const transactions = await getExpenseTransactions(user.uid);
+            setExpenseLedger(transactions);
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Failed to load expense data", description: error.message });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    loadData();
+  }, [user, toast]);
+  
 
   const handleOpenTransactionDialog = (transaction?: ExpenseTransaction) => {
     if (transaction) {
@@ -126,7 +117,9 @@ export function ExpenseView() {
     setIsTransactionDialogOpen(true);
   };
 
-  const handleSaveTransaction = () => {
+  const handleSaveTransaction = async () => {
+    if (!user) return;
+
     const amountNum = parseFloat(newTransaction.amount);
     if (!newTransaction.date || !newTransaction.company || !newTransaction.category || !newTransaction.amount || isNaN(amountNum) || amountNum <= 0) {
         toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please fill all required fields correctly.' });
@@ -144,93 +137,33 @@ export function ExpenseView() {
         type: newTransaction.type,
     };
 
-    if (transactionToEdit) { // Handle editing existing transaction
-        setExpenseLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, ...transactionData } : item));
-        toast({ title: "Expense Transaction Updated" });
-    } else { // Handle adding new transaction
-        const newEntry: ExpenseTransaction = { id: `exp_${Date.now()}`, ...transactionData };
-        setExpenseLedger(prev => [newEntry, ...prev]);
-        toast({ title: "Expense Transaction Added" });
+    try {
+        if (transactionToEdit) {
+            await updateExpenseTransaction(transactionToEdit.id, transactionData);
+            setExpenseLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, ...transactionData } : item));
+            toast({ title: "Expense Transaction Updated" });
+        } else {
+            const newEntry = await addExpenseTransaction({ ...transactionData, userId: user.uid });
+            setExpenseLedger(prev => [newEntry, ...prev]);
+            toast({ title: "Expense Transaction Added" });
+        }
+        setIsTransactionDialogOpen(false);
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
     }
-
-    setIsTransactionDialogOpen(false);
-    setTransactionToEdit(null);
-    setNewTransaction(emptyTransactionForm);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!transactionToDelete) return;
-    setExpenseLedger(prev => prev.filter(item => item.id !== transactionToDelete.id));
-    toast({ title: 'Transaction Deleted' });
-    setTransactionToDelete(null);
-  };
-  
-  const handleAddCategory = (type: 'income' | 'expense') => {
-    if (type === 'income') {
-        const categoryToAdd = newIncomeCategory.trim();
-        if (!categoryToAdd) {
-            toast({ variant: 'destructive', title: 'Category name cannot be empty.' }); return;
-        }
-        if (incomeCategories.map(c => c.toLowerCase()).includes(categoryToAdd.toLowerCase())) {
-             toast({ variant: 'destructive', title: 'Duplicate Category', description: 'This category already exists.' }); return;
-        }
-        const updated = [...incomeCategories, categoryToAdd];
-        setIncomeCategories(updated);
-        localStorage.setItem(INCOME_CATEGORIES_KEY, JSON.stringify(updated));
-        setNewIncomeCategory("");
-    } else {
-        const categoryToAdd = newExpenseCategory.trim();
-        if (!categoryToAdd) {
-            toast({ variant: 'destructive', title: 'Category name cannot be empty.' }); return;
-        }
-        if (expenseCategories.map(c => c.toLowerCase()).includes(categoryToAdd.toLowerCase())) {
-             toast({ variant: 'destructive', title: 'Duplicate Category', description: 'This category already exists.' }); return;
-        }
-        const updated = [...expenseCategories, categoryToAdd];
-        setExpenseCategories(updated);
-        localStorage.setItem(EXPENSE_CATEGORIES_KEY, JSON.stringify(updated));
-        setNewExpenseCategory("");
+    try {
+        await deleteExpenseTransaction(transactionToDelete.id);
+        setExpenseLedger(prev => prev.filter(item => item.id !== transactionToDelete.id));
+        toast({ title: 'Transaction Deleted' });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Delete Failed', description: error.message });
+    } finally {
+        setTransactionToDelete(null);
     }
-  };
-  
-  const handleDeleteCategory = (category: string, type: 'income' | 'expense') => {
-     if (type === 'income') {
-        const updated = incomeCategories.filter(c => c !== category);
-        setIncomeCategories(updated);
-        localStorage.setItem(INCOME_CATEGORIES_KEY, JSON.stringify(updated));
-     } else {
-        if (expenseLedger.some(item => item.category === category)) {
-            toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This category is currently in use.' });
-            return;
-        }
-        const updated = expenseCategories.filter(c => c !== category);
-        setExpenseCategories(updated);
-        localStorage.setItem(EXPENSE_CATEGORIES_KEY, JSON.stringify(updated));
-     }
-  };
-
-  const handleAddCompany = () => {
-    const companyToAdd = newCompany.trim();
-    if (!companyToAdd) {
-        toast({ variant: 'destructive', title: 'Company name cannot be empty.' }); return;
-    }
-    if (companies.map(c => c.toLowerCase()).includes(companyToAdd.toLowerCase())) {
-         toast({ variant: 'destructive', title: 'Duplicate Company', description: 'This company already exists.' }); return;
-    }
-    const updated = [...companies, companyToAdd];
-    setCompanies(updated);
-    localStorage.setItem(COMPANIES_KEY, JSON.stringify(updated));
-    setNewCompany("");
-  };
-  
-  const handleDeleteCompany = (companyToDelete: string) => {
-    if (expenseLedger.some(item => item.company === companyToDelete)) {
-        toast({ variant: 'destructive', title: 'Cannot Delete', description: 'This company is currently in use in the expense ledger.' });
-        return;
-    }
-    const updated = companies.filter(c => c !== companyToDelete);
-    setCompanies(updated);
-    localStorage.setItem(COMPANIES_KEY, JSON.stringify(updated));
   };
 
   return (
@@ -261,52 +194,55 @@ export function ExpenseView() {
                 <Button variant="outline" onClick={() => handleOpenTransactionDialog()}>
                     <PlusCircle className="mr-2 h-4 w-4" /> Add Expense
                 </Button>
-                <Button variant="outline" onClick={() => setIsCategoryDialogOpen(true)}>
-                    <Settings className="mr-2 h-4 w-4" /> Manage Categories
-                </Button>
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead><span className="sr-only">Actions</span></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expenseLedger.map(item => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.date}</TableCell>
-                    <TableCell>{item.company}</TableCell>
-                    <TableCell>{item.description}</TableCell>
-                    <TableCell>{item.category}</TableCell>
-                    <TableCell className="text-right font-mono text-red-600">
-                      ({item.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })})
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => handleOpenTransactionDialog(item)}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => handleOpenTransactionDialog(item)}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete(item)}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {isLoading ? (
+                <div className="flex justify-center items-center h-48">
+                    <LoaderCircle className="h-8 w-8 animate-spin" />
+                </div>
+            ) : (
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead><span className="sr-only">Actions</span></TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {expenseLedger.map(item => (
+                    <TableRow key={item.id}>
+                        <TableCell>{item.date}</TableCell>
+                        <TableCell>{item.company}</TableCell>
+                        <TableCell>{item.description}</TableCell>
+                        <TableCell>{item.category}</TableCell>
+                        <TableCell className="text-right font-mono text-red-600">
+                        ({item.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })})
+                        </TableCell>
+                        <TableCell>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => handleOpenTransactionDialog(item)}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleOpenTransactionDialog(item)}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete(item)}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -330,10 +266,6 @@ export function ExpenseView() {
                     {companies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                 <Button type="button" size="icon" variant="outline" onClick={() => setIsCompanyDialogOpen(true)} className="flex-shrink-0">
-                    <Settings className="h-4 w-4"/>
-                    <span className="sr-only">Manage Companies</span>
-                </Button>
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -368,10 +300,6 @@ export function ExpenseView() {
                     {expenseCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                 <Button type="button" size="icon" variant="outline" onClick={() => setIsCategoryDialogOpen(true)} className="flex-shrink-0">
-                    <Settings className="h-4 w-4"/>
-                    <span className="sr-only">Manage Categories</span>
-                </Button>
               </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -418,82 +346,6 @@ export function ExpenseView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-          <DialogContent>
-              <DialogHeader>
-                  <DialogTitle>Manage Categories</DialogTitle>
-                  <DialogDescription>Add, edit, or delete your income and expense categories.</DialogDescription>
-              </DialogHeader>
-              <Tabs defaultValue="expense-cat" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="income-cat">Income Categories</TabsTrigger>
-                      <TabsTrigger value="expense-cat">Expense Categories</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="income-cat">
-                      <div className="space-y-4 py-4">
-                          <div className="flex gap-2">
-                              <Input value={newIncomeCategory} onChange={(e) => setNewIncomeCategory(e.target.value)} placeholder="New income category" onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory('income'); }}/>
-                              <Button onClick={() => handleAddCategory('income')}><Plus className="mr-2 h-4 w-4" /> Add</Button>
-                          </div>
-                          <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
-                              {incomeCategories.map(cat => (
-                                  <div key={cat} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                                      <span>{cat}</span>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteCategory(cat, 'income')}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                  </div>
-                              ))}
-                          </div>
-                      </div>
-                  </TabsContent>
-                  <TabsContent value="expense-cat">
-                      <div className="space-y-4 py-4">
-                          <div className="flex gap-2">
-                              <Input value={newExpenseCategory} onChange={(e) => setNewExpenseCategory(e.target.value)} placeholder="New expense category" onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory('expense'); }}/>
-                              <Button onClick={() => handleAddCategory('expense')}><Plus className="mr-2 h-4 w-4" /> Add</Button>
-                          </div>
-                          <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
-                              {expenseCategories.map(cat => (
-                                  <div key={cat} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                                      <span>{cat}</span>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteCategory(cat, 'expense')}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                  </div>
-                              ))}
-                          </div>
-                      </div>
-                  </TabsContent>
-              </Tabs>
-              <DialogFooter>
-                  <Button onClick={() => setIsCategoryDialogOpen(false)}>Done</Button>
-              </DialogFooter>
-          </DialogContent>
-      </Dialog>
-
-      <Dialog open={isCompanyDialogOpen} onOpenChange={setIsCompanyDialogOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Manage Companies</DialogTitle>
-                <DialogDescription>Add or remove companies from your list.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-                <div className="flex gap-2">
-                    <Input value={newCompany} onChange={(e) => setNewCompany(e.target.value)} placeholder="New company name" onKeyDown={(e) => { if (e.key === 'Enter') handleAddCompany(); }}/>
-                    <Button onClick={handleAddCompany}><Plus className="mr-2 h-4 w-4" /> Add</Button>
-                </div>
-                <div className="space-y-2 rounded-md border p-2 h-48 overflow-y-auto">
-                    {companies.map(c => (
-                        <div key={c} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                            <span>{c}</span>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteCompany(c)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        </div>
-                    ))}
-                </div>
-            </div>
-            <DialogFooter>
-                <Button onClick={() => setIsCompanyDialogOpen(false)}>Done</Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
