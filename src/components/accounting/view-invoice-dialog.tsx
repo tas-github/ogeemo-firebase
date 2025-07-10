@@ -23,13 +23,14 @@ interface ViewInvoiceDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   invoice: FinalizedInvoice | null;
+  carryForwardAmount: number;
 }
 
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 };
 
-export function ViewInvoiceDialog({ isOpen, onOpenChange, invoice }: ViewInvoiceDialogProps) {
+export function ViewInvoiceDialog({ isOpen, onOpenChange, invoice, carryForwardAmount }: ViewInvoiceDialogProps) {
   const printRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -78,15 +79,17 @@ export function ViewInvoiceDialog({ isOpen, onOpenChange, invoice }: ViewInvoice
     });
   };
   
-  const isPaid = invoice.originalAmount - invoice.amountPaid <= 0.001;
+  const currentInvoiceBalance = invoice.originalAmount - invoice.amountPaid;
+  const totalBalanceDue = currentInvoiceBalance + carryForwardAmount;
+  const isPaid = totalBalanceDue <= 0.001;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Invoice {invoice.invoiceNumber}</DialogTitle>
+          <DialogTitle>Receipt for Invoice {invoice.invoiceNumber}</DialogTitle>
           <DialogDescription>
-            Viewing invoice for {invoice.clientName}. Ready for printing or emailing.
+            Viewing receipt for {invoice.clientName}. Ready for printing or emailing.
           </DialogDescription>
         </DialogHeader>
         <div ref={printRef} className="bg-white text-black p-8 border rounded-lg shadow-sm w-full font-sans relative">
@@ -111,7 +114,7 @@ export function ViewInvoiceDialog({ isOpen, onOpenChange, invoice }: ViewInvoice
             <header className="flex justify-between items-start pb-6 border-b">
                 <Logo className="text-primary"/>
                 <div className="text-right">
-                    <h1 className="text-4xl font-bold uppercase text-gray-700">Invoice</h1>
+                    <h1 className="text-4xl font-bold uppercase text-gray-700">Receipt</h1>
                     <p className="text-gray-500">#{invoice.invoiceNumber}</p>
                 </div>
             </header>
@@ -123,7 +126,7 @@ export function ViewInvoiceDialog({ isOpen, onOpenChange, invoice }: ViewInvoice
                 </div>
                 <div className="text-right">
                     <p><span className="font-bold text-gray-500">Date Issued:</span> {format(new Date(), 'PP')}</p>
-                    <p><span className="font-bold text-gray-500">Due Date:</span> {format(new Date(invoice.dueDate), 'PP')}</p>
+                    <p><span className="font-bold text-gray-500">Original Due Date:</span> {format(new Date(invoice.dueDate), 'PP')}</p>
                 </div>
             </section>
 
@@ -137,8 +140,12 @@ export function ViewInvoiceDialog({ isOpen, onOpenChange, invoice }: ViewInvoice
                     </TableHeader>
                     <TableBody>
                         <TableRow>
-                            <TableCell>Invoice for services rendered</TableCell>
-                            <TableCell className="text-right">{formatCurrency(invoice.originalAmount)}</TableCell>
+                            <TableCell>Amount carried forward from previous invoices</TableCell>
+                            <TableCell className="text-right">{formatCurrency(carryForwardAmount)}</TableCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableCell>Balance for Invoice #{invoice.invoiceNumber}</TableCell>
+                            <TableCell className="text-right">{formatCurrency(currentInvoiceBalance)}</TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>
@@ -147,17 +154,13 @@ export function ViewInvoiceDialog({ isOpen, onOpenChange, invoice }: ViewInvoice
             <section className="flex justify-end mt-6">
                 <div className="w-full max-w-sm space-y-2">
                     <div className="flex justify-between">
-                        <span className="text-gray-500">Original Invoice Amount:</span>
-                        <span>{formatCurrency(invoice.originalAmount)}</span>
-                    </div>
-                     <div className="flex justify-between">
-                        <span className="text-gray-500">Amount Paid:</span>
-                        <span className="text-green-600">{formatCurrency(invoice.amountPaid)}</span>
+                        <span className="text-gray-500">Payment received on {format(new Date(), 'PP')}:</span>
+                        <span className="text-green-600">({formatCurrency(invoice.amountPaid)})</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between font-bold text-lg">
-                        <span className="text-gray-600">Balance Due:</span>
-                        <span>{formatCurrency(invoice.originalAmount - invoice.amountPaid)}</span>
+                        <span className="text-gray-600">Total Balance Due:</span>
+                        <span>{formatCurrency(totalBalanceDue)}</span>
                     </div>
                 </div>
             </section>

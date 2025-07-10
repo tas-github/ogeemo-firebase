@@ -58,13 +58,19 @@ export interface FinalizedInvoice {
   dueDate: string;
 }
 
+interface ViewDialogState {
+    invoice: FinalizedInvoice;
+    carryForwardAmount: number;
+}
+
+
 export function InvoicePaymentsView() {
     const [invoices, setInvoices] = useState<FinalizedInvoice[]>([]);
     const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
     const [invoiceToPay, setInvoiceToPay] = useState<FinalizedInvoice | null>(null);
     const [paymentAmount, setPaymentAmount] = useState<number | ''>('');
     const [invoiceToDelete, setInvoiceToDelete] = useState<FinalizedInvoice | null>(null);
-    const [invoiceToView, setInvoiceToView] = useState<FinalizedInvoice | null>(null);
+    const [viewDialogState, setViewDialogState] = useState<ViewDialogState | null>(null);
     const { toast } = useToast();
     const router = useRouter();
 
@@ -160,8 +166,13 @@ export function InvoicePaymentsView() {
         setInvoiceToDelete(null);
     };
 
-    const handleEmailReceipt = (invoice: FinalizedInvoice) => {
-        setInvoiceToView(invoice);
+    const handleCreateReceipt = (invoice: FinalizedInvoice) => {
+        const otherInvoices = invoices.filter(i => i.clientName === invoice.clientName && i.id !== invoice.id);
+        const carryForwardAmount = otherInvoices.reduce((acc, curr) => {
+            return acc + (curr.originalAmount - curr.amountPaid);
+        }, 0);
+
+        setViewDialogState({ invoice, carryForwardAmount });
     };
 
     const getStatusInfo = (invoice: FinalizedInvoice): { status: string; badgeVariant: "secondary" | "destructive" | "outline" } => {
@@ -226,7 +237,7 @@ export function InvoicePaymentsView() {
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
                                                             <DropdownMenuItem onSelect={() => handleOpenPaymentDialog(invoice)} disabled={status === 'Paid'}><HandCoins className="mr-2 h-4 w-4"/>Post Payment</DropdownMenuItem>
-                                                            <DropdownMenuItem onSelect={() => handleEmailReceipt(invoice)} disabled={invoice.amountPaid <= 0}><Mail className="mr-2 h-4 w-4"/>Create Receipt</DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => handleCreateReceipt(invoice)} disabled={invoice.amountPaid <= 0}><Mail className="mr-2 h-4 w-4"/>Create Receipt</DropdownMenuItem>
                                                             <DropdownMenuItem onSelect={() => handleEditInvoice(invoice)}><Edit className="mr-2 h-4 w-4"/>Edit Invoice</DropdownMenuItem>
                                                             <DropdownMenuItem onSelect={() => setInvoiceToDelete(invoice)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete Invoice</DropdownMenuItem>
                                                         </DropdownMenuContent>
@@ -271,11 +282,12 @@ export function InvoicePaymentsView() {
                 </AlertDialogContent>
             </AlertDialog>
             
-            {invoiceToView && (
+            {viewDialogState && (
                 <ViewInvoiceDialog
-                    isOpen={!!invoiceToView}
-                    onOpenChange={() => setInvoiceToView(null)}
-                    invoice={invoiceToView}
+                    isOpen={!!viewDialogState}
+                    onOpenChange={() => setViewDialogState(null)}
+                    invoice={viewDialogState.invoice}
+                    carryForwardAmount={viewDialogState.carryForwardAmount}
                 />
             )}
         </>
