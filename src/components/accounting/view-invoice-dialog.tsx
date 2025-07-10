@@ -14,9 +14,10 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Logo } from '../logo';
 import { Separator } from '../ui/separator';
-import { Printer } from 'lucide-react';
+import { Printer, Mail } from 'lucide-react';
 import { type FinalizedInvoice } from './invoice-payments-view';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 interface ViewInvoiceDialogProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ const formatCurrency = (amount: number) => {
 
 export function ViewInvoiceDialog({ isOpen, onOpenChange, invoice }: ViewInvoiceDialogProps) {
   const printRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   if (!invoice) return null;
 
@@ -67,6 +69,13 @@ export function ViewInvoiceDialog({ isOpen, onOpenChange, invoice }: ViewInvoice
       printWindow?.focus();
       printWindow?.print();
     }
+  };
+
+  const handleSendEmail = () => {
+    toast({
+        title: "Email Sent (Simulation)",
+        description: `The receipt for invoice ${invoice.invoiceNumber} has been sent to ${invoice.clientName}.`,
+    });
   };
   
   const isPaid = invoice.originalAmount - invoice.amountPaid <= 0.001;
@@ -161,7 +170,7 @@ export function ViewInvoiceDialog({ isOpen, onOpenChange, invoice }: ViewInvoice
             <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print</Button>
             <div>
               <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
-              <Button>Send Email</Button>
+              <Button onClick={handleSendEmail}><Mail className="mr-2 h-4 w-4" /> Send Email</Button>
             </div>
         </DialogFooter>
       </DialogContent>
