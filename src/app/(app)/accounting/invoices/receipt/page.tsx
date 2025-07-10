@@ -4,13 +4,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Logo } from '@/components/logo';
 import { Separator } from '@/components/ui/separator';
 import { Printer, Mail, ArrowLeft, LoaderCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
 
 const RECEIPT_DATA_KEY = 'ogeemo-receipt-data';
 
@@ -34,6 +35,7 @@ const formatCurrency = (amount: number) => {
 
 export default function ReceiptPage() {
     const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+    const [notes, setNotes] = useState("");
     const printRef = useRef<HTMLDivElement>(null);
     const { toast } = useToast();
     const router = useRouter();
@@ -44,7 +46,6 @@ export default function ReceiptPage() {
             if (dataRaw) {
                 const data = JSON.parse(dataRaw);
                 setReceiptData(data);
-                // Clean up sessionStorage after loading
                 sessionStorage.removeItem(RECEIPT_DATA_KEY);
             } else {
                 toast({ variant: 'destructive', title: 'Error', description: 'No receipt data found.' });
@@ -159,6 +160,15 @@ export default function ReceiptPage() {
                                 <span>{formatCurrency(totalBalanceDue)}</span>
                             </div>
                         </div>
+                    </section>
+                    <section className="mt-8">
+                        <h4 className="font-bold text-gray-500 uppercase mb-2">Notes</h4>
+                        <Textarea
+                            placeholder="Add a personal note to your client..."
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            className="print:border-none print:p-0 print:shadow-none print:bg-transparent"
+                        />
                     </section>
                     <footer className="mt-12 pt-6 border-t text-center text-xs text-gray-400">
                         <p>Thank you for your business!</p>

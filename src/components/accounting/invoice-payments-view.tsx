@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -49,7 +48,6 @@ const FINALIZED_INVOICES_KEY = 'ogeemo-finalized-invoices';
 const INCOME_LEDGER_KEY = "accountingIncomeLedger";
 const EDIT_INVOICE_ID_KEY = 'editInvoiceId';
 const RECEIPT_DATA_KEY = 'ogeemo-receipt-data';
-const CLIENT_ACCOUNTS_KEY = 'ogeemo-client-accounts';
 
 export interface FinalizedInvoice {
   id: string;
@@ -59,43 +57,6 @@ export interface FinalizedInvoice {
   amountPaid: number;
   dueDate: string;
 }
-
-interface ClientAccount {
-  id: string;
-  name: string;
-  createdAt: string;
-}
-
-
-// --- Client Account Service (Simulation) ---
-// In a real app, this would be in its own service file and interact with a database.
-const getClientAccount = (clientName: string): ClientAccount | null => {
-    const accountsRaw = localStorage.getItem(CLIENT_ACCOUNTS_KEY);
-    const accounts: ClientAccount[] = accountsRaw ? JSON.parse(accountsRaw) : [];
-    return accounts.find(acc => acc.name.toLowerCase() === clientName.toLowerCase()) || null;
-}
-
-const createClientAccount = (clientName: string): ClientAccount => {
-    const accountsRaw = localStorage.getItem(CLIENT_ACCOUNTS_KEY);
-    const accounts: ClientAccount[] = accountsRaw ? JSON.parse(accountsRaw) : [];
-    const newAccount: ClientAccount = {
-        id: `acc_${Date.now()}`,
-        name: clientName,
-        createdAt: new Date().toISOString(),
-    };
-    const updatedAccounts = [...accounts, newAccount];
-    localStorage.setItem(CLIENT_ACCOUNTS_KEY, JSON.stringify(updatedAccounts));
-    return newAccount;
-};
-
-const ensureClientAccountExists = (clientName: string): ClientAccount => {
-    let account = getClientAccount(clientName);
-    if (!account) {
-        account = createClientAccount(clientName);
-    }
-    return account;
-};
-
 
 export function InvoicePaymentsView() {
     const [invoices, setInvoices] = useState<FinalizedInvoice[]>([]);
@@ -110,7 +71,6 @@ export function InvoicePaymentsView() {
         try {
             const savedInvoicesRaw = localStorage.getItem(FINALIZED_INVOICES_KEY);
             const savedInvoices = savedInvoicesRaw ? JSON.parse(savedInvoicesRaw) : [];
-            // Simple migration for old data structure
             const migratedInvoices = savedInvoices.map((inv: any) => ({
                 id: inv.id,
                 invoiceNumber: inv.invoiceNumber,
@@ -145,13 +105,11 @@ export function InvoicePaymentsView() {
         }
 
         try {
-            // Update invoice
             const updatedInvoices = invoices.map(inv => 
                 inv.id === invoiceToPay.id ? { ...inv, amountPaid: inv.amountPaid + Number(paymentAmount) } : inv
             );
             updateInvoices(updatedInvoices);
             
-            // Add to income ledger
             const incomeLedgerRaw = localStorage.getItem(INCOME_LEDGER_KEY);
             const incomeLedger = incomeLedgerRaw ? JSON.parse(incomeLedgerRaw) : [];
             const newIncomeTransaction = {
@@ -161,7 +119,7 @@ export function InvoicePaymentsView() {
                 description: `Payment for Invoice #${invoiceToPay.invoiceNumber}`,
                 amount: Number(paymentAmount),
                 incomeType: "Invoice Payment",
-                depositedTo: "Bank Account #1", // Defaulting for simplicity
+                depositedTo: "Bank Account #1",
                 explanation: `Payment recorded on ${formatDate(new Date(), 'PP')}`,
                 documentNumber: invoiceToPay.invoiceNumber,
                 type: 'business',
@@ -199,9 +157,6 @@ export function InvoicePaymentsView() {
     };
 
     const handleCreateReceipt = (invoice: FinalizedInvoice) => {
-        // Ensure a client account exists before creating a receipt
-        ensureClientAccountExists(invoice.clientName);
-
         const otherInvoices = invoices.filter(i => i.clientName === invoice.clientName && i.id !== invoice.id);
         const carryForwardAmount = otherInvoices.reduce((acc, curr) => {
             return acc + (curr.originalAmount - curr.amountPaid);
@@ -222,7 +177,7 @@ export function InvoicePaymentsView() {
 
     const getStatusInfo = (invoice: FinalizedInvoice): { status: string; badgeVariant: "secondary" | "destructive" | "outline" } => {
         const balanceDue = invoice.originalAmount - invoice.amountPaid;
-        if (balanceDue <= 0.001) { // Use a small epsilon for float comparison
+        if (balanceDue <= 0.001) {
             return { status: "Paid", badgeVariant: "secondary" };
         }
         if (invoice.amountPaid > 0) {
@@ -282,7 +237,7 @@ export function InvoicePaymentsView() {
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
                                                             <DropdownMenuItem onSelect={() => handleOpenPaymentDialog(invoice)} disabled={status === 'Paid'}><HandCoins className="mr-2 h-4 w-4"/>Post Payment</DropdownMenuItem>
-                                                            <DropdownMenuItem onSelect={() => handleCreateReceipt(invoice)} disabled={invoice.amountPaid <= 0}><FileText className="mr-2 h-4 w-4"/>Create Receipt</DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => handleCreateReceipt(invoice)}><FileText className="mr-2 h-4 w-4"/>Create Receipt</DropdownMenuItem>
                                                             <DropdownMenuItem onSelect={() => handleEditInvoice(invoice)}><Edit className="mr-2 h-4 w-4"/>Edit Invoice</DropdownMenuItem>
                                                             <DropdownMenuItem onSelect={() => setInvoiceToDelete(invoice)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete Invoice</DropdownMenuItem>
                                                         </DropdownMenuContent>
