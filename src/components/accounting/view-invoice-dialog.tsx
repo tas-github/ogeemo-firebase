@@ -143,9 +143,9 @@ export function ViewInvoiceDialog({ isOpen, onOpenChange, invoice, carryForwardA
                             <TableCell>Amount carried forward from previous invoices</TableCell>
                             <TableCell className="text-right">{formatCurrency(carryForwardAmount)}</TableCell>
                         </TableRow>
-                        <TableRow>
-                            <TableCell>Balance for Invoice #{invoice.invoiceNumber}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(currentInvoiceBalance)}</TableCell>
+                         <TableRow>
+                            <TableCell>Original Invoice Amount (#{invoice.invoiceNumber})</TableCell>
+                            <TableCell className="text-right">{formatCurrency(invoice.originalAmount)}</TableCell>
                         </TableRow>
                     </TableBody>
                 </Table>
@@ -171,7 +171,7 @@ export function ViewInvoiceDialog({ isOpen, onOpenChange, invoice, carryForwardA
         </div>
         <DialogFooter className="sm:justify-between">
             <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print</Button>
-            <div>
+            <div className="flex items-center gap-2">
               <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
               <Button onClick={handleSendEmail}><Mail className="mr-2 h-4 w-4" /> Send Email</Button>
             </div>
