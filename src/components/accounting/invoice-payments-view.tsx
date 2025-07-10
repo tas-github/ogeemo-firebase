@@ -208,7 +208,11 @@ export function InvoicePaymentsView() {
         }, 0);
         
         try {
-            sessionStorage.setItem(RECEIPT_DATA_KEY, JSON.stringify({ invoice, carryForwardAmount }));
+            const receiptPayload = {
+                invoice,
+                carryForwardAmount
+            };
+            sessionStorage.setItem(RECEIPT_DATA_KEY, JSON.stringify(receiptPayload));
             router.push('/accounting/invoices/receipt');
         } catch (error) {
             console.error('Failed to set receipt data:', error);
