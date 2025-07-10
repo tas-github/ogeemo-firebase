@@ -39,7 +39,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Edit, Trash2, HandCoins } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, HandCoins, Mail } from 'lucide-react';
 import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { useToast } from '@/hooks/use-toast';
 import { format as formatDate } from "date-fns";
@@ -172,6 +172,13 @@ export function InvoicePaymentsView() {
         return { status: "Outstanding", badgeVariant: "outline" };
     };
 
+    const handleEmailReceipt = (invoice: FinalizedInvoice) => {
+        toast({
+            title: "Feature coming soon",
+            description: `Emailing a receipt for invoice ${invoice.invoiceNumber} is not yet implemented.`,
+        });
+    }
+
     return (
         <>
             <div className="p-4 sm:p-6 space-y-6">
@@ -220,6 +227,7 @@ export function InvoicePaymentsView() {
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
                                                             <DropdownMenuItem onSelect={() => handleOpenPaymentDialog(invoice)} disabled={status === 'Paid'}><HandCoins className="mr-2 h-4 w-4"/>Post Payment</DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => handleEmailReceipt(invoice)} disabled={invoice.amountPaid <= 0}><Mail className="mr-2 h-4 w-4"/>Email Receipt</DropdownMenuItem>
                                                             <DropdownMenuItem onSelect={() => handleEditInvoice(invoice)}><Edit className="mr-2 h-4 w-4"/>Edit Invoice</DropdownMenuItem>
                                                             <DropdownMenuItem onSelect={() => setInvoiceToDelete(invoice)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete Invoice</DropdownMenuItem>
                                                         </DropdownMenuContent>
