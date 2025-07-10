@@ -30,9 +30,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/context/auth-context';
 import { getContacts, getFolders, addContact } from '@/services/contact-service';
+import { addInvoice, getInvoices, type Invoice } from '@/services/accounting-service';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -40,14 +41,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 
 
 // Types
-interface EventEntry {
-  id: string;
-  contactId: string;
-  subject: string;
-  duration: number; // in seconds
-  billableRate: number;
-}
-
 interface CustomLineItem {
   id: number;
   description: string;
@@ -60,25 +53,6 @@ interface InvoiceTemplate {
   items: CustomLineItem[];
 }
 
-interface FinalizedInvoice {
-  id: string;
-  invoiceNumber: string;
-  clientName: string;
-  originalAmount: number;
-  amountPaid: number;
-  dueDate: string;
-}
-
-interface InvoiceDraft {
-  selectedContactId: string;
-  invoiceNumber: string;
-  invoiceDate: string;
-  dueDate: string;
-  taxType: string;
-  taxRate: number;
-  customItems: CustomLineItem[];
-}
-
 interface DefaultTaxSettings {
   taxType: string;
   taxRate: number;
@@ -88,22 +62,10 @@ interface DefaultTaxSettings {
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 };
-const formatTime = (totalSeconds: number) => {
-  if (totalSeconds < 60) return `${totalSeconds}s`;
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  return `${hours}h ${minutes}m`;
-};
 
 // LocalStorage Keys
-const EDIT_INVOICE_TEMPLATE_KEY = 'editInvoiceTemplate';
-const EDIT_INVOICE_ID_KEY = 'editInvoiceId';
 const INVOICE_TEMPLATES_KEY = 'invoiceTemplates';
-const INVOICE_DRAFT_KEY = 'ogeemo-invoice-draft';
 const DEFAULT_INVOICE_TAX_KEY = 'ogeemo-default-tax';
-const INVOICE_NEXT_NUMBER_KEY = 'ogeemo-invoice-next-number';
-const FINALIZED_INVOICES_KEY = 'ogeemo-finalized-invoices';
-const DEFAULT_INVOICE_START_NUMBER = 101;
 
 
 const predefinedItems = [
@@ -127,26 +89,20 @@ export function InvoiceGeneratorView() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [folders, setFolders] = useState<FolderData[]>([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
+  const [nextInvoiceNumber, setNextInvoiceNumber] = useState(101);
 
   const [selectedContactId, setSelectedContactId] = useState<string>('');
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: addDays(new Date(), -30),
-    to: new Date(),
-  });
-  const [loggedEntries, setLoggedEntries] = useState<EventEntry[]>([]);
   const [customItems, setCustomItems] = useState<CustomLineItem[]>([]);
   
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dueDate, setDueDate] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
-  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
-
+  
   const [taxType, setTaxType] = useState('none');
   const [taxRate, setTaxRate] = useState(0);
 
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [isNewContactDialogOpen, setIsNewContactDialogOpen] = useState(false);
-  const [isInvoiceSettingsOpen, setIsInvoiceSettingsOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
 
   const { toast } = useToast();
@@ -159,144 +115,52 @@ export function InvoiceGeneratorView() {
 
   // Effects for data loading and initialization
   useEffect(() => {
-    async function loadContactData() {
+    async function loadInitialData() {
         if (!user) {
             setIsDataLoading(false);
             return;
         }
         setIsDataLoading(true);
         try {
-            const [fetchedContacts, fetchedFolders] = await Promise.all([
+            const [fetchedContacts, fetchedFolders, fetchedInvoices] = await Promise.all([
                 getContacts(user.uid),
-                getFolders(user.uid)
+                getFolders(user.uid),
+                getInvoices(user.uid)
             ]);
             setContacts(fetchedContacts);
             setFolders(fetchedFolders);
-            // set default folder for new contact form
+            
+            const maxInvoiceNum = fetchedInvoices.reduce((max, inv) => {
+                const num = parseInt(inv.invoiceNumber.replace(/\D/g, ''), 10);
+                return isNaN(num) ? max : Math.max(max, num);
+            }, 0);
+            const nextNum = maxInvoiceNum + 1;
+            setNextInvoiceNumber(nextNum);
+            setInvoiceNumber(`INV-${nextNum}`);
+
             if (fetchedFolders.length > 0) {
               const mainFolder = fetchedFolders.find(f => !f.parentId) || fetchedFolders[0];
               newContactForm.setValue('folderId', mainFolder.id);
             }
         } catch (error) {
-            console.error("Failed to load contact data:", error);
-            toast({ variant: 'destructive', title: "Error", description: "Could not load contact data." });
+            console.error("Failed to load initial data:", error);
+            toast({ variant: 'destructive', title: "Error", description: "Could not load initial data." });
         } finally {
             setIsDataLoading(false);
         }
     }
-    loadContactData();
+    loadInitialData();
   }, [user, toast, newContactForm]);
   
-  const getNextInvoiceNumber = useCallback(() => {
-    try {
-        const nextNum = localStorage.getItem(INVOICE_NEXT_NUMBER_KEY);
-        return nextNum ? parseInt(nextNum, 10) : DEFAULT_INVOICE_START_NUMBER;
-    } catch {
-        return DEFAULT_INVOICE_START_NUMBER;
-    }
-  }, []);
-
-  // Effect to load either a template for editing, or a saved draft
-  useEffect(() => {
-    try {
-      const invoiceToEditId = localStorage.getItem(EDIT_INVOICE_ID_KEY);
-      if (invoiceToEditId) {
-          const allInvoicesRaw = localStorage.getItem(FINALIZED_INVOICES_KEY);
-          const allInvoices: FinalizedInvoice[] = allInvoicesRaw ? JSON.parse(allInvoicesRaw) : [];
-          const invoiceToEdit = allInvoices.find(inv => inv.id === invoiceToEditId);
-          if (invoiceToEdit) {
-              const contact = contacts.find(c => c.name === invoiceToEdit.clientName);
-              if (contact) setSelectedContactId(contact.id);
-              
-              setInvoiceNumber(invoiceToEdit.invoiceNumber);
-              setDueDate(invoiceToEdit.dueDate);
-              setEditingInvoiceId(invoiceToEdit.id);
-              // Simplified editing: we cannot reconstruct line items perfectly,
-              // so we create one line item for the original amount for editing.
-              setCustomItems([{ id: Date.now(), description: `Editing Invoice ${invoiceToEdit.invoiceNumber}`, quantity: 1, price: invoiceToEdit.originalAmount }]);
-              setLoggedEntries([]);
-
-              toast({ title: "Editing Invoice", description: `Loaded invoice ${invoiceToEdit.invoiceNumber} for editing.` });
-          }
-          localStorage.removeItem(EDIT_INVOICE_ID_KEY);
-          return;
-      }
-      
-      const templateToEditRaw = localStorage.getItem(EDIT_INVOICE_TEMPLATE_KEY);
-      if (templateToEditRaw) {
-        const templateToEdit: InvoiceTemplate = JSON.parse(templateToEditRaw);
-        
-        const itemsWithIds = templateToEdit.items.map(item => ({
-          ...item,
-          id: Date.now() + Math.random(),
-        }));
-        
-        setCustomItems(itemsWithIds);
-        setSelectedContactId('');
-        setLoggedEntries([]);
-        setTaxType('none');
-        setTaxRate(0);
-        setInvoiceNumber(`INV-${getNextInvoiceNumber()}`);
-        setInvoiceDate(format(new Date(), 'yyyy-MM-dd'));
-        setDueDate(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
-
-        toast({
-          title: "Template Loaded",
-          description: `You are editing the "${templateToEdit.name}" template.`,
-        });
-
-        localStorage.removeItem(EDIT_INVOICE_TEMPLATE_KEY);
-        localStorage.removeItem(INVOICE_DRAFT_KEY);
-        return; 
-      }
-      
-      const defaultTaxSettingsRaw = localStorage.getItem(DEFAULT_INVOICE_TAX_KEY);
-      if (defaultTaxSettingsRaw) {
-        const defaultSettings: DefaultTaxSettings = JSON.parse(defaultTaxSettingsRaw);
-        setTaxType(defaultSettings.taxType);
-        setTaxRate(defaultSettings.taxRate);
-      }
-      
-      const savedDraftRaw = localStorage.getItem(INVOICE_DRAFT_KEY);
-      if (savedDraftRaw) {
-        const savedDraft: InvoiceDraft = JSON.parse(savedDraftRaw);
-        setSelectedContactId(savedDraft.selectedContactId);
-        setInvoiceNumber(savedDraft.invoiceNumber);
-        setInvoiceDate(savedDraft.invoiceDate);
-        setDueDate(savedDraft.dueDate);
-        setTaxType(savedDraft.taxType);
-        setTaxRate(savedDraft.taxRate);
-        setCustomItems(savedDraft.customItems);
-      } else {
-        setInvoiceNumber(`INV-${getNextInvoiceNumber()}`);
-      }
-    } catch (error) {
-      console.error("Failed to initialize invoice page:", error);
-    }
-  }, [toast, getNextInvoiceNumber, contacts]);
-  
-  // Effect to save draft to localStorage whenever relevant state changes
-  useEffect(() => {
-    if (editingInvoiceId) return; // Don't save draft if we are editing an existing invoice
-
-    const isEditingTemplate = !!localStorage.getItem(EDIT_INVOICE_TEMPLATE_KEY);
-    if (isEditingTemplate) return;
-
-    const draft: InvoiceDraft = {
-      selectedContactId,
-      invoiceNumber,
-      invoiceDate,
-      dueDate,
-      taxType,
-      taxRate,
-      customItems,
-    };
-    try {
-      localStorage.setItem(INVOICE_DRAFT_KEY, JSON.stringify(draft));
-    } catch (error) {
-      console.error("Failed to save invoice draft:", error);
-    }
-  }, [selectedContactId, invoiceNumber, invoiceDate, dueDate, taxType, taxRate, customItems, editingInvoiceId]);
+  const clearInvoice = useCallback(() => {
+    setCustomItems([]);
+    setSelectedContactId('');
+    setTaxType('none');
+    setTaxRate(0);
+    setInvoiceNumber(`INV-${nextInvoiceNumber}`);
+    setInvoiceDate(format(new Date(), 'yyyy-MM-dd'));
+    setDueDate(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
+  }, [nextInvoiceNumber]);
 
   useEffect(() => {
     if (taxType === 'none') {
@@ -304,40 +168,6 @@ export function InvoiceGeneratorView() {
     }
   }, [taxType]);
 
-  const fetchLoggedEntries = () => {
-    if (!selectedContactId) {
-      toast({ variant: 'destructive', title: 'Please select a client.' });
-      return;
-    }
-    if (!dateRange?.from || !dateRange?.to) {
-      toast({ variant: 'destructive', title: 'Please select a date range.' });
-      return;
-    }
-
-    try {
-      const allEntriesRaw = localStorage.getItem('eventEntries');
-      if (!allEntriesRaw) {
-        toast({ title: 'No entries found', description: 'There are no logged client activities.' });
-        setLoggedEntries([]);
-        return;
-      }
-      
-      const allEntries: EventEntry[] = JSON.parse(allEntriesRaw);
-      const filtered = allEntries.filter(entry => {
-        const entryDate = new Date(entry.startTime);
-        return entry.contactId === selectedContactId &&
-               entryDate >= dateRange.from! &&
-               entryDate <= dateRange.to!;
-      });
-      
-      setLoggedEntries(filtered);
-      toast({ title: `${filtered.length} entries found for the selected client and date range.` });
-    } catch (error) {
-      console.error("Error fetching logged entries:", error);
-      toast({ variant: "destructive", title: "Error", description: "Could not fetch logged entries." });
-    }
-  };
-  
   const addCustomItem = () => {
     setCustomItems([...customItems, { id: Date.now(), description: '', quantity: 1, price: 0 }]);
   };
@@ -362,10 +192,8 @@ export function InvoiceGeneratorView() {
   const selectedContact = useMemo(() => contacts.find(c => c.id === selectedContactId), [contacts, selectedContactId]);
 
   const subtotal = useMemo(() => {
-    const timeTotal = loggedEntries.reduce((acc, entry) => acc + (entry.duration / 3600) * entry.billableRate, 0);
-    const itemsTotal = customItems.reduce((acc, item) => acc + item.quantity * item.price, 0);
-    return timeTotal + itemsTotal;
-  }, [loggedEntries, customItems]);
+    return customItems.reduce((acc, item) => acc + item.quantity * item.price, 0);
+  }, [customItems]);
 
   const taxAmount = useMemo(() => {
     if (taxRate <= 0) return 0;
@@ -377,64 +205,35 @@ export function InvoiceGeneratorView() {
   }, [subtotal, taxAmount]);
 
   const handlePrint = () => window.print();
-
-  const clearInvoice = useCallback(() => {
-    setCustomItems([]);
-    setLoggedEntries([]);
-    setSelectedContactId('');
-    setTaxType('none');
-    setTaxRate(0);
-    setEditingInvoiceId(null);
-    setInvoiceNumber(`INV-${getNextInvoiceNumber()}`);
-    setInvoiceDate(format(new Date(), 'yyyy-MM-dd'));
-    setDueDate(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
-    localStorage.removeItem(INVOICE_DRAFT_KEY);
-  }, [getNextInvoiceNumber]);
   
-  const handleFinalizeInvoice = () => {
+  const handleFinalizeInvoice = async () => {
+    if (!user) {
+        toast({ variant: "destructive", title: "Authentication error" });
+        return;
+    }
     if (!selectedContact) {
       toast({ variant: 'destructive', title: 'Client Required', description: 'Please select a client.' });
       return;
     }
-    if (loggedEntries.length === 0 && customItems.length === 0) {
+    if (customItems.length === 0) {
       toast({ variant: 'destructive', title: 'Empty Invoice', description: 'Please add at least one line item.' });
       return;
     }
     
     try {
-        const existingInvoicesRaw = localStorage.getItem(FINALIZED_INVOICES_KEY);
-        const existingInvoices: FinalizedInvoice[] = existingInvoicesRaw ? JSON.parse(existingInvoicesRaw) : [];
-        let updatedInvoices: FinalizedInvoice[];
-
-        if (editingInvoiceId) {
-            updatedInvoices = existingInvoices.map(inv => {
-                if (inv.id === editingInvoiceId) {
-                    return {
-                        ...inv,
-                        invoiceNumber,
-                        clientName: selectedContact.name,
-                        originalAmount: total,
-                        dueDate,
-                    };
-                }
-                return inv;
-            });
-            toast({ title: "Invoice Updated", description: `Invoice ${invoiceNumber} has been saved.` });
-        } else {
-            const newInvoice: FinalizedInvoice = {
-                id: `inv-${Date.now()}`,
-                invoiceNumber,
-                clientName: selectedContact.name,
-                originalAmount: total,
-                amountPaid: 0,
-                dueDate,
-            };
-            updatedInvoices = [newInvoice, ...existingInvoices];
-            localStorage.setItem(INVOICE_NEXT_NUMBER_KEY, String(getNextInvoiceNumber() + 1));
-            toast({ title: "Invoice Finalized", description: `Invoice ${invoiceNumber} has been saved.` });
-        }
-        
-        localStorage.setItem(FINALIZED_INVOICES_KEY, JSON.stringify(updatedInvoices));
+        const newInvoiceData: Omit<Invoice, 'id'> = {
+            invoiceNumber,
+            clientName: selectedContact.name,
+            originalAmount: total,
+            amountPaid: 0,
+            dueDate: new Date(dueDate),
+            status: 'outstanding',
+            userId: user.uid,
+            createdAt: new Date(),
+        };
+        await addInvoice(newInvoiceData);
+        toast({ title: "Invoice Finalized", description: `Invoice ${invoiceNumber} has been saved.` });
+        setNextInvoiceNumber(prev => prev + 1);
         clearInvoice();
 
     } catch (error) {
@@ -613,26 +412,6 @@ export function InvoiceGeneratorView() {
                       </div>
                   </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                  <div className="space-y-2 lg:col-span-2">
-                      <Label>Date Range for Time Logs</Label>
-                      <Popover>
-                      <PopoverTrigger asChild>
-                          <Button id="date" variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dateRange && "text-muted-foreground")}>
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {dateRange?.from ? (dateRange.to ? <>{format(dateRange.from, "LLL dd, y")} - {format(dateRange.to, "LLL dd, y")}</> : format(dateRange.from, "LLL dd, y")) : <span>Pick a date range</span>}
-                          </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={1}/>
-                      </PopoverContent>
-                      </Popover>
-                  </div>
-                  <div className="lg:col-span-2">
-                      <Button className="w-full" onClick={fetchLoggedEntries}>Fetch Logged Activities</Button>
-                  </div>
-              </div>
               
               <Separator />
 
@@ -682,10 +461,10 @@ export function InvoiceGeneratorView() {
 
         <Card>
             <CardHeader className="flex-row justify-between items-center">
-                <CardTitle>{editingInvoiceId ? "Editing Invoice" : "Invoice Preview"}</CardTitle>
+                <CardTitle>Invoice Preview</CardTitle>
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="sm" onClick={handleClearInvoice}><Trash2 className="mr-2 h-4 w-4" /> Clear</Button>
-                    <Button variant="outline" onClick={handleFinalizeInvoice}><Mail className="mr-2 h-4 w-4" /> {editingInvoiceId ? 'Save Changes' : 'Finalize & Send'}</Button>
+                    <Button variant="outline" onClick={handleFinalizeInvoice}><Mail className="mr-2 h-4 w-4" /> Finalize & Send</Button>
                     <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
                     <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
                         <DialogTrigger asChild>
@@ -725,34 +504,6 @@ export function InvoiceGeneratorView() {
                             <div className="flex items-center justify-end gap-1">
                               <p className="text-gray-500">#</p>
                               <Input type="text" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className="w-32 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" />
-                              <Dialog open={isInvoiceSettingsOpen} onOpenChange={setIsInvoiceSettingsOpen}>
-                                  <DialogTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-6 w-6"><Settings className="h-4 w-4" /></Button>
-                                  </DialogTrigger>
-                                  <DialogContent>
-                                      <DialogHeader><DialogTitle>Invoice Number Settings</DialogTitle></DialogHeader>
-                                      <div className="py-4 space-y-4">
-                                          <div className="space-y-2">
-                                              <Label htmlFor="next-inv-num">Set Next Invoice Number</Label>
-                                              <Input id="next-inv-num" type="number" defaultValue={getNextInvoiceNumber()} onBlur={(e) => {
-                                                  const num = parseInt(e.target.value, 10);
-                                                  if (!isNaN(num)) {
-                                                      localStorage.setItem(INVOICE_NEXT_NUMBER_KEY, String(num));
-                                                  }
-                                              }}/>
-                                          </div>
-                                          <Button variant="destructive" onClick={() => {
-                                              localStorage.setItem(INVOICE_NEXT_NUMBER_KEY, String(DEFAULT_INVOICE_START_NUMBER));
-                                              toast({ title: "Invoice numbering has been reset."});
-                                              setIsInvoiceSettingsOpen(false);
-                                              clearInvoice();
-                                          }}>Reset Numbering</Button>
-                                      </div>
-                                      <DialogFooter>
-                                          <Button onClick={() => setIsInvoiceSettingsOpen(false)}>Done</Button>
-                                      </DialogFooter>
-                                  </DialogContent>
-                              </Dialog>
                             </div>
                         </div>
                     </header>
@@ -780,26 +531,15 @@ export function InvoiceGeneratorView() {
                         <Table className="text-sm">
                             <TableHeader className="bg-gray-100">
                                 <TableRow>
-                                    <TableHead className="w-12 text-center text-gray-600">#</TableHead>
                                     <TableHead className="w-1/2 text-gray-600">Description</TableHead>
                                     <TableHead className="text-center text-gray-600">Rate / Price</TableHead>
-                                    <TableHead className="text-center text-gray-600">Hours / Qty</TableHead>
+                                    <TableHead className="text-center text-gray-600">Qty</TableHead>
                                     <TableHead className="text-right text-gray-600">Total</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {loggedEntries.map((entry, index) => (
-                                    <TableRow key={entry.id}>
-                                        <TableCell className="text-center">{index + 1}</TableCell>
-                                        <TableCell>{entry.subject}</TableCell>
-                                        <TableCell className="text-center">{formatCurrency(entry.billableRate)}</TableCell>
-                                        <TableCell className="text-center">{formatTime(entry.duration)}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency((entry.duration / 3600) * entry.billableRate)}</TableCell>
-                                    </TableRow>
-                                ))}
                                 {customItems.map((item, index) => (
                                     <TableRow key={item.id}>
-                                        <TableCell className="text-center">{loggedEntries.length + index + 1}</TableCell>
                                         <TableCell className="whitespace-pre-wrap">{item.description}</TableCell>
                                         <TableCell className="text-center">{formatCurrency(item.price)}</TableCell>
                                         <TableCell className="text-center">{item.quantity}</TableCell>
