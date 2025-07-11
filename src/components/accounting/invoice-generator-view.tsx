@@ -55,7 +55,6 @@ const formatCurrency = (amount: number) => {
 // LocalStorage Keys
 const INVOICE_TEMPLATES_KEY = 'invoiceTemplates';
 const EDIT_INVOICE_ID_KEY = 'editInvoiceId';
-const FINALIZED_INVOICES_KEY = 'ogeemo-finalized-invoices';
 
 const predefinedItems = [
   { description: 'Consulting Services', price: 150.00 },
@@ -482,7 +481,7 @@ export function InvoiceGeneratorView() {
             </CardContent>
             <CardFooter className="justify-between">
                  <div className="flex items-center gap-2">
-                    <Button onClick={handleSendEmail}><Mail className="mr-2 h-4 w-4" /> Send Email</Button>
+                    <Button onClick={handleSendEmail}><Mail className="mr-2 h-4 w-4" /> Email Invoice</Button>
                     <Button variant="ghost" size="sm" onClick={handleClearInvoice}><Trash2 className="mr-2 h-4 w-4" /> Clear</Button>
                  </div>
                  <div>
