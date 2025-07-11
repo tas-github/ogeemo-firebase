@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
 import { format, addDays } from 'date-fns';
-import { Calendar as CalendarIcon, Plus, Trash2, Printer, Save, Mail, Info, Settings, PlusCircle, LoaderCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Trash2, Printer, Save, Mail, Info } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { AccountingPageHeader } from './page-header';
@@ -30,12 +30,8 @@ import {
 } from '@/components/ui/dialog';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/context/auth-context';
-import { getContacts, getFolders, addContact, type Contact, type FolderData } from '@/services/contact-service';
+import { getContacts, type Contact } from '@/services/contact-service';
 import { addInvoice, getInvoices, type Invoice } from '@/services/accounting-service';
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 
 // Types
@@ -58,7 +54,8 @@ const formatCurrency = (amount: number) => {
 
 // LocalStorage Keys
 const INVOICE_TEMPLATES_KEY = 'invoiceTemplates';
-
+const EDIT_INVOICE_ID_KEY = 'editInvoiceId';
+const FINALIZED_INVOICES_KEY = 'ogeemo-finalized-invoices';
 
 const predefinedItems = [
   { description: 'Consulting Services', price: 150.00 },
@@ -68,18 +65,11 @@ const predefinedItems = [
   { description: 'Monthly Retainer', price: 2500.00 },
 ];
 
-const newContactSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  email: z.string().email({ message: "Please enter a valid email." }),
-  folderId: z.string({ required_error: "Please select a folder." }),
-});
-
 
 export function InvoiceGeneratorView() {
   const { user } = useAuth();
   // State hooks
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [folders, setFolders] = useState<FolderData[]>([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [nextInvoiceNumber, setNextInvoiceNumber] = useState(101);
 
@@ -95,16 +85,11 @@ export function InvoiceGeneratorView() {
   const [invoiceNotes, setInvoiceNotes] = useState('Thank you for your business!');
 
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
-  const [isNewContactDialogOpen, setIsNewContactDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
 
   const { toast } = useToast();
   const printRef = useRef<HTMLDivElement>(null);
   
-  const newContactForm = useForm<z.infer<typeof newContactSchema>>({
-    resolver: zodResolver(newContactSchema),
-    defaultValues: { name: "", email: "", folderId: "" },
-  });
 
   // Effects for data loading and initialization
   useEffect(() => {
@@ -115,13 +100,11 @@ export function InvoiceGeneratorView() {
         }
         setIsDataLoading(true);
         try {
-            const [fetchedContacts, fetchedFolders, fetchedInvoices] = await Promise.all([
+            const [fetchedContacts, fetchedInvoices] = await Promise.all([
                 getContacts(user.uid),
-                getFolders(user.uid),
                 getInvoices(user.uid)
             ]);
             setContacts(fetchedContacts);
-            setFolders(fetchedFolders);
             
             const maxInvoiceNum = fetchedInvoices.reduce((max, inv) => {
                 const num = parseInt(inv.invoiceNumber.replace(/\D/g, ''), 10);
@@ -130,11 +113,6 @@ export function InvoiceGeneratorView() {
             const nextNum = maxInvoiceNum > 0 ? maxInvoiceNum + 1 : 101;
             setNextInvoiceNumber(nextNum);
             setInvoiceNumber(`INV-${nextNum}`);
-
-            if (fetchedFolders.length > 0) {
-              const mainFolder = fetchedFolders.find(f => !f.parentId) || fetchedFolders[0];
-              newContactForm.setValue('folderId', mainFolder.id);
-            }
         } catch (error) {
             console.error("Failed to load initial data:", error);
             toast({ variant: 'destructive', title: "Error", description: "Could not load initial data." });
@@ -143,7 +121,7 @@ export function InvoiceGeneratorView() {
         }
     }
     loadInitialData();
-  }, [user, toast, newContactForm]);
+  }, [user, toast]);
   
   const clearInvoice = useCallback(() => {
     setCustomItems([]);
@@ -198,7 +176,9 @@ export function InvoiceGeneratorView() {
     return subtotal + taxAmount;
   }, [subtotal, taxRate]);
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    window.print();
+  };
   
   const handleSaveInvoice = async () => {
     if (!user) {
@@ -290,27 +270,6 @@ export function InvoiceGeneratorView() {
       });
     }
   };
-  
-  async function handleCreateNewContact(values: z.infer<typeof newContactSchema>) {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to create a contact.' });
-        return;
-    }
-
-    try {
-        const newContact = await addContact({ ...values, userId: user.uid });
-        setContacts(prev => [...prev, newContact].sort((a,b) => a.name.localeCompare(b.name)));
-        setSelectedContactId(newContact.id); // Select the new contact
-        
-        newContactForm.reset();
-        setIsNewContactDialogOpen(false);
-    
-        toast({ title: 'Contact Created', description: `${newContact.name} has been added.` });
-    } catch(error: any) {
-        console.error("Failed to save contact:", error);
-        toast({ variant: "destructive", title: "Save Failed", description: error.message });
-    }
-  }
 
 
   return (
@@ -342,20 +301,14 @@ export function InvoiceGeneratorView() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="space-y-2 lg:col-span-2">
                       <Label htmlFor="client-select">Client</Label>
-                       <div className="flex items-center gap-2">
-                          <Select value={selectedContactId} onValueChange={setSelectedContactId} disabled={isDataLoading}>
-                              <SelectTrigger id="client-select">
-                                  <SelectValue placeholder={isDataLoading ? "Loading contacts..." : "Select a client..."} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                  {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                              </SelectContent>
-                          </Select>
-                          <Button type="button" variant="outline" size="icon" onClick={() => setIsNewContactDialogOpen(true)} disabled={isDataLoading}>
-                              <PlusCircle className="h-4 w-4" />
-                              <span className="sr-only">Add New Client</span>
-                          </Button>
-                      </div>
+                      <Select value={selectedContactId} onValueChange={setSelectedContactId} disabled={isDataLoading}>
+                          <SelectTrigger id="client-select">
+                              <SelectValue placeholder={isDataLoading ? "Loading contacts..." : "Select a client..."} />
+                          </SelectTrigger>
+                          <SelectContent>
+                              {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                          </SelectContent>
+                      </Select>
                   </div>
                   <div className="space-y-2">
                       <Label htmlFor="tax-type">Tax Type</Label>
@@ -562,28 +515,6 @@ export function InvoiceGeneratorView() {
             </CardFooter>
         </Card>
       </div>
-
-      <Dialog open={isNewContactDialogOpen} onOpenChange={setIsNewContactDialogOpen}>
-          <DialogContent>
-              <DialogHeader>
-                  <DialogTitle>Create New Contact</DialogTitle>
-                  <DialogDescription>
-                  This contact will be added to your contact list and selected for this invoice.
-                  </DialogDescription>
-              </DialogHeader>
-              <Form {...newContactForm}>
-                  <form onSubmit={newContactForm.handleSubmit(handleCreateNewContact)} className="space-y-4 py-4">
-                      <FormField control={newContactForm.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                      <FormField control={newContactForm.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                      <FormField control={newContactForm.control} name="folderId" render={({ field }) => ( <FormItem> <FormLabel>Folder</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a folder" /></SelectTrigger></FormControl><SelectContent>{folders.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
-                      <DialogFooter className="pt-4 !mt-0">
-                          <Button type="button" variant="ghost" onClick={() => setIsNewContactDialogOpen(false)}>Cancel</Button>
-                          <Button type="submit">Create Contact</Button>
-                      </DialogFooter>
-                  </form>
-              </Form>
-          </DialogContent>
-      </Dialog>
     </>
   );
 }
