@@ -92,6 +92,7 @@ export function InvoiceGeneratorView() {
   
   const [taxType, setTaxType] = useState('none');
   const [taxRate, setTaxRate] = useState(0);
+  const [invoiceNotes, setInvoiceNotes] = useState('Thank you for your business!');
 
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [isNewContactDialogOpen, setIsNewContactDialogOpen] = useState(false);
@@ -152,6 +153,7 @@ export function InvoiceGeneratorView() {
     setInvoiceNumber(`INV-${nextInvoiceNumber}`);
     setInvoiceDate(format(new Date(), 'yyyy-MM-dd'));
     setDueDate(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
+    setInvoiceNotes('Thank you for your business!');
   }, [nextInvoiceNumber]);
 
   useEffect(() => {
@@ -539,9 +541,16 @@ export function InvoiceGeneratorView() {
                             </div>
                         </div>
                     </section>
-
-                    <footer className="mt-12 pt-6 border-t text-center text-xs text-gray-400">
-                        <p>Thank you for your business!</p>
+                    
+                    <footer className="mt-12 pt-6 border-t">
+                        <Label htmlFor="invoice-notes" className="text-xs text-gray-500">Notes / Terms</Label>
+                        <Textarea
+                            id="invoice-notes"
+                            placeholder="e.g., Thank you for your business!"
+                            value={invoiceNotes}
+                            onChange={(e) => setInvoiceNotes(e.target.value)}
+                            className="mt-1 text-xs text-gray-600 border-none p-0 focus-visible:ring-0 shadow-none bg-transparent resize-none text-center"
+                        />
                     </footer>
                 </div>
             </CardContent>
