@@ -198,7 +198,7 @@ export function InvoiceGeneratorView() {
 
   const handlePrint = () => window.print();
   
-  const handleFinalizeInvoice = async () => {
+  const handleSaveInvoice = async () => {
     if (!user) {
         toast({ variant: "destructive", title: "Authentication error" });
         return;
@@ -224,14 +224,25 @@ export function InvoiceGeneratorView() {
             createdAt: new Date(),
         };
         await addInvoice(newInvoiceData);
-        toast({ title: "Invoice Finalized", description: `Invoice ${invoiceNumber} has been saved.` });
+        toast({ title: "Invoice Saved", description: `Invoice ${invoiceNumber} has been saved.` });
         setNextInvoiceNumber(prev => prev + 1);
         clearInvoice();
 
     } catch (error) {
-        console.error("Failed to finalize invoice:", error);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not save the finalized invoice.' });
+        console.error("Failed to save invoice:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not save the invoice.' });
     }
+  };
+  
+  const handleSendEmail = () => {
+      if (!selectedContact) {
+          toast({ variant: 'destructive', title: 'Cannot Send', description: 'Please select a client first.' });
+          return;
+      }
+      toast({
+          title: "Email Sent (Simulation)",
+          description: `Invoice ${invoiceNumber} has been sent to ${selectedContact.name}.`,
+      });
   };
 
   const handleClearInvoice = () => {
@@ -423,8 +434,6 @@ export function InvoiceGeneratorView() {
                 <CardTitle>Invoice Preview</CardTitle>
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="sm" onClick={handleClearInvoice}><Trash2 className="mr-2 h-4 w-4" /> Clear</Button>
-                    <Button variant="outline" onClick={handleFinalizeInvoice}><Mail className="mr-2 h-4 w-4" /> Finalize & Send</Button>
-                    <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
                     <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
                         <DialogTrigger asChild>
                             <Button variant="outline"><Save className="mr-2 h-4 w-4" /> Save as Template</Button>
@@ -452,6 +461,7 @@ export function InvoiceGeneratorView() {
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
+                    <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
                 </div>
             </CardHeader>
             <CardContent>
@@ -535,6 +545,12 @@ export function InvoiceGeneratorView() {
                     </footer>
                 </div>
             </CardContent>
+            <CardFooter>
+                 <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={handleSaveInvoice}><Save className="mr-2 h-4 w-4" /> Save Invoice</Button>
+                    <Button onClick={handleSendEmail}><Mail className="mr-2 h-4 w-4" /> Send Email</Button>
+                </div>
+            </CardFooter>
         </Card>
       </div>
 
