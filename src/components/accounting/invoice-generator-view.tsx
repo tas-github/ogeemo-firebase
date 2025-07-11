@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { format, addDays, isValid, parseISO } from 'date-fns';
-import { Plus, Trash2, Printer, Save, Mail, Info, LoaderCircle, FileUp } from 'lucide-react';
+import { Plus, Trash2, Printer, Save, Mail, Info, LoaderCircle, FileUp, FileText } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { AccountingPageHeader } from './page-header';
@@ -81,6 +81,7 @@ export function InvoiceGeneratorView() {
 
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
+  const [templates, setTemplates] = useState<InvoiceTemplate[]>([]);
   
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -109,6 +110,11 @@ export function InvoiceGeneratorView() {
             const editId = localStorage.getItem(EDIT_INVOICE_ID_KEY);
             const fetchedContacts = await getContacts(user.uid);
             setContacts(fetchedContacts);
+
+            const savedTemplatesRaw = localStorage.getItem(INVOICE_TEMPLATES_KEY);
+            if (savedTemplatesRaw) {
+                setTemplates(JSON.parse(savedTemplatesRaw));
+            }
             
             if (editId) {
                 setInvoiceToEditId(editId);
@@ -180,6 +186,15 @@ export function InvoiceGeneratorView() {
   
   const removeCustomItem = (id: number) => {
     setCustomItems(customItems.filter(item => item.id !== id));
+  };
+  
+  const applyTemplate = (template: InvoiceTemplate) => {
+    const newItems = template.items.map(item => ({...item, id: Date.now() + Math.random()}));
+    setCustomItems(prev => [...prev, ...newItems]);
+    toast({
+      title: "Template Applied",
+      description: `Added ${newItems.length} items from "${template.name}".`
+    })
   };
 
   const selectedContact = useMemo(() => contacts.find(c => c.id === selectedContactId), [contacts, selectedContactId]);
@@ -272,9 +287,8 @@ export function InvoiceGeneratorView() {
     
     const templateData: InvoiceTemplate = { name: newTemplateName, items: customItems.map(({ id, ...item }) => item) };
     try {
-      const existingTemplatesRaw = localStorage.getItem(INVOICE_TEMPLATES_KEY);
-      const existingTemplates: InvoiceTemplate[] = existingTemplatesRaw ? JSON.parse(existingTemplatesRaw) : [];
-      const updatedTemplates = [...existingTemplates, templateData];
+      const updatedTemplates = [...templates, templateData];
+      setTemplates(updatedTemplates);
       localStorage.setItem(INVOICE_TEMPLATES_KEY, JSON.stringify(updatedTemplates));
       toast({ title: 'Template Saved!', description: `Template "${newTemplateName}" has been saved.` });
       setIsTemplateDialogOpen(false);
@@ -348,6 +362,27 @@ export function InvoiceGeneratorView() {
                       </div>
                   )}
               </div>
+               {templates.length > 0 && (
+                <>
+                    <Separator />
+                    <div>
+                        <h4 className="font-semibold text-base mb-2">Apply a Template</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {templates.map((template, index) => (
+                                <Card key={index} className="flex flex-col">
+                                    <CardHeader className="p-4">
+                                        <CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />{template.name}</CardTitle>
+                                        <CardDescription>{template.items.length} item(s)</CardDescription>
+                                    </CardHeader>
+                                    <CardFooter className="p-4 pt-0">
+                                        <Button variant="outline" size="sm" onClick={() => applyTemplate(template)}>Apply Template</Button>
+                                    </CardFooter>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+                </>
+               )}
           </CardContent>
         </Card>
 
