@@ -122,9 +122,9 @@ export function InvoiceGeneratorView() {
                     setSelectedContactId(invoiceToLoad.contactId);
                     setInvoiceDate(format(invoiceToLoad.invoiceDate, 'yyyy-MM-dd'));
                     setDueDate(format(invoiceToLoad.dueDate, 'yyyy-MM-dd'));
-                    setTaxType(invoiceToLoad.taxType);
-                    setTaxRate(invoiceToLoad.taxRate);
-                    setInvoiceNotes(invoiceToLoad.notes);
+                    setTaxType(invoiceToLoad.taxType || 'none');
+                    setTaxRate(invoiceToLoad.taxRate || 0);
+                    setInvoiceNotes(invoiceToLoad.notes || '');
                     setCustomItems(itemsToLoad.map((item, index) => ({
                         id: Date.now() + index, // Assign temporary unique ID for the UI
                         description: item.description,
@@ -197,7 +197,7 @@ export function InvoiceGeneratorView() {
 
   const total = useMemo(() => {
     return subtotal + taxAmount;
-  }, [subtotal, taxRate]);
+  }, [subtotal, taxAmount]);
 
   const handlePrint = () => {
     window.print();
