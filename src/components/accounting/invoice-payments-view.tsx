@@ -44,7 +44,7 @@ import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { useToast } from '@/hooks/use-toast';
 import { format as formatDate } from "date-fns";
 import { useAuth } from '@/context/auth-context';
-import { getInvoices, updateInvoice, deleteInvoice, type Invoice } from '@/services/accounting-service';
+import { getInvoices, updateInvoiceWithLineItems, deleteInvoice, type Invoice } from '@/services/accounting-service';
 
 const EDIT_INVOICE_ID_KEY = 'editInvoiceId';
 const RECEIPT_DATA_KEY = 'ogeemo-receipt-data';
@@ -69,7 +69,7 @@ export function InvoicePaymentsView() {
             setIsLoading(true);
             try {
                 const fetchedInvoices = await getInvoices(user.uid);
-                setInvoices(fetchedInvoices);
+                setInvoices(fetchedInvoices.sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime()));
             } catch (error) {
                 console.error("Failed to load invoice data:", error);
                 toast({ variant: 'destructive', title: 'Error', description: 'Could not load invoice data.' });
@@ -95,7 +95,7 @@ export function InvoicePaymentsView() {
 
         try {
             const newAmountPaid = invoiceToPay.amountPaid + Number(paymentAmount);
-            await updateInvoice(invoiceToPay.id, { amountPaid: newAmountPaid });
+            await updateInvoiceWithLineItems(invoiceToPay.id, { amountPaid: newAmountPaid }, []); // Pass empty array as we're not changing line items
 
             setInvoices(prev => 
                 prev.map(inv => 
@@ -148,7 +148,7 @@ export function InvoicePaymentsView() {
         
         try {
             const receiptPayload = {
-                invoice: { ...invoice, dueDate: invoice.dueDate.toISOString() }, // Serialize date
+                invoice: { ...invoice, dueDate: invoice.dueDate.toISOString(), createdAt: invoice.createdAt.toISOString(), invoiceDate: invoice.invoiceDate.toISOString() }, // Serialize dates
                 carryForwardAmount
             };
             sessionStorage.setItem(RECEIPT_DATA_KEY, JSON.stringify(receiptPayload));
@@ -221,9 +221,7 @@ export function InvoicePaymentsView() {
                                                 <TableCell className="text-center"><Badge variant={badgeVariant} className={badgeVariant === 'secondary' ? 'bg-green-100 text-green-800' : ''}>{status}</Badge></TableCell>
                                                 <TableCell className="text-right">
                                                     <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
-                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
                                                             <DropdownMenuItem onSelect={() => handleOpenPaymentDialog(invoice)} disabled={status === 'Paid'}><HandCoins className="mr-2 h-4 w-4"/>Post Payment</DropdownMenuItem>
                                                             <DropdownMenuItem onSelect={() => handleCreateReceipt(invoice)}><FileText className="mr-2 h-4 w-4"/>Create Receipt</DropdownMenuItem>
@@ -266,7 +264,7 @@ export function InvoicePaymentsView() {
             
             <AlertDialog open={!!invoiceToDelete} onOpenChange={() => setInvoiceToDelete(null)}>
                 <AlertDialogContent>
-                    <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete invoice {invoiceToDelete?.invoiceNumber}.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete invoice {invoiceToDelete?.invoiceNumber} and all of its data.</AlertDialogDescription></AlertDialogHeader>
                     <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteInvoice} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

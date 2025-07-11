@@ -5,6 +5,7 @@ import { db } from '@/lib/firebase';
 import {
   collection,
   getDocs,
+  getDoc,
   doc,
   addDoc,
   updateDoc,
@@ -14,6 +15,7 @@ import {
   DocumentData,
   QueryDocumentSnapshot,
   Timestamp,
+  writeBatch,
 } from 'firebase/firestore';
 
 // --- Base Interface ---
@@ -30,34 +32,65 @@ interface BaseTransaction {
 }
 
 // --- Invoice Interfaces & Functions ---
+export interface InvoiceLineItem {
+  id?: string; // Optional because it won't exist before being saved
+  invoiceId: string;
+  description: string;
+  quantity: number;
+  price: number;
+}
+
 export interface Invoice {
   id: string;
   invoiceNumber: string;
   clientName: string;
+  contactId: string;
   originalAmount: number;
   amountPaid: number;
   dueDate: Date;
-  status: 'paid' | 'partially_paid' | 'overdue' | 'outstanding';
+  invoiceDate: Date;
+  status: 'outstanding' | 'paid' | 'partially_paid' | 'overdue';
+  notes: string;
+  taxRate: number;
+  taxType: string;
   userId: string;
   createdAt: Date;
 }
 
 const INVOICES_COLLECTION = 'invoices';
+const LINE_ITEMS_COLLECTION = 'invoiceLineItems';
 
-const docToInvoice = (doc: QueryDocumentSnapshot<DocumentData>): Invoice => {
+const docToInvoice = (doc: QueryDocumentSnapshot<DocumentData> | DocumentData): Invoice => {
     const data = doc.data();
     return {
         id: doc.id,
         invoiceNumber: data.invoiceNumber,
         clientName: data.clientName,
+        contactId: data.contactId,
         originalAmount: data.originalAmount,
         amountPaid: data.amountPaid,
         dueDate: (data.dueDate as Timestamp)?.toDate ? (data.dueDate as Timestamp).toDate() : new Date(data.dueDate),
+        invoiceDate: (data.invoiceDate as Timestamp)?.toDate ? (data.invoiceDate as Timestamp).toDate() : new Date(data.invoiceDate),
         status: data.status,
+        notes: data.notes,
+        taxRate: data.taxRate,
+        taxType: data.taxType,
         userId: data.userId,
         createdAt: (data.createdAt as Timestamp)?.toDate ? (data.createdAt as Timestamp).toDate() : new Date(),
     } as Invoice;
 };
+
+const docToLineItem = (doc: QueryDocumentSnapshot<DocumentData>): InvoiceLineItem => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        invoiceId: data.invoiceId,
+        description: data.description,
+        quantity: data.quantity,
+        price: data.price,
+    } as InvoiceLineItem;
+};
+
 
 export async function getInvoices(userId: string): Promise<Invoice[]> {
   if (!db) throw new Error("Firestore not initialized");
@@ -66,22 +99,89 @@ export async function getInvoices(userId: string): Promise<Invoice[]> {
   return snapshot.docs.map(docToInvoice);
 }
 
-export async function addInvoice(invoiceData: Omit<Invoice, 'id'>): Promise<Invoice> {
-  if (!db) throw new Error("Firestore not initialized");
-  const docRef = await addDoc(collection(db, INVOICES_COLLECTION), invoiceData);
-  return { id: docRef.id, ...invoiceData };
+export async function getInvoiceById(invoiceId: string): Promise<Invoice | null> {
+    if (!db) throw new Error("Firestore not initialized");
+    const docRef = doc(db, INVOICES_COLLECTION, invoiceId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return docToInvoice(docSnap);
+    }
+    return null;
 }
 
-export async function updateInvoice(invoiceId: string, invoiceData: Partial<Omit<Invoice, 'id' | 'userId'>>): Promise<void> {
+export async function getLineItemsForInvoice(invoiceId: string): Promise<InvoiceLineItem[]> {
     if (!db) throw new Error("Firestore not initialized");
-    const invoiceRef = doc(db, INVOICES_COLLECTION, invoiceId);
-    await updateDoc(invoiceRef, invoiceData);
+    const q = query(collection(db, LINE_ITEMS_COLLECTION), where("invoiceId", "==", invoiceId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(docToLineItem);
 }
+
+
+export async function addInvoiceWithLineItems(
+    invoiceData: Omit<Invoice, 'id' | 'createdAt'>, 
+    lineItems: Omit<InvoiceLineItem, 'invoiceId'>[]
+): Promise<Invoice> {
+    if (!db) throw new Error("Firestore not initialized");
+    const batch = writeBatch(db);
+
+    const invoiceRef = doc(collection(db, INVOICES_COLLECTION));
+    batch.set(invoiceRef, { ...invoiceData, createdAt: new Date() });
+
+    lineItems.forEach(item => {
+        const itemRef = doc(collection(db, LINE_ITEMS_COLLECTION));
+        batch.set(itemRef, { ...item, invoiceId: invoiceRef.id });
+    });
+
+    await batch.commit();
+
+    return { id: invoiceRef.id, ...invoiceData, createdAt: new Date() };
+}
+
+export async function updateInvoiceWithLineItems(
+    invoiceId: string, 
+    invoiceData: Partial<Omit<Invoice, 'id' | 'userId'>>, 
+    lineItems: InvoiceLineItem[]
+): Promise<void> {
+    if (!db) throw new Error("Firestore not initialized");
+    const batch = writeBatch(db);
+
+    const invoiceRef = doc(db, INVOICES_COLLECTION, invoiceId);
+    batch.update(invoiceRef, invoiceData);
+
+    // First, delete all existing line items for this invoice
+    const existingItemsQuery = query(collection(db, LINE_ITEMS_COLLECTION), where("invoiceId", "==", invoiceId));
+    const existingItemsSnapshot = await getDocs(existingItemsQuery);
+    existingItemsSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+
+    // Then, add the new/updated line items
+    lineItems.forEach(item => {
+        const { id, ...itemData } = item; // Exclude ID from new data
+        const itemRef = doc(collection(db, LINE_ITEMS_COLLECTION));
+        batch.set(itemRef, { ...itemData, invoiceId });
+    });
+    
+    await batch.commit();
+}
+
 
 export async function deleteInvoice(invoiceId: string): Promise<void> {
     if (!db) throw new Error("Firestore not initialized");
+    const batch = writeBatch(db);
+    
+    // Delete invoice
     const invoiceRef = doc(db, INVOICES_COLLECTION, invoiceId);
-    await deleteDoc(invoiceRef);
+    batch.delete(invoiceRef);
+
+    // Delete associated line items
+    const lineItemsQuery = query(collection(db, LINE_ITEMS_COLLECTION), where("invoiceId", "==", invoiceId));
+    const lineItemsSnapshot = await getDocs(lineItemsQuery);
+    lineItemsSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+    
+    await batch.commit();
 }
 
 // --- Income Interfaces & Functions ---
