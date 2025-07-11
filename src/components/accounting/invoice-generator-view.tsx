@@ -155,7 +155,10 @@ export function InvoiceGeneratorView() {
         }
     }
     loadInitialData();
-  }, [user, toast, clearInvoice]);
+    // This is intentional. We only want this to run once on component mount.
+    // Adding dependencies would cause it to re-run and potentially wipe form state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
   
   useEffect(() => {
     if (taxType === 'none') {
