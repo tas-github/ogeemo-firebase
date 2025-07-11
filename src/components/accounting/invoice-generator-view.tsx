@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { format, addDays, isValid } from 'date-fns';
+import { format, addDays, isValid, parseISO } from 'date-fns';
 import { Plus, Trash2, Printer, Save, Mail, Info, LoaderCircle, FileUp } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
@@ -117,11 +117,11 @@ export function InvoiceGeneratorView() {
                     getLineItemsForInvoice(editId)
                 ]);
 
-                if (invoiceToLoad && isValid(new Date(invoiceToLoad.invoiceDate)) && isValid(new Date(invoiceToLoad.dueDate))) {
+                if (invoiceToLoad) {
                     setInvoiceNumber(invoiceToLoad.invoiceNumber);
                     setSelectedContactId(invoiceToLoad.contactId);
-                    setInvoiceDate(format(new Date(invoiceToLoad.invoiceDate), 'yyyy-MM-dd'));
-                    setDueDate(format(new Date(invoiceToLoad.dueDate), 'yyyy-MM-dd'));
+                    setInvoiceDate(format(invoiceToLoad.invoiceDate, 'yyyy-MM-dd'));
+                    setDueDate(format(invoiceToLoad.dueDate, 'yyyy-MM-dd'));
                     setTaxType(invoiceToLoad.taxType || 'none');
                     setTaxRate(invoiceToLoad.taxRate || 0);
                     setInvoiceNotes(invoiceToLoad.notes || '');
@@ -132,7 +132,7 @@ export function InvoiceGeneratorView() {
                         price: item.price
                     })));
                 } else {
-                    toast({ variant: 'destructive', title: 'Error', description: 'Could not find the invoice to edit or it contains invalid data.' });
+                    toast({ variant: 'destructive', title: 'Error', description: 'Could not find the invoice to edit.' });
                     clearInvoice();
                 }
             } else {
@@ -153,9 +153,7 @@ export function InvoiceGeneratorView() {
         }
     }
     loadInitialData();
-    // This is intentional. We only want this to run once on component mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, toast, clearInvoice]);
   
   useEffect(() => {
     if (taxType === 'none') {
@@ -220,7 +218,7 @@ export function InvoiceGeneratorView() {
                 originalAmount: total,
                 dueDate: new Date(dueDate),
                 invoiceDate: new Date(invoiceDate),
-                status: 'outstanding',
+                status: 'outstanding' as 'outstanding',
                 notes: invoiceNotes,
                 taxRate,
                 taxType: taxType || 'none',
