@@ -30,7 +30,7 @@ export function InvoicePageHeader({ pageTitle }: InvoicePageHeaderProps) {
           <BreadcrumbSeparator />
           <BreadcrumbItem>
              <BreadcrumbLink asChild>
-                <Link href="/accounting/invoices">Invoice Manager</Link>
+                <Link href="/accounting/invoices/payments">Accounts Receivable</Link>
              </BreadcrumbLink>
           </BreadcrumbItem>
            <BreadcrumbSeparator />
@@ -40,9 +40,9 @@ export function InvoicePageHeader({ pageTitle }: InvoicePageHeaderProps) {
         </BreadcrumbList>
       </Breadcrumb>
       <Button asChild variant="outline">
-        <Link href="/accounting/invoices" aria-label="Return to Invoice Manager">
+        <Link href="/accounting/invoices/payments" aria-label="Return to Accounts Receivable">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Hub
+          Back to A/R
         </Link>
       </Button>
     </div>
