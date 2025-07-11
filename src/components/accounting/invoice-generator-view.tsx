@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { format, addDays } from 'date-fns';
-import { Plus, Trash2, Printer, Save, Mail, Info, LoaderCircle } from 'lucide-react';
+import { Plus, Trash2, Printer, Save, Mail, Info, LoaderCircle, FileUp } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { AccountingPageHeader } from './page-header';
@@ -211,7 +211,7 @@ export function InvoiceGeneratorView() {
     if (!selectedContact) { toast({ variant: 'destructive', title: 'Client Required', description: 'Please select a client.' }); return; }
     if (customItems.length === 0) { toast({ variant: 'destructive', title: 'Empty Invoice', description: 'Please add at least one line item.' }); return; }
     
-    const lineItemsToSave = customItems.map(({ id, ...item }) => item);
+    const lineItemsToSave: Omit<InvoiceLineItem, 'id' | 'invoiceId'>[] = customItems.map(({ id, ...item }) => item);
     
     try {
         if (invoiceToEditId) {
@@ -273,6 +273,8 @@ export function InvoiceGeneratorView() {
 
   const handleSaveTemplate = () => {
     if (!newTemplateName.trim()) { toast({ variant: 'destructive', title: 'Template name is required.' }); return; }
+    if (customItems.length === 0) { toast({ variant: 'destructive', title: 'Cannot save an empty template. Please add line items.' }); return; }
+    
     const templateData: InvoiceTemplate = { name: newTemplateName, items: customItems.map(({ id, ...item }) => item) };
     try {
       const existingTemplatesRaw = localStorage.getItem(INVOICE_TEMPLATES_KEY);
@@ -292,6 +294,7 @@ export function InvoiceGeneratorView() {
       return (
         <div className="flex h-full w-full items-center justify-center p-4">
             <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+            <p className="ml-4 text-muted-foreground">Loading invoice data...</p>
         </div>
       );
   }
@@ -311,7 +314,7 @@ export function InvoiceGeneratorView() {
           <CardHeader className="text-center">
               <CardTitle className="flex items-center justify-center gap-2">
                   Invoice Setup
-                  <TooltipProvider><Tooltip><TooltipTrigger asChild><Info className="h-4 w-4 text-muted-foreground" /></TooltipTrigger><TooltipContent><p className="max-w-xs">Use this section to build your invoice. Fetch logged time for a client, add custom items, and set taxes before printing or finalizing.</p></TooltipContent></Tooltip></TooltipProvider>
+                  <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6"><Info className="h-4 w-4 text-muted-foreground" /></Button></TooltipTrigger><TooltipContent><p className="max-w-xs">Use this section to build your invoice. Fetch logged time for a client, add custom items, and set taxes before printing or finalizing.</p></TooltipContent></Tooltip></TooltipProvider>
               </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
