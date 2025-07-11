@@ -46,6 +46,7 @@ const actionItems: ActionItem[] = [
     { href: "/accounting/transactions/expenses", icon: TrendingDown, label: "Add Expense Transaction" },
     { href: "/accounting/invoices/payments", icon: FileOutput, label: "View Accounts Receivable" },
     { href: "/accounting/ledgers", icon: BookText, label: "View General Ledger" },
+    { href: "/accounting/bks-info", icon: Info, label: "BKS Info" },
 ];
 
 interface FeatureLink {
@@ -96,8 +97,8 @@ export function AccountingHubView() {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                    {actionItems.map((item) => (
-                         <DropdownMenuItem key={item.href} asChild>
+                    {actionItems.map((item, index) => (
+                         <DropdownMenuItem key={index} asChild>
                             <Link href={item.href}>
                                 <item.icon className="mr-2 h-4 w-4" />
                                 {item.label}
