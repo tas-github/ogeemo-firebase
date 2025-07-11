@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { format, addDays } from 'date-fns';
+import { format, addDays, isValid } from 'date-fns';
 import { Plus, Trash2, Printer, Save, Mail, Info, LoaderCircle, FileUp } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
@@ -107,10 +107,7 @@ export function InvoiceGeneratorView() {
         setIsDataLoading(true);
         try {
             const editId = localStorage.getItem(EDIT_INVOICE_ID_KEY);
-            const [fetchedContacts, fetchedInvoices] = await Promise.all([
-                getContacts(user.uid),
-                getInvoices(user.uid)
-            ]);
+            const fetchedContacts = await getContacts(user.uid);
             setContacts(fetchedContacts);
             
             if (editId) {
@@ -120,7 +117,7 @@ export function InvoiceGeneratorView() {
                     getLineItemsForInvoice(editId)
                 ]);
 
-                if (invoiceToLoad) {
+                if (invoiceToLoad && isValid(invoiceToLoad.invoiceDate) && isValid(invoiceToLoad.dueDate)) {
                     setInvoiceNumber(invoiceToLoad.invoiceNumber);
                     setSelectedContactId(invoiceToLoad.contactId);
                     setInvoiceDate(format(invoiceToLoad.invoiceDate, 'yyyy-MM-dd'));
@@ -135,10 +132,11 @@ export function InvoiceGeneratorView() {
                         price: item.price
                     })));
                 } else {
-                    toast({ variant: 'destructive', title: 'Error', description: 'Could not find the invoice to edit.' });
+                    toast({ variant: 'destructive', title: 'Error', description: 'Could not find the invoice to edit or it contains invalid data.' });
                     clearInvoice();
                 }
             } else {
+                const fetchedInvoices = await getInvoices(user.uid);
                 const maxInvoiceNum = fetchedInvoices.reduce((max, inv) => {
                     const num = parseInt(inv.invoiceNumber.replace(/\D/g, ''), 10);
                     return isNaN(num) ? max : Math.max(max, num);
@@ -149,14 +147,13 @@ export function InvoiceGeneratorView() {
             }
         } catch (error) {
             console.error("Failed to load initial data:", error);
-            toast({ variant: 'destructive', title: "Error", description: "Could not load initial data." });
+            toast({ variant: 'destructive', title: "Could not load initial data", description: error instanceof Error ? error.message : "An unknown error occurred." });
         } finally {
             setIsDataLoading(false);
         }
     }
     loadInitialData();
     // This is intentional. We only want this to run once on component mount.
-    // Adding dependencies would cause it to re-run and potentially wipe form state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
   
