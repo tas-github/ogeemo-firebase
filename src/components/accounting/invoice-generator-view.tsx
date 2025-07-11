@@ -388,34 +388,7 @@ export function InvoiceGeneratorView() {
             <CardHeader className="flex-row justify-between items-center">
                 <CardTitle>Invoice Preview</CardTitle>
                 <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={handleClearInvoice}><Trash2 className="mr-2 h-4 w-4" /> Clear</Button>
-                    <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline"><Save className="mr-2 h-4 w-4" /> Save as Template</Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Save Invoice as Template</DialogTitle>
-                                <DialogDescription>
-                                Enter a name for this template. It will save the custom line items.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="py-4">
-                                <Label htmlFor="template-name">Template Name</Label>
-                                <Input
-                                    id="template-name"
-                                    value={newTemplateName}
-                                    onChange={(e) => setNewTemplateName(e.target.value)}
-                                    placeholder="e.g., 'Standard Consulting Invoice'"
-                                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveTemplate() }}
-                                />
-                            </div>
-                            <DialogFooter>
-                                <Button variant="ghost" onClick={() => setIsTemplateDialogOpen(false)}>Cancel</Button>
-                                <Button onClick={handleSaveTemplate}>Save Template</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                    <Button variant="outline" onClick={handleSaveInvoice}><Save className="mr-2 h-4 w-4" /> Save Invoice</Button>
                     <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
                 </div>
             </CardHeader>
@@ -507,10 +480,39 @@ export function InvoiceGeneratorView() {
                     </footer>
                 </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="justify-between">
                  <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={handleSaveInvoice}><Save className="mr-2 h-4 w-4" /> Save Invoice</Button>
                     <Button onClick={handleSendEmail}><Mail className="mr-2 h-4 w-4" /> Send Email</Button>
+                    <Button variant="ghost" size="sm" onClick={handleClearInvoice}><Trash2 className="mr-2 h-4 w-4" /> Clear</Button>
+                 </div>
+                 <div>
+                    <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline"><Save className="mr-2 h-4 w-4" /> Save as Template</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Save Invoice as Template</DialogTitle>
+                                <DialogDescription>
+                                Enter a name for this template. It will save the custom line items.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4">
+                                <Label htmlFor="template-name">Template Name</Label>
+                                <Input
+                                    id="template-name"
+                                    value={newTemplateName}
+                                    onChange={(e) => setNewTemplateName(e.target.value)}
+                                    placeholder="e.g., 'Standard Consulting Invoice'"
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveTemplate() }}
+                                />
+                            </div>
+                            <DialogFooter>
+                                <Button variant="ghost" onClick={() => setIsTemplateDialogOpen(false)}>Cancel</Button>
+                                <Button onClick={handleSaveTemplate}>Save Template</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </CardFooter>
         </Card>
