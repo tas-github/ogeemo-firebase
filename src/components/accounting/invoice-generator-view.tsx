@@ -223,7 +223,7 @@ export function InvoiceGeneratorView() {
                 status: 'outstanding',
                 notes: invoiceNotes,
                 taxRate,
-                taxType,
+                taxType: taxType || 'none',
             };
             await updateInvoiceWithLineItems(invoiceToEditId, invoiceDataToUpdate, lineItemsToSave);
             toast({ title: "Invoice Updated", description: `Invoice ${invoiceNumber} has been saved.` });
@@ -240,7 +240,7 @@ export function InvoiceGeneratorView() {
                 status: 'outstanding',
                 notes: invoiceNotes,
                 taxRate,
-                taxType,
+                taxType: taxType || 'none',
                 userId: user.uid,
             };
             await addInvoiceWithLineItems(newInvoiceData, lineItemsToSave);
