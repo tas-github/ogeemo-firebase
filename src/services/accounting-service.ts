@@ -62,6 +62,7 @@ const LINE_ITEMS_COLLECTION = 'invoiceLineItems';
 
 const docToInvoice = (doc: QueryDocumentSnapshot<DocumentData> | DocumentData): Invoice => {
     const data = doc.data();
+    if (!data) throw new Error("Document data is missing.");
     return {
         id: doc.id,
         invoiceNumber: data.invoiceNumber,
@@ -69,8 +70,8 @@ const docToInvoice = (doc: QueryDocumentSnapshot<DocumentData> | DocumentData): 
         contactId: data.contactId,
         originalAmount: data.originalAmount,
         amountPaid: data.amountPaid,
-        dueDate: (data.dueDate as Timestamp)?.toDate ? (data.dueDate as Timestamp).toDate() : new Date(data.dueDate),
-        invoiceDate: (data.invoiceDate as Timestamp)?.toDate ? (data.invoiceDate as Timestamp).toDate() : new Date(data.invoiceDate),
+        dueDate: (data.dueDate as Timestamp)?.toDate ? (data.dueDate as Timestamp).toDate() : new Date(),
+        invoiceDate: (data.invoiceDate as Timestamp)?.toDate ? (data.invoiceDate as Timestamp).toDate() : new Date(),
         status: data.status,
         notes: data.notes,
         taxRate: data.taxRate,
@@ -119,7 +120,7 @@ export async function getLineItemsForInvoice(invoiceId: string): Promise<Invoice
 
 export async function addInvoiceWithLineItems(
     invoiceData: Omit<Invoice, 'id' | 'createdAt'>, 
-    lineItems: Omit<InvoiceLineItem, 'invoiceId'>[]
+    lineItems: Omit<InvoiceLineItem, 'invoiceId' | 'id'>[]
 ): Promise<Invoice> {
     if (!db) throw new Error("Firestore not initialized");
     const batch = writeBatch(db);
@@ -140,7 +141,7 @@ export async function addInvoiceWithLineItems(
 export async function updateInvoiceWithLineItems(
     invoiceId: string, 
     invoiceData: Partial<Omit<Invoice, 'id' | 'userId'>>, 
-    lineItems: InvoiceLineItem[]
+    lineItems: Omit<InvoiceLineItem, 'id' | 'invoiceId'>[]
 ): Promise<void> {
     if (!db) throw new Error("Firestore not initialized");
     const batch = writeBatch(db);
@@ -157,9 +158,8 @@ export async function updateInvoiceWithLineItems(
 
     // Then, add the new/updated line items
     lineItems.forEach(item => {
-        const { id, ...itemData } = item; // Exclude ID from new data
         const itemRef = doc(collection(db, LINE_ITEMS_COLLECTION));
-        batch.set(itemRef, { ...itemData, invoiceId });
+        batch.set(itemRef, { ...item, invoiceId });
     });
     
     await batch.commit();
