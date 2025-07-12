@@ -153,7 +153,7 @@ export function InvoiceGeneratorView() {
             }
         } catch (error) {
             console.error("Failed to load initial data:", error);
-            toast({ variant: 'destructive', title: "Could not load initial data", description: error instanceof Error ? error.message : "An unknown error occurred." });
+            toast({ variant: "destructive", title: "Could not load initial data", description: error instanceof Error ? error.message : "An unknown error occurred." });
         } finally {
             setIsDataLoading(false);
         }
@@ -195,7 +195,10 @@ export function InvoiceGeneratorView() {
     setCustomItems(customItems.filter(item => item.id !== id));
   };
   
-  const applyTemplate = (template: InvoiceTemplate) => {
+  const applyTemplate = (templateName: string) => {
+    const template = templates.find(t => t.name === templateName);
+    if (!template) return;
+
     const newItems = template.items.map(item => ({...item, id: Date.now() + Math.random()}));
     setCustomItems(prev => [...prev, ...newItems]);
     toast({
@@ -354,17 +357,15 @@ export function InvoiceGeneratorView() {
               <Separator />
               <div>
                   <h4 className="font-semibold text-base mb-2">Add to Invoice</h4>
-                  <div className="flex flex-wrap items-end gap-2 mb-4">
-                      <div className="flex-1 min-w-[200px] space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                      <div className="space-y-2">
                           <Label>Add Predefined Item</Label>
                           <Select onValueChange={addPredefinedItem}><SelectTrigger><SelectValue placeholder="Select a predefined item..." /></SelectTrigger><SelectContent>{predefinedItems.map(item => <SelectItem key={item.description} value={item.description}>{item.description}</SelectItem>)}</SelectContent></Select>
                       </div>
-                      <p className="text-sm text-muted-foreground self-center px-2">or</p>
-                      <Button variant="outline" onClick={addCustomItem}><Plus className="mr-2 h-4 w-4"/>Add Line Item</Button>
+                       <Button variant="outline" onClick={addCustomItem}><Plus className="mr-2 h-4 w-4"/>Add Custom Line Item</Button>
                   </div>
                   {customItems.length > 0 && (
-                      <div className="space-y-3">
-                          <h4 className="font-semibold text-base mb-2 sr-only">Custom Line Items</h4>
+                      <div className="space-y-3 mt-4">
                           <ScrollArea className="h-40 w-full pr-3 border rounded-md"><div className="p-2 space-y-3">{customItems.map(item => (<div key={item.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-2 items-start"><Textarea placeholder="Item description" value={item.description} onChange={e => updateCustomItem(item.id, 'description', e.target.value)} rows={1} className="min-h-[40px] resize-y" /><div className="space-y-1"><Label htmlFor={`qty-${item.id}`} className="text-xs">Qty</Label><Input id={`qty-${item.id}`} type="number" value={item.quantity} onChange={e => updateCustomItem(item.id, 'quantity', Number(e.target.value))} className="w-20 h-8" /></div><div className="space-y-1"><Label htmlFor={`price-${item.id}`} className="text-xs">$ Rate</Label><Input id={`price-${item.id}`} type="number" value={item.price} onChange={e => updateCustomItem(item.id, 'price', Number(e.target.value))} className="w-24 h-8" /></div><Button variant="ghost" size="icon" onClick={() => removeCustomItem(item.id)} className="self-center mt-3"><Trash2 className="h-4 w-4" /></Button></div>))}</div></ScrollArea>
                       </div>
                   )}
@@ -372,21 +373,18 @@ export function InvoiceGeneratorView() {
                {templates.length > 0 && (
                 <>
                     <Separator />
-                    <div>
-                        <h4 className="font-semibold text-base mb-2">Apply a Template</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {templates.map((template, index) => (
-                                <Card key={index} className="flex flex-col">
-                                    <CardHeader className="p-4">
-                                        <CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />{template.name}</CardTitle>
-                                        <CardDescription>{template.items.length} item(s)</CardDescription>
-                                    </CardHeader>
-                                    <CardFooter className="p-4 pt-0">
-                                        <Button variant="outline" size="sm" onClick={() => applyTemplate(template)}>Apply Template</Button>
-                                    </CardFooter>
-                                </Card>
-                            ))}
-                        </div>
+                    <div className="space-y-2">
+                        <Label>Apply a Template</Label>
+                        <Select onValueChange={applyTemplate}>
+                            <SelectTrigger><SelectValue placeholder="Select a template to apply..." /></SelectTrigger>
+                            <SelectContent>
+                                {templates.map((template, index) => (
+                                    <SelectItem key={index} value={template.name}>
+                                        {template.name} ({template.items.length} items)
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </>
                )}
