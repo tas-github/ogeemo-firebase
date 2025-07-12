@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 const RECEIPT_DATA_KEY = 'ogeemo-receipt-data';
 
+// This is the structure of the data as it's stored in sessionStorage (with ISO date strings)
 interface SerializedInvoice {
   id: string;
   invoiceNumber: string;
@@ -24,6 +25,7 @@ interface SerializedInvoice {
   dueDate: string; // ISO String
 }
 
+// This is the structure of the data after we parse it for use in the component
 interface DeserializedInvoice extends Omit<SerializedInvoice, 'dueDate'> {
     dueDate: Date;
 }
