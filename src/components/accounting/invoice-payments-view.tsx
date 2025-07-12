@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card,
@@ -79,6 +79,13 @@ export function InvoicePaymentsView() {
         }
         loadInvoices();
     }, [toast, user]);
+    
+    const totalBalanceDue = useMemo(() => {
+        return invoices.reduce((acc, invoice) => {
+            const balance = invoice.originalAmount - invoice.amountPaid;
+            return acc + (balance > 0 ? balance : 0);
+        }, 0);
+    }, [invoices]);
 
     const handleOpenPaymentDialog = (invoice: Invoice) => {
         setInvoiceToPay(invoice);
@@ -193,9 +200,15 @@ export function InvoicePaymentsView() {
                 </header>
 
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Outstanding Invoices</CardTitle>
-                        <CardDescription>A list of all client invoices from the database.</CardDescription>
+                    <CardHeader className="flex-row justify-between items-start">
+                        <div>
+                            <CardTitle>Outstanding Invoices</CardTitle>
+                            <CardDescription>A list of all client invoices from the database.</CardDescription>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm text-muted-foreground">Total Balance Due</p>
+                            <p className="text-2xl font-bold text-primary">{totalBalanceDue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <div className="border rounded-md">

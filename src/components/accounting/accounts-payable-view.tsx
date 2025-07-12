@@ -117,6 +117,10 @@ export function AccountsPayableView() {
     }
   }, []);
   
+  const totalPayableAmount = React.useMemo(() => {
+    return payableLedger.reduce((sum, bill) => sum + bill.amount, 0);
+  }, [payableLedger]);
+
   const updatePayableLedger = (updatedLedger: PayableBill[]) => {
       setPayableLedger(updatedLedger);
       localStorage.setItem(PAYABLE_LEDGER_KEY, JSON.stringify(updatedLedger));
@@ -210,16 +214,22 @@ export function AccountsPayableView() {
         </header>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row items-start justify-between">
             <div>
               <CardTitle>Bills to Pay</CardTitle>
               <CardDescription>A list of unpaid invoices from vendors.</CardDescription>
             </div>
-            <Button variant="outline" onClick={() => handleOpenBillDialog()}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Bill
-            </Button>
+             <div className="text-right">
+                <p className="text-sm text-muted-foreground">Total Due</p>
+                <p className="text-2xl font-bold text-destructive">{totalPayableAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+            </div>
           </CardHeader>
           <CardContent>
+            <div className="flex justify-end mb-4">
+              <Button variant="outline" onClick={() => handleOpenBillDialog()}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Bill
+              </Button>
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
