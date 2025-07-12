@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,25 +9,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Logo } from '@/components/logo';
 import { Separator } from '@/components/ui/separator';
 import { Printer, Mail, ArrowLeft, LoaderCircle, AlertTriangle } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
+import { useReactToPrint } from '@/hooks/use-react-to-print';
 
 const RECEIPT_DATA_KEY = 'ogeemo-receipt-data';
 
-// This is the structure of the data as it's stored in sessionStorage (with ISO date strings)
-interface SerializedInvoice {
+interface DeserializedInvoice {
   id: string;
   invoiceNumber: string;
   clientName: string;
   originalAmount: number;
   amountPaid: number;
-  dueDate: string; // ISO String
-}
-
-// This is the structure of the data after we parse it for use in the component
-interface DeserializedInvoice extends Omit<SerializedInvoice, 'dueDate'> {
-    dueDate: Date;
+  dueDate: Date;
+  invoiceDate: Date;
+  createdAt: Date;
 }
 
 interface ReceiptData {
@@ -44,36 +41,32 @@ export default function ReceiptPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [notes, setNotes] = useState("");
-    const printRef = useRef<HTMLDivElement>(null);
     const { toast } = useToast();
     const router = useRouter();
+    const { handlePrint, contentRef } = useReactToPrint();
 
     useEffect(() => {
         try {
             const dataRaw = sessionStorage.getItem(RECEIPT_DATA_KEY);
             if (dataRaw) {
                 const parsedData = JSON.parse(dataRaw);
-                // Deserialize the invoice by converting date strings back to Date objects
                 const deserializedInvoice: DeserializedInvoice = {
                     ...parsedData.invoice,
-                    dueDate: new Date(parsedData.invoice.dueDate),
+                    dueDate: parseISO(parsedData.invoice.dueDate),
+                    invoiceDate: parseISO(parsedData.invoice.invoiceDate),
+                    createdAt: parseISO(parsedData.invoice.createdAt),
                 };
                 setReceiptData({ ...parsedData, invoice: deserializedInvoice });
-                // Do not remove the key here, to allow for reloads
             } else {
                 setError('No receipt data found. Please return to the previous page and try again.');
             }
-        } catch (error) {
-            console.error("Failed to load receipt data:", error);
-            setError('Could not load receipt data due to an internal error.');
+        } catch (e) {
+            console.error("Failed to load receipt data:", e);
+            setError(e instanceof Error ? e.message : 'Could not load receipt data due to an internal error.');
         } finally {
             setIsLoading(false);
         }
     }, []);
-
-    const handlePrint = () => {
-        window.print();
-    };
     
     const handleSendEmail = () => {
         if (!receiptData) return;
@@ -125,7 +118,7 @@ export default function ReceiptPage() {
                     <Button onClick={handleSendEmail}><Mail className="mr-2 h-4 w-4"/> Email Receipt</Button>
                 </div>
             </div>
-             <Card id="invoice-preview" ref={printRef} className="max-w-4xl mx-auto">
+             <Card id="invoice-preview" ref={contentRef} className="max-w-4xl mx-auto">
                 <CardContent className="p-8 relative">
                     {isPaidInFull && (
                         <div style={{
@@ -177,12 +170,12 @@ export default function ReceiptPage() {
                     <section className="flex justify-end mt-6">
                         <div className="w-full max-w-sm space-y-2">
                              <div className="flex justify-between">
-                                <span className="text-gray-500">Total Due Before Payment:</span>
+                                <span className="text-muted-foreground">Total Due Before Payment:</span>
                                 <span>{formatCurrency(carryForwardAmount + invoice.originalAmount)}</span>
                             </div>
                             <Separator />
                             <div className="flex justify-between">
-                                <span className="text-gray-500">Payment received on {format(new Date(), 'PP')}:</span>
+                                <span className="text-muted-foreground">Payment received on {format(new Date(), 'PP')}:</span>
                                 <span className="text-green-600">({formatCurrency(invoice.amountPaid)})</span>
                             </div>
                             <Separator />
