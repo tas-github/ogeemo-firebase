@@ -102,117 +102,121 @@ export function OgeeMailInboxView() {
                     </div>
                 </ResizablePanel>
                 <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={35} minSize={30}>
-                    <TooltipProvider delayDuration={0}>
-                        <div className="h-full flex flex-col">
-                            <div className="flex items-center gap-2 p-2 border-b">
-                                <div className="relative flex-1">
-                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                    <Input
-                                        type="search"
-                                        placeholder="Search mail..."
-                                        className="w-full rounded-lg bg-muted pl-8"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                    />
-                                </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon">
-                                            <Lightbulb className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                        <DropdownMenuLabel>OgeeMail Tips</DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-                                        {tips.map((tip, index) => (
-                                            <DropdownMenuItem key={index} className="text-wrap">
-                                                {tip}
-                                            </DropdownMenuItem>
-                                        ))}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                            <ScrollArea className="flex-1">
-                                {filteredEmails.length > 0 ? (
-                                    filteredEmails.map((email) => (
-                                        <div
-                                            key={email.id}
-                                            onClick={() => handleSelectEmail(email.id)}
-                                            className={cn(
-                                                'cursor-pointer border-b p-4 transition-colors',
-                                                selectedEmailId === email.id ? 'bg-accent' : 'hover:bg-accent/50',
-                                                !email.read && 'bg-primary/5'
-                                            )}
-                                        >
-                                            <div className="flex items-start justify-between">
-                                                <p className={cn('font-semibold text-sm truncate', !email.read && 'text-primary')}>{email.from}</p>
-                                                <time className="text-xs text-muted-foreground whitespace-nowrap">
-                                                    {format(new Date(email.date), 'MM/dd/yyyy')}
-                                                </time>
-                                            </div>
-                                            <div className="flex items-center justify-between mt-1">
-                                                <p className="font-medium truncate pr-4 text-sm">{email.subject}</p>
-                                                <button>
-                                                    <Star
-                                                        className={cn('h-4 w-4 text-muted-foreground transition-colors shrink-0 hover:text-yellow-500', email.starred && 'fill-yellow-400 text-yellow-500')}
-                                                    />
-                                                </button>
-                                            </div>
-                                            <p className="truncate text-sm text-muted-foreground mt-1">
-                                                {email.text.replace(/<[^>]+>/g, '')}
-                                            </p>
+                <ResizablePanel defaultSize={80} minSize={30}>
+                   <ResizablePanelGroup direction="vertical">
+                        <ResizablePanel defaultSize={45} minSize={30}>
+                            <TooltipProvider delayDuration={0}>
+                                <div className="h-full flex flex-col">
+                                    <div className="flex items-center gap-2 p-2 border-b">
+                                        <div className="relative flex-1">
+                                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                            <Input
+                                                type="search"
+                                                placeholder="Search mail..."
+                                                className="w-full rounded-lg bg-muted pl-8"
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                            />
                                         </div>
-                                    ))
-                                ) : (
-                                    <div className="flex h-full items-center justify-center p-4 text-center text-muted-foreground">
-                                        <p>No emails in {activeFolder}.</p>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon">
+                                                    <Lightbulb className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent>
+                                                <DropdownMenuLabel>OgeeMail Tips</DropdownMenuLabel>
+                                                <DropdownMenuSeparator />
+                                                {tips.map((tip, index) => (
+                                                    <DropdownMenuItem key={index} className="text-wrap">
+                                                        {tip}
+                                                    </DropdownMenuItem>
+                                                ))}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </div>
-                                )}
-                            </ScrollArea>
-                        </div>
-                    </TooltipProvider>
-                </ResizablePanel>
-                <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={45} minSize={30}>
-                    <div className="h-full flex flex-col">
-                    {selectedEmail ? (
-                        <>
-                         <div className="flex items-center justify-between p-4 border-b">
-                           <div className="flex items-center gap-3">
-                               <Avatar>
-                                   <AvatarImage src={`https://i.pravatar.cc/40?u=${selectedEmail.fromEmail}`} />
-                                   <AvatarFallback>{selectedEmail.from.charAt(0)}</AvatarFallback>
-                               </Avatar>
-                               <div>
-                                   <p className="font-semibold">{selectedEmail.from}</p>
-                                   <p className="text-xs text-muted-foreground">{selectedEmail.fromEmail}</p>
-                               </div>
-                           </div>
-                            <div className="flex items-center gap-1">
-                                <TooltipProvider>
-                                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Reply className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Reply</p></TooltipContent></Tooltip>
-                                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><ReplyAll className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Reply All</p></TooltipContent></Tooltip>
-                                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Forward className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Forward</p></TooltipContent></Tooltip>
-                                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Archive className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Archive</p></TooltipContent></Tooltip>
-                                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
-                                </TooltipProvider>
-                           </div>
-                         </div>
-                         <div className="p-4 border-b">
-                            <h2 className="text-xl font-bold">{selectedEmail.subject}</h2>
-                            <p className="text-sm text-muted-foreground mt-1">Date: {format(new Date(selectedEmail.date), 'PPpp')}</p>
-                         </div>
-                          <ScrollArea className="flex-1 p-4">
-                            <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedEmail.text }} />
-                          </ScrollArea>
-                        </>
-                    ) : (
-                        <div className="flex h-full items-center justify-center text-muted-foreground">
-                            <p>Select an email to read</p>
-                        </div>
-                    )}
-                    </div>
+                                    <ScrollArea className="flex-1">
+                                        {filteredEmails.length > 0 ? (
+                                            filteredEmails.map((email) => (
+                                                <div
+                                                    key={email.id}
+                                                    onClick={() => handleSelectEmail(email.id)}
+                                                    className={cn(
+                                                        'cursor-pointer border-b p-4 transition-colors',
+                                                        selectedEmailId === email.id ? 'bg-accent' : 'hover:bg-accent/50',
+                                                        !email.read && 'bg-primary/5'
+                                                    )}
+                                                >
+                                                    <div className="flex items-start justify-between">
+                                                        <p className={cn('font-semibold text-sm truncate', !email.read && 'text-primary')}>{email.from}</p>
+                                                        <time className="text-xs text-muted-foreground whitespace-nowrap">
+                                                            {format(new Date(email.date), 'MM/dd/yyyy')}
+                                                        </time>
+                                                    </div>
+                                                    <div className="flex items-center justify-between mt-1">
+                                                        <p className="font-medium truncate pr-4 text-sm">{email.subject}</p>
+                                                        <button>
+                                                            <Star
+                                                                className={cn('h-4 w-4 text-muted-foreground transition-colors shrink-0 hover:text-yellow-500', email.starred && 'fill-yellow-400 text-yellow-500')}
+                                                            />
+                                                        </button>
+                                                    </div>
+                                                    <p className="truncate text-sm text-muted-foreground mt-1">
+                                                        {email.text.replace(/<[^>]+>/g, '')}
+                                                    </p>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="flex h-full items-center justify-center p-4 text-center text-muted-foreground">
+                                                <p>No emails in {activeFolder}.</p>
+                                            </div>
+                                        )}
+                                    </ScrollArea>
+                                </div>
+                            </TooltipProvider>
+                        </ResizablePanel>
+                        <ResizableHandle withHandle />
+                        <ResizablePanel defaultSize={55} minSize={30}>
+                           <div className="h-full flex flex-col">
+                            {selectedEmail ? (
+                                <>
+                                 <div className="flex items-center justify-between p-4 border-t">
+                                   <div className="flex items-center gap-3">
+                                       <Avatar>
+                                           <AvatarImage src={`https://i.pravatar.cc/40?u=${selectedEmail.fromEmail}`} />
+                                           <AvatarFallback>{selectedEmail.from.charAt(0)}</AvatarFallback>
+                                       </Avatar>
+                                       <div>
+                                           <p className="font-semibold">{selectedEmail.from}</p>
+                                           <p className="text-xs text-muted-foreground">{selectedEmail.fromEmail}</p>
+                                       </div>
+                                   </div>
+                                    <div className="flex items-center gap-1">
+                                        <TooltipProvider>
+                                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Reply className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Reply</p></TooltipContent></Tooltip>
+                                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><ReplyAll className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Reply All</p></TooltipContent></Tooltip>
+                                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Forward className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Forward</p></TooltipContent></Tooltip>
+                                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Archive className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Archive</p></TooltipContent></Tooltip>
+                                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon"><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
+                                        </TooltipProvider>
+                                   </div>
+                                 </div>
+                                 <div className="p-4 border-t">
+                                    <h2 className="text-xl font-bold">{selectedEmail.subject}</h2>
+                                    <p className="text-sm text-muted-foreground mt-1">Date: {format(new Date(selectedEmail.date), 'PPpp')}</p>
+                                 </div>
+                                  <ScrollArea className="flex-1 p-4 border-t">
+                                    <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedEmail.text }} />
+                                  </ScrollArea>
+                                </>
+                            ) : (
+                                <div className="flex h-full items-center justify-center text-muted-foreground">
+                                    <p>Select an email to read</p>
+                                </div>
+                            )}
+                            </div>
+                        </ResizablePanel>
+                   </ResizablePanelGroup>
                 </ResizablePanel>
             </ResizablePanelGroup>
         </div>
