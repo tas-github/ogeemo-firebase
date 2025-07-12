@@ -147,10 +147,19 @@ export function InvoicePaymentsView() {
         }, 0);
         
         try {
+            // Create a serializable version of the invoice
+            const serializableInvoice = {
+                ...invoice,
+                dueDate: invoice.dueDate.toISOString(),
+                invoiceDate: invoice.invoiceDate.toISOString(),
+                createdAt: invoice.createdAt.toISOString(),
+            };
+            
             const receiptPayload = {
-                invoice: { ...invoice, dueDate: invoice.dueDate.toISOString(), createdAt: invoice.createdAt.toISOString(), invoiceDate: invoice.invoiceDate.toISOString() }, // Serialize dates
+                invoice: serializableInvoice,
                 carryForwardAmount
             };
+
             sessionStorage.setItem(RECEIPT_DATA_KEY, JSON.stringify(receiptPayload));
             router.push('/accounting/invoices/receipt');
         } catch (error) {

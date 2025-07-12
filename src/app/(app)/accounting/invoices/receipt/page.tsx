@@ -15,17 +15,21 @@ import { Textarea } from '@/components/ui/textarea';
 
 const RECEIPT_DATA_KEY = 'ogeemo-receipt-data';
 
-interface FinalizedInvoice {
+interface SerializedInvoice {
   id: string;
   invoiceNumber: string;
   clientName: string;
   originalAmount: number;
   amountPaid: number;
-  dueDate: string;
+  dueDate: string; // ISO String
+}
+
+interface DeserializedInvoice extends Omit<SerializedInvoice, 'dueDate'> {
+    dueDate: Date;
 }
 
 interface ReceiptData {
-  invoice: FinalizedInvoice;
+  invoice: DeserializedInvoice;
   carryForwardAmount: number;
 }
 
@@ -44,8 +48,14 @@ export default function ReceiptPage() {
         try {
             const dataRaw = sessionStorage.getItem(RECEIPT_DATA_KEY);
             if (dataRaw) {
-                const data = JSON.parse(dataRaw);
-                setReceiptData(data);
+                const parsedData = JSON.parse(dataRaw);
+                // Deserialize the invoice by converting date strings back to Date objects
+                const deserializedInvoice: DeserializedInvoice = {
+                    ...parsedData.invoice,
+                    dueDate: new Date(parsedData.invoice.dueDate),
+                };
+                setReceiptData({ ...parsedData, invoice: deserializedInvoice });
+
                 sessionStorage.removeItem(RECEIPT_DATA_KEY);
             } else {
                 toast({ variant: 'destructive', title: 'Error', description: 'No receipt data found.' });
@@ -120,7 +130,7 @@ export default function ReceiptPage() {
                         </div>
                         <div className="text-right">
                             <p><span className="font-bold text-gray-500">Date Issued:</span> {format(new Date(), 'PP')}</p>
-                            <p><span className="font-bold text-gray-500">Original Due Date:</span> {format(new Date(invoice.dueDate), 'PP')}</p>
+                            <p><span className="font-bold text-gray-500">Original Due Date:</span> {format(invoice.dueDate, 'PP')}</p>
                         </div>
                     </section>
                     <section className="mt-8">
