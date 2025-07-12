@@ -160,6 +160,13 @@ export function InvoiceGeneratorView() {
     }
     loadInitialData();
   }, [user, toast, clearInvoice]);
+
+  // Effect to clear edit ID when component unmounts
+  useEffect(() => {
+    return () => {
+      localStorage.removeItem(EDIT_INVOICE_ID_KEY);
+    }
+  }, []);
   
   useEffect(() => {
     if (taxType === 'none') {
