@@ -28,6 +28,7 @@ const profileSchema = z.object({
     businessAddress: z.string().optional(),
     homeAddress: z.string().optional(),
     alternateContact: z.string().optional(),
+    alternateContactPhone: z.string().optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -58,6 +59,7 @@ export function ProfileCard() {
             businessAddress: userProfile?.businessAddress || "",
             homeAddress: userProfile?.homeAddress || "",
             alternateContact: userProfile?.alternateContact || "",
+            alternateContactPhone: userProfile?.alternateContactPhone || "",
           });
         } catch (error) {
           console.error("Failed to load user profile:", error);
@@ -100,6 +102,7 @@ export function ProfileCard() {
             businessAddress: data.businessAddress,
             homeAddress: data.homeAddress,
             alternateContact: data.alternateContact,
+            alternateContactPhone: data.alternateContactPhone,
         };
         await updateUserProfile(user.uid, user.email!, profileDataToUpdate);
         
@@ -167,6 +170,7 @@ export function ProfileCard() {
                     <FormField control={form.control} name="businessAddress" render={({ field }) => (<FormItem><FormLabel>Business Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="homeAddress" render={({ field }) => (<FormItem><FormLabel>Home Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="alternateContact" render={({ field }) => (<FormItem><FormLabel>Alternate Contact Person</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="alternateContactPhone" render={({ field }) => (<FormItem><FormLabel>Alternate Contact Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </div>
 
                 <div className="flex justify-end gap-2">
@@ -203,6 +207,7 @@ export function ProfileCard() {
              <div className="grid grid-cols-3 gap-2"><div className="text-muted-foreground col-span-1">Business Address</div><div className="col-span-2">{profile?.businessAddress || 'Not set'}</div></div>
              <div className="grid grid-cols-3 gap-2"><div className="text-muted-foreground col-span-1">Home Address</div><div className="col-span-2">{profile?.homeAddress || 'Not set'}</div></div>
              <div className="grid grid-cols-3 gap-2"><div className="text-muted-foreground col-span-1">Alternate Contact</div><div className="col-span-2">{profile?.alternateContact || 'Not set'}</div></div>
+             <div className="grid grid-cols-3 gap-2"><div className="text-muted-foreground col-span-1">Alternate Phone</div><div className="col-span-2">{profile?.alternateContactPhone || 'Not set'}</div></div>
         </div>
     </div>
   );
