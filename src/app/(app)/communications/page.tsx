@@ -110,12 +110,12 @@ export default function CommunicationsManagerPage() {
         <div className="lg:col-span-1">
             <Card>
                 <CardHeader>
-                    <CardTitle>Communications Scratchpad</CardTitle>
-                    <CardDescription>Jot down ideas and reminders about your communication strategy.</CardDescription>
+                    <CardTitle>Development Scratchpad</CardTitle>
+                    <CardDescription>Jot down ideas and notes for developing Ogeemo's communication features.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Textarea
-                        placeholder="e.g., Follow up with Client X on Tuesday..."
+                        placeholder="e.g., Research Stripe API for payment links..."
                         value={notes}
                         onChange={handleNotesChange}
                         rows={15}
