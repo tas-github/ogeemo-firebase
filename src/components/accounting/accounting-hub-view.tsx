@@ -58,7 +58,7 @@ interface FeatureLink {
 
 const clientBillingFeatures: FeatureLink[] = [
     { href: "/accounting/invoices/payments", icon: FileOutput, title: "Accounts Receivable", description: "Track money owed to you by clients." },
-    { href: "/accounting/invoices/create", icon: FileDigit, title: "Invoice Manager", description: "Create new invoices and manage templates." },
+    { href: "/accounting/invoices/create", icon: FileDigit, title: "Invoice Generator", description: "Create new invoices and manage templates." },
 ];
 
 const bookkeepingFeatures: FeatureLink[] = [
