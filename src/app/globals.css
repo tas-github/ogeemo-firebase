@@ -65,10 +65,12 @@
   body * {
     visibility: hidden;
   }
-  #invoice-preview, #invoice-preview * {
+  #invoice-preview, #invoice-preview *,
+  #printable-area, #printable-area * {
     visibility: visible;
   }
-  #invoice-preview {
+  #invoice-preview,
+  #printable-area {
     position: absolute;
     left: 0;
     top: 0;
