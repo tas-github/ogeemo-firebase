@@ -5,20 +5,12 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, LoaderCircle } from "lucide-react";
 import { EventDetailsDialog } from "@/components/client-manager/event-details-dialog";
+import { useAuth } from "@/context/auth-context";
+import { useToast } from "@/hooks/use-toast";
+import { getEventEntries, type EventEntry } from "@/services/client-manager-service";
 
-interface EventEntry {
-  id: string;
-  contactId: string;
-  contactName: string;
-  subject: string;
-  detailsHtml?: string;
-  startTime: Date;
-  endTime: Date;
-  duration: number; // in seconds
-  billableRate: number;
-}
 
 const formatTime = (totalSeconds: number) => {
   const hours = Math.floor(totalSeconds / 3600);
@@ -29,24 +21,29 @@ const formatTime = (totalSeconds: number) => {
 
 export function LoggedEntriesView() {
   const [eventEntries, setEventEntries] = useState<EventEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedEntry, setSelectedEntry] = useState<EventEntry | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
-    const savedEntriesRaw = localStorage.getItem('eventEntries');
-    if (savedEntriesRaw) {
+    async function loadData() {
+        if (!user) {
+            setIsLoading(false);
+            return;
+        }
+        setIsLoading(true);
         try {
-            const savedEntries = JSON.parse(savedEntriesRaw).map((entry: any) => ({
-                ...entry,
-                startTime: new Date(entry.startTime),
-                endTime: new Date(entry.endTime),
-            }));
-            setEventEntries(savedEntries);
-        } catch (error) {
-            console.error("Failed to parse event entries:", error);
-            localStorage.removeItem('eventEntries');
+            const entries = await getEventEntries(user.uid);
+            setEventEntries(entries);
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Failed to load entries", description: error.message });
+        } finally {
+            setIsLoading(false);
         }
     }
-  }, []);
+    loadData();
+  }, [user, toast]);
   
   const totalBillable = eventEntries.reduce((acc, entry) => {
     const hours = entry.duration / 3600;
@@ -110,7 +107,13 @@ export function LoggedEntriesView() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {eventEntries.length > 0 ? eventEntries.map(entry => (
+                                    {isLoading ? (
+                                        <TableRow>
+                                            <TableCell colSpan={4} className="h-24 text-center">
+                                                <LoaderCircle className="mx-auto h-6 w-6 animate-spin" />
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : eventEntries.length > 0 ? eventEntries.map(entry => (
                                         <TableRow key={entry.id} onClick={() => setSelectedEntry(entry)} className="cursor-pointer print:cursor-auto">
                                             <TableCell className="font-medium">{entry.contactName}</TableCell>
                                             <TableCell>{entry.subject}</TableCell>

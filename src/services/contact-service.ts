@@ -41,13 +41,19 @@ const docToContact = (doc: QueryDocumentSnapshot<DocumentData>): Contact => ({ i
 // --- Client Account Function (New) ---
 async function createClientAccount(userId: string, contactId: string, contactName: string): Promise<void> {
     checkDb();
-    const accountData = {
-        name: contactName,
-        contactId,
-        userId,
-        createdAt: new Date(),
-    };
-    await addDoc(collection(db, CLIENT_ACCOUNTS_COLLECTION), accountData);
+    // Check if an account already exists for this contact
+    const q = query(collection(db, CLIENT_ACCOUNTS_COLLECTION), where("contactId", "==", contactId), where("userId", "==", userId));
+    const existingAccount = await getDocs(q);
+
+    if (existingAccount.empty) {
+      const accountData = {
+          name: contactName,
+          contactId,
+          userId,
+          createdAt: new Date(),
+      };
+      await addDoc(collection(db, CLIENT_ACCOUNTS_COLLECTION), accountData);
+    }
 }
 
 
