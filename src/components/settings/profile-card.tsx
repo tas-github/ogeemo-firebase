@@ -17,35 +17,67 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoaderCircle } from "lucide-react";
 import { initializeFirebase } from "@/lib/firebase";
-
+import { getUserProfile, updateUserProfile, type UserProfile } from "@/services/user-profile-service";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const profileSchema = z.object({
     displayName: z.string().min(2, { message: "Name must be at least 2 characters." }).optional(),
+    businessPhone: z.string().optional(),
+    cellPhone: z.string().optional(),
+    bestPhone: z.enum(['business', 'cell']).optional(),
+    businessAddress: z.string().optional(),
+    homeAddress: z.string().optional(),
+    alternateContact: z.string().optional(),
 });
 
+type ProfileFormData = z.infer<typeof profileSchema>;
+
 export function ProfileCard() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof profileSchema>>({
+  const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
   });
 
   useEffect(() => {
-    if (user) {
-      form.reset({
-        displayName: user.displayName || "",
-      });
+    async function loadProfile() {
+      if (user) {
+        setIsLoading(true);
+        try {
+          const userProfile = await getUserProfile(user.uid);
+          setProfile(userProfile);
+          form.reset({
+            displayName: user.displayName || "",
+            businessPhone: userProfile?.businessPhone || "",
+            cellPhone: userProfile?.cellPhone || "",
+            bestPhone: userProfile?.bestPhone,
+            businessAddress: userProfile?.businessAddress || "",
+            homeAddress: userProfile?.homeAddress || "",
+            alternateContact: userProfile?.alternateContact || "",
+          });
+        } catch (error) {
+          console.error("Failed to load user profile:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
     }
-  }, [user, form]);
+    if (!isAuthLoading) {
+        loadProfile();
+    }
+  }, [user, isAuthLoading, form, isEditing]);
+
 
   const getInitials = (name?: string | null) => {
     if (!name) return "U";
     return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
   };
 
-  const onSubmit = async (data: z.infer<typeof profileSchema>) => {
+  const onSubmit = async (data: ProfileFormData) => {
     if (!user) {
         toast({ variant: "destructive", title: "Error", description: "You must be logged in to update your profile." });
         return;
@@ -53,24 +85,37 @@ export function ProfileCard() {
     
     try {
         const { auth } = await initializeFirebase();
-        if (auth.currentUser) {
+        // Update Firebase Auth profile (for display name)
+        if (auth.currentUser && data.displayName && data.displayName !== user.displayName) {
             await updateProfile(auth.currentUser, {
                 displayName: data.displayName,
             });
-
-            // Note: To see the update reflected immediately without a page refresh,
-            // the user object in the AuthContext would need to be re-fetched or updated.
-            // For simplicity, we'll rely on a page refresh or re-login for the nav bar to update.
-            
-            toast({ title: "Profile Updated", description: "Your changes have been saved." });
-            setIsEditing(false);
         }
+        
+        // Update Firestore profile (for extended data)
+        const profileDataToUpdate = {
+            businessPhone: data.businessPhone,
+            cellPhone: data.cellPhone,
+            bestPhone: data.bestPhone,
+            businessAddress: data.businessAddress,
+            homeAddress: data.homeAddress,
+            alternateContact: data.alternateContact,
+        };
+        await updateUserProfile(user.uid, user.email!, profileDataToUpdate);
+        
+        toast({ title: "Profile Updated", description: "Your changes have been saved." });
+        setIsEditing(false);
     } catch (error: any) {
         toast({ variant: "destructive", title: "Update Failed", description: error.message });
     }
   };
+  
+  const handleCancel = () => {
+    setIsEditing(false);
+    // form.reset will be called by the useEffect when isEditing changes
+  }
 
-  if (isLoading) {
+  if (isLoading || isAuthLoading) {
     return (
         <div className="flex items-center space-x-4">
             <Skeleton className="h-16 w-16 rounded-full" />
@@ -90,33 +135,42 @@ export function ProfileCard() {
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-4 mb-6">
                     <Avatar className="h-16 w-16">
                         <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User avatar'} />
                         <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
                     </Avatar>
-                    <div className="space-y-2 flex-1">
-                        <FormField
-                            control={form.control}
-                            name="displayName"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Display Name</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Your Name" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <div>
-                            <Label>Email</Label>
-                            <Input value={user.email || ''} disabled className="mt-2" />
-                        </div>
+                     <div className="space-y-1 flex-1">
+                        <FormField control={form.control} name="displayName" render={({ field }) => ( <FormItem> <FormLabel>Display Name</FormLabel> <FormControl><Input placeholder="Your Name" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                         <div className="text-sm text-muted-foreground pt-1">{user.email}</div>
                     </div>
                 </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="businessPhone" render={({ field }) => (<FormItem><FormLabel>Business Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="cellPhone" render={({ field }) => (<FormItem><FormLabel>Cell Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                </div>
+                
+                <FormField control={form.control} name="bestPhone" render={({ field }) => (
+                    <FormItem className="space-y-2">
+                        <FormLabel>Best number to call</FormLabel>
+                        <FormControl>
+                            <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4">
+                                <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="business" /></FormControl><FormLabel className="font-normal">Business</FormLabel></FormItem>
+                                <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="cell" /></FormControl><FormLabel className="font-normal">Cell</FormLabel></FormItem>
+                            </RadioGroup>
+                        </FormControl>
+                    </FormItem>
+                )} />
+
+                <div className="space-y-4">
+                    <FormField control={form.control} name="businessAddress" render={({ field }) => (<FormItem><FormLabel>Business Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="homeAddress" render={({ field }) => (<FormItem><FormLabel>Home Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="alternateContact" render={({ field }) => (<FormItem><FormLabel>Alternate Contact Person</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                </div>
+
                 <div className="flex justify-end gap-2">
-                    <Button type="button" variant="ghost" onClick={() => { setIsEditing(false); form.reset({ displayName: user.displayName || "" }); }}>Cancel</Button>
+                    <Button type="button" variant="ghost" onClick={handleCancel}>Cancel</Button>
                     <Button type="submit" disabled={form.formState.isSubmitting}>
                         {form.formState.isSubmitting && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
                         Save Changes
@@ -128,18 +182,28 @@ export function ProfileCard() {
   }
 
   return (
-    <div className="flex items-center justify-between space-x-4">
-      <div className="flex items-center space-x-4">
-        <Avatar className="h-16 w-16">
-          <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User avatar'} />
-          <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
-        </Avatar>
-        <div>
-          <h3 className="text-lg font-semibold">{user.displayName || "Anonymous User"}</h3>
-          <p className="text-sm text-muted-foreground">{user.email}</p>
+    <div className="space-y-6">
+        <div className="flex items-center justify-between space-x-4">
+          <div className="flex items-center space-x-4">
+            <Avatar className="h-16 w-16">
+              <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User avatar'} />
+              <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h3 className="text-lg font-semibold">{user.displayName || "Anonymous User"}</h3>
+              <p className="text-sm text-muted-foreground">{user.email}</p>
+            </div>
+          </div>
+          <Button variant="outline" onClick={() => setIsEditing(true)}>Edit Profile</Button>
         </div>
-      </div>
-      <Button variant="outline" onClick={() => setIsEditing(true)}>Edit Profile</Button>
+        <div className="border-t pt-6 space-y-4 text-sm">
+             <div className="grid grid-cols-3 gap-2"><div className="text-muted-foreground col-span-1">Business Phone</div><div className="col-span-2">{profile?.businessPhone || 'Not set'}</div></div>
+             <div className="grid grid-cols-3 gap-2"><div className="text-muted-foreground col-span-1">Cell Phone</div><div className="col-span-2">{profile?.cellPhone || 'Not set'}</div></div>
+             <div className="grid grid-cols-3 gap-2"><div className="text-muted-foreground col-span-1">Best Number</div><div className="col-span-2 capitalize">{profile?.bestPhone || 'Not set'}</div></div>
+             <div className="grid grid-cols-3 gap-2"><div className="text-muted-foreground col-span-1">Business Address</div><div className="col-span-2">{profile?.businessAddress || 'Not set'}</div></div>
+             <div className="grid grid-cols-3 gap-2"><div className="text-muted-foreground col-span-1">Home Address</div><div className="col-span-2">{profile?.homeAddress || 'Not set'}</div></div>
+             <div className="grid grid-cols-3 gap-2"><div className="text-muted-foreground col-span-1">Alternate Contact</div><div className="col-span-2">{profile?.alternateContact || 'Not set'}</div></div>
+        </div>
     </div>
   );
 }
