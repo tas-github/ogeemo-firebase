@@ -223,9 +223,9 @@ export function InvoicePaymentsView() {
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onSelect={() => handleOpenPaymentDialog(invoice)} disabled={status === 'Paid'}><HandCoins className="mr-2 h-4 w-4"/>Post Payment</DropdownMenuItem>
-                                                            <DropdownMenuItem onSelect={() => handleCreateReceipt(invoice)}><FileText className="mr-2 h-4 w-4"/>Create Receipt</DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => handleCreateReceipt(invoice)}><FileText className="mr-2 h-4 w-4"/>View / Print Receipt</DropdownMenuItem>
                                                             <DropdownMenuItem onSelect={() => handleEditInvoice(invoice)}><Edit className="mr-2 h-4 w-4"/>Edit Invoice</DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => handleOpenPaymentDialog(invoice)} disabled={status === 'Paid'}><HandCoins className="mr-2 h-4 w-4"/>Post Payment</DropdownMenuItem>
                                                             <DropdownMenuItem onSelect={() => setInvoiceToDelete(invoice)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete Invoice</DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
