@@ -7,24 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Play, Pause, Square, Save, Strikethrough, Quote, Link as LinkIcon, Mic } from 'lucide-react';
+import { Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Play, Pause, Square, Save, Strikethrough, Quote, Link as LinkIcon, Mic, LoaderCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { type Contact, mockContacts } from "@/data/contacts";
 import { Separator } from '@/components/ui/separator';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { cn } from '@/lib/utils';
-
-interface EventEntry {
-  id: string;
-  contactId: string;
-  contactName: string;
-  subject: string;
-  detailsHtml?: string;
-  startTime: Date;
-  endTime: Date;
-  duration: number; // in seconds
-  billableRate: number;
-}
+import { useAuth } from '@/context/auth-context';
+import { getClientAccounts, addEventEntry, type ClientAccount, type EventEntry } from '@/services/client-manager-service';
 
 const formatTime = (totalSeconds: number) => {
   const hours = Math.floor(totalSeconds / 3600);
@@ -34,7 +23,11 @@ const formatTime = (totalSeconds: number) => {
 };
 
 export function CreateClientEntryView() {
-  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [clientAccounts, setClientAccounts] = useState<ClientAccount[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+  
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [subject, setSubject] = useState("");
   const [billableRate, setBillableRate] = useState<number>(100);
 
@@ -46,6 +39,26 @@ export function CreateClientEntryView() {
   const editorRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [detailsBeforeSpeech, setDetailsBeforeSpeech] = useState('');
+
+  useEffect(() => {
+    async function loadData() {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+      setIsLoading(true);
+      try {
+        const accounts = await getClientAccounts(user.uid);
+        setClientAccounts(accounts);
+      } catch (error: any) {
+        toast({ variant: "destructive", title: "Failed to load clients", description: error.message });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, [user, toast]);
+  
 
   useEffect(() => {
     if (isActive && !isPaused) {
@@ -78,7 +91,7 @@ export function CreateClientEntryView() {
   });
 
   const handleStart = () => {
-    if (!selectedContactId) {
+    if (!selectedAccountId) {
         toast({ variant: "destructive", title: "Cannot Start Timer", description: "A client must be selected first." });
         return;
     }
@@ -96,9 +109,10 @@ export function CreateClientEntryView() {
       setIsPaused(!isPaused);
   };
 
-  const handleLogEvent = () => {
+  const handleLogEvent = async () => {
+    if (!user) { toast({ variant: "destructive", title: "Not logged in" }); return; }
     try {
-        if (!selectedContactId) {
+        if (!selectedAccountId) {
             toast({ variant: "destructive", title: "Cannot Log Entry", description: "No client is selected." });
             return;
         }
@@ -107,39 +121,36 @@ export function CreateClientEntryView() {
             return;
         }
     
-        const contact = mockContacts.find(c => c.id === selectedContactId);
-        if (!contact) {
+        const account = clientAccounts.find(c => c.id === selectedAccountId);
+        if (!account) {
             toast({ variant: "destructive", title: "Cannot Log Entry", description: "Selected client could not be found." });
             return;
         }
         
         const currentEditorContent = editorRef.current?.innerHTML || '';
         
-        const newEntry: EventEntry = {
-            id: `entry-${Date.now()}`,
-            contactId,
-            contactName: contact.name,
+        const newEntryData: Omit<EventEntry, 'id'> = {
+            accountId: selectedAccountId,
+            contactName: account.name,
             subject: subject,
             detailsHtml: currentEditorContent,
             startTime: new Date(Date.now() - elapsedTime * 1000),
             endTime: new Date(),
             duration: elapsedTime,
             billableRate,
+            userId: user.uid,
         };
         
-        const existingEntriesRaw = localStorage.getItem('eventEntries');
-        const existingEntries = existingEntriesRaw ? JSON.parse(existingEntriesRaw) : [];
-        const updatedEntries = [newEntry, ...existingEntries];
-        localStorage.setItem('eventEntries', JSON.stringify(updatedEntries));
+        await addEventEntry(newEntryData);
         
         setIsActive(false);
         setIsPaused(true);
         setElapsedTime(0);
         setSubject("");
         if (editorRef.current) editorRef.current.innerHTML = "";
-        setSelectedContactId(null);
+        setSelectedAccountId(null);
 
-        toast({ title: "Entry Logged", description: `Logged ${formatTime(newEntry.duration)} for ${contact.name}.` });
+        toast({ title: "Entry Logged", description: `Logged ${formatTime(newEntryData.duration)} for ${account.name}.` });
     } catch (error) {
         console.error("Error logging event:", error);
         toast({
@@ -191,13 +202,14 @@ export function CreateClientEntryView() {
                 <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <Label htmlFor="client-select">Client</Label>
-                        <Select value={selectedContactId ?? ''} onValueChange={setSelectedContactId} disabled={isActive}>
+                        <Select value={selectedAccountId ?? ''} onValueChange={setSelectedAccountId} disabled={isActive}>
                             <SelectTrigger id="client-select">
-                                <SelectValue placeholder="Select a client..." />
+                                <SelectValue placeholder={isLoading ? "Loading clients..." : "Select a client..."} />
                             </SelectTrigger>
                             <SelectContent>
-                                {mockContacts.map((contact) => (
-                                    <SelectItem key={contact.id} value={contact.id}>{contact.name}</SelectItem>
+                                {isLoading ? <div className="p-2"><LoaderCircle className="h-4 w-4 animate-spin"/></div> :
+                                clientAccounts.map((account) => (
+                                    <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -234,9 +246,9 @@ export function CreateClientEntryView() {
                 <div className="text-6xl font-mono font-bold text-primary tracking-tighter">
                     {formatTime(elapsedTime)}
                 </div>
-                {isActive && selectedContactId && (
+                {isActive && selectedAccountId && (
                     <p className="text-muted-foreground mt-2">
-                        Timer is running for <span className="font-semibold text-primary">{mockContacts.find(c=>c.id === selectedContactId)?.name}</span>
+                        Timer is running for <span className="font-semibold text-primary">{clientAccounts.find(c=>c.id === selectedAccountId)?.name}</span>
                     </p>
                 )}
             </CardContent>
