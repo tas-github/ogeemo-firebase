@@ -26,6 +26,7 @@ import {
   Bug,
   HeartPulse,
   LogOut,
+  MessageSquare,
 } from "lucide-react";
 
 import {
@@ -107,6 +108,14 @@ export function MainMenu() {
           <Link href="/calendar">
             <Calendar />
             <span>Calendar</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+       <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={isActive("/communications")} tooltip="Communications">
+          <Link href="/communications">
+            <MessageSquare />
+            <span>Communications</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
