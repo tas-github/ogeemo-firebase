@@ -147,7 +147,7 @@ export function InvoicePaymentsView() {
         }, 0);
         
         try {
-            // Create a serializable version of the invoice
+            // Create a serializable version of the invoice by converting Dates to ISO strings
             const serializableInvoice = {
                 ...invoice,
                 dueDate: invoice.dueDate.toISOString(),
