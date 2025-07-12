@@ -13,17 +13,6 @@ export interface Email {
 
 export const mockEmails: Email[] = [
   {
-    id: '1',
-    from: 'The Ogeemo Team',
-    fromEmail: 'team@ogeemo.com',
-    subject: 'Tips for OgeeMail',
-    text: `<p>Hi there,</p><p>Here are a few tips to get you started with OgeeMail:</p><ul><li>Use the left-hand menu to navigate between folders.</li><li>Select multiple emails using the checkboxes to perform bulk actions.</li><li>Resize the panels to customize your view.</li></ul><p>Enjoy!<br/>The Ogeemo Team</p>`,
-    date: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-    read: false,
-    starred: true,
-    folder: 'inbox',
-  },
-  {
     id: '2',
     from: 'John Doe',
     fromEmail: 'john.doe@example.com',
@@ -42,7 +31,7 @@ export const mockEmails: Email[] = [
     text: `<p>Hi team,</p><p>I've attached the latest design mockups for the new dashboard. I'm really excited about the direction this is heading. Looking forward to your thoughts!</p>`,
     date: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
     read: false,
-    starred: false,
+    starred: true,
     folder: 'inbox',
   },
   {

@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Archive, Star, Trash2, Search, MoreVertical, Reply, ReplyAll, Forward, Inbox, Send, Pencil } from 'lucide-react';
+import { Archive, Star, Trash2, Search, MoreVertical, Reply, ReplyAll, Forward, Inbox, Send, Pencil, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { type Email, mockEmails } from '@/data/emails';
 import { ScrollArea } from '../ui/scroll-area';
@@ -58,6 +59,12 @@ export function OgeeMailInboxView() {
         { id: "trash", label: "Trash", icon: Trash2 },
     ];
 
+    const tips = [
+        "Use the left-hand menu to navigate between folders.",
+        "Select multiple emails using the checkboxes to perform bulk actions.",
+        "Resize the panels to customize your view.",
+    ];
+
     const handleFolderChange = (folder: typeof activeFolder) => {
         setActiveFolder(folder);
         setSelectedEmailId(null);
@@ -98,8 +105,8 @@ export function OgeeMailInboxView() {
                 <ResizablePanel defaultSize={35} minSize={30}>
                     <TooltipProvider delayDuration={0}>
                         <div className="h-full flex flex-col">
-                            <div className="flex items-center gap-4 p-2 border-b">
-                                <div className="relative w-full">
+                            <div className="flex items-center gap-2 p-2 border-b">
+                                <div className="relative flex-1">
                                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         type="search"
@@ -109,6 +116,22 @@ export function OgeeMailInboxView() {
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                     />
                                 </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon">
+                                            <Lightbulb className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        <DropdownMenuLabel>OgeeMail Tips</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        {tips.map((tip, index) => (
+                                            <DropdownMenuItem key={index} className="text-wrap">
+                                                {tip}
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                             <ScrollArea className="flex-1">
                                 {filteredEmails.length > 0 ? (
