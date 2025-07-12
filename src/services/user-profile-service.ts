@@ -20,6 +20,7 @@ export interface UserProfile {
     businessAddress?: string;
     homeAddress?: string;
     alternateContact?: string;
+    alternateContactPhone?: string;
     createdAt: any;
     updatedAt: any;
 }
