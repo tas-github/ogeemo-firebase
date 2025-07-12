@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Logo } from '@/components/logo';
 import { Separator } from '@/components/ui/separator';
-import { Printer, Mail, ArrowLeft, LoaderCircle } from 'lucide-react';
+import { Printer, Mail, ArrowLeft, LoaderCircle, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
@@ -41,6 +41,8 @@ const formatCurrency = (amount: number) => {
 
 export default function ReceiptPage() {
     const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [notes, setNotes] = useState("");
     const printRef = useRef<HTMLDivElement>(null);
     const { toast } = useToast();
@@ -57,18 +59,17 @@ export default function ReceiptPage() {
                     dueDate: new Date(parsedData.invoice.dueDate),
                 };
                 setReceiptData({ ...parsedData, invoice: deserializedInvoice });
-
-                sessionStorage.removeItem(RECEIPT_DATA_KEY);
+                // Do not remove the key here, to allow for reloads
             } else {
-                toast({ variant: 'destructive', title: 'Error', description: 'No receipt data found.' });
-                router.push('/accounting/invoices/payments');
+                setError('No receipt data found. Please return to the previous page and try again.');
             }
         } catch (error) {
             console.error("Failed to load receipt data:", error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not load receipt data.' });
-            router.push('/accounting/invoices/payments');
+            setError('Could not load receipt data due to an internal error.');
+        } finally {
+            setIsLoading(false);
         }
-    }, [router, toast]);
+    }, []);
 
     const handlePrint = () => {
         window.print();
@@ -81,11 +82,29 @@ export default function ReceiptPage() {
             description: `The receipt for invoice ${receiptData.invoice.invoiceNumber} has been sent to ${receiptData.invoice.clientName}.`,
         });
     };
-
-    if (!receiptData) {
+    
+    if (isLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center p-4">
                 <LoaderCircle className="h-8 w-8 animate-spin" />
+            </div>
+        );
+    }
+
+    if (error || !receiptData) {
+         return (
+            <div className="flex h-full w-full items-center justify-center p-4">
+                <Card className="w-full max-w-md text-center">
+                    <CardContent className="p-6">
+                        <AlertTriangle className="mx-auto h-12 w-12 text-destructive" />
+                        <h2 className="mt-4 text-xl font-semibold">Could not load receipt</h2>
+                        <p className="mt-2 text-muted-foreground">{error || "An unknown error occurred."}</p>
+                        <Button className="mt-6" onClick={() => router.push('/accounting/invoices/payments')}>
+                             <ArrowLeft className="mr-2 h-4 w-4" />
+                            Return to Accounts Receivable
+                        </Button>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
