@@ -10,7 +10,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClientLayout>
       <Sidebar />
-      <SidebarInset>{children}</SidebarInset>
+      <main className="flex-1 min-w-0">
+        <SidebarInset>{children}</SidebarInset>
+      </main>
     </ClientLayout>
   );
 }
