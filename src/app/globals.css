@@ -1,11 +1,9 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-background text-foreground;
+  :root {
     --background: 210 20% 98%;
     --foreground: 215 28% 17%;
     
@@ -41,13 +39,11 @@
     --chart-3: 160 70% 50%;
     --chart-4: 45 100% 59%;
     --chart-5: 262 80% 58%;
+  }
 
-    --sidebar-background: 210 40% 96.1%;
-    --sidebar-foreground: 215 28% 17%;
-    --sidebar-accent: 25 95% 53%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-ring: 25 95% 53%;
+  body {
+    @apply antialiased flex flex-col min-h-screen;
+    font-family: var(--font-body);
   }
 
   *,
