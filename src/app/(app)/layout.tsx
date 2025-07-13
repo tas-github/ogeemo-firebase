@@ -8,9 +8,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // within the Firebase Studio development environment.
   return (
     <ClientLayout>
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
+      {children}
     </ClientLayout>
   );
 }
