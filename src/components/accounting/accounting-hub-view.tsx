@@ -31,7 +31,8 @@ import {
     WalletCards,
     Activity,
     BarChart3,
-    FileInput
+    FileInput,
+    Package
 } from "lucide-react";
 
 interface ActionItem {
@@ -69,6 +70,7 @@ const bookkeepingFeatures: FeatureLink[] = [
 
 const advancedFeatures: FeatureLink[] = [
     { href: "/accounting/accounts-payable", icon: FileInput, title: "Accounts Payable", description: "Track money you owe to vendors." },
+    { href: "/accounting/asset-management", icon: Package, title: "Asset Management", description: "Manage capital assets and depreciation." },
     { href: "/accounting/bank-statements", icon: WalletCards, title: "Bank Statements", description: "Reconcile bank transactions." },
     { href: "/accounting/reports", icon: BarChart3, title: "Reporting Hub", description: "Generate financial reports." },
     { href: "/accounting/vitals", icon: Activity, title: "Financial Vitals", description: "See key financial metrics at a glance." },

@@ -247,3 +247,59 @@ export async function deleteExpenseTransaction(id: string): Promise<void> {
     if (!db) throw new Error("Firestore not initialized");
     await deleteDoc(doc(db, EXPENSE_COLLECTION, id));
 }
+
+// --- Asset Interfaces & Functions ---
+
+export interface Asset {
+  id: string;
+  name: string;
+  description?: string;
+  acquisitionDate: Date;
+  acquisitionCost: number;
+  assetClass: string;
+  depreciationMethod: 'straight-line' | 'declining-balance';
+  usefulLife?: number;
+  depreciationRate?: number;
+  disposalDate: Date | null;
+  disposalPrice: number | null;
+  capitalGainOrLoss: number | null;
+  terminalLoss: number | null;
+  currentValue: number;
+  accumulatedDepreciation: number;
+  userId: string;
+}
+
+const ASSETS_COLLECTION = 'assets';
+
+const docToAsset = (doc: QueryDocumentSnapshot<DocumentData>): Asset => {
+  const data = doc.data();
+  return {
+    id: doc.id,
+    ...data,
+    acquisitionDate: (data.acquisitionDate as Timestamp)?.toDate ? (data.acquisitionDate as Timestamp).toDate() : new Date(),
+    disposalDate: (data.disposalDate as Timestamp)?.toDate ? (data.disposalDate as Timestamp).toDate() : null,
+  } as Asset;
+};
+
+export async function getAssets(userId: string): Promise<Asset[]> {
+  if (!db) throw new Error("Firestore not initialized");
+  const q = query(collection(db, ASSETS_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docToAsset);
+}
+
+export async function addAsset(data: Omit<Asset, 'id'>): Promise<Asset> {
+  if (!db) throw new Error("Firestore not initialized");
+  const docRef = await addDoc(collection(db, ASSETS_COLLECTION), data);
+  return { id: docRef.id, ...data };
+}
+
+export async function updateAsset(id: string, data: Partial<Omit<Asset, 'id' | 'userId'>>): Promise<void> {
+  if (!db) throw new Error("Firestore not initialized");
+  await updateDoc(doc(db, ASSETS_COLLECTION, id), data);
+}
+
+export async function deleteAsset(id: string): Promise<void> {
+  if (!db) throw new Error("Firestore not initialized");
+  await deleteDoc(doc(db, ASSETS_COLLECTION, id));
+}
