@@ -149,7 +149,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl flex flex-col h-full sm:h-auto max-h-[90vh]">
+      <DialogContent className="sm:max-w-3xl flex flex-col max-h-[95vh]">
         <DialogHeader>
           <DialogTitle>{assetToEdit ? 'Edit Asset' : 'Add New Asset'}</DialogTitle>
           <DialogDescription>
@@ -168,63 +168,63 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
 
                     <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
                     
-                    <FormField control={form.control} name="acquisitionDate" render={({ field }) => (
-                        <FormItem className="flex flex-col"><FormLabel>Acquisition Date</FormLabel>
-                            <Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover>
-                        <FormMessage /> </FormItem> )} />
-
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                      control={form.control}
-                      name="acquisitionCost"
-                      render={({ field }) => (
-                          <FormItem>
-                          <FormLabel>Acquisition Cost</FormLabel>
-                          <div className="relative">
-                              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-                              $
-                              </span>
-                              <FormControl>
-                              <Input
-                                  type="number"
-                                  className="pl-7"
-                                  placeholder="0.00"
-                                  step="0.01"
-                                  {...field}
-                              />
-                              </FormControl>
-                          </div>
-                          <FormMessage />
-                          </FormItem>
-                      )}
-                      />
-                      <FormField
-                          control={form.control}
-                          name="undepreciatedCapitalCost"
-                          render={({ field }) => (
-                          <FormItem>
-                              <FormLabel>Undepreciated Cost (Optional)</FormLabel>
-                              <div className="relative">
-                              <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-                                  $
-                              </span>
-                              <FormControl>
-                                  <Input
-                                  type="number"
-                                  className="pl-7"
-                                  placeholder="0.00"
-                                  step="0.01"
-                                  {...field}
-                                  value={field.value ?? ''}
-                                  />
-                              </FormControl>
-                              </div>
-                              <FormMessage />
-                          </FormItem>
-                          )}
-                      />
+                        <FormField control={form.control} name="acquisitionDate" render={({ field }) => (
+                            <FormItem className="flex flex-col"><FormLabel>Acquisition Date</FormLabel>
+                                <Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover>
+                            <FormMessage /> </FormItem> )} />
+                        <FormField
+                        control={form.control}
+                        name="acquisitionCost"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Acquisition Cost</FormLabel>
+                            <div className="relative">
+                                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                                $
+                                </span>
+                                <FormControl>
+                                <Input
+                                    type="number"
+                                    className="pl-7"
+                                    placeholder="0.00"
+                                    step="0.01"
+                                    {...field}
+                                />
+                                </FormControl>
+                            </div>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
                     </div>
-                     <FormDescription className="-mt-2 text-xs">For assets purchased previously, enter the starting value for this year. If this is a new asset, leave the "Undepreciated Cost" blank.</FormDescription>
+                    
+                    <FormField
+                        control={form.control}
+                        name="undepreciatedCapitalCost"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Undepreciated Capital Cost (Optional)</FormLabel>
+                            <div className="relative">
+                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                                $
+                            </span>
+                            <FormControl>
+                                <Input
+                                type="number"
+                                className="pl-7"
+                                placeholder="0.00"
+                                step="0.01"
+                                {...field}
+                                value={field.value ?? ''}
+                                />
+                            </FormControl>
+                            </div>
+                            <FormDescription className="text-xs">For assets purchased previously, enter the starting value for this year. If this is a new asset, leave this blank.</FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
 
                     
                     <FormField control={form.control} name="depreciationMethod" render={({ field }) => (
