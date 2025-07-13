@@ -34,9 +34,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
             <SidebarTrigger className="md:hidden" />
             <div className="flex-1" />
           </header>
-          <main className="flex-1 overflow-auto">
-            {children}
-          </main>
+          {children}
         </div>
 
       </div>
