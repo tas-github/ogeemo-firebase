@@ -1,4 +1,3 @@
-
 import type {Config} from 'tailwindcss';
 
 const config: Config = {
@@ -6,10 +5,15 @@ const config: Config = {
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
-  corePlugins: {
-    preflight: false,
-  },
+  darkMode: 'class',
   theme: {
+    container: {
+      center: true,
+      padding: '2rem',
+      screens: {
+        '2xl': '1400px',
+      },
+    },
     extend: {
       fontFamily: {
         body: ['var(--font-body)', 'sans-serif'],
