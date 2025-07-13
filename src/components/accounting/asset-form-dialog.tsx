@@ -149,7 +149,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl flex flex-col max-h-[95vh]">
+      <DialogContent className="sm:max-w-2xl flex flex-col max-h-[95vh]">
         <DialogHeader>
           <DialogTitle>{assetToEdit ? 'Edit Asset' : 'Add New Asset'}</DialogTitle>
           <DialogDescription>
