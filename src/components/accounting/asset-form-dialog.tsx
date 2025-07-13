@@ -158,42 +158,41 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Asset Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                 <FormField control={form.control} name="assetClass" render={({ field }) => ( <FormItem><FormLabel>Asset Class</FormLabel><FormControl><Input placeholder="e.g., Class 8, Class 10" {...field} /></FormControl><FormDescription>As per tax authority guidelines (e.g., CRA).</FormDescription><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Asset Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="assetClass" render={({ field }) => ( <FormItem><FormLabel>Asset Class</FormLabel><FormControl><Input placeholder="e.g., Class 8, Class 10" {...field} /></FormControl><FormDescription>As per tax authority guidelines (e.g., CRA).</FormDescription><FormMessage /></FormItem> )} />
             </div>
 
             <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="acquisitionDate" render={({ field }) => (
-                    <FormItem className="flex flex-col"><FormLabel>Acquisition Date</FormLabel>
-                        <Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover>
-                    <FormMessage /> </FormItem> )} />
-                <FormField
-                  control={form.control}
-                  name="acquisitionCost"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Acquisition Cost</FormLabel>
-                      <div className="relative">
-                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-                          $
-                        </span>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            className="pl-7"
-                            placeholder="0.00"
-                            step="0.01"
-                            {...field}
-                          />
-                        </FormControl>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-            </div>
+            
+            <FormField control={form.control} name="acquisitionDate" render={({ field }) => (
+                <FormItem className="flex flex-col"><FormLabel>Acquisition Date</FormLabel>
+                    <Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover>
+                <FormMessage /> </FormItem> )} />
+            
+            <FormField
+              control={form.control}
+              name="acquisitionCost"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Acquisition Cost</FormLabel>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                      $
+                    </span>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        className="pl-7"
+                        placeholder="0.00"
+                        step="0.01"
+                        {...field}
+                      />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
                 control={form.control}
