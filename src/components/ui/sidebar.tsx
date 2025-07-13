@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -142,7 +141,7 @@ const SidebarProvider = React.forwardRef<
               } as React.CSSProperties
             }
             className={cn(
-              "group/sidebar-wrapper flex h-screen w-full has-[[data-variant=inset]]:bg-sidebar md:has-[[data-state=expanded]]:overflow-hidden",
+              "group/sidebar-wrapper flex min-h-screen w-full has-[[data-variant=inset]]:bg-sidebar md:has-[[data-state=expanded]]:overflow-hidden",
               className
             )}
             ref={ref}
