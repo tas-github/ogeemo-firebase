@@ -28,16 +28,14 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
             <UserNav />
           </SidebarFooter>
         </Sidebar>
-
-        <div className="relative flex flex-1 flex-col min-w-0">
-          <header className="sticky top-0 z-10 flex shrink-0 items-center border-b bg-background/80 px-4 py-2 backdrop-blur-sm sm:px-6">
+        
+        <main className="relative flex flex-1 flex-col overflow-auto">
+           <header className="sticky top-0 z-10 flex shrink-0 items-center border-b bg-background/80 px-4 py-2 backdrop-blur-sm sm:px-6">
             <SidebarTrigger className="md:hidden" />
             <div className="flex-1 text-center" />
           </header>
-          <main className="flex-1 overflow-auto">
-            {children}
-          </main>
-        </div>
+          {children}
+        </main>
 
       </div>
     </SidebarProvider>
