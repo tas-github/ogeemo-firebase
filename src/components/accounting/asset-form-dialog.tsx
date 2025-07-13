@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Form,
   FormControl,
@@ -190,33 +189,34 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                     </FormItem>
                   )}
                 />
-                 <FormField
-                  control={form.control}
-                  name="undepreciatedCapitalCost"
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Undepreciated Capital Cost (Optional)</FormLabel>
-                      <div className="relative">
-                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-                          $
-                        </span>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            className="pl-7"
-                            placeholder="0.00"
-                            step="0.01"
-                            {...field}
-                            value={field.value ?? ''}
-                          />
-                        </FormControl>
-                      </div>
-                      <FormDescription>For assets purchased in a previous fiscal year, enter the starting value for this year.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
             </div>
+
+            <FormField
+                control={form.control}
+                name="undepreciatedCapitalCost"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Undepreciated Capital Cost (Optional)</FormLabel>
+                    <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                        $
+                    </span>
+                    <FormControl>
+                        <Input
+                        type="number"
+                        className="pl-7"
+                        placeholder="0.00"
+                        step="0.01"
+                        {...field}
+                        value={field.value ?? ''}
+                        />
+                    </FormControl>
+                    </div>
+                    <FormDescription>For assets purchased in a previous fiscal year, enter the starting value for this year.</FormDescription>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
 
             <FormField control={form.control} name="assetClass" render={({ field }) => ( <FormItem><FormLabel>Asset Class</FormLabel><FormControl><Input placeholder="e.g., Class 8, Class 10" {...field} /></FormControl><FormDescription>As per tax authority guidelines (e.g., CRA).</FormDescription><FormMessage /></FormItem> )} />
             
