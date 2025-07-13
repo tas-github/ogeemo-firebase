@@ -149,16 +149,16 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-2xl flex flex-col h-full sm:h-auto sm:max-h-[90vh]">
+        <DialogHeader className="shrink-0">
           <DialogTitle>{assetToEdit ? 'Edit Asset' : 'Add New Asset'}</DialogTitle>
           <DialogDescription>
             Enter the details of the capital asset.
           </DialogDescription>
         </DialogHeader>
         <div className="flex-1 min-h-0">
-          <ScrollArea className="h-[70vh]">
-            <div className="p-1 pr-6">
+          <ScrollArea className="h-full pr-6">
+            <div className="p-1">
                 <TooltipProvider>
                     <Form {...form}>
                     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -296,7 +296,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
             </div>
           </ScrollArea>
         </div>
-        <DialogFooter className="p-6 pt-4 border-t">
+        <DialogFooter className="p-6 pt-4 border-t shrink-0">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" onClick={form.handleSubmit(handleSubmit)}>Save Asset</Button>
         </DialogFooter>
@@ -304,3 +304,5 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
     </Dialog>
   );
 }
+
+    
