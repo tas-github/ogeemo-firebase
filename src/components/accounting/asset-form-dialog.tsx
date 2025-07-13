@@ -40,6 +40,7 @@ const assetSchema = z.object({
   description: z.string().optional(),
   acquisitionDate: z.date({ required_error: "Acquisition date is required." }),
   acquisitionCost: z.coerce.number().min(0, { message: "Cost must be a positive number." }),
+  undepreciatedCapitalCost: z.coerce.number().optional(),
   assetClass: z.string().min(1, { message: "Asset class is required." }),
   depreciationMethod: z.enum(['straight-line', 'declining-balance']),
   usefulLife: z.coerce.number().optional(),
@@ -61,6 +62,14 @@ const assetSchema = z.object({
 }, {
     message: "Depreciation rate (%) is required for declining balance.",
     path: ["depreciationRate"],
+}).refine(data => {
+    if (data.undepreciatedCapitalCost !== undefined && data.undepreciatedCapitalCost > data.acquisitionCost) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Undepreciated cost cannot be greater than the acquisition cost.",
+    path: ["undepreciatedCapitalCost"],
 });
 
 
@@ -78,6 +87,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
       name: '',
       description: '',
       acquisitionCost: 0,
+      undepreciatedCapitalCost: undefined,
       assetClass: '',
       depreciationMethod: 'declining-balance',
       applyHalfYearRule: true,
@@ -91,6 +101,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
       form.reset({
         ...assetToEdit,
         acquisitionDate: assetToEdit.acquisitionDate ? new Date(assetToEdit.acquisitionDate) : undefined,
+        undepreciatedCapitalCost: assetToEdit.currentValue,
         applyHalfYearRule: assetToEdit.applyHalfYearRule ?? true,
       });
     } else if (!assetToEdit && isOpen) {
@@ -98,6 +109,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
         name: '',
         description: '',
         acquisitionCost: 0,
+        undepreciatedCapitalCost: undefined,
         assetClass: '',
         depreciationMethod: 'declining-balance',
         usefulLife: undefined,
@@ -109,10 +121,22 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
   }, [assetToEdit, isOpen, form]);
 
   const handleSubmit = (values: z.infer<typeof assetSchema>) => {
+    
+    const currentValue = values.undepreciatedCapitalCost !== undefined ? values.undepreciatedCapitalCost : values.acquisitionCost;
+    const accumulatedDepreciation = values.acquisitionCost - currentValue;
+    
     const dataToSave: Omit<Asset, 'id' | 'userId'> = {
-        ...values,
-        currentValue: values.acquisitionCost, // Initial current value is the cost
-        accumulatedDepreciation: 0,
+        name: values.name,
+        description: values.description,
+        acquisitionDate: values.acquisitionDate,
+        acquisitionCost: values.acquisitionCost,
+        assetClass: values.assetClass,
+        depreciationMethod: values.depreciationMethod,
+        usefulLife: values.usefulLife,
+        depreciationRate: values.depreciationRate,
+        applyHalfYearRule: values.applyHalfYearRule,
+        currentValue: currentValue,
+        accumulatedDepreciation: accumulatedDepreciation,
         disposalDate: null,
         disposalPrice: null,
         capitalGainOrLoss: null,
@@ -136,10 +160,10 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
             <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Asset Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
             <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <FormField control={form.control} name="acquisitionDate" render={({ field }) => (
                     <FormItem className="flex flex-col"><FormLabel>Acquisition Date</FormLabel>
-                        <Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover>
+                        <Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover>
                     <FormMessage /> </FormItem> )} />
                 <FormField
                   control={form.control}
@@ -165,6 +189,32 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                     </FormItem>
                   )}
                 />
+                 <FormField
+                  control={form.control}
+                  name="undepreciatedCapitalCost"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Undepreciated Capital Cost (Optional)</FormLabel>
+                      <div className="relative">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+                          $
+                        </span>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            className="pl-7"
+                            placeholder="0.00"
+                            step="0.01"
+                            {...field}
+                            value={field.value ?? ''}
+                          />
+                        </FormControl>
+                      </div>
+                      <FormDescription>For assets purchased in a previous fiscal year, enter the starting value for this year.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
             </div>
 
             <FormField control={form.control} name="assetClass" render={({ field }) => ( <FormItem><FormLabel>Asset Class</FormLabel><FormControl><Input placeholder="e.g., Class 8, Class 10" {...field} /></FormControl><FormDescription>As per tax authority guidelines (e.g., CRA).</FormDescription><FormMessage /></FormItem> )} />
@@ -182,12 +232,12 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
             )} />
 
             {depreciationMethod === 'straight-line' && (
-                <FormField control={form.control} name="usefulLife" render={({ field }) => ( <FormItem><FormLabel>Useful Life (Years)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="usefulLife" render={({ field }) => ( <FormItem><FormLabel>Useful Life (Years)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
             )}
 
             {depreciationMethod === 'declining-balance' && (
                 <div className="grid grid-cols-2 gap-4 items-end">
-                    <FormField control={form.control} name="depreciationRate" render={({ field }) => ( <FormItem><FormLabel>Depreciation Rate (%)</FormLabel><FormControl><Input type="number" placeholder="e.g., 20 for Class 8" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={form.control} name="depreciationRate" render={({ field }) => ( <FormItem><FormLabel>Depreciation Rate (%)</FormLabel><FormControl><Input type="number" placeholder="e.g., 20 for Class 8" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                     <FormField
                         control={form.control}
                         name="applyHalfYearRule"
