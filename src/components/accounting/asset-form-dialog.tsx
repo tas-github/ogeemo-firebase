@@ -32,6 +32,7 @@ import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
+import { Calendar } from '../ui/calendar';
 
 const assetSchema = z.object({
   name: z.string().min(2, { message: "Asset name is required." }),
