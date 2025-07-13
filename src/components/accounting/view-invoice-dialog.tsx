@@ -1,4 +1,3 @@
-
 "use client";
 
 // This component is obsolete and has been replaced by a dedicated receipt page
