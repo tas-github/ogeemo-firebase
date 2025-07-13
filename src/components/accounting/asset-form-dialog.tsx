@@ -28,12 +28,13 @@ import {
 } from "@/components/ui/form";
 import { type Asset } from '@/services/accounting-service';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
 import { Calendar } from '../ui/calendar';
 import { Checkbox } from '../ui/checkbox';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 const assetSchema = z.object({
   name: z.string().min(2, { message: "Asset name is required." }),
@@ -220,7 +221,31 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
             <FormField control={form.control} name="assetClass" render={({ field }) => ( <FormItem><FormLabel>Asset Class</FormLabel><FormControl><Input placeholder="e.g., Class 8, Class 10" {...field} /></FormControl><FormDescription>As per tax authority guidelines (e.g., CRA).</FormDescription><FormMessage /></FormItem> )} />
             
             <FormField control={form.control} name="depreciationMethod" render={({ field }) => (
-                <FormItem><FormLabel>Depreciation Method</FormLabel>
+                <FormItem>
+                    <div className="flex items-center gap-2">
+                      <FormLabel>Depreciation Method</FormLabel>
+                       <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button type="button" variant="ghost" size="icon" className="h-5 w-5 p-0" aria-label="Depreciation method help">
+                                <Info className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <div className="p-1 max-w-xs space-y-2">
+                                <div>
+                                  <h4 className="font-semibold">Declining Balance (CCA)</h4>
+                                  <p className="text-xs text-muted-foreground">Best for tax purposes (e.g., CRA's Capital Cost Allowance). Applies a fixed % to the remaining value each year.</p>
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold">Straight-Line</h4>
+                                  <p className="text-xs text-muted-foreground">Best for simple internal bookkeeping. Spreads the cost evenly over the asset's useful life.</p>
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                    </div>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Select a method" /></SelectTrigger></FormControl>
                         <SelectContent>
