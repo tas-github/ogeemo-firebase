@@ -304,5 +304,3 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
     </Dialog>
   );
 }
-
-    
