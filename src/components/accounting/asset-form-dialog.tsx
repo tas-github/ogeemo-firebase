@@ -124,7 +124,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{assetToEdit ? 'Edit Asset' : 'Add New Asset'}</DialogTitle>
           <DialogDescription>
