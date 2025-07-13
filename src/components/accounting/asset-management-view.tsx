@@ -24,7 +24,7 @@ import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getAssets, addAsset, updateAsset, deleteAsset, type Asset } from '@/services/accounting-service';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
-// import { AssetFormDialog } from './asset-form-dialog';
+import { AssetFormDialog } from './asset-form-dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { format } from 'date-fns';
 
@@ -64,9 +64,8 @@ export function AssetManagementView() {
   }, [user, toast]);
   
   const handleOpenForm = (asset?: Asset) => {
-    // setAssetToEdit(asset || null);
-    // setIsFormOpen(true);
-    toast({ title: "Feature Disabled", description: "The 'Add Asset' feature is temporarily disabled."})
+    setAssetToEdit(asset || null);
+    setIsFormOpen(true);
   };
   
   const handleSaveAsset = async (data: Omit<Asset, 'id' | 'userId'>) => {
@@ -184,14 +183,14 @@ export function AssetManagementView() {
         </Card>
       </div>
       
-      {/* 
+      
       <AssetFormDialog
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         onSave={handleSaveAsset}
         assetToEdit={assetToEdit}
       />
-      */}
+      
       
       <AlertDialog open={!!assetToDelete} onOpenChange={() => setAssetToDelete(null)}>
         <AlertDialogContent>
