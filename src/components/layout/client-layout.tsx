@@ -29,7 +29,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
           </SidebarFooter>
         </Sidebar>
 
-        <div className="relative flex flex-1 flex-col overflow-auto min-w-0">
+        <div className="relative flex flex-col w-[calc(100vw-var(--sidebar-width))] min-w-0 overflow-auto">
           <header className="sticky top-0 z-10 flex shrink-0 items-center border-b bg-background/80 px-4 py-2 backdrop-blur-sm sm:px-6">
             <SidebarTrigger className="md:hidden" />
             <div className="flex-1 text-center" />
