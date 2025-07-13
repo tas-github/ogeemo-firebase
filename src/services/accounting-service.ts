@@ -258,6 +258,7 @@ export interface Asset {
   acquisitionCost: number;
   assetClass: string;
   depreciationMethod: 'straight-line' | 'declining-balance';
+  applyHalfYearRule?: boolean;
   usefulLife?: number;
   depreciationRate?: number;
   disposalDate: Date | null;

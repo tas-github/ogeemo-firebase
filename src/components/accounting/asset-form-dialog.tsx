@@ -33,6 +33,7 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Textarea } from '../ui/textarea';
 import { Calendar } from '../ui/calendar';
+import { Checkbox } from '../ui/checkbox';
 
 const assetSchema = z.object({
   name: z.string().min(2, { message: "Asset name is required." }),
@@ -43,6 +44,7 @@ const assetSchema = z.object({
   depreciationMethod: z.enum(['straight-line', 'declining-balance']),
   usefulLife: z.coerce.number().optional(),
   depreciationRate: z.coerce.number().optional(),
+  applyHalfYearRule: z.boolean().optional(),
 }).refine(data => {
     if (data.depreciationMethod === 'straight-line' && (data.usefulLife === undefined || data.usefulLife <= 0)) {
         return false;
@@ -78,6 +80,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
       acquisitionCost: 0,
       assetClass: '',
       depreciationMethod: 'declining-balance',
+      applyHalfYearRule: true,
     },
   });
 
@@ -88,6 +91,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
       form.reset({
         ...assetToEdit,
         acquisitionDate: assetToEdit.acquisitionDate ? new Date(assetToEdit.acquisitionDate) : undefined,
+        applyHalfYearRule: assetToEdit.applyHalfYearRule ?? true,
       });
     } else if (!assetToEdit && isOpen) {
       form.reset({
@@ -99,6 +103,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
         usefulLife: undefined,
         depreciationRate: undefined,
         acquisitionDate: new Date(),
+        applyHalfYearRule: true,
       });
     }
   }, [assetToEdit, isOpen, form]);
@@ -181,7 +186,28 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
             )}
 
             {depreciationMethod === 'declining-balance' && (
-                 <FormField control={form.control} name="depreciationRate" render={({ field }) => ( <FormItem><FormLabel>Depreciation Rate (%)</FormLabel><FormControl><Input type="number" placeholder="e.g., 20 for Class 8" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                <div className="grid grid-cols-2 gap-4 items-end">
+                    <FormField control={form.control} name="depreciationRate" render={({ field }) => ( <FormItem><FormLabel>Depreciation Rate (%)</FormLabel><FormControl><Input type="number" placeholder="e.g., 20 for Class 8" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField
+                        control={form.control}
+                        name="applyHalfYearRule"
+                        render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-start space-x-2 pb-1">
+                            <FormControl>
+                            <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                            />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                            <FormLabel>
+                                Apply half-year rule
+                            </FormLabel>
+                            </div>
+                        </FormItem>
+                        )}
+                    />
+                </div>
             )}
 
 
