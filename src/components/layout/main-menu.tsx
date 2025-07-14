@@ -27,6 +27,7 @@ import {
   HeartPulse,
   LogOut,
   MessageSquare,
+  HardHat,
 } from "lucide-react";
 
 import {
@@ -47,6 +48,18 @@ export function MainMenu() {
 
   return (
     <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          asChild
+          isActive={isActive("/my-worker")}
+          tooltip="My Worker"
+        >
+          <Link href="/my-worker">
+            <HardHat />
+            <span>My Worker</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton
           asChild
