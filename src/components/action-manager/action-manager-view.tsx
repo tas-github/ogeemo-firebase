@@ -202,7 +202,7 @@ export function ActionManagerView() {
                           )}
                           <div
                               className={cn(
-                              "max-w-xs md:max-w-md lg:max-w-lg rounded-lg px-4 py-2 text-sm",
+                              "max-w-xs md:max-w-md lg:max-w-lg rounded-lg px-4 py-2 text-sm break-words",
                               message.sender === "user"
                                   ? "bg-primary text-primary-foreground"
                                   : "bg-muted"
