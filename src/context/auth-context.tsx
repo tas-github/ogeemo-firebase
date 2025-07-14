@@ -3,7 +3,7 @@
 
 import type { User } from 'firebase/auth';
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { initializeFirebase } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -15,17 +15,20 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const publicPaths = ['/login', '/register', '/auth/callback'];
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
+  const router = useRouter();
 
+  // Effect for handling Firebase Authentication state
   useEffect(() => {
     const initAuthListener = async () => {
       try {
         const { auth } = await initializeFirebase();
-        
         const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
           setUser(currentUser);
           
@@ -35,12 +38,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           setIsLoading(false);
         });
-
         return unsubscribe;
       } catch (error) {
-          console.error("Auth context initialization error:", error);
-          setIsLoading(false); // Stop loading even if there's an error
-          return () => {};
+        console.error("Auth context initialization error:", error);
+        setIsLoading(false);
+        return () => {};
       }
     };
     
@@ -52,9 +54,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           unsubscribe();
         }
       });
-    }
+    };
   }, []);
-  
+
+  // Effect for handling Google Access Token from session storage
   useEffect(() => {
     if (user && !accessToken) {
       const storedToken = sessionStorage.getItem('google_access_token');
@@ -62,7 +65,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAccessToken(storedToken);
       }
     }
-  }, [user, accessToken, pathname]);
+  }, [user, accessToken]);
+
+  // Effect for handling redirects based on auth state
+  useEffect(() => {
+    if (!isLoading) {
+      const isPublicPath = publicPaths.includes(pathname);
+      if (!user && !isPublicPath) {
+        router.push('/login');
+      } else if (user && isPublicPath) {
+        router.push('/dashboard');
+      }
+    }
+  }, [user, isLoading, pathname, router]);
+
+
+  // Render a loading screen while auth state is being determined
+  // to prevent flicker or premature rendering of protected content.
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center">
+        {/* You can replace this with a more sophisticated loading spinner component */}
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+      </div>
+    );
+  }
 
   const value = { user, isLoading, accessToken };
 
