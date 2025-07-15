@@ -5,7 +5,6 @@ import { useState } from "react";
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
 import { signInWithRedirect, GoogleAuthProvider, signInWithEmailAndPassword } from "firebase/auth";
-import { LoaderCircle } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -17,6 +16,7 @@ import { CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import LoadingModal from "@/components/ui/loading-modal";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -37,8 +37,7 @@ function GoogleIcon() {
 export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
-  const [isEmailLoading, setIsEmailLoading] = useState(false);
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -46,11 +45,12 @@ export default function LoginPage() {
   });
 
   async function handleEmailSignIn(values: z.infer<typeof loginSchema>) {
-    setIsEmailLoading(true);
+    setIsLoading(true);
     try {
       const { auth } = await initializeFirebase();
       await signInWithEmailAndPassword(auth, values.email, values.password);
-      router.push("/dashboard");
+      // On successful sign-in, the AuthProvider will handle the redirect.
+      // The loading modal will stay until the redirect happens.
     } catch (error: any) {
       let description = "An unknown error occurred. Please try again.";
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
@@ -61,18 +61,18 @@ export default function LoginPage() {
         title: "Login Failed",
         description: description,
       });
-    } finally {
-      setIsEmailLoading(false);
+      setIsLoading(false); // Hide modal on error
     }
   }
 
-
   const handleGoogleSignIn = async () => {
-    setIsGoogleLoading(true);
+    setIsLoading(true);
     try {
       const { auth } = await initializeFirebase();
       const provider = new GoogleAuthProvider();
       await signInWithRedirect(auth, provider);
+      // After this call, the page will redirect to Google for auth.
+      // The loading modal will be visible until the redirect occurs.
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
       let description = `An unknown error occurred. (Code: ${error.code})`;
@@ -84,14 +84,13 @@ export default function LoginPage() {
         title: "Google Sign-In Failed",
         description: description,
       });
-      setIsGoogleLoading(false);
+      setIsLoading(false); // Hide modal on error
     }
   };
 
-  const isLoading = isEmailLoading || isGoogleLoading;
-
   return (
     <>
+      {isLoading && <LoadingModal message="Signing in..." />}
       <CardHeader className="text-center">
         <CardTitle className="text-2xl font-headline font-semibold">Welcome to Ogeemo</CardTitle>
         <CardDescription>Sign in to your account to continue.</CardDescription>
@@ -106,7 +105,7 @@ export default function LoginPage() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="name@example.com" {...field} />
+                    <Input placeholder="name@example.com" {...field} disabled={isLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -119,14 +118,13 @@ export default function LoginPage() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" {...field} />
+                    <Input type="password" placeholder="••••••••" {...field} disabled={isLoading} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isEmailLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
               Sign In
             </Button>
           </form>
@@ -140,18 +138,14 @@ export default function LoginPage() {
           </div>
         </div>
         <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
-            {isGoogleLoading ? (
-                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-                <GoogleIcon />
-            )}
+            <GoogleIcon />
             Sign in with Google
         </Button>
       </CardContent>
       <CardFooter className="justify-center text-sm">
         <p>
             Don't have an account?{' '}
-            <Link href="/register" className="font-medium text-primary hover:underline">
+            <Link href="/register" className="font-medium text-primary hover:underline" tabIndex={isLoading ? -1 : undefined}>
                 Sign up
             </Link>
         </p>

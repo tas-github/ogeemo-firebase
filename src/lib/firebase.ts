@@ -13,7 +13,7 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-type FirebaseServices = {
+export type FirebaseServices = {
   app: FirebaseApp;
   auth: Auth;
   db: Firestore;

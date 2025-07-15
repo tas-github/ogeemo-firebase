@@ -1,12 +1,14 @@
 
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { LogOut, Settings, User as UserIcon, MoreHorizontal } from "lucide-react";
 import { signOut } from "firebase/auth";
 
 import { initializeFirebase } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
+import { useToast } from "@/hooks/use-toast";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -19,23 +21,32 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import LoadingModal from "./ui/loading-modal";
 
 export function UserNav() {
   const { state: sidebarState } = useSidebar();
   const { user } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { toast } = useToast();
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     try {
       const { auth } = await initializeFirebase();
       await signOut(auth);
+      // The redirect is handled by the AuthProvider listener.
+      // No need to set isLoggingOut to false, the component will unmount.
     } catch (error) {
        console.error("Logout error:", error);
+       toast({
+        variant: "destructive",
+        title: "Logout Failed",
+        description: "An unexpected error occurred. Please try again.",
+      });
+       setIsLoggingOut(false);
     }
-    // The redirect to /login is handled by the listener in AuthProvider
   };
 
-  // If there's no user, don't render anything.
-  // The layout will redirect to login page.
   if (!user) {
     return null;
   }
@@ -71,7 +82,7 @@ export function UserNav() {
         </DropdownMenuItem>
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
-      <DropdownMenuItem onClick={handleLogout}>
+      <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
         <LogOut className="mr-2 h-4 w-4" />
         <span>Log out</span>
       </DropdownMenuItem>
@@ -80,46 +91,50 @@ export function UserNav() {
 
   if (sidebarState === "collapsed") {
     return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-            <Avatar className="h-8 w-8">
-              <AvatarImage
-                src={user.photoURL || undefined}
-                alt={user.displayName || 'User avatar'}
-              />
-              <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
-            </Avatar>
-          </Button>
-        </DropdownMenuTrigger>
-        {dropdownContent}
-      </DropdownMenu>
+      <>
+        {isLoggingOut && <LoadingModal message="Signing out..." />}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+              <Avatar className="h-8 w-8">
+                <AvatarImage
+                  src={user.photoURL || undefined}
+                  alt={user.displayName || 'User avatar'}
+                />
+                <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+              </Avatar>
+            </Button>
+          </DropdownMenuTrigger>
+          {dropdownContent}
+        </DropdownMenu>
+      </>
     );
   }
 
   return (
-    <DropdownMenu>
-      <div className="flex w-full items-center gap-2">
-        <Avatar className="h-8 w-8">
-           <AvatarImage
-              src={user.photoURL || undefined}
-              alt={user.displayName || 'User avatar'}
-            />
-           <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
-        </Avatar>
-        <div className="flex-1 truncate">
-          <p className="truncate text-sm font-medium leading-none">{user.displayName || 'User'}</p>
-          <p className="truncate text-xs leading-none text-muted-foreground">
-            {user.email}
-          </p>
-        </div>
+    <>
+      {isLoggingOut && <LoadingModal message="Signing out..." />}
+      <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
+            <div className="flex w-full items-center gap-2" role="button">
+                <Avatar className="h-8 w-8">
+                   <AvatarImage
+                      src={user.photoURL || undefined}
+                      alt={user.displayName || 'User avatar'}
+                    />
+                   <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 truncate">
+                  <p className="truncate text-sm font-medium leading-none">{user.displayName || 'User'}</p>
+                  <p className="truncate text-xs leading-none text-muted-foreground">
+                    {user.email}
+                  </p>
+                </div>
+                <MoreHorizontal className="h-4 w-4 shrink-0" />
+            </div>
         </DropdownMenuTrigger>
-      </div>
-      {dropdownContent}
-    </DropdownMenu>
+        {dropdownContent}
+      </DropdownMenu>
+    </>
   );
 }
