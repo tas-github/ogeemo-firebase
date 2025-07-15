@@ -5,6 +5,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/context/auth-context';
 import { LoadingProvider } from '@/context/loading-context';
+import { RouteChangeListener } from '@/components/route-change-listener';
+import { Suspense } from 'react';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -31,12 +33,15 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <head />
       <body>
-        <AuthProvider>
-          <LoadingProvider>
+        <LoadingProvider>
+          <AuthProvider>
+            <Suspense>
+              <RouteChangeListener />
+            </Suspense>
             {children}
             <Toaster />
-          </LoadingProvider>
-        </AuthProvider>
+          </AuthProvider>
+        </LoadingProvider>
       </body>
     </html>
   );
