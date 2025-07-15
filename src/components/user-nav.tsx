@@ -9,6 +9,7 @@ import { signOut } from "firebase/auth";
 import { initializeFirebase } from "@/lib/firebase";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { useLoading } from "@/context/loading-context";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -21,21 +22,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import LoadingModal from "./ui/loading-modal";
 
 export function UserNav() {
   const { state: sidebarState } = useSidebar();
   const { user } = useAuth();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { showLoading, hideLoading } = useLoading();
   const { toast } = useToast();
 
   const handleLogout = async () => {
-    setIsLoggingOut(true);
+    showLoading("Signing out...");
     try {
       const { auth } = await initializeFirebase();
       await signOut(auth);
-      // The redirect is handled by the AuthProvider listener.
-      // No need to set isLoggingOut to false, the component will unmount.
+      // The redirect is handled by the AuthProvider listener, which will
+      // trigger the layout's useEffect to hide the loading modal.
     } catch (error) {
        console.error("Logout error:", error);
        toast({
@@ -43,7 +43,7 @@ export function UserNav() {
         title: "Logout Failed",
         description: "An unexpected error occurred. Please try again.",
       });
-       setIsLoggingOut(false);
+       hideLoading();
     }
   };
 
@@ -82,7 +82,7 @@ export function UserNav() {
         </DropdownMenuItem>
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
-      <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
+      <DropdownMenuItem onClick={handleLogout}>
         <LogOut className="mr-2 h-4 w-4" />
         <span>Log out</span>
       </DropdownMenuItem>
@@ -91,30 +91,25 @@ export function UserNav() {
 
   if (sidebarState === "collapsed") {
     return (
-      <>
-        {isLoggingOut && <LoadingModal message="Signing out..." />}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
-                <AvatarImage
-                  src={user.photoURL || undefined}
-                  alt={user.displayName || 'User avatar'}
-                />
-                <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          {dropdownContent}
-        </DropdownMenu>
-      </>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+            <Avatar className="h-8 w-8">
+              <AvatarImage
+                src={user.photoURL || undefined}
+                alt={user.displayName || 'User avatar'}
+              />
+              <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+            </Avatar>
+          </Button>
+        </DropdownMenuTrigger>
+        {dropdownContent}
+      </DropdownMenu>
     );
   }
 
   return (
-    <>
-      {isLoggingOut && <LoadingModal message="Signing out..." />}
-      <DropdownMenu>
+    <DropdownMenu>
         <DropdownMenuTrigger asChild>
             <div className="flex w-full items-center gap-2" role="button">
                 <Avatar className="h-8 w-8">
@@ -135,6 +130,5 @@ export function UserNav() {
         </DropdownMenuTrigger>
         {dropdownContent}
       </DropdownMenu>
-    </>
   );
 }

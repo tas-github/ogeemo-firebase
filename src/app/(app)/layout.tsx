@@ -1,9 +1,6 @@
 
 "use client";
 
-import { useEffect } from "react";
-import { usePathname } from "next/navigation";
-import { useLoading } from "@/context/loading-context";
 import { ClientLayout } from "@/components/layout/client-layout";
 import { MainMenu } from "@/components/layout/main-menu";
 import { 
@@ -15,12 +12,6 @@ import {
 import { UserNav } from "@/components/user-nav";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const { hideLoading } = useLoading();
-
-  useEffect(() => {
-    hideLoading();
-  }, [pathname, hideLoading]);
 
   return (
     <ClientLayout>
