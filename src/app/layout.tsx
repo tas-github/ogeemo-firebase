@@ -4,6 +4,7 @@ import { Inter, Space_Grotesk as SpaceGrotesk } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from '@/context/auth-context';
+import { LoadingProvider } from '@/context/loading-context';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -31,8 +32,10 @@ export default function RootLayout({
       <head />
       <body>
         <AuthProvider>
-          {children}
-          <Toaster />
+          <LoadingProvider>
+            {children}
+            <Toaster />
+          </LoadingProvider>
         </AuthProvider>
       </body>
     </html>

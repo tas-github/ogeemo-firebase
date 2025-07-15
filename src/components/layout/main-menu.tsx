@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLoading } from "@/context/loading-context";
 import {
   Database,
   FilePlus2,
@@ -38,12 +39,21 @@ import {
 
 export function MainMenu() {
   const pathname = usePathname();
+  const { showLoading } = useLoading();
 
   const isActive = (path: string) => {
     if (path.endsWith('...')) {
       return pathname.startsWith(path.slice(0, -3));
     }
     return pathname === path;
+  };
+
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    // If the link is the current page or an external link, do nothing.
+    if (pathname === href || href.startsWith('http')) {
+      return;
+    }
+    showLoading();
   };
 
   return (
@@ -54,7 +64,7 @@ export function MainMenu() {
           isActive={isActive("/my-worker")}
           tooltip="My Worker"
         >
-          <Link href="/my-worker">
+          <Link href="/my-worker" onClick={(e) => handleClick(e, "/my-worker")}>
             <HardHat />
             <span>My Worker</span>
           </Link>
@@ -66,7 +76,7 @@ export function MainMenu() {
           isActive={isActive("/dashboard")}
           tooltip="Dashboard"
         >
-          <Link href="/dashboard">
+          <Link href="/dashboard" onClick={(e) => handleClick(e, "/dashboard")}>
             <LayoutDashboard />
             <span>Dashboard</span>
           </Link>
@@ -78,7 +88,7 @@ export function MainMenu() {
           isActive={isActive("/action-manager")}
           tooltip="Action Manager"
         >
-          <Link href="/action-manager">
+          <Link href="/action-manager" onClick={(e) => handleClick(e, "/action-manager")}>
             <Wand2 />
             <span>Action Manager</span>
           </Link>
@@ -90,7 +100,7 @@ export function MainMenu() {
           isActive={isActive("/ogeemail...")}
           tooltip="OgeeMail"
         >
-          <Link href="/ogeemail">
+          <Link href="/ogeemail" onClick={(e) => handleClick(e, "/ogeemail")}>
             <Mail />
             <span>OgeeMail</span>
           </Link>
@@ -102,7 +112,7 @@ export function MainMenu() {
           isActive={isActive("/contacts")}
           tooltip="Contacts"
         >
-          <Link href="/contacts">
+          <Link href="/contacts" onClick={(e) => handleClick(e, "/contacts")}>
             <Contact />
             <span>Contacts</span>
           </Link>
@@ -110,7 +120,7 @@ export function MainMenu() {
       </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/projects")} tooltip="Projects">
-          <Link href="/projects">
+          <Link href="/projects" onClick={(e) => handleClick(e, "/projects")}>
             <Briefcase />
             <span>Projects</span>
           </Link>
@@ -118,7 +128,7 @@ export function MainMenu() {
       </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/calendar")} tooltip="Calendar">
-          <Link href="/calendar">
+          <Link href="/calendar" onClick={(e) => handleClick(e, "/calendar")}>
             <Calendar />
             <span>Calendar</span>
           </Link>
@@ -126,7 +136,7 @@ export function MainMenu() {
       </SidebarMenuItem>
        <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/communications")} tooltip="Communications">
-          <Link href="/communications">
+          <Link href="/communications" onClick={(e) => handleClick(e, "/communications")}>
             <MessageSquare />
             <span>Communications</span>
           </Link>
@@ -134,7 +144,7 @@ export function MainMenu() {
       </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/files")} tooltip="Files">
-          <Link href="/files">
+          <Link href="/files" onClick={(e) => handleClick(e, "/files")}>
             <Folder />
             <span>Files</span>
           </Link>
@@ -142,7 +152,7 @@ export function MainMenu() {
       </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/ideas")} tooltip="Ideas">
-          <Link href="/ideas">
+          <Link href="/ideas" onClick={(e) => handleClick(e, "/ideas")}>
             <Lightbulb />
             <span>Ideas</span>
           </Link>
@@ -150,7 +160,7 @@ export function MainMenu() {
       </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/research")} tooltip="Research">
-          <Link href="/research">
+          <Link href="/research" onClick={(e) => handleClick(e, "/research")}>
             <FlaskConical />
             <span>Research</span>
           </Link>
@@ -158,7 +168,7 @@ export function MainMenu() {
       </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/accounting...")} tooltip="Accounting">
-          <Link href="/accounting">
+          <Link href="/accounting" onClick={(e) => handleClick(e, "/accounting")}>
             <Calculator />
             <span>Accounting</span>
           </Link>
@@ -166,7 +176,7 @@ export function MainMenu() {
       </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/google")} tooltip="Google">
-          <Link href="/google">
+          <Link href="/google" onClick={(e) => handleClick(e, "/google")}>
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -183,7 +193,7 @@ export function MainMenu() {
       </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/client-manager...")} tooltip="Client Manager">
-          <Link href="/client-manager">
+          <Link href="/client-manager" onClick={(e) => handleClick(e, "/client-manager")}>
             <Users />
             <span>Client Manager</span>
           </Link>
@@ -191,7 +201,7 @@ export function MainMenu() {
       </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/backup")} tooltip="Backup">
-          <Link href="/backup">
+          <Link href="/backup" onClick={(e) => handleClick(e, "/backup")}>
             <DatabaseBackup />
             <span>Backup</span>
           </Link>
@@ -199,7 +209,7 @@ export function MainMenu() {
       </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/new-dashboard")} tooltip="Dashboard Manager">
-          <Link href="/new-dashboard">
+          <Link href="/new-dashboard" onClick={(e) => handleClick(e, "/new-dashboard")}>
             <AreaChart />
             <span>Dashboard</span>
           </Link>
@@ -207,7 +217,7 @@ export function MainMenu() {
       </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/reports...")} tooltip="Reports">
-          <Link href="/reports">
+          <Link href="/reports" onClick={(e) => handleClick(e, "/reports")}>
             <BarChart3 />
             <span>Reports</span>
           </Link>
@@ -219,7 +229,7 @@ export function MainMenu() {
           isActive={isActive("/hytexercise")}
           tooltip="Hytexercise"
         >
-          <Link href="/hytexercise">
+          <Link href="/hytexercise" onClick={(e) => handleClick(e, "/hytexercise")}>
             <HeartPulse />
             <span>Hytexercise</span>
           </Link>
@@ -227,7 +237,7 @@ export function MainMenu() {
       </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/alerts")} tooltip="Alerts">
-          <Link href="/alerts">
+          <Link href="/alerts" onClick={(e) => handleClick(e, "/alerts")}>
             <Bell />
             <span>Alerts</span>
           </Link>
@@ -239,7 +249,7 @@ export function MainMenu() {
           isActive={isActive("/test-chat")}
           tooltip="Test Chat"
         >
-          <Link href="/test-chat">
+          <Link href="/test-chat" onClick={(e) => handleClick(e, "/test-chat")}>
             <Bug />
             <span>Test Chat</span>
           </Link>
@@ -251,7 +261,7 @@ export function MainMenu() {
           isActive={isActive("/sandbox")}
           tooltip="Sandbox"
         >
-          <Link href="/sandbox">
+          <Link href="/sandbox" onClick={(e) => handleClick(e, "/sandbox")}>
             <Beaker />
             <span>Sandbox</span>
           </Link>
@@ -263,7 +273,7 @@ export function MainMenu() {
           isActive={isActive("/data")}
           tooltip="Data"
         >
-          <Link href="/data">
+          <Link href="/data" onClick={(e) => handleClick(e, "/data")}>
             <Database />
             <span>Data</span>
           </Link>
@@ -275,7 +285,7 @@ export function MainMenu() {
           isActive={isActive("/forms")}
           tooltip="Forms"
         >
-          <Link href="/forms">
+          <Link href="/forms" onClick={(e) => handleClick(e, "/forms")}>
             <FilePlus2 />
             <span>Forms</span>
           </Link>
@@ -287,7 +297,7 @@ export function MainMenu() {
           isActive={isActive("/logout")}
           tooltip="Logout"
         >
-          <Link href="/logout">
+          <Link href="/logout" onClick={(e) => handleClick(e, "/logout")}>
             <LogOut />
             <span>Logout</span>
           </Link>
@@ -299,7 +309,7 @@ export function MainMenu() {
           isActive={isActive("/settings")}
           tooltip="Settings"
         >
-          <Link href="/settings">
+          <Link href="/settings" onClick={(e) => handleClick(e, "/settings")}>
             <Settings />
             <span>Settings</span>
           </Link>
