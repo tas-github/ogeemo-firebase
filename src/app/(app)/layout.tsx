@@ -3,6 +3,7 @@
 
 import { ClientLayout } from "@/components/layout/client-layout";
 import { MainMenu } from "@/components/layout/main-menu";
+import { Logo } from "@/components/logo";
 import { 
   Sidebar,
   SidebarHeader,
@@ -18,7 +19,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <ClientLayout>
       <Sidebar>
         <SidebarHeader>
-          {/* This is the empty container for the logo */}
+          <Logo />
         </SidebarHeader>
         <SidebarContent>
           <MainMenu />
