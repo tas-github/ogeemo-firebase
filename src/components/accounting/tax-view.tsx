@@ -267,7 +267,10 @@ export function TaxView() {
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="amount">Amount</Label>
-                    <Input id="amount" type="number" placeholder="0.00" value={newPayment.amount} onChange={(e) => setNewPayment(p => ({...p, amount: e.target.value}))}/>
+                    <div className="relative">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                        <Input id="amount" type="number" placeholder="0.00" value={newPayment.amount} onChange={(e) => setNewPayment(p => ({...p, amount: e.target.value}))} className="pl-7"/>
+                    </div>
                 </div>
             </div>
              <div className="space-y-2">
