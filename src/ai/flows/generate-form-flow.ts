@@ -31,7 +31,7 @@ export type GenerateFormOutput = z.infer<typeof GenerateFormOutputSchema>;
 
 const generateFormPrompt = ai.definePrompt({
     name: 'generateFormPrompt',
-    model: 'googleai/gemini-1.5-pro',
+    model: 'googleai/gemini-2.5-pro',
     input: { schema: GenerateFormInputSchema },
     output: { schema: GenerateFormOutputSchema },
     prompt: `You are a form schema generator. Based on the user's description, create a JSON object representing a form.
