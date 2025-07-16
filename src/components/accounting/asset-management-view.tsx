@@ -42,9 +42,9 @@ import {
 const ASSET_LEDGER_KEY = "accountingAssetLedger";
 
 const initialAssets: Asset[] = [
-  { id: "asset-1", name: "Company Vehicle", purchaseDate: "2023-01-15", cost: 35000, description: "Ford Transit Connect for deliveries." },
-  { id: "asset-2", name: "Office Computers", purchaseDate: "2023-06-01", cost: 8000, description: "5 Dell workstations for the team." },
-  { id: "asset-3", name: "Office Furniture", purchaseDate: "2022-05-20", cost: 12000, description: "Desks and chairs from IKEA." },
+  { id: "asset-1", name: "Company Vehicle", purchaseDate: "2023-01-15", cost: 35000, undepreciatedCapitalCost: 32000, description: "Ford Transit Connect for deliveries." },
+  { id: "asset-2", name: "Office Computers", purchaseDate: "2023-06-01", cost: 8000, undepreciatedCapitalCost: 7500, description: "5 Dell workstations for the team." },
+  { id: "asset-3", name: "Office Furniture", purchaseDate: "2022-05-20", cost: 12000, undepreciatedCapitalCost: 9000, description: "Desks and chairs from IKEA." },
 ];
 
 const formatCurrency = (amount: number) => {
@@ -144,9 +144,9 @@ export function AssetManagementView() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Asset</TableHead>
-                    <TableHead>Description</TableHead>
                     <TableHead>Acquired</TableHead>
                     <TableHead className="text-right">Original Cost</TableHead>
+                    <TableHead className="text-right">Undepreciated Capital Cost</TableHead>
                     <TableHead className="text-right"><span className="sr-only">Actions</span></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -154,9 +154,9 @@ export function AssetManagementView() {
                   {assets.map((asset) => (
                     <TableRow key={asset.id}>
                       <TableCell className="font-medium">{asset.name}</TableCell>
-                      <TableCell>{asset.description}</TableCell>
                       <TableCell>{asset.purchaseDate}</TableCell>
                       <TableCell className="text-right font-mono">{formatCurrency(asset.cost)}</TableCell>
+                      <TableCell className="text-right font-mono">{formatCurrency(asset.undepreciatedCapitalCost)}</TableCell>
                       <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

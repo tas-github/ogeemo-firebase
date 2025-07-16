@@ -23,6 +23,7 @@ export interface Asset {
   description?: string;
   purchaseDate: string;
   cost: number;
+  undepreciatedCapitalCost: number;
 }
 
 interface AssetFormDialogProps {
@@ -37,6 +38,7 @@ const emptyAssetForm = {
   description: "",
   purchaseDate: format(new Date(), 'yyyy-MM-dd'),
   cost: '',
+  undepreciatedCapitalCost: '',
 };
 
 export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: AssetFormDialogProps) {
@@ -50,6 +52,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
         description: assetToEdit.description || "",
         purchaseDate: format(parseISO(assetToEdit.purchaseDate), 'yyyy-MM-dd'),
         cost: String(assetToEdit.cost),
+        undepreciatedCapitalCost: String(assetToEdit.undepreciatedCapitalCost),
       });
     } else {
       setFormData(emptyAssetForm);
@@ -58,7 +61,9 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
 
   const handleSave = () => {
     const costNum = parseFloat(formData.cost);
-    if (!formData.name.trim() || !formData.purchaseDate || isNaN(costNum) || costNum <= 0) {
+    const uccNum = parseFloat(formData.undepreciatedCapitalCost);
+
+    if (!formData.name.trim() || !formData.purchaseDate || isNaN(costNum) || costNum <= 0 || isNaN(uccNum) || uccNum < 0) {
       toast({
         variant: "destructive",
         title: "Invalid Input",
@@ -72,6 +77,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
       description: formData.description,
       purchaseDate: formData.purchaseDate,
       cost: costNum,
+      undepreciatedCapitalCost: uccNum,
     };
 
     if (assetToEdit) {
@@ -89,7 +95,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{assetToEdit ? 'Edit Asset' : 'Add New Asset'}</DialogTitle>
           <DialogDescription>
@@ -113,6 +119,10 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
             <div className="space-y-2">
               <Label htmlFor="cost">Original Cost</Label>
               <Input id="cost" type="number" placeholder="0.00" value={formData.cost} onChange={handleChange} />
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="undepreciatedCapitalCost">Undepreciated Capital Cost</Label>
+              <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} />
             </div>
           </div>
         </div>
