@@ -90,7 +90,7 @@ export function AssetManagementView() {
         if ('id' in assetData) {
             const { id, userId, ...dataToUpdate } = assetData;
             await updateAsset(id, dataToUpdate);
-            setAssets(prev => prev.map(a => a.id === id ? { ...a, ...dataToUpdate } : a));
+            setAssets(prev => prev.map(a => a.id === id ? { ...a, ...dataToUpdate } as Asset : a));
             toast({ title: 'Asset Updated', description: `"${assetData.name}" has been updated.` });
         } else {
             const newAssetData = { ...assetData, userId: user.uid };
