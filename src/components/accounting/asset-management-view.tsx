@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -18,14 +18,33 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreVertical } from "lucide-react";
+import { PlusCircle, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { AccountingPageHeader } from "@/components/accounting/page-header";
+import { AssetFormDialog, type Asset } from './asset-form-dialog';
+import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-// Mock Data
-const mockAssets = [
-  { id: "asset-1", name: "Company Vehicle", class: "Class 10 (30%)", acquired: "2023-01-15", cost: 35000, currentValue: 24500 },
-  { id: "asset-2", name: "Office Computers", class: "Class 50 (55%)", acquired: "2023-06-01", cost: 8000, currentValue: 3600 },
-  { id: "asset-3", name: "Office Furniture", class: "Class 8 (20%)", acquired: "2022-05-20", cost: 12000, currentValue: 7680 },
+const ASSET_LEDGER_KEY = "accountingAssetLedger";
+
+const initialAssets: Asset[] = [
+  { id: "asset-1", name: "Company Vehicle", purchaseDate: "2023-01-15", cost: 35000, description: "Ford Transit Connect for deliveries." },
+  { id: "asset-2", name: "Office Computers", purchaseDate: "2023-06-01", cost: 8000, description: "5 Dell workstations for the team." },
+  { id: "asset-3", name: "Office Furniture", purchaseDate: "2022-05-20", cost: 12000, description: "Desks and chairs from IKEA." },
 ];
 
 const formatCurrency = (amount: number) => {
@@ -33,67 +52,160 @@ const formatCurrency = (amount: number) => {
 }
 
 export function AssetManagementView() {
-  const totalAssetValue = React.useMemo(() => {
-    return mockAssets.reduce((sum, asset) => sum + asset.currentValue, 0);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [isAssetFormOpen, setIsAssetFormOpen] = useState(false);
+  const [assetToEdit, setAssetToEdit] = useState<Asset | null>(null);
+  const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    try {
+        const savedAssets = localStorage.getItem(ASSET_LEDGER_KEY);
+        if (savedAssets) {
+            setAssets(JSON.parse(savedAssets));
+        } else {
+            setAssets(initialAssets);
+        }
+    } catch (error) {
+        console.error("Failed to load asset data from localStorage", error);
+        setAssets(initialAssets);
+    }
   }, []);
 
-  return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <AccountingPageHeader pageTitle="Asset Management" />
-      <header className="text-center">
-        <h1 className="text-3xl font-bold font-headline text-primary">Capital Asset Management</h1>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          Track your business's capital assets, manage depreciation, and record disposals.
-        </p>
-      </header>
+  const updateAssets = (newAssets: Asset[]) => {
+      setAssets(newAssets);
+      try {
+          localStorage.setItem(ASSET_LEDGER_KEY, JSON.stringify(newAssets));
+      } catch (error) {
+           console.error("Failed to save assets to localStorage", error);
+           toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save assets to local storage.' });
+      }
+  };
 
-      <Card>
-        <CardHeader className="flex-row justify-between items-start">
-            <div>
-                <CardTitle>Asset Register</CardTitle>
-                <CardDescription>A list of all capital assets owned by the business.</CardDescription>
+  const totalAssetValue = useMemo(() => {
+    return assets.reduce((sum, asset) => sum + asset.cost, 0);
+  }, [assets]);
+
+  const handleOpenDialog = (asset?: Asset) => {
+    setAssetToEdit(asset || null);
+    setIsAssetFormOpen(true);
+  };
+  
+  const handleSaveAsset = (assetData: Asset | Omit<Asset, 'id'>) => {
+    if ('id' in assetData) {
+      // Editing existing asset
+      updateAssets(assets.map(a => a.id === assetData.id ? assetData : a));
+      toast({ title: 'Asset Updated', description: `"${assetData.name}" has been updated.` });
+    } else {
+      // Adding new asset
+      const newAsset = { ...assetData, id: `asset-${Date.now()}`};
+      updateAssets([newAsset, ...assets]);
+      toast({ title: 'Asset Added', description: `"${newAsset.name}" has been added to the register.` });
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    if (!assetToDelete) return;
+    updateAssets(assets.filter(a => a.id !== assetToDelete.id));
+    toast({ variant: 'destructive', title: 'Asset Deleted', description: `"${assetToDelete.name}" has been removed.`});
+    setAssetToDelete(null);
+  };
+
+  return (
+    <>
+      <div className="p-4 sm:p-6 space-y-6">
+        <AccountingPageHeader pageTitle="Asset Management" />
+        <header className="text-center">
+          <h1 className="text-3xl font-bold font-headline text-primary">Capital Asset Management</h1>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Track your business's capital assets, manage depreciation, and record disposals.
+          </p>
+        </header>
+
+        <Card>
+          <CardHeader className="flex-row justify-between items-start">
+              <div>
+                  <CardTitle>Asset Register</CardTitle>
+                  <CardDescription>A list of all capital assets owned by the business.</CardDescription>
+              </div>
+              <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Total Original Cost</p>
+                  <p className="text-2xl font-bold text-primary">{formatCurrency(totalAssetValue)}</p>
+              </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex justify-end mb-4">
+              <Button variant="outline" onClick={() => handleOpenDialog()}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Asset
+              </Button>
             </div>
-            <div className="text-right">
-                <p className="text-sm text-muted-foreground">Total Current Value</p>
-                <p className="text-2xl font-bold text-primary">{formatCurrency(totalAssetValue)}</p>
-            </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-end mb-4">
-            <Button variant="outline">
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Asset
-            </Button>
-          </div>
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Asset</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Acquired</TableHead>
-                  <TableHead className="text-right">Original Cost</TableHead>
-                  <TableHead className="text-right">Current Value</TableHead>
-                  <TableHead className="text-right"><span className="sr-only">Actions</span></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {mockAssets.map((asset) => (
-                  <TableRow key={asset.id}>
-                    <TableCell className="font-medium">{asset.name}</TableCell>
-                    <TableCell>{asset.class}</TableCell>
-                    <TableCell>{asset.acquired}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(asset.cost)}</TableCell>
-                    <TableCell className="text-right font-semibold">{formatCurrency(asset.currentValue)}</TableCell>
-                    <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
-                    </TableCell>
+            <div className="border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Asset</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Acquired</TableHead>
+                    <TableHead className="text-right">Original Cost</TableHead>
+                    <TableHead className="text-right"><span className="sr-only">Actions</span></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+                </TableHeader>
+                <TableBody>
+                  {assets.map((asset) => (
+                    <TableRow key={asset.id}>
+                      <TableCell className="font-medium">{asset.name}</TableCell>
+                      <TableCell>{asset.description}</TableCell>
+                      <TableCell>{asset.purchaseDate}</TableCell>
+                      <TableCell className="text-right font-mono">{formatCurrency(asset.cost)}</TableCell>
+                      <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onSelect={() => handleOpenDialog(asset)}>
+                                <Pencil className="mr-2 h-4 w-4" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive" onSelect={() => setAssetToDelete(asset)}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <AssetFormDialog
+        isOpen={isAssetFormOpen}
+        onOpenChange={setIsAssetFormOpen}
+        assetToEdit={assetToEdit}
+        onSave={handleSaveAsset}
+      />
+
+      <AlertDialog open={!!assetToDelete} onOpenChange={() => setAssetToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the asset "{assetToDelete?.name}" from your register.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
