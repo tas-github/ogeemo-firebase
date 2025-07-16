@@ -247,3 +247,78 @@ export async function deleteExpenseTransaction(id: string): Promise<void> {
     if (!db) throw new Error("Firestore not initialized");
     await deleteDoc(doc(db, EXPENSE_COLLECTION, id));
 }
+
+// --- Accounts Payable Interfaces & Functions ---
+export interface PayableBill {
+  id: string;
+  vendor: string;
+  invoiceNumber: string;
+  dueDate: string;
+  amount: number;
+  category: string;
+  description: string;
+  userId: string;
+}
+
+const PAYABLES_COLLECTION = 'payableBills';
+const docToPayableBill = (doc: QueryDocumentSnapshot<DocumentData>): PayableBill => ({ id: doc.id, ...doc.data() } as PayableBill);
+
+export async function getPayableBills(userId: string): Promise<PayableBill[]> {
+  if (!db) throw new Error("Firestore not initialized");
+  const q = query(collection(db, PAYABLES_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docToPayableBill);
+}
+
+export async function addPayableBill(data: Omit<PayableBill, 'id'>): Promise<PayableBill> {
+  if (!db) throw new Error("Firestore not initialized");
+  const docRef = await addDoc(collection(db, PAYABLES_COLLECTION), data);
+  return { id: docRef.id, ...data };
+}
+
+export async function updatePayableBill(id: string, data: Partial<Omit<PayableBill, 'id' | 'userId'>>): Promise<void> {
+  if (!db) throw new Error("Firestore not initialized");
+  await updateDoc(doc(db, PAYABLES_COLLECTION, id), data);
+}
+
+export async function deletePayableBill(id: string): Promise<void> {
+  if (!db) throw new Error("Firestore not initialized");
+  await deleteDoc(doc(db, PAYABLES_COLLECTION, id));
+}
+
+// --- Asset Management Interfaces & Functions ---
+export interface Asset {
+  id: string;
+  name: string;
+  description?: string;
+  purchaseDate: string;
+  cost: number;
+  undepreciatedCapitalCost: number;
+  userId: string;
+}
+
+const ASSETS_COLLECTION = 'assets';
+const docToAsset = (doc: QueryDocumentSnapshot<DocumentData>): Asset => ({ id: doc.id, ...doc.data() } as Asset);
+
+export async function getAssets(userId: string): Promise<Asset[]> {
+  if (!db) throw new Error("Firestore not initialized");
+  const q = query(collection(db, ASSETS_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docToAsset);
+}
+
+export async function addAsset(data: Omit<Asset, 'id'>): Promise<Asset> {
+  if (!db) throw new Error("Firestore not initialized");
+  const docRef = await addDoc(collection(db, ASSETS_COLLECTION), data);
+  return { id: docRef.id, ...data };
+}
+
+export async function updateAsset(id: string, data: Partial<Omit<Asset, 'id' | 'userId'>>): Promise<void> {
+  if (!db) throw new Error("Firestore not initialized");
+  await updateDoc(doc(db, ASSETS_COLLECTION, id), data);
+}
+
+export async function deleteAsset(id: string): Promise<void> {
+  if (!db) throw new Error("Firestore not initialized");
+  await deleteDoc(doc(db, ASSETS_COLLECTION, id));
+}

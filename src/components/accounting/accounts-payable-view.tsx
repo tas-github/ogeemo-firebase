@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -17,7 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreVertical, Pencil, Trash2, HandCoins } from "lucide-react";
+import { PlusCircle, MoreVertical, Pencil, Trash2, HandCoins, LoaderCircle } from "lucide-react";
 import { AccountingPageHeader } from "@/components/accounting/page-header";
 import {
   DropdownMenu,
@@ -28,8 +29,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -48,51 +47,22 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useAuth } from "@/context/auth-context";
+import { getPayableBills, addPayableBill, updatePayableBill, deletePayableBill, addExpenseTransaction, type PayableBill, type ExpenseTransaction } from "@/services/accounting-service";
 
-// Types
-interface PayableBill {
-  id: string;
-  vendor: string;
-  invoiceNumber: string;
-  dueDate: string;
-  amount: number;
-  category: string;
-  description: string;
-}
 
-interface ExpenseTransaction {
-  id: string;
-  date: string;
-  company: string;
-  description: string;
-  amount: number;
-  category: string;
-  explanation: string;
-  documentNumber: string;
-  type: "business" | "personal";
-}
-
-// LocalStorage Keys
-const PAYABLE_LEDGER_KEY = "accountingPayableLedger";
-const EXPENSE_LEDGER_KEY = "accountingExpenseLedger"; // Re-using from other components
-const EXPENSE_CATEGORIES_KEY = "accountingExpenseCategories";
-const COMPANIES_KEY = "accountingCompanies";
-
-// Mock Data for initialization
-const initialPayableData: PayableBill[] = [
-  { id: "bill_1", vendor: "Cloud Hosting Inc.", invoiceNumber: "CH-98765", dueDate: "2024-08-01", amount: 150, category: "Utilities", description: "Monthly server maintenance" },
-  { id: "bill_2", vendor: "SaaS Tools Co.", invoiceNumber: "STC-11223", dueDate: "2024-08-15", amount: 75.99, category: "Software", description: "Team software licenses" },
-  { id: "bill_3", vendor: "Jane Designs", invoiceNumber: "INV-JD-001", dueDate: "2024-07-30", amount: 800, category: "Contractors", description: "New logo design" },
-];
-
+// TODO: These should be moved to a settings service
 const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
 const defaultCompanies = ["Cloud Hosting Inc.", "SaaS Tools Co.", "Jane Designs", "Office Supply Hub"];
 const emptyBillForm = { vendor: '', invoiceNumber: '', dueDate: '', amount: '', category: '', description: '' };
 
 export function AccountsPayableView() {
   const [payableLedger, setPayableLedger] = React.useState<PayableBill[]>([]);
-  const [expenseCategories, setExpenseCategories] = React.useState<string[]>([]);
-  const [companies, setCompanies] = React.useState<string[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const { user } = useAuth();
+  
+  const [expenseCategories, setExpenseCategories] = React.useState<string[]>(defaultExpenseCategories);
+  const [companies, setCompanies] = React.useState<string[]>(defaultCompanies);
   
   const [isBillDialogOpen, setIsBillDialogOpen] = React.useState(false);
   const [billToEdit, setBillToEdit] = React.useState<PayableBill | null>(null);
@@ -102,28 +72,28 @@ export function AccountsPayableView() {
   const { toast } = useToast();
 
   React.useEffect(() => {
-    try {
-      const savedPayables = localStorage.getItem(PAYABLE_LEDGER_KEY);
-      setPayableLedger(savedPayables ? JSON.parse(savedPayables) : initialPayableData);
-      
-      const savedExpenseCats = localStorage.getItem(EXPENSE_CATEGORIES_KEY);
-      setExpenseCategories(savedExpenseCats ? JSON.parse(savedExpenseCats) : defaultExpenseCategories);
-      
-      const savedCompanies = localStorage.getItem(COMPANIES_KEY);
-      setCompanies(savedCompanies ? JSON.parse(savedCompanies) : defaultCompanies);
-    } catch (error) {
-        console.error("Failed to load A/P data from localStorage", error);
+    if (!user) {
+        setIsLoading(false);
+        return;
     }
-  }, []);
+    const loadData = async () => {
+        setIsLoading(true);
+        try {
+            const bills = await getPayableBills(user.uid);
+            setPayableLedger(bills);
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Failed to load payable bills", description: error.message });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    loadData();
+  }, [user, toast]);
   
   const totalPayableAmount = React.useMemo(() => {
     return payableLedger.reduce((sum, bill) => sum + bill.amount, 0);
   }, [payableLedger]);
 
-  const updatePayableLedger = (updatedLedger: PayableBill[]) => {
-      setPayableLedger(updatedLedger);
-      localStorage.setItem(PAYABLE_LEDGER_KEY, JSON.stringify(updatedLedger));
-  };
   
   const handleOpenBillDialog = (bill?: PayableBill) => {
       if (bill) {
@@ -136,7 +106,8 @@ export function AccountsPayableView() {
       setIsBillDialogOpen(true);
   };
   
-  const handleSaveBill = () => {
+  const handleSaveBill = async () => {
+    if (!user) return;
       const amountNum = parseFloat(newBill.amount);
       if (!newBill.vendor || !newBill.dueDate || !newBill.category || !newBill.amount || isNaN(amountNum) || amountNum <= 0) {
           toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please fill all required fields correctly.' });
@@ -152,26 +123,26 @@ export function AccountsPayableView() {
           description: newBill.description,
       };
 
-      if (billToEdit) {
-          updatePayableLedger(payableLedger.map(item => item.id === billToEdit.id ? { ...item, ...billData } : item));
-          toast({ title: "Bill Updated" });
-      } else {
-          const newEntry: PayableBill = { id: `bill_${Date.now()}`, ...billData };
-          updatePayableLedger([newEntry, ...payableLedger]);
-          toast({ title: "Bill Added" });
+      try {
+        if (billToEdit) {
+            await updatePayableBill(billToEdit.id, billData);
+            setPayableLedger(prev => prev.map(item => item.id === billToEdit.id ? { ...item, ...billData } : item));
+            toast({ title: "Bill Updated" });
+        } else {
+            const newEntry = await addPayableBill({ ...billData, userId: user.uid });
+            setPayableLedger(prev => [newEntry, ...prev]);
+            toast({ title: "Bill Added" });
+        }
+        setIsBillDialogOpen(false);
+      } catch (error: any) {
+         toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
       }
-      
-      setIsBillDialogOpen(false);
   };
   
-  const handleRecordPayment = (bill: PayableBill) => {
+  const handleRecordPayment = async (bill: PayableBill) => {
+    if (!user) return;
       try {
-          // Add to expense ledger
-          const expenseLedgerRaw = localStorage.getItem(EXPENSE_LEDGER_KEY);
-          const expenseLedger: ExpenseTransaction[] = expenseLedgerRaw ? JSON.parse(expenseLedgerRaw) : [];
-          
-          const newExpense: ExpenseTransaction = {
-              id: `exp_pmt_${bill.id}_${Date.now()}`,
+          const newExpense: Omit<ExpenseTransaction, 'id'> = {
               date: format(new Date(), 'yyyy-MM-dd'),
               company: bill.vendor,
               description: bill.description || `Payment for Invoice #${bill.invoiceNumber}`,
@@ -180,25 +151,31 @@ export function AccountsPayableView() {
               explanation: `Paid bill from A/P on ${format(new Date(), 'PP')}`,
               documentNumber: bill.invoiceNumber,
               type: 'business',
+              userId: user.uid,
           };
-          const updatedExpenseLedger = [newExpense, ...expenseLedger];
-          localStorage.setItem(EXPENSE_LEDGER_KEY, JSON.stringify(updatedExpenseLedger));
           
-          // Remove from payable ledger
-          updatePayableLedger(payableLedger.filter(b => b.id !== bill.id));
+          await addExpenseTransaction(newExpense);
+          await deletePayableBill(bill.id);
+          setPayableLedger(prev => prev.filter(b => b.id !== bill.id));
 
           toast({ title: "Payment Recorded", description: `Bill from ${bill.vendor} marked as paid and moved to expenses.` });
-      } catch (error) {
+      } catch (error: any) {
            console.error("Failed to record payment:", error);
-           toast({ variant: 'destructive', title: 'Error', description: 'Could not record payment.' });
+           toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not record payment.' });
       }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
       if (!billToDelete) return;
-      updatePayableLedger(payableLedger.filter(b => b.id !== billToDelete.id));
-      toast({ title: 'Bill Deleted', variant: 'destructive' });
-      setBillToDelete(null);
+      try {
+        await deletePayableBill(billToDelete.id);
+        setPayableLedger(prev => prev.filter(b => b.id !== billToDelete.id));
+        toast({ title: 'Bill Deleted', variant: 'destructive' });
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Delete Failed', description: error.message });
+      } finally {
+        setBillToDelete(null);
+      }
   };
   
   return (
@@ -229,45 +206,51 @@ export function AccountsPayableView() {
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Bill
               </Button>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {payableLedger.map(bill => (
-                  <TableRow key={bill.id}>
-                    <TableCell className="font-medium">{bill.vendor}</TableCell>
-                    <TableCell>{bill.description}</TableCell>
-                    <TableCell>{bill.dueDate}</TableCell>
-                    <TableCell>{bill.category}</TableCell>
-                    <TableCell className="text-right font-mono">
-                      {bill.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onSelect={() => handleRecordPayment(bill)}><HandCoins className="mr-2 h-4 w-4"/>Record Payment</DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => handleOpenBillDialog(bill)}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onSelect={() => setBillToDelete(bill)}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {isLoading ? (
+                <div className="flex justify-center items-center h-48">
+                    <LoaderCircle className="h-8 w-8 animate-spin" />
+                </div>
+            ) : (
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {payableLedger.map(bill => (
+                    <TableRow key={bill.id}>
+                        <TableCell className="font-medium">{bill.vendor}</TableCell>
+                        <TableCell>{bill.description}</TableCell>
+                        <TableCell>{bill.dueDate}</TableCell>
+                        <TableCell>{bill.category}</TableCell>
+                        <TableCell className="text-right font-mono">
+                        {bill.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => handleRecordPayment(bill)}><HandCoins className="mr-2 h-4 w-4"/>Record Payment</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleOpenBillDialog(bill)}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onSelect={() => setBillToDelete(bill)}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        </TableCell>
+                    </TableRow>
+                    ))}
+                </TableBody>
+                </Table>
+            )}
           </CardContent>
         </Card>
       </div>

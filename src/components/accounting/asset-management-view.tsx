@@ -18,9 +18,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { PlusCircle, MoreVertical, Pencil, Trash2, LoaderCircle } from "lucide-react";
 import { AccountingPageHeader } from "@/components/accounting/page-header";
-import { AssetFormDialog, type Asset } from './asset-form-dialog';
+import { AssetFormDialog } from './asset-form-dialog';
 import { useToast } from "@/hooks/use-toast";
 import {
   DropdownMenu,
@@ -38,14 +38,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useAuth } from "@/context/auth-context";
+import { getAssets, addAsset, updateAsset, deleteAsset, type Asset } from "@/services/accounting-service";
 
-const ASSET_LEDGER_KEY = "accountingAssetLedger";
-
-const initialAssets: Asset[] = [
-  { id: "asset-1", name: "Company Vehicle", purchaseDate: "2023-01-15", cost: 35000, undepreciatedCapitalCost: 32000, description: "Ford Transit Connect for deliveries." },
-  { id: "asset-2", name: "Office Computers", purchaseDate: "2023-06-01", cost: 8000, undepreciatedCapitalCost: 7500, description: "5 Dell workstations for the team." },
-  { id: "asset-3", name: "Office Furniture", purchaseDate: "2022-05-20", cost: 12000, undepreciatedCapitalCost: 9000, description: "Desks and chairs from IKEA." },
-];
 
 const formatCurrency = (amount: number) => {
     return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -53,34 +48,32 @@ const formatCurrency = (amount: number) => {
 
 export function AssetManagementView() {
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const { user } = useAuth();
+  
   const [isAssetFormOpen, setIsAssetFormOpen] = useState(false);
   const [assetToEdit, setAssetToEdit] = useState<Asset | null>(null);
   const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    try {
-        const savedAssets = localStorage.getItem(ASSET_LEDGER_KEY);
-        if (savedAssets) {
-            setAssets(JSON.parse(savedAssets));
-        } else {
-            setAssets(initialAssets);
-        }
-    } catch (error) {
-        console.error("Failed to load asset data from localStorage", error);
-        setAssets(initialAssets);
+    if (!user) {
+        setIsLoading(false);
+        return;
     }
-  }, []);
-
-  const updateAssets = (newAssets: Asset[]) => {
-      setAssets(newAssets);
-      try {
-          localStorage.setItem(ASSET_LEDGER_KEY, JSON.stringify(newAssets));
-      } catch (error) {
-           console.error("Failed to save assets to localStorage", error);
-           toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save assets to local storage.' });
-      }
-  };
+    const loadData = async () => {
+        setIsLoading(true);
+        try {
+            const fetchedAssets = await getAssets(user.uid);
+            setAssets(fetchedAssets);
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Failed to load assets", description: error.message });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    loadData();
+  }, [user, toast]);
 
   const totalAssetValue = useMemo(() => {
     return assets.reduce((sum, asset) => sum + asset.cost, 0);
@@ -91,24 +84,36 @@ export function AssetManagementView() {
     setIsAssetFormOpen(true);
   };
   
-  const handleSaveAsset = (assetData: Asset | Omit<Asset, 'id'>) => {
-    if ('id' in assetData) {
-      // Editing existing asset
-      updateAssets(assets.map(a => a.id === assetData.id ? assetData : a));
-      toast({ title: 'Asset Updated', description: `"${assetData.name}" has been updated.` });
-    } else {
-      // Adding new asset
-      const newAsset = { ...assetData, id: `asset-${Date.now()}`};
-      updateAssets([newAsset, ...assets]);
-      toast({ title: 'Asset Added', description: `"${newAsset.name}" has been added to the register.` });
+  const handleSaveAsset = async (assetData: Asset | Omit<Asset, 'id' | 'userId'>) => {
+    if (!user) return;
+    try {
+        if ('id' in assetData) {
+            const { id, userId, ...dataToUpdate } = assetData;
+            await updateAsset(id, dataToUpdate);
+            setAssets(prev => prev.map(a => a.id === id ? { ...a, ...dataToUpdate } : a));
+            toast({ title: 'Asset Updated', description: `"${assetData.name}" has been updated.` });
+        } else {
+            const newAssetData = { ...assetData, userId: user.uid };
+            const newAsset = await addAsset(newAssetData);
+            setAssets(prev => [newAsset, ...prev]);
+            toast({ title: 'Asset Added', description: `"${newAsset.name}" has been added to the register.` });
+        }
+    } catch(error: any) {
+        toast({ variant: "destructive", title: "Save failed", description: error.message });
     }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!assetToDelete) return;
-    updateAssets(assets.filter(a => a.id !== assetToDelete.id));
-    toast({ variant: 'destructive', title: 'Asset Deleted', description: `"${assetToDelete.name}" has been removed.`});
-    setAssetToDelete(null);
+    try {
+        await deleteAsset(assetToDelete.id);
+        setAssets(prev => prev.filter(a => a.id !== assetToDelete.id));
+        toast({ variant: 'destructive', title: 'Asset Deleted', description: `"${assetToDelete.name}" has been removed.`});
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Delete failed", description: error.message });
+    } finally {
+        setAssetToDelete(null);
+    }
   };
 
   return (
@@ -140,44 +145,50 @@ export function AssetManagementView() {
               </Button>
             </div>
             <div className="border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Asset</TableHead>
-                    <TableHead>Acquired</TableHead>
-                    <TableHead className="text-right">Original Cost</TableHead>
-                    <TableHead className="text-right">Undepreciated Capital Cost</TableHead>
-                    <TableHead className="text-right"><span className="sr-only">Actions</span></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {assets.map((asset) => (
-                    <TableRow key={asset.id}>
-                      <TableCell className="font-medium">{asset.name}</TableCell>
-                      <TableCell>{asset.purchaseDate}</TableCell>
-                      <TableCell className="text-right font-mono">{formatCurrency(asset.cost)}</TableCell>
-                      <TableCell className="text-right font-mono">{formatCurrency(asset.undepreciatedCapitalCost)}</TableCell>
-                      <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onSelect={() => handleOpenDialog(asset)}>
-                                <Pencil className="mr-2 h-4 w-4" /> Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive" onSelect={() => setAssetToDelete(asset)}>
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                {isLoading ? (
+                    <div className="flex justify-center items-center h-48">
+                        <LoaderCircle className="h-8 w-8 animate-spin" />
+                    </div>
+                ) : (
+                    <Table>
+                        <TableHeader>
+                        <TableRow>
+                            <TableHead>Asset</TableHead>
+                            <TableHead>Acquired</TableHead>
+                            <TableHead className="text-right">Original Cost</TableHead>
+                            <TableHead className="text-right">Undepreciated Capital Cost</TableHead>
+                            <TableHead className="text-right"><span className="sr-only">Actions</span></TableHead>
+                        </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                        {assets.map((asset) => (
+                            <TableRow key={asset.id}>
+                            <TableCell className="font-medium">{asset.name}</TableCell>
+                            <TableCell>{asset.purchaseDate}</TableCell>
+                            <TableCell className="text-right font-mono">{formatCurrency(asset.cost)}</TableCell>
+                            <TableCell className="text-right font-mono">{formatCurrency(asset.undepreciatedCapitalCost)}</TableCell>
+                            <TableCell className="text-right">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onSelect={() => handleOpenDialog(asset)}>
+                                        <Pencil className="mr-2 h-4 w-4" /> Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="text-destructive" onSelect={() => setAssetToDelete(asset)}>
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                    </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableCell>
+                            </TableRow>
+                        ))}
+                        </TableBody>
+                    </Table>
+                )}
             </div>
           </CardContent>
         </Card>

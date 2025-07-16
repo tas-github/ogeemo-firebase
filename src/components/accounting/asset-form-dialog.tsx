@@ -16,20 +16,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
+import type { Asset } from "@/services/accounting-service";
 
-export interface Asset {
-  id: string;
-  name: string;
-  description?: string;
-  purchaseDate: string;
-  cost: number;
-  undepreciatedCapitalCost: number;
-}
 
 interface AssetFormDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSave: (asset: Asset | Omit<Asset, "id">) => void;
+  onSave: (asset: Asset | Omit<Asset, "id" | "userId">) => void;
   assetToEdit: Asset | null;
 }
 
@@ -46,15 +39,16 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
   const { toast } = useToast();
 
   useEffect(() => {
-    if (assetToEdit) {
+    if (assetToEdit && isOpen) {
       setFormData({
         name: assetToEdit.name,
         description: assetToEdit.description || "",
-        purchaseDate: format(parseISO(assetToEdit.purchaseDate), 'yyyy-MM-dd'),
+        // Ensure purchaseDate is parsed correctly if it's a string
+        purchaseDate: format(typeof assetToEdit.purchaseDate === 'string' ? parseISO(assetToEdit.purchaseDate) : assetToEdit.purchaseDate, 'yyyy-MM-dd'),
         cost: String(assetToEdit.cost),
         undepreciatedCapitalCost: String(assetToEdit.undepreciatedCapitalCost),
       });
-    } else {
+    } else if (!assetToEdit && isOpen) {
       setFormData(emptyAssetForm);
     }
   }, [assetToEdit, isOpen]);
