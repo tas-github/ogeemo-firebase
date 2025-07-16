@@ -22,6 +22,7 @@ const spaceGrotesk = SpaceGrotesk({
 export const metadata: Metadata = {
   title: 'Ogeemo Firebase Console',
   description: 'Manage your Firebase projects with ease.',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
