@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -259,7 +258,7 @@ export function TaxView() {
                         <SelectTrigger id="paymentType"><SelectValue/></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="Federal">Federal</SelectItem>
-                            <SelectItem value="State">State</SelectItem>
+                            <SelectItem value="State">Prov/State</SelectItem>
                             <SelectItem value="Local">Local</SelectItem>
                             <SelectItem value="Other">Other</SelectItem>
                         </SelectContent>
