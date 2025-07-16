@@ -5,6 +5,7 @@ import { ClientLayout } from "@/components/layout/client-layout";
 import { MainMenu } from "@/components/layout/main-menu";
 import { 
   Sidebar,
+  SidebarHeader,
   SidebarContent, 
   SidebarFooter,
   SidebarSeparator
@@ -16,6 +17,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClientLayout>
       <Sidebar>
+        <SidebarHeader>
+          {/* This is the empty container for the logo */}
+        </SidebarHeader>
         <SidebarContent>
           <MainMenu />
         </SidebarContent>
