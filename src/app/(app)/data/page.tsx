@@ -1,19 +1,34 @@
 
 import dynamic from 'next/dynamic';
-import { LoaderCircle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const DataSkeleton = () => (
+    <div className="space-y-6 p-4 sm:p-6">
+        <Skeleton className="h-8 w-1/3" />
+        <div className="rounded-md border">
+            <div className="p-4">
+                <Skeleton className="h-6 w-1/4 mb-2" />
+                <Skeleton className="h-4 w-1/2" />
+            </div>
+            <div className="p-4 space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex justify-between">
+                        <Skeleton className="h-4 w-1/4" />
+                        <Skeleton className="h-4 w-1/4" />
+                        <Skeleton className="h-4 w-1/4" />
+                    </div>
+                ))}
+            </div>
+        </div>
+    </div>
+);
+
 
 const DataView = dynamic(
   () => import('@/components/data/data-view').then((mod) => mod.DataView),
   {
     ssr: false,
-    loading: () => (
-      <div className="flex h-full w-full items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4">
-          <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading Data Manager...</p>
-        </div>
-      </div>
-    ),
+    loading: () => <DataSkeleton />,
   }
 );
 

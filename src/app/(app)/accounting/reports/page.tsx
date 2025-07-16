@@ -1,19 +1,27 @@
 
 import dynamic from 'next/dynamic';
-import { LoaderCircle } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const ReportsSkeleton = () => (
+    <div className="p-4 sm:p-6 space-y-6">
+        <header className="text-center mb-6">
+            <Skeleton className="h-8 w-1/2 mx-auto" />
+            <Skeleton className="h-4 w-3/4 mx-auto mt-2" />
+        </header>
+        <div className="w-full max-w-2xl mx-auto space-y-2">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+        </div>
+    </div>
+);
+
 
 const ReportsView = dynamic(
   () => import('@/components/accounting/reports-view').then((mod) => mod.ReportsView),
   {
     ssr: false,
-    loading: () => (
-      <div className="flex h-full w-full items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4">
-          <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading Reports...</p>
-        </div>
-      </div>
-    ),
+    loading: () => <ReportsSkeleton />,
   }
 );
 
