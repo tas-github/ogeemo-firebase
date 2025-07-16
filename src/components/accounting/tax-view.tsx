@@ -46,7 +46,7 @@ import {
 import { format } from "date-fns";
 
 type TaxType = "Personal" | "Business" | "Corporate";
-type PaymentType = "Federal" | "State" | "Local" | "Other";
+type PaymentType = "Federal" | "Provincial" | "Local" | "Other";
 
 interface TaxPayment {
   id: string;
@@ -61,7 +61,7 @@ const TAX_PAYMENTS_KEY = "accountingTaxPayments";
 
 const initialPayments: TaxPayment[] = [
     { id: 'payment-1', taxType: 'Business', paymentType: 'Federal', date: '2024-04-15', amount: 4500, notes: 'Q1 Estimated Tax' },
-    { id: 'payment-2', taxType: 'Business', paymentType: 'State', date: '2024-04-15', amount: 1200, notes: 'Q1 Estimated State Tax' },
+    { id: 'payment-2', taxType: 'Business', paymentType: 'Provincial', date: '2024-04-15', amount: 1200, notes: 'Q1 Estimated State Tax' },
     { id: 'payment-3', taxType: 'Personal', paymentType: 'Federal', date: '2024-06-15', amount: 5000, notes: 'Q2 Estimated Tax' },
 ];
 
@@ -259,7 +259,7 @@ export function TaxView() {
                         <SelectTrigger id="paymentType"><SelectValue/></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="Federal">Federal</SelectItem>
-                            <SelectItem value="State">Prov/State</SelectItem>
+                            <SelectItem value="Provincial">Provincial</SelectItem>
                             <SelectItem value="Local">Local</SelectItem>
                             <SelectItem value="Other">Other</SelectItem>
                         </SelectContent>
