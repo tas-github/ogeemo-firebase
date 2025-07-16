@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -43,7 +43,6 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { format } from "date-fns";
 
 type TaxType = "Personal" | "Business" | "Corporate";
 type PaymentType = "Federal" | "Provincial" | "Local" | "Other";
@@ -55,14 +54,16 @@ interface TaxPayment {
   date: string;
   amount: number;
   notes: string;
+  openingBalance: number;
+  paidFrom: string;
 }
 
 const TAX_PAYMENTS_KEY = "accountingTaxPayments";
 
 const initialPayments: TaxPayment[] = [
-    { id: 'payment-1', taxType: 'Business', paymentType: 'Federal', date: '2024-04-15', amount: 4500, notes: 'Q1 Estimated Tax' },
-    { id: 'payment-2', taxType: 'Business', paymentType: 'Provincial', date: '2024-04-15', amount: 1200, notes: 'Q1 Estimated State Tax' },
-    { id: 'payment-3', taxType: 'Personal', paymentType: 'Federal', date: '2024-06-15', amount: 5000, notes: 'Q2 Estimated Tax' },
+    { id: 'payment-1', taxType: 'Business', paymentType: 'Federal', date: '2024-04-15', amount: 4500, notes: 'Q1 Estimated Tax', openingBalance: 10000, paidFrom: 'Main Checking' },
+    { id: 'payment-2', taxType: 'Business', paymentType: 'Provincial', date: '2024-04-15', amount: 1200, notes: 'Q1 Estimated Provincial Tax', openingBalance: 2500, paidFrom: 'Main Checking' },
+    { id: 'payment-3', taxType: 'Personal', paymentType: 'Federal', date: '2024-06-15', amount: 5000, notes: 'Q2 Estimated Tax', openingBalance: 15000, paidFrom: 'Personal Savings' },
 ];
 
 const emptyPaymentForm = {
@@ -71,11 +72,16 @@ const emptyPaymentForm = {
     date: '',
     amount: '',
     notes: '',
+    openingBalance: '',
+    paidFrom: '',
 };
 
 const formatCurrency = (amount: number) => {
     return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 };
+
+// Mock list of bank accounts. In a real app, this would come from a service.
+const availableBankAccounts = ["Main Checking", "Business Savings", "Personal Savings", "Stripe Balance"];
 
 const TaxPaymentsTable = ({ payments, onEdit, onDelete }: { payments: TaxPayment[], onEdit: (payment: TaxPayment) => void, onDelete: (payment: TaxPayment) => void }) => {
     const totalPaid = useMemo(() => payments.reduce((sum, p) => sum + p.amount, 0), [payments]);
@@ -90,27 +96,34 @@ const TaxPaymentsTable = ({ payments, onEdit, onDelete }: { payments: TaxPayment
                 <TableHeader>
                     <TableRow>
                         <TableHead>Date</TableHead>
-                        <TableHead>Type</TableHead>
                         <TableHead>Notes</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Opening Balance</TableHead>
+                        <TableHead className="text-right">Amount Paid</TableHead>
+                        <TableHead className="text-right">Balance Owing</TableHead>
+                        <TableHead>Paid From</TableHead>
                         <TableHead className="w-10"><span className="sr-only">Actions</span></TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {payments.length > 0 ? payments.map(payment => (
-                        <TableRow key={payment.id}>
-                            <TableCell>{payment.date}</TableCell>
-                            <TableCell>{payment.paymentType}</TableCell>
-                            <TableCell>{payment.notes}</TableCell>
-                            <TableCell className="text-right font-mono">{formatCurrency(payment.amount)}</TableCell>
-                            <TableCell>
-                                <Button variant="ghost" size="icon" onClick={() => onEdit(payment)}><Pencil className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" onClick={() => onDelete(payment)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                            </TableCell>
-                        </TableRow>
-                    )) : (
+                    {payments.length > 0 ? payments.map(payment => {
+                        const balanceOwing = payment.openingBalance - payment.amount;
+                        return (
+                            <TableRow key={payment.id}>
+                                <TableCell>{payment.date}</TableCell>
+                                <TableCell>{payment.notes}</TableCell>
+                                <TableCell className="text-right font-mono">{formatCurrency(payment.openingBalance)}</TableCell>
+                                <TableCell className="text-right font-mono text-green-600">({formatCurrency(payment.amount)})</TableCell>
+                                <TableCell className="text-right font-mono font-semibold">{formatCurrency(balanceOwing)}</TableCell>
+                                <TableCell>{payment.paidFrom}</TableCell>
+                                <TableCell>
+                                    <Button variant="ghost" size="icon" onClick={() => onEdit(payment)}><Pencil className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" onClick={() => onDelete(payment)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                </TableCell>
+                            </TableRow>
+                        );
+                    }) : (
                         <TableRow>
-                            <TableCell colSpan={5} className="text-center h-24">No payments recorded for this category.</TableCell>
+                            <TableCell colSpan={7} className="text-center h-24">No payments recorded for this category.</TableCell>
                         </TableRow>
                     )}
                 </TableBody>
@@ -146,7 +159,7 @@ export function TaxView() {
     const handleOpenDialog = (payment?: TaxPayment) => {
         if (payment) {
             setPaymentToEdit(payment);
-            setNewPayment({ ...payment, amount: String(payment.amount) });
+            setNewPayment({ ...payment, amount: String(payment.amount), openingBalance: String(payment.openingBalance) });
         } else {
             setPaymentToEdit(null);
             setNewPayment(emptyPaymentForm);
@@ -156,18 +169,25 @@ export function TaxView() {
 
     const handleSavePayment = () => {
         const amountNum = parseFloat(newPayment.amount);
-        if (!newPayment.date || !newPayment.amount || isNaN(amountNum) || amountNum <= 0) {
-            toast({ variant: 'destructive', title: "Invalid Input", description: "Date and a valid amount are required." });
+        const openingBalanceNum = parseFloat(newPayment.openingBalance);
+
+        if (!newPayment.date || !newPayment.amount || isNaN(amountNum) || amountNum <= 0 || !newPayment.openingBalance || isNaN(openingBalanceNum) || openingBalanceNum < 0 || !newPayment.paidFrom) {
+            toast({ variant: 'destructive', title: "Invalid Input", description: "All fields marked with * are required." });
             return;
         }
 
-        const paymentData = {
-            ...newPayment,
+        const paymentData: Omit<TaxPayment, 'id'> = {
+            taxType: newPayment.taxType,
+            paymentType: newPayment.paymentType,
+            date: newPayment.date,
             amount: amountNum,
+            notes: newPayment.notes,
+            openingBalance: openingBalanceNum,
+            paidFrom: newPayment.paidFrom,
         };
 
         if (paymentToEdit) {
-            updatePayments(allPayments.map(p => p.id === paymentToEdit.id ? { ...p, ...paymentData } : p));
+            updatePayments(allPayments.map(p => p.id === paymentToEdit.id ? { ...paymentToEdit, ...paymentData } : p));
             toast({ title: "Payment Updated" });
         } else {
             const newEntry: TaxPayment = { id: `payment_${Date.now()}`, ...paymentData };
@@ -183,6 +203,13 @@ export function TaxView() {
         toast({ title: "Payment Deleted", variant: "destructive" });
         setPaymentToDelete(null);
     }
+    
+    const balanceOwing = useMemo(() => {
+        const opening = parseFloat(newPayment.openingBalance);
+        const amount = parseFloat(newPayment.amount);
+        if (isNaN(opening) || isNaN(amount)) return 0;
+        return opening - amount;
+    }, [newPayment.openingBalance, newPayment.amount]);
 
   return (
     <>
@@ -249,10 +276,30 @@ export function TaxView() {
                 </Select>
             </div>
             <div className="space-y-2">
-                <Label htmlFor="date">Payment Date</Label>
+                <Label htmlFor="date">Payment Date <span className="text-destructive">*</span></Label>
                 <Input id="date" type="date" value={newPayment.date} onChange={(e) => setNewPayment(p => ({...p, date: e.target.value}))}/>
             </div>
             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="openingBalance">Opening Balance <span className="text-destructive">*</span></Label>
+                    <div className="relative">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                        <Input id="openingBalance" type="number" placeholder="0.00" value={newPayment.openingBalance} onChange={(e) => setNewPayment(p => ({...p, openingBalance: e.target.value}))} className="pl-7"/>
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="amount">Amount Paid <span className="text-destructive">*</span></Label>
+                    <div className="relative">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                        <Input id="amount" type="number" placeholder="0.00" value={newPayment.amount} onChange={(e) => setNewPayment(p => ({...p, amount: e.target.value}))} className="pl-7"/>
+                    </div>
+                </div>
+            </div>
+            <div className="space-y-2">
+                <Label>Balance Owing</Label>
+                <Input value={formatCurrency(balanceOwing)} readOnly disabled className="font-mono" />
+            </div>
+             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="paymentType">Payment Type</Label>
                     <Select value={newPayment.paymentType} onValueChange={(v) => setNewPayment(p => ({...p, paymentType: v as PaymentType}))}>
@@ -266,11 +313,13 @@ export function TaxView() {
                     </Select>
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="amount">Amount</Label>
-                    <div className="relative">
-                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                        <Input id="amount" type="number" placeholder="0.00" value={newPayment.amount} onChange={(e) => setNewPayment(p => ({...p, amount: e.target.value}))} className="pl-7"/>
-                    </div>
+                    <Label htmlFor="paidFrom">Paid From <span className="text-destructive">*</span></Label>
+                    <Select value={newPayment.paidFrom} onValueChange={(v) => setNewPayment(p => ({...p, paidFrom: v}))}>
+                        <SelectTrigger id="paidFrom"><SelectValue placeholder="Select account..."/></SelectTrigger>
+                        <SelectContent>
+                            {availableBankAccounts.map(acc => <SelectItem key={acc} value={acc}>{acc}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
              <div className="space-y-2">
