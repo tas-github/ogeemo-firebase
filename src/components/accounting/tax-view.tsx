@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Pencil, Trash2 } from "lucide-react";
+import { PlusCircle, Pencil, Trash2, TrendingUp, TrendingDown, DollarSign, FileText } from "lucide-react";
 import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -43,6 +43,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Separator } from "../ui/separator";
 
 type TaxType = "Personal" | "Business" | "Corporate" | "Sales Tax";
 type PaymentType = "Federal" | "Provincial" | "Local" | "Other";
@@ -66,6 +67,7 @@ const initialPayments: TaxPayment[] = [
     { id: 'payment-1', taxType: 'Business', paymentType: 'Federal', date: '2024-04-15', amount: 4500, notes: 'Q1 Estimated Tax', openingBalance: 10000, paidFrom: 'Main Checking' },
     { id: 'payment-2', taxType: 'Business', paymentType: 'Provincial', date: '2024-04-15', amount: 1200, notes: 'Q1 Estimated Provincial Tax', openingBalance: 2500, paidFrom: 'Main Checking' },
     { id: 'payment-3', taxType: 'Personal', paymentType: 'Federal', date: '2024-06-15', amount: 5000, notes: 'Q2 Estimated Tax', openingBalance: 15000, paidFrom: 'Personal Savings' },
+    { id: 'remittance-1', taxType: 'Sales Tax', paymentType: 'Federal', salesTaxType: 'GST', date: '2024-07-31', amount: 850, notes: 'Q2 GST/HST Remittance', openingBalance: 850, paidFrom: 'Main Checking' },
 ];
 
 const emptyPaymentForm = {
@@ -92,7 +94,7 @@ const TaxPaymentsTable = ({ payments, onEdit, onDelete }: { payments: TaxPayment
     return (
         <div>
             <div className="text-right mb-4">
-                <p className="text-sm text-muted-foreground">Total Paid</p>
+                <p className="text-sm text-muted-foreground">Total Paid / Remitted</p>
                 <p className="text-2xl font-bold text-primary">{formatCurrency(totalPaid)}</p>
             </div>
             <Table>
@@ -135,6 +137,58 @@ const TaxPaymentsTable = ({ payments, onEdit, onDelete }: { payments: TaxPayment
     );
 };
 
+const SalesTaxView = ({ payments, onEdit, onDelete, onRecordRemittance }: { payments: TaxPayment[], onEdit: (payment: TaxPayment) => void, onDelete: (payment: TaxPayment) => void, onRecordRemittance: (amount: number) => void }) => {
+    // In a real application, these values would be calculated from income and expense ledgers.
+    const taxCollected = 2250.75;
+    const itcsPaid = 1400.25;
+    const netTax = taxCollected - itcsPaid;
+
+    return (
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Tax Collected (Sales)</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-green-600">{formatCurrency(taxCollected)}</div>
+                        <p className="text-xs text-muted-foreground">From sales in the current period.</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">ITCs (Expenses)</CardTitle>
+                        <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-red-600">{formatCurrency(itcsPaid)}</div>
+                        <p className="text-xs text-muted-foreground">Tax paid on business expenses.</p>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Net Tax Owing</CardTitle>
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{formatCurrency(netTax)}</div>
+                        <p className="text-xs text-muted-foreground">Tax Collected - ITCs Paid.</p>
+                    </CardContent>
+                     <CardFooter>
+                         <Button size="sm" className="w-full" onClick={() => onRecordRemittance(netTax)}>Record Remittance</Button>
+                     </CardFooter>
+                </Card>
+            </div>
+            <Separator />
+            <div>
+                <h3 className="text-lg font-semibold mb-2">Remittance History</h3>
+                <TaxPaymentsTable payments={payments} onEdit={onEdit} onDelete={onDelete} />
+            </div>
+        </div>
+    );
+};
+
 
 export function TaxView() {
     const [allPayments, setAllPayments] = useState<TaxPayment[]>([]);
@@ -142,6 +196,7 @@ export function TaxView() {
     const [paymentToEdit, setPaymentToEdit] = useState<TaxPayment | null>(null);
     const [paymentToDelete, setPaymentToDelete] = useState<TaxPayment | null>(null);
     const [newPayment, setNewPayment] = useState(emptyPaymentForm);
+    const [activeTab, setActiveTab] = useState<TaxType>("Business");
     const { toast } = useToast();
 
     useEffect(() => {
@@ -165,8 +220,20 @@ export function TaxView() {
             setNewPayment({ ...payment, amount: String(payment.amount), openingBalance: String(payment.openingBalance), salesTaxType: payment.salesTaxType || 'GST' });
         } else {
             setPaymentToEdit(null);
-            setNewPayment(emptyPaymentForm);
+            setNewPayment({...emptyPaymentForm, taxType: activeTab});
         }
+        setIsPaymentDialogOpen(true);
+    };
+
+    const handleOpenRemittanceDialog = (amount: number) => {
+        setPaymentToEdit(null);
+        setNewPayment({
+            ...emptyPaymentForm,
+            taxType: 'Sales Tax',
+            openingBalance: String(amount.toFixed(2)),
+            amount: String(amount.toFixed(2)),
+            notes: 'Sales Tax Remittance',
+        });
         setIsPaymentDialogOpen(true);
     };
 
@@ -244,7 +311,7 @@ export function TaxView() {
             </div>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="Business">
+            <Tabs defaultValue="Business" onValueChange={(value) => setActiveTab(value as TaxType)}>
               <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="Business">Business</TabsTrigger>
                 <TabsTrigger value="Personal">Personal</TabsTrigger>
@@ -261,7 +328,7 @@ export function TaxView() {
                 <TaxPaymentsTable payments={allPayments.filter(p => p.taxType === 'Corporate')} onEdit={handleOpenDialog} onDelete={setPaymentToDelete} />
               </TabsContent>
                <TabsContent value="Sales Tax" className="mt-4">
-                <TaxPaymentsTable payments={allPayments.filter(p => p.taxType === 'Sales Tax')} onEdit={handleOpenDialog} onDelete={setPaymentToDelete} />
+                <SalesTaxView payments={allPayments.filter(p => p.taxType === 'Sales Tax')} onEdit={handleOpenDialog} onDelete={setPaymentToDelete} onRecordRemittance={handleOpenRemittanceDialog} />
               </TabsContent>
             </Tabs>
           </CardContent>
@@ -270,7 +337,7 @@ export function TaxView() {
 
        <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{paymentToEdit ? 'Edit Payment' : 'Add New Payment'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{paymentToEdit ? 'Edit Payment' : (activeTab === 'Sales Tax' ? 'Record Remittance' : 'Add New Payment')}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
                 <Label htmlFor="taxType">Tax Category</Label>
