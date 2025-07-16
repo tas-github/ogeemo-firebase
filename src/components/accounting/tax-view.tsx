@@ -44,13 +44,15 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-type TaxType = "Personal" | "Business" | "Corporate";
+type TaxType = "Personal" | "Business" | "Corporate" | "Sales Tax";
 type PaymentType = "Federal" | "Provincial" | "Local" | "Other";
+type SalesTaxType = "GST" | "HST" | "VAT" | "PST" | "Tariff" | "Other";
 
 interface TaxPayment {
   id: string;
   taxType: TaxType;
   paymentType: PaymentType;
+  salesTaxType?: SalesTaxType;
   date: string;
   amount: number;
   notes: string;
@@ -69,6 +71,7 @@ const initialPayments: TaxPayment[] = [
 const emptyPaymentForm = {
     taxType: "Business" as TaxType,
     paymentType: "Federal" as PaymentType,
+    salesTaxType: "GST" as SalesTaxType,
     date: '',
     amount: '',
     notes: '',
@@ -159,7 +162,7 @@ export function TaxView() {
     const handleOpenDialog = (payment?: TaxPayment) => {
         if (payment) {
             setPaymentToEdit(payment);
-            setNewPayment({ ...payment, amount: String(payment.amount), openingBalance: String(payment.openingBalance) });
+            setNewPayment({ ...payment, amount: String(payment.amount), openingBalance: String(payment.openingBalance), salesTaxType: payment.salesTaxType || 'GST' });
         } else {
             setPaymentToEdit(null);
             setNewPayment(emptyPaymentForm);
@@ -172,13 +175,14 @@ export function TaxView() {
         const openingBalanceNum = parseFloat(newPayment.openingBalance);
 
         if (!newPayment.date || !newPayment.amount || isNaN(amountNum) || amountNum <= 0 || !newPayment.openingBalance || isNaN(openingBalanceNum) || openingBalanceNum < 0 || !newPayment.paidFrom) {
-            toast({ variant: 'destructive', title: "Invalid Input", description: "All fields marked with * are required." });
+            toast({ variant: "destructive", title: "Invalid Input", description: "All fields marked with * are required." });
             return;
         }
 
         const paymentData: Omit<TaxPayment, 'id'> = {
             taxType: newPayment.taxType,
             paymentType: newPayment.paymentType,
+            salesTaxType: newPayment.taxType === 'Sales Tax' ? newPayment.salesTaxType : undefined,
             date: newPayment.date,
             amount: amountNum,
             notes: newPayment.notes,
@@ -241,10 +245,11 @@ export function TaxView() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="Business">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="Business">Business</TabsTrigger>
                 <TabsTrigger value="Personal">Personal</TabsTrigger>
                 <TabsTrigger value="Corporate">Corporate</TabsTrigger>
+                <TabsTrigger value="Sales Tax">Sales Tax</TabsTrigger>
               </TabsList>
               <TabsContent value="Business" className="mt-4">
                 <TaxPaymentsTable payments={allPayments.filter(p => p.taxType === 'Business')} onEdit={handleOpenDialog} onDelete={setPaymentToDelete} />
@@ -254,6 +259,9 @@ export function TaxView() {
               </TabsContent>
               <TabsContent value="Corporate" className="mt-4">
                 <TaxPaymentsTable payments={allPayments.filter(p => p.taxType === 'Corporate')} onEdit={handleOpenDialog} onDelete={setPaymentToDelete} />
+              </TabsContent>
+               <TabsContent value="Sales Tax" className="mt-4">
+                <TaxPaymentsTable payments={allPayments.filter(p => p.taxType === 'Sales Tax')} onEdit={handleOpenDialog} onDelete={setPaymentToDelete} />
               </TabsContent>
             </Tabs>
           </CardContent>
@@ -272,9 +280,28 @@ export function TaxView() {
                         <SelectItem value="Business">Business</SelectItem>
                         <SelectItem value="Personal">Personal</SelectItem>
                         <SelectItem value="Corporate">Corporate</SelectItem>
+                        <SelectItem value="Sales Tax">Sales Tax (GST, VAT, etc.)</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
+
+            {newPayment.taxType === 'Sales Tax' && (
+              <div className="space-y-2">
+                <Label htmlFor="salesTaxType">Specific Sales Tax</Label>
+                <Select value={newPayment.salesTaxType} onValueChange={(v) => setNewPayment(p => ({...p, salesTaxType: v as SalesTaxType}))}>
+                    <SelectTrigger id="salesTaxType"><SelectValue/></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="GST">GST</SelectItem>
+                        <SelectItem value="HST">HST</SelectItem>
+                        <SelectItem value="VAT">VAT</SelectItem>
+                        <SelectItem value="PST">PST</SelectItem>
+                        <SelectItem value="Tariff">Tariff</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            )}
+            
             <div className="space-y-2">
                 <Label htmlFor="date">Payment Date <span className="text-destructive">*</span></Label>
                 <Input id="date" type="date" value={newPayment.date} onChange={(e) => setNewPayment(p => ({...p, date: e.target.value}))}/>
