@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -45,7 +44,6 @@ interface ActionItem {
 
 const actionItems: ActionItem[] = [
     { href: "/accounting/master-search", icon: Search, label: "Master Search" },
-    { href: "/accounting/search", icon: Search, label: "Search Accounting" },
     { href: "/accounting/invoices/create", icon: PlusCircle, label: "Create New Invoice" },
     { href: "/accounting/transactions/income", icon: TrendingUp, label: "Add Income Transaction" },
     { href: "/accounting/transactions/expenses", icon: TrendingDown, label: "Add Expense Transaction" },
