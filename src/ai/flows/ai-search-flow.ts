@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow to convert natural language queries into structured search conditions.
@@ -46,11 +47,15 @@ Here are the available fields for each data source. You MUST only use these fiel
 - tasks: title, description, status (possible values for status are 'todo', 'inProgress', 'done')
 - files: name, type
 - emails: from, subject, text
+- invoices: invoiceNumber, clientName, status (possible values are 'outstanding', 'paid', 'partially_paid', 'overdue'), originalAmount, amountPaid
+- income: company, description, incomeType, amount
+- expenses: company, description, category, amount
 
 Based on the user's query, create an array of conditions. For each condition, provide a 'field', an 'operator', and a 'value'.
 - Use the 'contains' operator for general text searches.
 - Use 'is' for specific, exact matches (like a status or an email address).
-- When a user mentions a time-frame (e.g., "this week", "last month"), do not attempt to generate a date-based condition. Instead, search for the literal text in the relevant fields.
+- When a user mentions a time-frame (e.g., "this week", "last month"), do not attempt to generate a date-based condition. Instead, search for the literal text in the relevant fields if applicable, or ignore the time aspect.
+- When a user query involves a monetary amount (e.g., "over $500", "less than 100"), do NOT use comparison operators like > or <. Instead, create a 'contains' condition searching for the number in the relevant amount field. For example, for "expenses over $500", create a condition: { field: 'amount', operator: 'contains', value: '500' }.
 - Also determine if the conditions should be combined with 'AND' (all must match) or 'OR' (any can match). Default to 'AND' unless the user implies 'or' (e.g., "find emails from john OR jane").
 
 The user's query is: "${query}"
