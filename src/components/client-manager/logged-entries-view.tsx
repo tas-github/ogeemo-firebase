@@ -10,7 +10,7 @@ import { ArrowLeft, Printer, LoaderCircle, MoreVertical, BookOpen, Pencil, Trash
 import { EventDetailsDialog } from "@/components/client-manager/event-details-dialog";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { getEventEntries, deleteEventEntry, type EventEntry } from "@/services/client-manager-service";
+import { getEventEntries, deleteEventEntry, updateEventEntry, type EventEntry } from "@/services/client-manager-service";
 import { useReactToPrint } from "@/hooks/use-react-to-print";
 import {
   DropdownMenu,
@@ -80,6 +80,19 @@ export function LoggedEntriesView() {
         toast({ variant: "destructive", title: "Delete Failed", description: error.message });
     } finally {
         setEntryToDelete(null);
+    }
+  };
+
+  const handleSaveEntry = async (updatedEntryData: Pick<EventEntry, 'id' | 'subject' | 'detailsHtml'>) => {
+    try {
+      await updateEventEntry(updatedEntryData.id, {
+        subject: updatedEntryData.subject,
+        detailsHtml: updatedEntryData.detailsHtml,
+      });
+      setEventEntries(prev => prev.map(e => e.id === updatedEntryData.id ? { ...e, ...updatedEntryData } : e));
+      toast({ title: "Entry Updated", description: "Your changes have been saved." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Update Failed", description: error.message });
     }
   };
 
@@ -155,8 +168,7 @@ export function LoggedEntriesView() {
                                                         <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onSelect={() => setSelectedEntry(entry)}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem>
-                                                        <DropdownMenuItem onSelect={() => setSelectedEntry(entry)}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
+                                                        <DropdownMenuItem onSelect={() => setSelectedEntry(entry)}><BookOpen className="mr-2 h-4 w-4"/>Open / Edit</DropdownMenuItem>
                                                         <DropdownMenuItem className="text-destructive" onSelect={() => setEntryToDelete(entry)}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -178,6 +190,7 @@ export function LoggedEntriesView() {
             isOpen={!!selectedEntry}
             onOpenChange={() => setSelectedEntry(null)}
             entry={selectedEntry}
+            onSave={handleSaveEntry}
         />
         <AlertDialog open={!!entryToDelete} onOpenChange={() => setEntryToDelete(null)}>
             <AlertDialogContent>
