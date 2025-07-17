@@ -34,7 +34,6 @@ import {
     FileInput,
     Package,
     Landmark,
-    Search
 } from "lucide-react";
 
 interface ActionItem {
