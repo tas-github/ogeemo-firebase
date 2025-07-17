@@ -44,11 +44,12 @@ interface ActionItem {
 }
 
 const actionItems: ActionItem[] = [
+    { href: "/accounting/master-search", icon: Search, label: "Master Search" },
     { href: "/accounting/search", icon: Search, label: "Search Accounting" },
     { href: "/accounting/invoices/create", icon: PlusCircle, label: "Create New Invoice" },
     { href: "/accounting/transactions/income", icon: TrendingUp, label: "Add Income Transaction" },
     { href: "/accounting/transactions/expenses", icon: TrendingDown, label: "Add Expense Transaction" },
-    { href: "/accounting/invoices/payments", icon: FileOutput, label: "View Accounts Receivable" },
+    { href: "/accounting/accounts-receivable", icon: FileOutput, label: "View Accounts Receivable" },
     { href: "/accounting/ledgers", icon: BookText, label: "View General Ledger" },
     { href: "/accounting/bks-info", icon: Info, label: "BKS Info" },
 ];
@@ -61,7 +62,7 @@ interface FeatureLink {
 }
 
 const clientBillingFeatures: FeatureLink[] = [
-    { href: "/accounting/invoices/payments", icon: FileOutput, title: "Accounts Receivable", description: "Track money owed to you by clients." },
+    { href: "/accounting/accounts-receivable", icon: FileOutput, title: "Accounts Receivable", description: "Track money owed to you by clients." },
     { href: "/accounting/invoices/create", icon: FileDigit, title: "Invoice Generator", description: "Create new invoices and manage templates." },
 ];
 
