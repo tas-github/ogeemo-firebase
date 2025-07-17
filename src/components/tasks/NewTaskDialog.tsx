@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Calendar as CalendarIcon, Plus, Clock } from "lucide-react";
 import { format, set } from "date-fns";
+import dynamic from "next/dynamic";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -33,11 +34,16 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import { mockContacts, type Contact } from "@/data/contacts";
+import { type Contact } from "@/data/contacts";
 import { type Event } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TimeClockDialog } from "@/components/time/TimeClockDialog";
+import * as ContactService from "@/services/contact-service";
+import { useAuth } from "@/context/auth-context";
+
+const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-form-dialog'));
+
 
 interface NewTaskDialogProps {
   isOpen: boolean;
@@ -74,6 +80,7 @@ const formatTime = (totalSeconds: number) => {
 
 
 export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToEdit, onTaskCreate, onTaskUpdate, projectId }: NewTaskDialogProps) {
+  const { user } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<'todo' | 'inProgress' | 'done'>('todo');
@@ -93,11 +100,13 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
   const [billableRate, setBillableRate] = useState<number | undefined>();
 
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [folders, setFolders] = useState<ContactService.FolderData[]>([]);
   const { toast } = useToast();
   
   const isEditMode = !!eventToEdit;
 
   const [isTimeClockOpen, setIsTimeClockOpen] = useState(false);
+  const [isContactFormOpen, setIsContactFormOpen] = useState(false);
 
   const resetForm = useCallback((date = defaultStartDate) => {
     setTitle("");
@@ -124,9 +133,22 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
   }, [defaultStartDate]);
 
   useEffect(() => {
-    // In a real app, you might fetch this data.
-    setContacts(mockContacts);
-  }, []);
+    async function loadContactsAndFolders() {
+      if (user) {
+        try {
+          const [fetchedContacts, fetchedFolders] = await Promise.all([
+            ContactService.getContacts(user.uid),
+            ContactService.getFolders(user.uid)
+          ]);
+          setContacts(fetchedContacts);
+          setFolders(fetchedFolders);
+        } catch (error) {
+          console.error("Failed to load contacts/folders for task dialog", error);
+        }
+      }
+    }
+    loadContactsAndFolders();
+  }, [user]);
 
   useEffect(() => {
     if (isOpen) {
@@ -150,7 +172,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
           
           if (eventToEdit.attendees.length > 1) {
               const assigneeName = eventToEdit.attendees[1];
-              const contact = mockContacts.find(c => c.name === assigneeName);
+              const contact = contacts.find(c => c.name === assigneeName);
               if (contact) {
                   setAssigneeId(contact.id);
               } else {
@@ -163,7 +185,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
         resetForm(defaultStartDate);
       }
     }
-  }, [isOpen, eventToEdit, defaultStartDate, isEditMode, resetForm]);
+  }, [isOpen, eventToEdit, defaultStartDate, isEditMode, resetForm, contacts]);
   
   const handleLogTime = (seconds: number) => {
     const timeString = formatTime(seconds);
@@ -174,6 +196,27 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
         title: "Time Logged",
         description: `${timeString} has been added to the task description.`
     })
+  };
+
+  const handleSaveContact = async (data: Contact | Omit<Contact, 'id'>, isEditing: boolean) => {
+    if (!user) return;
+    try {
+        if (isEditing) {
+            // This scenario is less likely from the task dialog but supported.
+            const contact = data as Contact;
+            await ContactService.updateContact(contact.id, contact);
+            setContacts(prev => prev.map(c => c.id === contact.id ? contact : c));
+            toast({ title: "Contact Updated", description: `Details for ${contact.name} have been saved.` });
+        } else {
+            const newContactData = { ...data, userId: user.uid } as Omit<Contact, 'id'>;
+            const newContact = await ContactService.addContact(newContactData);
+            setContacts(prev => [...prev, newContact]);
+            setAssigneeId(newContact.id); // Auto-select the newly created contact
+            toast({ title: "Contact Created", description: `${newContact.name} has been added.` });
+        }
+    } catch(error: any) {
+        toast({ variant: "destructive", title: "Save failed", description: error.message });
+    }
   };
 
   const handleSaveTask = () => {
@@ -488,11 +531,9 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button variant="outline" size="icon" asChild>
-                      <Link href="/contacts" target="_blank" rel="noopener noreferrer">
-                        <Plus className="h-4 w-4" />
-                        <span className="sr-only">Add New Contact</span>
-                      </Link>
+                    <Button variant="outline" size="icon" onClick={() => setIsContactFormOpen(true)}>
+                      <Plus className="h-4 w-4" />
+                      <span className="sr-only">Add New Contact</span>
                     </Button>
                   </div>
                 </div>
@@ -555,6 +596,16 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
         onOpenChange={setIsTimeClockOpen}
         onLogTime={handleLogTime}
        />
+      {isContactFormOpen && (
+        <ContactFormDialog
+            isOpen={isContactFormOpen}
+            onOpenChange={setIsContactFormOpen}
+            contactToEdit={null}
+            selectedFolderId={folders.find(f => !f.parentId)?.id || ''} // Default to the first root folder
+            folders={folders}
+            onSave={handleSaveContact}
+        />
+       )}
     </>
   );
 }
