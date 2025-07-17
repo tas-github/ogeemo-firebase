@@ -32,7 +32,7 @@ export default function ClientManagerPage() {
       icon: BookOpen,
       title: "Log Manager",
       description: "A centralized place to manage all your client logs and entries.",
-      href: "/client-manager/logged-events",
+      href: "/client-manager/log-manager",
       cta: "Go to Log Manager",
     },
   ];
