@@ -19,7 +19,7 @@ const AccountingHubSkeleton = () => (
 );
 
 
-const AccountingHubView = dynamic(
+const AccountingHub = dynamic(
   () => import('@/components/accounting/accounting-hub-view').then((mod) => mod.AccountingHubView),
   {
     ssr: false,
@@ -28,5 +28,5 @@ const AccountingHubView = dynamic(
 );
 
 export default function AccountingHubPage() {
-  return <AccountingHubView />;
+  return <AccountingHub />;
 }
