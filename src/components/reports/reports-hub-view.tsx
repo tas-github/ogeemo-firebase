@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -71,7 +72,7 @@ export function ReportsHubView() {
       title: "T2125 Tax Form",
       description: "Generate a mock-up of your T2125 Statement of Business Activities based on your ledger data.",
       cta: "View T2125 Form",
-      href: "/reports/t2125",
+      href: "/accounting/t2125",
     },
   ];
 

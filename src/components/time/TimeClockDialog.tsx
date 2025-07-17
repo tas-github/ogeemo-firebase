@@ -201,5 +201,3 @@ export function TimeClockDialog({ isOpen, onOpenChange, onLogTime }: TimeClockDi
     </Dialog>
   );
 }
-
-export default TimeClockDialog;
