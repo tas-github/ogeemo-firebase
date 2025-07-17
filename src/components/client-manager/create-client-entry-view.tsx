@@ -204,7 +204,7 @@ export function CreateClientEntryView() {
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-2 border p-4 rounded-lg">
+                    <div className="space-y-2">
                         <Label htmlFor="client-select">Client</Label>
                         <Popover open={isContactPopoverOpen} onOpenChange={setIsContactPopoverOpen}>
                             <PopoverTrigger asChild>
@@ -222,7 +222,10 @@ export function CreateClientEntryView() {
                             </PopoverTrigger>
                             <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                             <Command>
-                                <CommandInput placeholder="Search clients..." />
+                                <CommandInput
+                                  placeholder="Search clients..."
+                                  className="h-9 m-2 p-2 border rounded-md"
+                                />
                                 <CommandList>
                                     <CommandEmpty>
                                         {isLoading ? (
