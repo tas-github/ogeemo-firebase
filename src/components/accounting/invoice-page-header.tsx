@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -29,7 +30,7 @@ export function InvoicePageHeader({ pageTitle }: InvoicePageHeaderProps) {
           <BreadcrumbSeparator />
           <BreadcrumbItem>
              <BreadcrumbLink asChild>
-                <Link href="/accounting/invoices/payments">Accounts Receivable</Link>
+                <Link href="/accounting/accounts-receivable">Accounts Receivable</Link>
              </BreadcrumbLink>
           </BreadcrumbItem>
            <BreadcrumbSeparator />
@@ -39,7 +40,7 @@ export function InvoicePageHeader({ pageTitle }: InvoicePageHeaderProps) {
         </BreadcrumbList>
       </Breadcrumb>
       <Button asChild variant="outline">
-        <Link href="/accounting/invoices/payments" aria-label="Return to Accounts Receivable">
+        <Link href="/accounting/accounts-receivable" aria-label="Return to Accounts Receivable">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to A/R
         </Link>
