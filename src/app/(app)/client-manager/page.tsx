@@ -28,6 +28,13 @@ export default function ClientManagerPage() {
       href: "/client-manager/logged-events",
       cta: "View Log",
     },
+    {
+      icon: BookOpen,
+      title: "Log Manager",
+      description: "A centralized place to manage all your client logs and entries.",
+      href: "/client-manager/logged-events",
+      cta: "Go to Log Manager",
+    },
   ];
 
   return (
@@ -41,7 +48,7 @@ export default function ClientManagerPage() {
         </p>
       </header>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
         {features.map((feature) => (
           <Card key={feature.title} className="flex flex-col">
             <CardHeader className="flex flex-row items-start gap-4">
