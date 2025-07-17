@@ -11,6 +11,7 @@ import { EventDetailsDialog } from "@/components/client-manager/event-details-di
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { getEventEntries, type EventEntry } from "@/services/client-manager-service";
+import { useReactToPrint } from "@/hooks/use-react-to-print";
 
 
 const formatTime = (totalSeconds: number) => {
@@ -26,6 +27,7 @@ export function LoggedEntriesView() {
   const [selectedEntry, setSelectedEntry] = useState<EventEntry | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { handlePrint, contentRef } = useReactToPrint();
 
   useEffect(() => {
     async function loadData() {
@@ -51,10 +53,6 @@ export function LoggedEntriesView() {
     return acc + (hours * entry.billableRate);
   }, 0).toFixed(2);
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
     <>
         <div className="p-4 sm:p-6 space-y-6">
@@ -77,7 +75,7 @@ export function LoggedEntriesView() {
                 </div>
             </header>
 
-            <div id="printable-area">
+            <div id="printable-area" ref={contentRef}>
                 {/* Header for printed version */}
                 <div className="hidden print:block text-center mb-4">
                     <h1 className="text-2xl font-bold">Client Log</h1>
