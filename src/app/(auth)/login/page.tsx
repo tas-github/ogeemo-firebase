@@ -17,6 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import LoadingModal from "@/components/ui/loading-modal";
+import { Logo } from "@/components/logo";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }),
@@ -91,9 +92,12 @@ export default function LoginPage() {
   return (
     <>
       {isLoading && <LoadingModal message="Signing in..." />}
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-headline font-semibold">Welcome to Ogeemo</CardTitle>
-        <CardDescription>Sign in to your account to continue.</CardDescription>
+      <CardHeader className="flex flex-row items-center gap-4">
+        <Logo className="h-16 w-16"/>
+        <div className="flex flex-col">
+            <CardTitle className="text-2xl font-headline font-semibold">Welcome to Ogeemo</CardTitle>
+            <CardDescription>Sign in to your account to continue.</CardDescription>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <Form {...form}>
