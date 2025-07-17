@@ -206,58 +206,60 @@ export function CreateClientEntryView() {
                 <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <Label htmlFor="client-select">Client</Label>
-                        <Popover open={isContactPopoverOpen} onOpenChange={setIsContactPopoverOpen}>
-                            <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={isContactPopoverOpen}
-                                className="w-full justify-between"
-                            >
-                                {selectedAccountId
-                                ? clientAccounts.find((account) => account.id === selectedAccountId)?.name
-                                : "Select client..."}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput
-                                  placeholder="Search clients..."
-                                  className="h-9 m-2 p-2 border rounded-md"
-                                />
-                                <CommandList>
-                                    <CommandEmpty>
-                                        {isLoading ? (
-                                            <div className="flex items-center justify-center p-2"><LoaderCircle className="h-4 w-4 animate-spin"/></div>
-                                        ) : (
-                                            "No client found."
-                                        )}
-                                    </CommandEmpty>
-                                    <CommandGroup>
-                                    {clientAccounts.map((account) => (
-                                        <CommandItem
-                                            key={account.id}
-                                            value={account.name}
-                                            onSelect={() => {
-                                                setSelectedAccountId(account.id);
-                                                setIsContactPopoverOpen(false);
-                                            }}
-                                        >
-                                            <Check
-                                                className={cn(
-                                                "mr-2 h-4 w-4",
-                                                selectedAccountId === account.id ? "opacity-100" : "opacity-0"
-                                                )}
-                                            />
-                                            {account.name}
-                                        </CommandItem>
-                                    ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                            </PopoverContent>
-                        </Popover>
+                        <div className="border p-2 rounded-md">
+                            <Popover open={isContactPopoverOpen} onOpenChange={setIsContactPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={isContactPopoverOpen}
+                                    className="w-full justify-between"
+                                >
+                                    {selectedAccountId
+                                    ? clientAccounts.find((account) => account.id === selectedAccountId)?.name
+                                    : "Select client..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                    <CommandInput
+                                    placeholder="Search clients..."
+                                    className="h-9 m-2 p-2 border border-foreground rounded-md"
+                                    />
+                                    <CommandList>
+                                        <CommandEmpty>
+                                            {isLoading ? (
+                                                <div className="flex items-center justify-center p-2"><LoaderCircle className="h-4 w-4 animate-spin"/></div>
+                                            ) : (
+                                                "No client found."
+                                            )}
+                                        </CommandEmpty>
+                                        <CommandGroup>
+                                        {clientAccounts.map((account) => (
+                                            <CommandItem
+                                                key={account.id}
+                                                value={account.name}
+                                                onSelect={() => {
+                                                    setSelectedAccountId(account.id);
+                                                    setIsContactPopoverOpen(false);
+                                                }}
+                                            >
+                                                <Check
+                                                    className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    selectedAccountId === account.id ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                />
+                                                {account.name}
+                                            </CommandItem>
+                                        ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
