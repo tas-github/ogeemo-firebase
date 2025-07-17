@@ -183,22 +183,14 @@ export function ClientTimeLogReport() {
                     <p className="text-muted-foreground">Generate a detailed report of time logged for a client.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <DropdownMenu>
-                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline"><MoreVertical className="h-4 w-4"/></Button>
-                         </DropdownMenuTrigger>
-                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={handleCreateInvoice} disabled={!selectedAccountId}>
-                                <FileDigit className="mr-2 h-4 w-4" />
-                                Create Invoice from Report
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={handlePrint} disabled={!selectedAccountId}>
-                                <Printer className="mr-2 h-4 w-4" />
-                                Print Report
-                            </DropdownMenuItem>
-                         </DropdownMenuContent>
-                    </DropdownMenu>
-
+                    <Button variant="outline" onClick={handleCreateInvoice} disabled={!selectedAccountId}>
+                        <FileDigit className="mr-2 h-4 w-4" />
+                        Create Invoice
+                    </Button>
+                    <Button variant="outline" onClick={handlePrint} disabled={!selectedAccountId}>
+                        <Printer className="mr-2 h-4 w-4" />
+                        Print Report
+                    </Button>
                     <Button asChild>
                         <Link href="/client-manager">
                             <ArrowLeft className="mr-2 h-4 w-4" />
