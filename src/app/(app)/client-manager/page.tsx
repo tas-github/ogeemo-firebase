@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Pencil, BookOpen, ArrowRight } from "lucide-react";
 
-export function ClientManagerView() {
+export default function ClientManagerPage() {
   const features = [
     {
       icon: Pencil,
