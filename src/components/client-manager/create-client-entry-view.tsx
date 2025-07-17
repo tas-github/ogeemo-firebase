@@ -16,7 +16,6 @@ import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { getClientAccounts, addEventEntry, type ClientAccount, type EventEntry } from '@/services/client-manager-service';
-// import { TimeClockDialog } from '@/components/time/TimeClockDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,14 +24,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-
-const TIMER_STORAGE_KEY = 'timeClockDialogState';
+const ACTIVE_LOG_KEY = 'activeLogEntry';
 
 interface StoredTimerState {
     elapsedSeconds: number;
     isActive: boolean;
     isPaused: boolean;
     lastTickTimestamp: number;
+}
+
+interface StoredLogEntry {
+    accountId: string;
+    subject: string;
+    billableRate: number;
+    detailsHtml: string;
+    timer: StoredTimerState;
 }
 
 const formatTime = (totalSeconds: number) => {
@@ -65,20 +71,35 @@ export function CreateClientEntryView() {
 
   const loadTimerState = useCallback(() => {
     try {
-        const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+        const savedStateRaw = localStorage.getItem(ACTIVE_LOG_KEY);
         if (savedStateRaw) {
-            const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-            const timeSinceLastTick = !savedState.isPaused && savedState.isActive ? Math.floor((Date.now() - savedState.lastTickTimestamp) / 1000) : 0;
-            setRunningTime(savedState.elapsedSeconds + timeSinceLastTick);
-            setIsTimerActive(savedState.isActive);
-            setIsTimerPaused(savedState.isPaused);
+            const savedState: StoredLogEntry = JSON.parse(savedStateRaw);
+            const timeSinceLastTick = !savedState.timer.isPaused && savedState.timer.isActive ? Math.floor((Date.now() - savedState.timer.lastTickTimestamp) / 1000) : 0;
+            
+            setRunningTime(savedState.timer.elapsedSeconds + timeSinceLastTick);
+            setIsTimerActive(savedState.timer.isActive);
+            setIsTimerPaused(savedState.timer.isPaused);
+            
+            // Restore form state
+            setSelectedAccountId(savedState.accountId);
+            setSubject(savedState.subject);
+            setBillableRate(savedState.billableRate);
+            if (editorRef.current && editorRef.current.innerHTML !== savedState.detailsHtml) {
+              editorRef.current.innerHTML = savedState.detailsHtml;
+            }
+
             return savedState;
+        } else {
+            // No saved state, ensure local state is reset
+            setIsTimerActive(false);
+            setRunningTime(0);
         }
     } catch (e) { console.error("Could not parse timer state", e); }
     return null;
   }, []);
 
   useEffect(() => {
+    // This effect runs once on mount to restore state, and then the interval takes over.
     loadTimerState();
     const timerInterval = setInterval(() => {
         loadTimerState();
@@ -133,50 +154,65 @@ export function CreateClientEntryView() {
     });
   };
 
+  const saveStateToLocalStorage = (timerState: StoredTimerState) => {
+      if (!selectedAccountId) return;
+      const logEntryState: StoredLogEntry = {
+          accountId: selectedAccountId,
+          subject: subject,
+          billableRate: billableRate,
+          detailsHtml: editorRef.current?.innerHTML || '',
+          timer: timerState,
+      };
+      localStorage.setItem(ACTIVE_LOG_KEY, JSON.stringify(logEntryState));
+      loadTimerState();
+  }
+
   const handleStartTimer = () => {
+    if (!selectedAccountId || !subject) {
+        toast({ variant: 'destructive', title: 'Cannot Start Timer', description: 'Please select a client and enter a subject first.' });
+        return;
+    }
     const newState: StoredTimerState = {
         elapsedSeconds: 0,
         isActive: true,
         isPaused: false,
         lastTickTimestamp: Date.now(),
     };
-    localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(newState));
-    loadTimerState();
+    saveStateToLocalStorage(newState);
   };
 
   const handlePauseResumeTimer = () => {
-    const currentStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+    const currentStateRaw = localStorage.getItem(ACTIVE_LOG_KEY);
     if (!currentStateRaw) return;
 
-    const currentState: StoredTimerState = JSON.parse(currentStateRaw);
-    if (!currentState.isActive) return;
+    const currentState: StoredLogEntry = JSON.parse(currentStateRaw);
+    if (!currentState.timer.isActive) return;
 
-    const timeSinceLastTick = !currentState.isPaused ? Math.floor((Date.now() - currentState.lastTickTimestamp) / 1000) : 0;
-    const newElapsed = currentState.elapsedSeconds + timeSinceLastTick;
+    const timeSinceLastTick = !currentState.timer.isPaused ? Math.floor((Date.now() - currentState.timer.lastTickTimestamp) / 1000) : 0;
+    const newElapsed = currentState.timer.elapsedSeconds + timeSinceLastTick;
 
-    const newState: StoredTimerState = {
+    const newTimerState: StoredTimerState = {
         elapsedSeconds: newElapsed,
         isActive: true,
-        isPaused: !currentState.isPaused,
+        isPaused: !currentState.timer.isPaused,
         lastTickTimestamp: Date.now(),
     };
-    localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(newState));
-    loadTimerState();
+    saveStateToLocalStorage(newTimerState);
   };
   
   const handleStopTimerAndLog = () => {
-    const currentStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+    const currentStateRaw = localStorage.getItem(ACTIVE_LOG_KEY);
     if (!currentStateRaw) return;
 
-    const currentState: StoredTimerState = JSON.parse(currentStateRaw);
-    if (!currentState.isActive) return;
+    const currentState: StoredLogEntry = JSON.parse(currentStateRaw);
+    if (!currentState.timer.isActive) return;
 
-    const timeSinceLastTick = !currentState.isPaused ? Math.floor((Date.now() - currentState.lastTickTimestamp) / 1000) : 0;
-    const finalSeconds = currentState.elapsedSeconds + timeSinceLastTick;
+    const timeSinceLastTick = !currentState.timer.isPaused ? Math.floor((Date.now() - currentState.timer.lastTickTimestamp) / 1000) : 0;
+    const finalSeconds = currentState.timer.elapsedSeconds + timeSinceLastTick;
     
     handleLogTime(finalSeconds);
 
-    localStorage.removeItem(TIMER_STORAGE_KEY);
+    localStorage.removeItem(ACTIVE_LOG_KEY);
     setRunningTime(0);
     setIsTimerActive(false);
     setIsTimerPaused(true);
@@ -219,6 +255,8 @@ export function CreateClientEntryView() {
         
         await addEventEntry(newEntryData);
         
+        // Reset state and clear storage
+        localStorage.removeItem(ACTIVE_LOG_KEY);
         setLoggedSeconds(0);
         setRunningTime(0);
         setIsTimerActive(false);
@@ -226,7 +264,6 @@ export function CreateClientEntryView() {
         setSubject("");
         if (editorRef.current) editorRef.current.innerHTML = "";
         setSelectedAccountId(null);
-        localStorage.removeItem(TIMER_STORAGE_KEY);
 
         toast({ title: "Entry Logged", description: `Logged ${formatTime(newEntryData.duration)} for ${account.name}.` });
     } catch (error) {
@@ -425,13 +462,6 @@ export function CreateClientEntryView() {
             </CardContent>
         </Card>
     </div>
-    {/* 
-    <TimeClockDialog
-        isOpen={isTimeClockOpen}
-        onOpenChange={setIsTimeClockOpen}
-        onLogTime={handleLogTime}
-      /> 
-    */}
     </>
   );
 }

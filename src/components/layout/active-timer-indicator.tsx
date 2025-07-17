@@ -13,11 +13,13 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from '@/lib/utils';
 
-const TIMER_STORAGE_KEY = 'timeClockDialogState';
+const ACTIVE_LOG_KEY = 'activeLogEntry';
 
 interface StoredTimerState {
     isActive: boolean;
     isPaused: boolean;
+    elapsedSeconds: number;
+    lastTickTimestamp: number;
 }
 
 const formatTime = (totalSeconds: number) => {
@@ -35,13 +37,13 @@ export function ActiveTimerIndicator() {
   useEffect(() => {
     const checkTimerState = () => {
       try {
-        const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+        const savedStateRaw = localStorage.getItem(ACTIVE_LOG_KEY);
         if (savedStateRaw) {
-          const savedState: StoredTimerState & { elapsedSeconds: number; lastTickTimestamp: number } = JSON.parse(savedStateRaw);
-          if (savedState.isActive) {
+          const savedState: { timer: StoredTimerState } = JSON.parse(savedStateRaw);
+          if (savedState.timer?.isActive) {
             setIsTimerActive(true);
-            const timeSinceLastTick = !savedState.isPaused ? Math.floor((Date.now() - savedState.lastTickTimestamp) / 1000) : 0;
-            const currentTotalSeconds = savedState.elapsedSeconds + timeSinceLastTick;
+            const timeSinceLastTick = !savedState.timer.isPaused ? Math.floor((Date.now() - savedState.timer.lastTickTimestamp) / 1000) : 0;
+            const currentTotalSeconds = savedState.timer.elapsedSeconds + timeSinceLastTick;
             setDisplayTime(formatTime(currentTotalSeconds));
           } else {
             setIsTimerActive(false);
@@ -58,7 +60,13 @@ export function ActiveTimerIndicator() {
     checkTimerState(); // Initial check
     const interval = setInterval(checkTimerState, 1000); // Check every second
 
-    return () => clearInterval(interval);
+    // Also listen for storage changes from other tabs
+    window.addEventListener('storage', checkTimerState);
+
+    return () => {
+        clearInterval(interval);
+        window.removeEventListener('storage', checkTimerState);
+    };
   }, []);
 
   if (!isTimerActive) {
