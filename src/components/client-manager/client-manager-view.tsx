@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Pencil, BookOpen, ArrowRight } from "lucide-react";
+import { Pencil, BookOpen, ArrowRight, FileSpreadsheet } from "lucide-react";
 
 export function ClientManagerView() {
   const features = [
@@ -28,6 +28,13 @@ export function ClientManagerView() {
       href: "/client-manager/logged-events",
       cta: "View Log",
     },
+    {
+      icon: FileSpreadsheet,
+      title: "Client Time Report",
+      description: "Generate a detailed, filterable report of all time logged for a specific client.",
+      href: "/client-manager/report",
+      cta: "Generate Report",
+    },
   ];
 
   return (
@@ -41,7 +48,7 @@ export function ClientManagerView() {
         </p>
       </header>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
         {features.map((feature) => (
           <Card key={feature.title} className="flex flex-col">
             <CardHeader className="flex flex-row items-start gap-4">

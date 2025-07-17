@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Printer, LoaderCircle, MoreVertical, BookOpen, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Printer, LoaderCircle, MoreVertical, BookOpen, Pencil, Trash2, FileSpreadsheet } from "lucide-react";
 import { EventDetailsDialog } from "@/components/client-manager/event-details-dialog";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -105,6 +105,12 @@ export function LoggedEntriesView() {
                     <Button variant="outline" onClick={handlePrint}>
                         <Printer className="mr-2 h-4 w-4" />
                         Print Log
+                    </Button>
+                     <Button asChild>
+                        <Link href="/client-manager/report">
+                            <FileSpreadsheet className="mr-2 h-4 w-4" />
+                            Generate Report
+                        </Link>
                     </Button>
                     <Button asChild>
                         <Link href="/client-manager">
