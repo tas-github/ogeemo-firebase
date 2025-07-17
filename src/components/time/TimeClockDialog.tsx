@@ -146,7 +146,7 @@ export function TimeClockDialog({ isOpen, onOpenChange, onLogTime }: TimeClockDi
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Time Clock</DialogTitle>
           <DialogDescription>
