@@ -176,14 +176,14 @@ export function TimeClockDialog({ isOpen, onOpenChange, onLogTime }: TimeClockDi
                 </>
             )}
         </div>
-        <div className="flex flex-col items-center space-y-2 pt-4 justify-center">
+        <div className="flex items-center space-x-4 pt-4 justify-center">
             <div className="flex items-center space-x-2">
                 <Checkbox
                 id="keep-running"
                 checked={keepRunning}
                 onCheckedChange={handleKeepRunningChange}
                 />
-                <Label htmlFor="keep-running" className="cursor-pointer">Keep timer running until stopped</Label>
+                <Label htmlFor="keep-running" className="cursor-pointer text-xs">Keep running</Label>
             </div>
             <div className="flex items-center space-x-2">
                 <Checkbox
@@ -191,7 +191,7 @@ export function TimeClockDialog({ isOpen, onOpenChange, onLogTime }: TimeClockDi
                     checked={saveToClientFile}
                     onCheckedChange={(checked) => setSaveToClientFile(!!checked)}
                 />
-                <Label htmlFor="save-to-client" className="cursor-pointer">Log time to client's file</Label>
+                <Label htmlFor="save-to-client" className="cursor-pointer text-xs">Log to client file</Label>
             </div>
         </div>
         <DialogFooter>
