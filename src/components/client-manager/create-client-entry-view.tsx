@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Play, Pause, Square, Save, Strikethrough, Quote, Link as LinkIcon, Mic, LoaderCircle } from 'lucide-react';
+import { Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Play, Pause, Square, Save, Strikethrough, Quote, Link as LinkIcon, Mic, LoaderCircle, Clock } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from '@/components/ui/separator';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { getClientAccounts, addEventEntry, type ClientAccount, type EventEntry } from '@/services/client-manager-service';
+import { TimeClockDialog } from '@/components/time/TimeClockDialog';
 
 const formatTime = (totalSeconds: number) => {
   const hours = Math.floor(totalSeconds / 3600);
@@ -31,12 +32,10 @@ export function CreateClientEntryView() {
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [subject, setSubject] = useState("");
   const [billableRate, setBillableRate] = useState<number>(100);
+  
+  const [isTimeClockOpen, setIsTimeClockOpen] = useState(false);
+  const [loggedSeconds, setLoggedSeconds] = useState(0);
 
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [isActive, setIsActive] = useState(false);
-  const [isPaused, setIsPaused] = useState(true);
-
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [detailsBeforeSpeech, setDetailsBeforeSpeech] = useState('');
@@ -61,19 +60,6 @@ export function CreateClientEntryView() {
   }, [user, toast]);
   
 
-  useEffect(() => {
-    if (isActive && !isPaused) {
-      intervalRef.current = setInterval(() => {
-        setElapsedTime(prev => prev + 1);
-      }, 1000);
-    } else if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [isActive, isPaused]);
-
   const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
     onTranscript: (transcript) => {
         if (editorRef.current) {
@@ -90,24 +76,14 @@ export function CreateClientEntryView() {
         }
     }
   });
-
-  const handleStart = () => {
-    if (!selectedAccountId) {
-        toast({ variant: "destructive", title: "Cannot Start Timer", description: "A client must be selected first." });
-        return;
-    }
-    if (!subject.trim()) {
-      toast({ variant: "destructive", title: "Subject Required", description: "Please enter a subject for the entry." });
-      return;
-    }
-    setElapsedTime(0);
-    setIsActive(true);
-    setIsPaused(false);
-  };
   
-  const handlePauseResume = () => {
-      if (!isActive) return;
-      setIsPaused(!isPaused);
+  const handleLogTime = (seconds: number) => {
+    setLoggedSeconds(seconds);
+    const timeString = formatTime(seconds);
+    toast({
+      title: "Time Logged",
+      description: `Timer stopped. ${timeString} is ready to be saved with this entry.`
+    });
   };
 
   const handleLogEvent = async () => {
@@ -117,8 +93,8 @@ export function CreateClientEntryView() {
             toast({ variant: "destructive", title: "Cannot Log Entry", description: "No client is selected." });
             return;
         }
-        if (elapsedTime === 0) {
-            toast({ variant: "destructive", title: "Cannot Log Entry", description: "The timer has not been run for this entry." });
+        if (loggedSeconds === 0) {
+            toast({ variant: "destructive", title: "Cannot Log Entry", description: "No time has been logged for this entry. Please use the time clock." });
             return;
         }
     
@@ -135,18 +111,16 @@ export function CreateClientEntryView() {
             contactName: account.name,
             subject: subject,
             detailsHtml: currentEditorContent,
-            startTime: new Date(Date.now() - elapsedTime * 1000),
+            startTime: new Date(Date.now() - loggedSeconds * 1000),
             endTime: new Date(),
-            duration: elapsedTime,
+            duration: loggedSeconds,
             billableRate,
             userId: user.uid,
         };
         
         await addEventEntry(newEntryData);
         
-        setIsActive(false);
-        setIsPaused(true);
-        setElapsedTime(0);
+        setLoggedSeconds(0);
         setSubject("");
         if (editorRef.current) editorRef.current.innerHTML = "";
         setSelectedAccountId(null);
@@ -180,6 +154,7 @@ export function CreateClientEntryView() {
   };
 
   return (
+    <>
     <div className="p-4 sm:p-6 space-y-6">
         <header className="relative text-center">
             <div className="absolute left-0 top-1/2 -translate-y-1/2">
@@ -203,7 +178,7 @@ export function CreateClientEntryView() {
                 <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <Label htmlFor="client-select">Client</Label>
-                        <Select value={selectedAccountId ?? ''} onValueChange={setSelectedAccountId} disabled={isActive}>
+                        <Select value={selectedAccountId ?? ''} onValueChange={setSelectedAccountId}>
                             <SelectTrigger id="client-select">
                                 <SelectValue placeholder={isLoading ? "Loading clients..." : "Select a client..."} />
                             </SelectTrigger>
@@ -222,7 +197,6 @@ export function CreateClientEntryView() {
                             type="number"
                             value={billableRate}
                             onChange={(e) => setBillableRate(Number(e.target.value))}
-                            disabled={isActive}
                         />
                     </div>
                 </div>
@@ -233,7 +207,6 @@ export function CreateClientEntryView() {
                         placeholder="e.g., Drafting initial project proposal"
                         value={subject}
                         onChange={(e) => setSubject(e.target.value)}
-                        disabled={isActive}
                     />
                 </div>
             </CardContent>
@@ -244,27 +217,13 @@ export function CreateClientEntryView() {
                 <CardTitle>Time Clock</CardTitle>
             </CardHeader>
             <CardContent className="text-center p-6">
-                <div className="text-6xl font-mono font-bold text-primary tracking-tighter">
-                    {formatTime(elapsedTime)}
-                </div>
-                {isActive && selectedAccountId && (
-                    <p className="text-muted-foreground mt-2">
-                        Timer is running for <span className="font-semibold text-primary">{clientAccounts.find(c=>c.id === selectedAccountId)?.name}</span>
-                    </p>
-                )}
+                <p className="text-muted-foreground mt-2 mb-4">
+                    {loggedSeconds > 0 ? `Last logged time: ${formatTime(loggedSeconds)}` : 'Use the time clock to track your work.'}
+                </p>
+                <Button size="lg" onClick={() => setIsTimeClockOpen(true)} disabled={!selectedAccountId || !subject.trim()}>
+                    <Clock className="mr-2 h-5 w-5" /> Open Time Clock
+                </Button>
             </CardContent>
-            <CardFooter className="flex justify-center gap-4">
-                 {!isActive ? (
-                    <Button size="lg" onClick={handleStart} className="w-48">
-                        <Play className="mr-2 h-5 w-5" /> Start Timer
-                    </Button>
-                ) : (
-                    <Button size="lg" variant="outline" onClick={handlePauseResume} className="w-48">
-                        {isPaused ? <Play className="mr-2 h-5 w-5" /> : <Pause className="mr-2 h-5 w-5" />}
-                        {isPaused ? 'Resume' : 'Pause'}
-                    </Button>
-                )}
-            </CardFooter>
         </Card>
 
         <Card className="max-w-4xl mx-auto">
@@ -273,9 +232,9 @@ export function CreateClientEntryView() {
                     <CardTitle>Detailed Notes</CardTitle>
                     <CardDescription>Use this space for detailed descriptions of actions performed.</CardDescription>
                 </div>
-                <Button onClick={handleLogEvent} disabled={elapsedTime === 0 || isActive}>
+                <Button onClick={handleLogEvent} disabled={loggedSeconds === 0}>
                     <Save className="mr-2 h-4 w-4"/>
-                    Stop & Log Entry
+                    Log Entry with Time
                 </Button>
             </CardHeader>
             <CardContent className="flex flex-col p-0">
@@ -304,5 +263,11 @@ export function CreateClientEntryView() {
             </CardContent>
         </Card>
     </div>
+    <TimeClockDialog
+        isOpen={isTimeClockOpen}
+        onOpenChange={setIsTimeClockOpen}
+        onLogTime={handleLogTime}
+      />
+    </>
   );
 }
