@@ -259,6 +259,18 @@ export function MainMenu() {
       <SidebarMenuItem>
         <SidebarMenuButton
           asChild
+          isActive={isActive("/debug")}
+          tooltip="Debug"
+        >
+          <Link href="/debug" onClick={(e) => handleClick(e, "/debug")}>
+            <HardHat />
+            <span>Debug</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          asChild
           isActive={isActive("/data")}
           tooltip="Data"
         >
