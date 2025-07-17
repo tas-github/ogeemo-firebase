@@ -25,6 +25,13 @@ const formatTime = (totalSeconds: number) => {
     return `${hours}h ${minutes}m`;
 };
 
+const endOfDay = (date: Date) => {
+    const newDate = new Date(date);
+    newDate.setHours(23, 59, 59, 999);
+    return newDate;
+};
+
+
 export function ClientTimeLogReport() {
     const [clientAccounts, setClientAccounts] = useState<ClientAccount[]>([]);
     const [allEntries, setAllEntries] = useState<EventEntry[]>([]);
@@ -61,11 +68,6 @@ export function ClientTimeLogReport() {
         loadData();
     }, [user, toast]);
     
-    const endOfDay = (date: Date) => {
-        const newDate = new Date(date);
-        newDate.setHours(23, 59, 59, 999);
-        return newDate;
-    };
 
     const filteredEntries = useMemo(() => {
         if (!selectedAccountId) return [];
