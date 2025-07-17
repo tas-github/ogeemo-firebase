@@ -225,7 +225,7 @@ export function CreateClientEntryView() {
                                 <Command>
                                     <CommandInput
                                     placeholder="Search clients..."
-                                    className="h-9 m-2 p-2 border border-foreground rounded-md"
+                                    className="h-9 m-2 p-2 rounded-md bg-muted/50 border border-input"
                                     />
                                     <CommandList>
                                         <CommandEmpty>
