@@ -12,6 +12,7 @@ import {
   SidebarSeparator
 } from "@/components/ui/sidebar";
 import { UserNav } from "@/components/user-nav";
+import { ActiveTimerIndicator } from "@/components/layout/active-timer-indicator";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
 
@@ -35,7 +36,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <UserNav />
         </SidebarFooter>
       </Sidebar>
-      <div className="flex-1 overflow-auto">{children}</div>
+      <div className="flex-1 overflow-auto">
+        {children}
+        <ActiveTimerIndicator />
+      </div>
     </ClientLayout>
   );
 }
