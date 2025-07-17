@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
@@ -47,6 +48,8 @@ interface InvoiceTemplate {
 // LocalStorage Keys
 const INVOICE_TEMPLATES_KEY = 'invoiceTemplates';
 const EDIT_INVOICE_ID_KEY = 'editInvoiceId';
+const INVOICE_FROM_REPORT_KEY = 'invoiceFromReportData';
+
 
 const predefinedItems = [
   { description: 'Consulting Services', price: 150.00 },
@@ -95,6 +98,7 @@ export function InvoiceGeneratorView() {
     setInvoiceNotes('Thank you for your business!');
     setInvoiceToEditId(null);
     localStorage.removeItem(EDIT_INVOICE_ID_KEY);
+    sessionStorage.removeItem(INVOICE_FROM_REPORT_KEY);
   }, [nextInvoiceNumber]);
 
   // Effects for data loading and initialization
@@ -107,6 +111,8 @@ export function InvoiceGeneratorView() {
         setIsDataLoading(true);
         try {
             const editId = localStorage.getItem(EDIT_INVOICE_ID_KEY);
+            const reportDataRaw = sessionStorage.getItem(INVOICE_FROM_REPORT_KEY);
+
             const fetchedContacts = await getContacts(user.uid);
             setContacts(fetchedContacts);
 
@@ -115,7 +121,16 @@ export function InvoiceGeneratorView() {
                 setTemplates(JSON.parse(savedTemplatesRaw));
             }
             
-            if (editId) {
+            if (reportDataRaw) {
+                const reportData = JSON.parse(reportDataRaw);
+                setSelectedContactId(reportData.contactId);
+                const itemsFromReport = reportData.lineItems.map((item: any) => ({
+                    ...item,
+                    id: Date.now() + Math.random(),
+                }));
+                setCustomItems(itemsFromReport);
+                sessionStorage.removeItem(INVOICE_FROM_REPORT_KEY); // Clear after use
+            } else if (editId) {
                 setInvoiceToEditId(editId);
                 const [invoiceToLoad, itemsToLoad] = await Promise.all([
                     getInvoiceById(editId),
@@ -140,16 +155,20 @@ export function InvoiceGeneratorView() {
                     toast({ variant: 'destructive', title: 'Error', description: 'Could not find the invoice to edit.' });
                     clearInvoice();
                 }
-            } else {
-                const fetchedInvoices = await getInvoices(user.uid);
-                const maxInvoiceNum = fetchedInvoices.reduce((max, inv) => {
-                    const num = parseInt(inv.invoiceNumber.replace(/\D/g, ''), 10);
-                    return isNaN(num) ? max : Math.max(max, num);
-                }, 0);
-                const nextNum = maxInvoiceNum > 0 ? maxInvoiceNum + 1 : 101;
-                setNextInvoiceNumber(nextNum);
-                setInvoiceNumber(`INV-${nextNum}`);
             }
+            
+            const fetchedInvoices = await getInvoices(user.uid);
+            const maxInvoiceNum = fetchedInvoices.reduce((max, inv) => {
+                const num = parseInt(inv.invoiceNumber.replace(/\D/g, ''), 10);
+                return isNaN(num) ? max : Math.max(max, num);
+            }, 0);
+            const nextNum = maxInvoiceNum > 0 ? maxInvoiceNum + 1 : 101;
+            setNextInvoiceNumber(nextNum);
+            // Only set invoice number if not editing or loading from report
+            if (!editId && !reportDataRaw) {
+                 setInvoiceNumber(`INV-${nextNum}`);
+            }
+
         } catch (error) {
             console.error("Failed to load initial data:", error);
             toast({ variant: "destructive", title: "Could not load initial data", description: error instanceof Error ? error.message : "An unknown error occurred." });

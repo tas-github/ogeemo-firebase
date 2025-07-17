@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -10,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, LoaderCircle, ChevronsUpDown, Check, Printer, Calendar as CalendarIcon, MoreVertical, Pencil, Trash2, BookOpen } from 'lucide-react';
+import { ArrowLeft, LoaderCircle, ChevronsUpDown, Check, Printer, Calendar as CalendarIcon, MoreVertical, Pencil, Trash2, BookOpen, FileDigit } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfYear } from 'date-fns';
 import { type DateRange } from "react-day-picker";
 import { useAuth } from '@/context/auth-context';
@@ -35,6 +36,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { EventDetailsDialog } from "@/components/client-manager/event-details-dialog";
+
+const INVOICE_FROM_REPORT_KEY = 'invoiceFromReportData';
 
 
 const formatTime = (totalSeconds: number) => {
@@ -65,6 +68,8 @@ export function ClientTimeLogReport() {
     const { user } = useAuth();
     const { toast } = useToast();
     const { handlePrint, contentRef } = useReactToPrint();
+    const router = useRouter();
+
 
     useEffect(() => {
         async function loadData() {
@@ -132,6 +137,41 @@ export function ClientTimeLogReport() {
         }
     };
 
+    const handleCreateInvoice = () => {
+        if (!selectedAccount || filteredEntries.length === 0) {
+            toast({ variant: 'destructive', title: 'Cannot Create Invoice', description: 'Please select a client with time log entries in the selected range.'});
+            return;
+        }
+
+        const lineItems = filteredEntries
+            .filter(entry => entry.billableRate > 0 && entry.duration > 0)
+            .map(entry => {
+                const hours = entry.duration / 3600;
+                return {
+                    description: `${entry.subject} - ${format(entry.startTime, 'PPP')}`,
+                    quantity: parseFloat(hours.toFixed(2)),
+                    price: entry.billableRate,
+                };
+            });
+        
+        if (lineItems.length === 0) {
+            toast({ variant: 'destructive', title: 'No Billable Items', description: 'There are no billable time entries in this report.'});
+            return;
+        }
+
+        try {
+            const invoiceData = {
+                contactId: selectedAccount.contactId,
+                lineItems: lineItems,
+            };
+            sessionStorage.setItem(INVOICE_FROM_REPORT_KEY, JSON.stringify(invoiceData));
+            router.push('/accounting/invoices/create');
+        } catch (error) {
+            console.error('Failed to prepare invoice data:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not prepare the invoice data for generation.' });
+        }
+    };
+
     const selectedAccount = clientAccounts.find(c => c.id === selectedAccountId);
 
     return (
@@ -143,10 +183,22 @@ export function ClientTimeLogReport() {
                     <p className="text-muted-foreground">Generate a detailed report of time logged for a client.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={handlePrint} disabled={!selectedAccountId}>
-                        <Printer className="mr-2 h-4 w-4" />
-                        Print Report
-                    </Button>
+                    <DropdownMenu>
+                         <DropdownMenuTrigger asChild>
+                            <Button variant="outline"><MoreVertical className="h-4 w-4"/></Button>
+                         </DropdownMenuTrigger>
+                         <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={handleCreateInvoice} disabled={!selectedAccountId}>
+                                <FileDigit className="mr-2 h-4 w-4" />
+                                Create Invoice from Report
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={handlePrint} disabled={!selectedAccountId}>
+                                <Printer className="mr-2 h-4 w-4" />
+                                Print Report
+                            </DropdownMenuItem>
+                         </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <Button asChild>
                         <Link href="/client-manager">
                             <ArrowLeft className="mr-2 h-4 w-4" />
