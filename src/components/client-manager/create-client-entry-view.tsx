@@ -17,6 +17,8 @@ import { useAuth } from '@/context/auth-context';
 import { getClientAccounts, addEventEntry, type ClientAccount, type EventEntry } from '@/services/client-manager-service';
 import { TimeClockDialog } from '@/components/time/TimeClockDialog';
 
+const TIMER_STORAGE_KEY = 'timeClockDialogState';
+
 const formatTime = (totalSeconds: number) => {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -88,12 +90,25 @@ export function CreateClientEntryView() {
 
   const handleLogEvent = async () => {
     if (!user) { toast({ variant: "destructive", title: "Not logged in" }); return; }
+
+    let finalLoggedSeconds = loggedSeconds;
+    
+    // Check local storage for a running timer, as the user might not have explicitly stopped it.
+    const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+    if (savedStateRaw) {
+        try {
+            const savedState = JSON.parse(savedStateRaw);
+            const timeSinceLastTick = !savedState.isPaused && savedState.isActive ? Math.floor((Date.now() - savedState.lastTickTimestamp) / 1000) : 0;
+            finalLoggedSeconds = savedState.elapsedSeconds + timeSinceLastTick;
+        } catch(e) { console.error("Could not parse timer state"); }
+    }
+
     try {
         if (!selectedAccountId) {
             toast({ variant: "destructive", title: "Cannot Log Entry", description: "No client is selected." });
             return;
         }
-        if (loggedSeconds === 0) {
+        if (finalLoggedSeconds === 0) {
             toast({ variant: "destructive", title: "Cannot Log Entry", description: "No time has been logged for this entry. Please use the time clock." });
             return;
         }
@@ -111,19 +126,21 @@ export function CreateClientEntryView() {
             contactName: account.name,
             subject: subject,
             detailsHtml: currentEditorContent,
-            startTime: new Date(Date.now() - loggedSeconds * 1000),
+            startTime: new Date(Date.now() - finalLoggedSeconds * 1000),
             endTime: new Date(),
-            duration: loggedSeconds,
+            duration: finalLoggedSeconds,
             billableRate,
             userId: user.uid,
         };
         
         await addEventEntry(newEntryData);
         
+        // Clear state and storage after logging
         setLoggedSeconds(0);
         setSubject("");
         if (editorRef.current) editorRef.current.innerHTML = "";
         setSelectedAccountId(null);
+        localStorage.removeItem(TIMER_STORAGE_KEY);
 
         toast({ title: "Entry Logged", description: `Logged ${formatTime(newEntryData.duration)} for ${account.name}.` });
     } catch (error) {
@@ -232,7 +249,7 @@ export function CreateClientEntryView() {
                     <CardTitle>Detailed Notes</CardTitle>
                     <CardDescription>Use this space for detailed descriptions of actions performed.</CardDescription>
                 </div>
-                <Button onClick={handleLogEvent} disabled={loggedSeconds === 0}>
+                <Button onClick={handleLogEvent}>
                     <Save className="mr-2 h-4 w-4"/>
                     Log Entry with Time
                 </Button>
