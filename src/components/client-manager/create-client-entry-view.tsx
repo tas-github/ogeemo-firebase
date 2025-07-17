@@ -5,10 +5,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Play, Pause, Square, Save, Strikethrough, Quote, Link as LinkIcon, Mic, LoaderCircle, Clock } from 'lucide-react';
+import { Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Save, Strikethrough, Quote, Link as LinkIcon, Mic, Square, LoaderCircle, Clock, ChevronsUpDown, Check } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from '@/components/ui/separator';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
@@ -32,6 +33,7 @@ export function CreateClientEntryView() {
   const { user } = useAuth();
   
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [isContactPopoverOpen, setIsContactPopoverOpen] = useState(false);
   const [subject, setSubject] = useState("");
   const [billableRate, setBillableRate] = useState<number>(100);
   
@@ -93,7 +95,6 @@ export function CreateClientEntryView() {
 
     let finalLoggedSeconds = loggedSeconds;
     
-    // Check local storage for a running timer, as the user might not have explicitly stopped it.
     const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
     if (savedStateRaw) {
         try {
@@ -135,7 +136,6 @@ export function CreateClientEntryView() {
         
         await addEventEntry(newEntryData);
         
-        // Clear state and storage after logging
         setLoggedSeconds(0);
         setSubject("");
         if (editorRef.current) editorRef.current.innerHTML = "";
@@ -188,24 +188,73 @@ export function CreateClientEntryView() {
 
         <Card className="max-w-4xl mx-auto">
             <CardHeader>
-                <CardTitle>Client & Task Details</CardTitle>
-                <CardDescription>All fields are required to start the timer.</CardDescription>
+                 <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Client & Task Details</CardTitle>
+                        <CardDescription>All fields are required to start the timer.</CardDescription>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-muted-foreground text-sm">Time Logged</p>
+                        <p className="font-mono text-2xl font-bold">{formatTime(loggedSeconds)}</p>
+                        <Button size="sm" variant="outline" className="mt-2" onClick={() => setIsTimeClockOpen(true)} disabled={!selectedAccountId || !subject.trim()}>
+                           <Clock className="mr-2 h-4 w-4" /> Open Time Clock
+                       </Button>
+                    </div>
+                </div>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                         <Label htmlFor="client-select">Client</Label>
-                        <Select value={selectedAccountId ?? ''} onValueChange={setSelectedAccountId}>
-                            <SelectTrigger id="client-select">
-                                <SelectValue placeholder={isLoading ? "Loading clients..." : "Select a client..."} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {isLoading ? <div className="p-2"><LoaderCircle className="h-4 w-4 animate-spin"/></div> :
-                                clientAccounts.map((account) => (
-                                    <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <Popover open={isContactPopoverOpen} onOpenChange={setIsContactPopoverOpen}>
+                            <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={isContactPopoverOpen}
+                                className="w-full justify-between"
+                            >
+                                {selectedAccountId
+                                ? clientAccounts.find((account) => account.id === selectedAccountId)?.name
+                                : "Select client..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                                <CommandInput placeholder="Search clients..." />
+                                <CommandList>
+                                    <CommandEmpty>
+                                        {isLoading ? (
+                                            <div className="flex items-center justify-center p-2"><LoaderCircle className="h-4 w-4 animate-spin"/></div>
+                                        ) : (
+                                            "No client found."
+                                        )}
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                    {clientAccounts.map((account) => (
+                                        <CommandItem
+                                            key={account.id}
+                                            value={account.name}
+                                            onSelect={() => {
+                                                setSelectedAccountId(account.id);
+                                                setIsContactPopoverOpen(false);
+                                            }}
+                                        >
+                                            <Check
+                                                className={cn(
+                                                "mr-2 h-4 w-4",
+                                                selectedAccountId === account.id ? "opacity-100" : "opacity-0"
+                                                )}
+                                            />
+                                            {account.name}
+                                        </CommandItem>
+                                    ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                            </PopoverContent>
+                        </Popover>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
@@ -229,20 +278,6 @@ export function CreateClientEntryView() {
             </CardContent>
         </Card>
         
-        <Card className="max-w-4xl mx-auto">
-            <CardHeader>
-                <CardTitle>Time Clock</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center p-6">
-                <p className="text-muted-foreground mt-2 mb-4">
-                    {loggedSeconds > 0 ? `Last logged time: ${formatTime(loggedSeconds)}` : 'Use the time clock to track your work.'}
-                </p>
-                <Button size="lg" onClick={() => setIsTimeClockOpen(true)} disabled={!selectedAccountId || !subject.trim()}>
-                    <Clock className="mr-2 h-5 w-5" /> Open Time Clock
-                </Button>
-            </CardContent>
-        </Card>
-
         <Card className="max-w-4xl mx-auto">
             <CardHeader className="flex flex-row items-center justify-between p-4">
                 <div>
