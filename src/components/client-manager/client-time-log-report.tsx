@@ -10,14 +10,32 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, LoaderCircle, ChevronsUpDown, Check, Printer, Calendar as CalendarIcon } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
+import { ArrowLeft, LoaderCircle, ChevronsUpDown, Check, Printer, Calendar as CalendarIcon, MoreVertical, Pencil, Trash2, BookOpen } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, startOfYear } from 'date-fns';
 import { type DateRange } from "react-day-picker";
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { useReactToPrint } from '@/hooks/use-react-to-print';
-import { getClientAccounts, getEventEntries, type ClientAccount, type EventEntry } from '@/services/client-manager-service';
+import { getClientAccounts, getEventEntries, updateEventEntry, deleteEventEntry, type ClientAccount, type EventEntry } from '@/services/client-manager-service';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { EventDetailsDialog } from "@/components/client-manager/event-details-dialog";
+
 
 const formatTime = (totalSeconds: number) => {
     const hours = Math.floor(totalSeconds / 3600);
@@ -40,6 +58,9 @@ export function ClientTimeLogReport() {
     const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const [isContactPopoverOpen, setIsContactPopoverOpen] = useState(false);
+    
+    const [selectedEntry, setSelectedEntry] = useState<EventEntry | null>(null);
+    const [entryToDelete, setEntryToDelete] = useState<EventEntry | null>(null);
 
     const { user } = useAuth();
     const { toast } = useToast();
@@ -87,10 +108,34 @@ export function ClientTimeLogReport() {
     
     const setMonthToDate = () => setDateRange({ from: startOfMonth(new Date()), to: new Date() });
     const setYearToDate = () => setDateRange({ from: startOfYear(new Date()), to: new Date() });
+    
+    const handleSaveEntry = async (updatedEntryData: Pick<EventEntry, 'id' | 'subject' | 'detailsHtml' | 'startTime' | 'endTime' | 'duration' | 'billableRate'>) => {
+        try {
+            await updateEventEntry(updatedEntryData.id, updatedEntryData);
+            setAllEntries(prev => prev.map(e => e.id === updatedEntryData.id ? { ...e, ...updatedEntryData } : e));
+            toast({ title: "Entry Updated", description: "Your changes have been saved." });
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Update Failed", description: error.message });
+        }
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!entryToDelete) return;
+        try {
+            await deleteEventEntry(entryToDelete.id);
+            setAllEntries(prev => prev.filter(e => e.id !== entryToDelete.id));
+            toast({ title: "Entry Deleted", description: `The log entry "${entryToDelete.subject}" has been removed.` });
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Delete Failed", description: error.message });
+        } finally {
+            setEntryToDelete(null);
+        }
+    };
 
     const selectedAccount = clientAccounts.find(c => c.id === selectedAccountId);
 
     return (
+        <>
         <div className="p-4 sm:p-6 space-y-6">
             <header className="flex items-center justify-between print:hidden">
                 <div>
@@ -169,6 +214,7 @@ export function ClientTimeLogReport() {
                                         <TableHead>Subject</TableHead>
                                         <TableHead className="text-right">Duration</TableHead>
                                         <TableHead className="text-right">Billable</TableHead>
+                                        <TableHead className="w-10"><span className="sr-only">Actions</span></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -178,9 +224,18 @@ export function ClientTimeLogReport() {
                                             <TableCell>{entry.subject}</TableCell>
                                             <TableCell className="text-right font-mono">{formatTime(entry.duration)}</TableCell>
                                             <TableCell className="text-right font-mono">${((entry.duration / 3600) * entry.billableRate).toFixed(2)}</TableCell>
+                                            <TableCell>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onSelect={() => setSelectedEntry(entry)}><BookOpen className="mr-2 h-4 w-4"/>Open / Edit</DropdownMenuItem>
+                                                        <DropdownMenuItem className="text-destructive" onSelect={() => setEntryToDelete(entry)}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
                                         </TableRow>
                                     )) : (
-                                        <TableRow><TableCell colSpan={4} className="h-24 text-center">No entries found for this period.</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={5} className="h-24 text-center">No entries found for this period.</TableCell></TableRow>
                                     )}
                                 </TableBody>
                                 <TableFooter>
@@ -188,6 +243,7 @@ export function ClientTimeLogReport() {
                                         <TableCell colSpan={2} className="font-bold">Totals</TableCell>
                                         <TableCell className="text-right font-bold font-mono">{formatTime(totalDuration)}</TableCell>
                                         <TableCell className="text-right font-bold font-mono">${totalBillable.toFixed(2)}</TableCell>
+                                        <TableCell />
                                     </TableRow>
                                 </TableFooter>
                             </Table>
@@ -198,5 +254,24 @@ export function ClientTimeLogReport() {
                 </Card>
             </div>
         </div>
+        <EventDetailsDialog 
+            isOpen={!!selectedEntry}
+            onOpenChange={() => setSelectedEntry(null)}
+            entry={selectedEntry}
+            onSave={handleSaveEntry}
+        />
+        <AlertDialog open={!!entryToDelete} onOpenChange={() => setEntryToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>This action will permanently delete the log entry: "{entryToDelete?.subject}". This cannot be undone.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+        </>
     );
 }
