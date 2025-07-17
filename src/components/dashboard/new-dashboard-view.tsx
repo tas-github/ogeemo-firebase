@@ -28,7 +28,7 @@ export function NewDashboardView() {
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      <header className="flex items-center justify-between">
+      <header className="text-center">
         <div className="flex flex-col">
             <h1 className="text-3xl font-bold font-headline text-primary">Dashboard Manager</h1>
             <p className="text-muted-foreground">An enhanced, interactive overview of your workspace.</p>
