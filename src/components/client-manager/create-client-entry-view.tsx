@@ -226,7 +226,7 @@ export function CreateClientEntryView() {
                     <div className="text-right">
                         <p className="text-muted-foreground text-sm">Time Logged</p>
                         <p className={cn("font-mono text-2xl font-bold", runningTime > 0 && 'text-destructive animate-pulse')}>{formatTime(displayTime)}</p>
-                        <Button size="sm" variant="outline" className="mt-2" onClick={() => setIsTimeClockOpen(true)} disabled={!selectedAccountId || !subject.trim()}>
+                       <Button size="sm" variant="outline" className="mt-2" onClick={() => setIsTimeClockOpen(true)} disabled={!selectedAccountId || !subject.trim()}>
                            <Clock className="mr-2 h-4 w-4" /> Open Time Clock
                        </Button>
                     </div>
