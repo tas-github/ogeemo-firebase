@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Calendar as CalendarIcon, Plus, Clock } from "lucide-react";
+import { Calendar as CalendarIcon, Plus, Clock, ChevronsUpDown, Check } from "lucide-react";
 import { format, set } from "date-fns";
 import dynamic from "next/dynamic";
 
@@ -32,6 +32,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { type Contact } from "@/data/contacts";
@@ -101,12 +109,12 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [folders, setFolders] = useState<ContactService.FolderData[]>([]);
+  const [isContactPopoverOpen, setIsContactPopoverOpen] = useState(false);
   const { toast } = useToast();
   
   const isEditMode = !!eventToEdit;
 
   const [isTimeClockOpen, setIsTimeClockOpen] = useState(false);
-  const [isContactFormOpen, setIsContactFormOpen] = useState(false);
 
   const resetForm = useCallback((date = defaultStartDate) => {
     setTitle("");
@@ -196,27 +204,6 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
         title: "Time Logged",
         description: `${timeString} has been added to the task description.`
     })
-  };
-
-  const handleSaveContact = async (data: Contact | Omit<Contact, 'id'>, isEditing: boolean) => {
-    if (!user) return;
-    try {
-        if (isEditing) {
-            // This scenario is less likely from the task dialog but supported.
-            const contact = data as Contact;
-            await ContactService.updateContact(contact.id, contact);
-            setContacts(prev => prev.map(c => c.id === contact.id ? contact : c));
-            toast({ title: "Contact Updated", description: `Details for ${contact.name} have been saved.` });
-        } else {
-            const newContactData = { ...data, userId: user.uid } as Omit<Contact, 'id'>;
-            const newContact = await ContactService.addContact(newContactData);
-            setContacts(prev => [...prev, newContact]);
-            setAssigneeId(newContact.id); // Auto-select the newly created contact
-            toast({ title: "Contact Created", description: `${newContact.name} has been added.` });
-        }
-    } catch(error: any) {
-        toast({ variant: "destructive", title: "Save failed", description: error.message });
-    }
   };
 
   const handleSaveTask = () => {
@@ -518,24 +505,49 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="task-contact">Contact</Label>
-                  <div className="flex items-center gap-2">
-                    <Select value={assigneeId} onValueChange={setAssigneeId}>
-                      <SelectTrigger id="task-contact">
-                        <SelectValue placeholder="Select a contact" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {contacts.map((contact) => (
-                          <SelectItem key={contact.id} value={contact.id}>
-                            {contact.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" size="icon" onClick={() => setIsContactFormOpen(true)}>
-                      <Plus className="h-4 w-4" />
-                      <span className="sr-only">Add New Contact</span>
-                    </Button>
-                  </div>
+                  <Popover open={isContactPopoverOpen} onOpenChange={setIsContactPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={isContactPopoverOpen}
+                        className="w-full justify-between"
+                      >
+                        {assigneeId
+                          ? contacts.find((contact) => contact.id === assigneeId)?.name
+                          : "Select contact..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                      <Command>
+                        <CommandInput placeholder="Search contacts..." />
+                        <CommandEmpty>No contact found.</CommandEmpty>
+                        <CommandList>
+                          <CommandGroup>
+                            {contacts.map((contact) => (
+                              <CommandItem
+                                key={contact.id}
+                                value={contact.name}
+                                onSelect={() => {
+                                  setAssigneeId(contact.id);
+                                  setIsContactPopoverOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    assigneeId === contact.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {contact.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 
@@ -596,16 +608,6 @@ export function NewTaskDialog({ isOpen, onOpenChange, defaultStartDate, eventToE
         onOpenChange={setIsTimeClockOpen}
         onLogTime={handleLogTime}
        />
-      {isContactFormOpen && (
-        <ContactFormDialog
-            isOpen={isContactFormOpen}
-            onOpenChange={setIsContactFormOpen}
-            contactToEdit={null}
-            selectedFolderId={folders.find(f => !f.parentId)?.id || ''} // Default to the first root folder
-            folders={folders}
-            onSave={handleSaveContact}
-        />
-       )}
     </>
   );
 }
