@@ -39,6 +39,7 @@ export function CreateClientEntryView() {
   
   const [isTimeClockOpen, setIsTimeClockOpen] = useState(false);
   const [loggedSeconds, setLoggedSeconds] = useState(0);
+  const [runningTime, setRunningTime] = useState(0);
 
   const editorRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -62,6 +63,30 @@ export function CreateClientEntryView() {
     }
     loadData();
   }, [user, toast]);
+
+  useEffect(() => {
+    const timerInterval = setInterval(() => {
+      const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+      if (savedStateRaw) {
+        try {
+          const savedState = JSON.parse(savedStateRaw);
+          if (savedState.isActive && !savedState.isPaused) {
+            const timeSinceLastTick = Math.floor((Date.now() - savedState.lastTickTimestamp) / 1000);
+            setRunningTime(savedState.elapsedSeconds + timeSinceLastTick);
+            return;
+          } else if (savedState.isActive && savedState.isPaused) {
+            setRunningTime(savedState.elapsedSeconds);
+            return;
+          }
+        } catch(e) { /* ignore parse error */ }
+      }
+      if (runningTime !== 0) {
+        setRunningTime(0);
+      }
+    }, 1000);
+
+    return () => clearInterval(timerInterval);
+  }, [runningTime]);
   
 
   const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
@@ -83,6 +108,7 @@ export function CreateClientEntryView() {
   
   const handleLogTime = (seconds: number) => {
     setLoggedSeconds(seconds);
+    setRunningTime(0); // Stop the live timer display when time is officially logged
     const timeString = formatTime(seconds);
     toast({
       title: "Time Logged",
@@ -95,8 +121,9 @@ export function CreateClientEntryView() {
 
     let finalLoggedSeconds = loggedSeconds;
     
+    // Check if a timer was running and then stopped without being formally logged
     const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
-    if (savedStateRaw) {
+    if (savedStateRaw && finalLoggedSeconds === 0) {
         try {
             const savedState = JSON.parse(savedStateRaw);
             const timeSinceLastTick = !savedState.isPaused && savedState.isActive ? Math.floor((Date.now() - savedState.lastTickTimestamp) / 1000) : 0;
@@ -137,6 +164,7 @@ export function CreateClientEntryView() {
         await addEventEntry(newEntryData);
         
         setLoggedSeconds(0);
+        setRunningTime(0);
         setSubject("");
         if (editorRef.current) editorRef.current.innerHTML = "";
         setSelectedAccountId(null);
@@ -170,6 +198,8 @@ export function CreateClientEntryView() {
     }
   };
 
+  const displayTime = runningTime > 0 ? runningTime : loggedSeconds;
+
   return (
     <>
     <div className="p-4 sm:p-6 space-y-6">
@@ -195,7 +225,7 @@ export function CreateClientEntryView() {
                     </div>
                     <div className="text-right">
                         <p className="text-muted-foreground text-sm">Time Logged</p>
-                        <p className="font-mono text-2xl font-bold">{formatTime(loggedSeconds)}</p>
+                        <p className={cn("font-mono text-2xl font-bold", runningTime > 0 && 'text-destructive animate-pulse')}>{formatTime(displayTime)}</p>
                         <Button size="sm" variant="outline" className="mt-2" onClick={() => setIsTimeClockOpen(true)} disabled={!selectedAccountId || !subject.trim()}>
                            <Clock className="mr-2 h-4 w-4" /> Open Time Clock
                        </Button>
@@ -225,7 +255,7 @@ export function CreateClientEntryView() {
                                 <Command>
                                     <CommandInput
                                     placeholder="Search clients..."
-                                    className="h-9 m-2 p-2 rounded-md bg-muted/50 border border-input"
+                                    className="h-9 m-2 p-2 rounded-md border-foreground bg-muted/50"
                                     />
                                     <CommandList>
                                         <CommandEmpty>
