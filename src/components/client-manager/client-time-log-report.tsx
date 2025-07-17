@@ -60,6 +60,12 @@ export function ClientTimeLogReport() {
         }
         loadData();
     }, [user, toast]);
+    
+    const endOfDay = (date: Date) => {
+        const newDate = new Date(date);
+        newDate.setHours(23, 59, 59, 999);
+        return newDate;
+    };
 
     const filteredEntries = useMemo(() => {
         if (!selectedAccountId) return [];
@@ -76,12 +82,6 @@ export function ClientTimeLogReport() {
 
     const totalDuration = useMemo(() => filteredEntries.reduce((acc, entry) => acc + entry.duration, 0), [filteredEntries]);
     const totalBillable = useMemo(() => filteredEntries.reduce((acc, entry) => acc + (entry.duration / 3600) * entry.billableRate, 0), [filteredEntries]);
-    
-    const endOfDay = (date: Date) => {
-        const newDate = new Date(date);
-        newDate.setHours(23, 59, 59, 999);
-        return newDate;
-    };
     
     const setMonthToDate = () => setDateRange({ from: startOfMonth(new Date()), to: new Date() });
     const setYearToDate = () => setDateRange({ from: startOfYear(new Date()), to: new Date() });
