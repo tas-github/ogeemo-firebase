@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,16 +9,31 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Save, Strikethrough, Quote, Link as LinkIcon, Mic, Square, LoaderCircle, Clock, ChevronsUpDown, Check } from 'lucide-react';
+import { Bold, Italic, Underline, List, ListOrdered, ArrowLeft, Save, Strikethrough, Quote, Link as LinkIcon, Mic, Square, LoaderCircle, Clock, ChevronsUpDown, Check, MoreVertical, Play, Pause } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from '@/components/ui/separator';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/auth-context';
 import { getClientAccounts, addEventEntry, type ClientAccount, type EventEntry } from '@/services/client-manager-service';
-import { TimeClockDialog } from '@/components/time/TimeClockDialog';
+// import { TimeClockDialog } from '@/components/time/TimeClockDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 
 const TIMER_STORAGE_KEY = 'timeClockDialogState';
+
+interface StoredTimerState {
+    elapsedSeconds: number;
+    isActive: boolean;
+    isPaused: boolean;
+    lastTickTimestamp: number;
+}
 
 const formatTime = (totalSeconds: number) => {
   const hours = Math.floor(totalSeconds / 3600);
@@ -37,13 +52,40 @@ export function CreateClientEntryView() {
   const [subject, setSubject] = useState("");
   const [billableRate, setBillableRate] = useState<number>(100);
   
-  const [isTimeClockOpen, setIsTimeClockOpen] = useState(false);
   const [loggedSeconds, setLoggedSeconds] = useState(0);
+
+  // Live timer state
   const [runningTime, setRunningTime] = useState(0);
+  const [isTimerActive, setIsTimerActive] = useState(false);
+  const [isTimerPaused, setIsTimerPaused] = useState(true);
 
   const editorRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [detailsBeforeSpeech, setDetailsBeforeSpeech] = useState('');
+
+  const loadTimerState = useCallback(() => {
+    try {
+        const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+        if (savedStateRaw) {
+            const savedState: StoredTimerState = JSON.parse(savedStateRaw);
+            const timeSinceLastTick = !savedState.isPaused && savedState.isActive ? Math.floor((Date.now() - savedState.lastTickTimestamp) / 1000) : 0;
+            setRunningTime(savedState.elapsedSeconds + timeSinceLastTick);
+            setIsTimerActive(savedState.isActive);
+            setIsTimerPaused(savedState.isPaused);
+            return savedState;
+        }
+    } catch (e) { console.error("Could not parse timer state", e); }
+    return null;
+  }, []);
+
+  useEffect(() => {
+    loadTimerState();
+    const timerInterval = setInterval(() => {
+        loadTimerState();
+    }, 1000);
+    return () => clearInterval(timerInterval);
+  }, [loadTimerState]);
+  
 
   useEffect(() => {
     async function loadData() {
@@ -63,30 +105,6 @@ export function CreateClientEntryView() {
     }
     loadData();
   }, [user, toast]);
-
-  useEffect(() => {
-    const timerInterval = setInterval(() => {
-      const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
-      if (savedStateRaw) {
-        try {
-          const savedState = JSON.parse(savedStateRaw);
-          if (savedState.isActive && !savedState.isPaused) {
-            const timeSinceLastTick = Math.floor((Date.now() - savedState.lastTickTimestamp) / 1000);
-            setRunningTime(savedState.elapsedSeconds + timeSinceLastTick);
-            return;
-          } else if (savedState.isActive && savedState.isPaused) {
-            setRunningTime(savedState.elapsedSeconds);
-            return;
-          }
-        } catch(e) { /* ignore parse error */ }
-      }
-      if (runningTime !== 0) {
-        setRunningTime(0);
-      }
-    }, 1000);
-
-    return () => clearInterval(timerInterval);
-  }, [runningTime]);
   
 
   const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
@@ -108,7 +126,6 @@ export function CreateClientEntryView() {
   
   const handleLogTime = (seconds: number) => {
     setLoggedSeconds(seconds);
-    setRunningTime(0); // Stop the live timer display when time is officially logged
     const timeString = formatTime(seconds);
     toast({
       title: "Time Logged",
@@ -116,20 +133,59 @@ export function CreateClientEntryView() {
     });
   };
 
+  const handleStartTimer = () => {
+    const newState: StoredTimerState = {
+        elapsedSeconds: 0,
+        isActive: true,
+        isPaused: false,
+        lastTickTimestamp: Date.now(),
+    };
+    localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(newState));
+    loadTimerState();
+  };
+
+  const handlePauseResumeTimer = () => {
+    const currentStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+    if (!currentStateRaw) return;
+
+    const currentState: StoredTimerState = JSON.parse(currentStateRaw);
+    if (!currentState.isActive) return;
+
+    const timeSinceLastTick = !currentState.isPaused ? Math.floor((Date.now() - currentState.lastTickTimestamp) / 1000) : 0;
+    const newElapsed = currentState.elapsedSeconds + timeSinceLastTick;
+
+    const newState: StoredTimerState = {
+        elapsedSeconds: newElapsed,
+        isActive: true,
+        isPaused: !currentState.isPaused,
+        lastTickTimestamp: Date.now(),
+    };
+    localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(newState));
+    loadTimerState();
+  };
+  
+  const handleStopTimerAndLog = () => {
+    const currentStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+    if (!currentStateRaw) return;
+
+    const currentState: StoredTimerState = JSON.parse(currentStateRaw);
+    if (!currentState.isActive) return;
+
+    const timeSinceLastTick = !currentState.isPaused ? Math.floor((Date.now() - currentState.lastTickTimestamp) / 1000) : 0;
+    const finalSeconds = currentState.elapsedSeconds + timeSinceLastTick;
+    
+    handleLogTime(finalSeconds);
+
+    localStorage.removeItem(TIMER_STORAGE_KEY);
+    setRunningTime(0);
+    setIsTimerActive(false);
+    setIsTimerPaused(true);
+  };
+
   const handleLogEvent = async () => {
     if (!user) { toast({ variant: "destructive", title: "Not logged in" }); return; }
 
-    let finalLoggedSeconds = loggedSeconds;
-    
-    // Check if a timer was running and then stopped without being formally logged
-    const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
-    if (savedStateRaw && finalLoggedSeconds === 0) {
-        try {
-            const savedState = JSON.parse(savedStateRaw);
-            const timeSinceLastTick = !savedState.isPaused && savedState.isActive ? Math.floor((Date.now() - savedState.lastTickTimestamp) / 1000) : 0;
-            finalLoggedSeconds = savedState.elapsedSeconds + timeSinceLastTick;
-        } catch(e) { console.error("Could not parse timer state"); }
-    }
+    const finalLoggedSeconds = loggedSeconds > 0 ? loggedSeconds : isTimerActive ? runningTime : 0;
 
     try {
         if (!selectedAccountId) {
@@ -165,6 +221,8 @@ export function CreateClientEntryView() {
         
         setLoggedSeconds(0);
         setRunningTime(0);
+        setIsTimerActive(false);
+        setIsTimerPaused(true);
         setSubject("");
         if (editorRef.current) editorRef.current.innerHTML = "";
         setSelectedAccountId(null);
@@ -225,10 +283,27 @@ export function CreateClientEntryView() {
                     </div>
                     <div className="text-right">
                         <p className="text-muted-foreground text-sm">Time Logged</p>
-                        <p className={cn("font-mono text-2xl font-bold", runningTime > 0 && 'text-destructive animate-pulse')}>{formatTime(displayTime)}</p>
-                       <Button size="sm" variant="outline" className="mt-2" onClick={() => setIsTimeClockOpen(true)} disabled={!selectedAccountId || !subject.trim()}>
-                           <Clock className="mr-2 h-4 w-4" /> Open Time Clock
-                       </Button>
+                        <div className="flex items-center gap-2">
+                            <p className={cn("font-mono text-2xl font-bold", isTimerActive && !isTimerPaused && 'text-destructive animate-pulse')}>{formatTime(displayTime)}</p>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5"/></Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={handleStartTimer} disabled={isTimerActive}>
+                                        <Play className="mr-2 h-4 w-4" /> Start Timer
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={handlePauseResumeTimer} disabled={!isTimerActive}>
+                                        {isTimerPaused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
+                                        {isTimerPaused ? 'Resume' : 'Pause'}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={handleStopTimerAndLog} disabled={!isTimerActive} className="text-destructive">
+                                        <Square className="mr-2 h-4 w-4" /> Stop & Log Time
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     </div>
                 </div>
             </CardHeader>
@@ -350,11 +425,13 @@ export function CreateClientEntryView() {
             </CardContent>
         </Card>
     </div>
+    {/* 
     <TimeClockDialog
         isOpen={isTimeClockOpen}
         onOpenChange={setIsTimeClockOpen}
         onLogTime={handleLogTime}
-      />
+      /> 
+    */}
     </>
   );
 }
