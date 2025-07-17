@@ -83,12 +83,9 @@ export function LoggedEntriesView() {
     }
   };
 
-  const handleSaveEntry = async (updatedEntryData: Pick<EventEntry, 'id' | 'subject' | 'detailsHtml'>) => {
+  const handleSaveEntry = async (updatedEntryData: Pick<EventEntry, 'id' | 'subject' | 'detailsHtml' | 'startTime' | 'endTime' | 'duration' | 'billableRate'>) => {
     try {
-      await updateEventEntry(updatedEntryData.id, {
-        subject: updatedEntryData.subject,
-        detailsHtml: updatedEntryData.detailsHtml,
-      });
+      await updateEventEntry(updatedEntryData.id, updatedEntryData);
       setEventEntries(prev => prev.map(e => e.id === updatedEntryData.id ? { ...e, ...updatedEntryData } : e));
       toast({ title: "Entry Updated", description: "Your changes have been saved." });
     } catch (error: any) {
