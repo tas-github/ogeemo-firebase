@@ -29,6 +29,7 @@ import {
   LogOut,
   MessageSquare,
   HardHat,
+  Clock,
 } from "lucide-react";
 
 import {
@@ -94,6 +95,14 @@ export function MainMenu() {
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
+       <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={isActive("/communications")} tooltip="Communications">
+          <Link href="/communications" onClick={(e) => handleClick(e, "/communications")}>
+            <MessageSquare />
+            <span>Communications</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton
           asChild
@@ -103,6 +112,14 @@ export function MainMenu() {
           <Link href="/contacts" onClick={(e) => handleClick(e, "/contacts")}>
             <Contact />
             <span>Contacts</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={isActive("/client-manager...")} tooltip="Client Manager">
+          <Link href="/client-manager" onClick={(e) => handleClick(e, "/client-manager")}>
+            <Users />
+            <span>Client Manager</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -119,14 +136,6 @@ export function MainMenu() {
           <Link href="/calendar" onClick={(e) => handleClick(e, "/calendar")}>
             <Calendar />
             <span>Calendar</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isActive("/communications")} tooltip="Communications">
-          <Link href="/communications" onClick={(e) => handleClick(e, "/communications")}>
-            <MessageSquare />
-            <span>Communications</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -162,6 +171,14 @@ export function MainMenu() {
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
+       <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={isActive("/time")} tooltip="Time">
+          <Link href="/time" onClick={(e) => handleClick(e, "/time")}>
+            <Clock />
+            <span>Time</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/google")} tooltip="Google">
           <Link href="/google" onClick={(e) => handleClick(e, "/google")}>
@@ -176,14 +193,6 @@ export function MainMenu() {
               <path d="M18 14a6 6 0 0 1-6 6h-1a6 6 0 1 1 5-10l-2 2h3" />
             </svg>
             <span>Google</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-      <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isActive("/client-manager...")} tooltip="Client Manager">
-          <Link href="/client-manager" onClick={(e) => handleClick(e, "/client-manager")}>
-            <Users />
-            <span>Client Manager</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>

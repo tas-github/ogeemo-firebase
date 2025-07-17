@@ -1,3 +1,4 @@
+
 "use client";
 
 import { format } from 'date-fns';
@@ -15,7 +16,7 @@ import { Separator } from '../ui/separator';
 
 interface EventEntry {
   id: string;
-  contactId: string;
+  accountId: string;
   contactName: string;
   subject: string;
   detailsHtml?: string;
