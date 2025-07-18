@@ -297,9 +297,10 @@ export interface Asset {
   id: string;
   name: string;
   description?: string;
+  assetClass?: string;
   purchaseDate: string;
   cost: number;
-  undepreciatedCapitalCost: number; // This will be calculated on write
+  undepreciatedCapitalCost: number;
   depreciationEntries?: DepreciationEntry[];
   userId: string;
 }

@@ -33,6 +33,7 @@ interface AssetFormDialogProps {
 const emptyAssetForm = {
   name: "",
   description: "",
+  assetClass: "",
   purchaseDate: format(new Date(), 'yyyy-MM-dd'),
   cost: '',
   undepreciatedCapitalCost: '',
@@ -71,6 +72,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
       setFormData({
         name: assetToEdit.name,
         description: assetToEdit.description || "",
+        assetClass: assetToEdit.assetClass || "",
         purchaseDate: format(dateToFormat, 'yyyy-MM-dd'),
         cost: String(assetToEdit.cost),
         undepreciatedCapitalCost: String(assetToEdit.undepreciatedCapitalCost),
@@ -86,7 +88,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
     const costNum = parseFloat(formData.cost);
     const uccNum = parseFloat(formData.undepreciatedCapitalCost);
 
-    if (!formData.name.trim() || !formData.purchaseDate || isNaN(costNum) || costNum <= 0 || isNaN(uccNum) || uccNum < 0) {
+    if (!formData.name.trim() || !formData.purchaseDate || isNaN(costNum) || costNum < 0 || isNaN(uccNum) || uccNum < 0) {
       toast({
         variant: "destructive",
         title: "Invalid Input",
@@ -107,6 +109,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
     const dataToSave = {
       name: formData.name,
       description: formData.description,
+      assetClass: formData.assetClass,
       purchaseDate: formData.purchaseDate,
       cost: costNum,
       undepreciatedCapitalCost: uccNum,
@@ -162,9 +165,15 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
         </DialogHeader>
         <div className="grid gap-6 py-4">
           <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Asset Name</Label>
-                <Input id="name" value={formData.name} onChange={handleChange} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Asset Name</Label>
+                  <Input id="name" value={formData.name} onChange={handleChange} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="assetClass">Asset Class # (for CRA)</Label>
+                  <Input id="assetClass" value={formData.assetClass} onChange={handleChange} placeholder="e.g., 8, 10, 50" />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
@@ -182,16 +191,14 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                         <Input id="cost" type="number" placeholder="0.00" value={formData.cost} onChange={handleChange} className="pl-7" />
                     </div>
                 </div>
-                {!assetToEdit && (
-                    <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="undepreciatedCapitalCost">Current Value (as of Purchase Date)</Label>
-                        <div className="relative">
-                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                            <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} className="pl-7" />
-                        </div>
-                        <p className="text-xs text-muted-foreground">For a brand new asset, this is the same as the Original Cost. For a used asset, enter its value when you acquired it.</p>
+                <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="undepreciatedCapitalCost">Current Value (as of Purchase Date)</Label>
+                    <div className="relative">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                        <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} className="pl-7" />
                     </div>
-                )}
+                    <p className="text-xs text-muted-foreground">For a brand new asset, this is the same as the Original Cost. For a used asset, enter its value when you acquired it.</p>
+                </div>
               </div>
           </div>
           

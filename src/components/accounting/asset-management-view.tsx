@@ -157,6 +157,7 @@ export function AssetManagementView() {
                         <TableHeader>
                         <TableRow>
                             <TableHead>Asset</TableHead>
+                            <TableHead>Class #</TableHead>
                             <TableHead>Acquired</TableHead>
                             <TableHead className="text-right">Original Cost</TableHead>
                             <TableHead className="text-right">Undepreciated Capital Cost</TableHead>
@@ -167,6 +168,7 @@ export function AssetManagementView() {
                         {assets.map((asset) => (
                             <TableRow key={asset.id}>
                             <TableCell className="font-medium">{asset.name}</TableCell>
+                            <TableCell>{asset.assetClass || 'N/A'}</TableCell>
                             <TableCell>{asset.purchaseDate}</TableCell>
                             <TableCell className="text-right font-mono">{formatCurrency(asset.cost)}</TableCell>
                             <TableCell className="text-right font-mono">{formatCurrency(asset.undepreciatedCapitalCost)}</TableCell>
