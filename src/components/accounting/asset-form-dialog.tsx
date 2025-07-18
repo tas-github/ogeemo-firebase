@@ -20,6 +20,7 @@ import type { Asset, DepreciationEntry } from "@/services/accounting-service";
 import { PlusCircle, Trash2 } from "lucide-react";
 import { Separator } from "../ui/separator";
 import { ScrollArea } from "../ui/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 
 
 interface AssetFormDialogProps {
@@ -164,7 +165,10 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cost">Original Cost</Label>
-                  <Input id="cost" type="number" placeholder="0.00" value={formData.cost} onChange={handleChange} />
+                  <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                    <Input id="cost" type="number" placeholder="0.00" value={formData.cost} onChange={handleChange} className="pl-7" />
+                  </div>
                 </div>
               </div>
           </div>
@@ -192,7 +196,10 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="dep-amount">Amount</Label>
-                            <Input id="dep-amount" type="number" placeholder="0.00" value={newDepreciation.amount} onChange={(e) => setNewDepreciation(p => ({ ...p, amount: e.target.value }))} />
+                             <div className="relative">
+                                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                                <Input id="dep-amount" type="number" placeholder="0.00" value={newDepreciation.amount} onChange={(e) => setNewDepreciation(p => ({ ...p, amount: e.target.value }))} className="pl-7" />
+                            </div>
                         </div>
                         <Button onClick={handleAddDepreciation}><PlusCircle className="mr-2 h-4 w-4"/> Add</Button>
                     </CardContent>
@@ -205,7 +212,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                             {depreciationEntries.length > 0 ? (
                                 depreciationEntries.map(entry => (
                                     <div key={entry.id} className="flex justify-between items-center text-sm mb-2">
-                                        <span>{entry.date}</span>
+                                        <span>{format(parseISO(entry.date), 'PP')}</span>
                                         <span>{entry.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
                                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteDepreciation(entry.id)}>
                                             <Trash2 className="h-4 w-4 text-destructive"/>
