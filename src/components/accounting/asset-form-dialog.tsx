@@ -79,20 +79,38 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
       });
       setDepreciationEntries(assetToEdit.depreciationEntries || []);
     } else if (!assetToEdit && isOpen) {
-      setFormData(emptyAssetForm);
+      const newAssetDefaults = {
+        ...emptyAssetForm,
+        cost: '',
+        undepreciatedCapitalCost: '',
+      };
+      setFormData(newAssetDefaults);
       setDepreciationEntries([]);
     }
   }, [assetToEdit, isOpen]);
 
   const handleSave = () => {
     const costNum = parseFloat(formData.cost);
-    const uccNum = parseFloat(formData.undepreciatedCapitalCost);
+    let uccNum = parseFloat(formData.undepreciatedCapitalCost);
 
-    if (!formData.name.trim() || !formData.purchaseDate || isNaN(costNum) || costNum < 0 || isNaN(uccNum) || uccNum < 0) {
+    if (assetToEdit === null) {
+      uccNum = costNum; // For new assets, UCC is the same as cost
+    }
+
+    if (!formData.name.trim() || !formData.purchaseDate || isNaN(costNum) || costNum < 0) {
       toast({
         variant: "destructive",
         title: "Invalid Input",
-        description: "Please fill out all required fields with valid data.",
+        description: "Please fill out Asset Name, Purchase Date, and a valid Original Cost.",
+      });
+      return;
+    }
+
+    if (assetToEdit && (isNaN(uccNum) || uccNum < 0)) {
+       toast({
+        variant: "destructive",
+        title: "Invalid Input",
+        description: "Please enter a valid Current Value.",
       });
       return;
     }
@@ -163,8 +181,8 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
             {assetToEdit ? 'Update details, view history, and record new depreciation.' : 'Enter the details for your new capital asset.'}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-1 pr-6">
-            <div className="grid gap-6 py-4">
+        <ScrollArea className="flex-1 -mx-6">
+            <div className="grid gap-6 py-4 px-6">
             <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -192,14 +210,22 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                             <Input id="cost" type="number" placeholder="0.00" value={formData.cost} onChange={handleChange} className="pl-7" />
                         </div>
                     </div>
-                    <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="undepreciatedCapitalCost">Current Value (as of Purchase Date)</Label>
+                    {assetToEdit !== null ? (
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="undepreciatedCapitalCost">Current Value (UCC)</Label>
                         <div className="relative">
                             <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
                             <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} className="pl-7" />
                         </div>
-                        <p className="text-xs text-muted-foreground">For a brand new asset, this is the same as the Original Cost. For a used asset, enter its value when you acquired it.</p>
-                    </div>
+                        <p className="text-xs text-muted-foreground">This is the asset's value after any previous depreciation.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 md:col-span-2">
+                        <Label>Current Value (UCC)</Label>
+                        <Input value="Same as Original Cost" readOnly disabled />
+                        <p className="text-xs text-muted-foreground">For a new asset, the Current Value is automatically set to its Original Cost.</p>
+                      </div>
+                    )}
                 </div>
             </div>
             
