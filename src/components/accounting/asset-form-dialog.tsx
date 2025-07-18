@@ -35,6 +35,7 @@ const emptyAssetForm = {
   description: "",
   purchaseDate: format(new Date(), 'yyyy-MM-dd'),
   cost: '',
+  undepreciatedCapitalCost: '',
 };
 
 export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: AssetFormDialogProps) {
@@ -44,10 +45,10 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
   const { toast } = useToast();
 
   const currentDepreciatedValue = useMemo(() => {
-    if (!assetToEdit) return 0;
+    const openingBalance = assetToEdit ? assetToEdit.undepreciatedCapitalCost : parseFloat(formData.undepreciatedCapitalCost) || 0;
     const totalDepreciation = depreciationEntries.reduce((sum, entry) => sum + entry.amount, 0);
-    return assetToEdit.cost - totalDepreciation;
-  }, [assetToEdit, depreciationEntries]);
+    return openingBalance - totalDepreciation;
+  }, [assetToEdit, formData.undepreciatedCapitalCost, depreciationEntries]);
 
 
   useEffect(() => {
@@ -72,6 +73,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
         description: assetToEdit.description || "",
         purchaseDate: format(dateToFormat, 'yyyy-MM-dd'),
         cost: String(assetToEdit.cost),
+        undepreciatedCapitalCost: String(assetToEdit.undepreciatedCapitalCost),
       });
       setDepreciationEntries(assetToEdit.depreciationEntries || []);
     } else if (!assetToEdit && isOpen) {
@@ -82,8 +84,9 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
 
   const handleSave = () => {
     const costNum = parseFloat(formData.cost);
+    const uccNum = parseFloat(formData.undepreciatedCapitalCost);
 
-    if (!formData.name.trim() || !formData.purchaseDate || isNaN(costNum) || costNum <= 0) {
+    if (!formData.name.trim() || !formData.purchaseDate || isNaN(costNum) || costNum <= 0 || isNaN(uccNum) || uccNum < 0) {
       toast({
         variant: "destructive",
         title: "Invalid Input",
@@ -91,20 +94,29 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
       });
       return;
     }
+    
+    if (uccNum > costNum) {
+        toast({
+            variant: "destructive",
+            title: "Invalid Value",
+            description: "Current value cannot be greater than the original cost.",
+        });
+        return;
+    }
 
     const dataToSave = {
       name: formData.name,
       description: formData.description,
       purchaseDate: formData.purchaseDate,
       cost: costNum,
+      undepreciatedCapitalCost: uccNum,
       depreciationEntries: depreciationEntries,
     };
 
     if (assetToEdit) {
-      onSave({ ...assetToEdit, ...dataToSave, undepreciatedCapitalCost: currentDepreciatedValue });
+      onSave({ ...assetToEdit, ...dataToSave });
     } else {
-      // For new assets, UCC is the same as cost.
-      onSave({ ...dataToSave, undepreciatedCapitalCost: costNum });
+      onSave(dataToSave);
     }
     onOpenChange(false);
   };
@@ -131,7 +143,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
         date: newDepreciation.date,
         amount: amountNum,
     };
-    setDepreciationEntries(prev => [...prev, newEntry]);
+    setDepreciationEntries(prev => [...prev, newEntry].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
     setNewDepreciation({ date: format(new Date(), 'yyyy-MM-dd'), amount: '' }); // Reset form
   };
   
@@ -158,18 +170,28 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                 <Label htmlFor="description">Description</Label>
                 <Textarea id="description" value={formData.description} onChange={handleChange} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="purchaseDate">Purchase Date</Label>
                   <Input id="purchaseDate" type="date" value={formData.purchaseDate} onChange={handleChange} />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cost">Original Cost</Label>
-                  <div className="relative">
-                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                    <Input id="cost" type="number" placeholder="0.00" value={formData.cost} onChange={handleChange} className="pl-7" />
-                  </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="cost">Original Cost</Label>
+                    <div className="relative">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                        <Input id="cost" type="number" placeholder="0.00" value={formData.cost} onChange={handleChange} className="pl-7" />
+                    </div>
                 </div>
+                {!assetToEdit && (
+                    <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="undepreciatedCapitalCost">Current Value (as of Purchase Date)</Label>
+                        <div className="relative">
+                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                            <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} className="pl-7" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">For a brand new asset, this is the same as the Original Cost. For a used asset, enter its value when you acquired it.</p>
+                    </div>
+                )}
               </div>
           </div>
           
