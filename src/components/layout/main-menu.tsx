@@ -30,6 +30,12 @@ import {
   MessageSquare,
   HardHat,
   Clock,
+  Contact2,
+  Share2,
+  Users2,
+  PackageSearch,
+  Megaphone,
+  Landmark,
 } from "lucide-react";
 
 import {
@@ -176,6 +182,54 @@ export function MainMenu() {
           <Link href="/time" onClick={(e) => handleClick(e, "/time")}>
             <Clock />
             <span>Time</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+       <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={isActive("/hr-manager")} tooltip="HR Manager">
+          <Link href="/hr-manager" onClick={(e) => handleClick(e, "/hr-manager")}>
+            <Contact2 />
+            <span>HR Manager</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={isActive("/social-media-manager")} tooltip="Social Media Manager">
+          <Link href="/social-media-manager" onClick={(e) => handleClick(e, "/social-media-manager")}>
+            <Share2 />
+            <span>Social Media</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={isActive("/crm")} tooltip="CRM">
+          <Link href="/crm" onClick={(e) => handleClick(e, "/crm")}>
+            <Users2 />
+            <span>CRM</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={isActive("/inventory-manager")} tooltip="Inventory Manager">
+          <Link href="/inventory-manager" onClick={(e) => handleClick(e, "/inventory-manager")}>
+            <PackageSearch />
+            <span>Inventory</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={isActive("/marketing-manager")} tooltip="Marketing Manager">
+          <Link href="/marketing-manager" onClick={(e) => handleClick(e, "/marketing-manager")}>
+            <Megaphone />
+            <span>Marketing</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={isActive("/legal-hub")} tooltip="Legal Hub">
+          <Link href="/legal-hub" onClick={(e) => handleClick(e, "/legal-hub")}>
+            <Landmark />
+            <span>Legal Hub</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
