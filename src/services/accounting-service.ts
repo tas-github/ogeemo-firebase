@@ -287,18 +287,25 @@ export async function deletePayableBill(id: string): Promise<void> {
 }
 
 // --- Asset Management Interfaces & Functions ---
+export interface DepreciationEntry {
+  id: string; // Could be a timestamp or a unique ID
+  date: string;
+  amount: number;
+}
+
 export interface Asset {
   id: string;
   name: string;
   description?: string;
   purchaseDate: string;
   cost: number;
-  undepreciatedCapitalCost: number;
+  undepreciatedCapitalCost: number; // This will be calculated on write
+  depreciationEntries?: DepreciationEntry[];
   userId: string;
 }
 
 const ASSETS_COLLECTION = 'assets';
-const docToAsset = (doc: QueryDocumentSnapshot<DocumentData>): Asset => ({ id: doc.id, ...doc.data() } as Asset);
+const docToAsset = (doc: QueryDocumentSnapshot<DocumentData>): Asset => ({ id: doc.id, ...doc.data(), depreciationEntries: doc.data().depreciationEntries || [] } as Asset);
 
 export async function getAssets(userId: string): Promise<Asset[]> {
   if (!db) throw new Error("Firestore not initialized");
