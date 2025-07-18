@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import type { Asset } from "@/services/accounting-service";
 
 
@@ -40,11 +40,25 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
 
   useEffect(() => {
     if (assetToEdit && isOpen) {
+      const purchaseDateSource = assetToEdit.purchaseDate;
+      let dateToFormat: Date;
+
+      if (typeof purchaseDateSource === 'string') {
+        dateToFormat = parseISO(purchaseDateSource);
+      } else if (purchaseDateSource instanceof Date) {
+        dateToFormat = purchaseDateSource;
+      } else {
+        dateToFormat = new Date(); // Fallback to today if type is unexpected
+      }
+      
+      if (!isValid(dateToFormat)) {
+        dateToFormat = new Date(); // Fallback if parsing fails
+      }
+
       setFormData({
         name: assetToEdit.name,
         description: assetToEdit.description || "",
-        // Ensure purchaseDate is parsed correctly if it's a string
-        purchaseDate: format(typeof assetToEdit.purchaseDate === 'string' ? parseISO(assetToEdit.purchaseDate) : assetToEdit.purchaseDate, 'yyyy-MM-dd'),
+        purchaseDate: format(dateToFormat, 'yyyy-MM-dd'),
         cost: String(assetToEdit.cost),
         undepreciatedCapitalCost: String(assetToEdit.undepreciatedCapitalCost),
       });
