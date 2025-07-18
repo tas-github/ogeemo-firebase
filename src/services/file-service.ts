@@ -255,3 +255,18 @@ export async function saveEmailForContact(
 
     return await _addFileDoc(fileData);
 }
+
+export async function findOrCreateTopLevelFolder(userId: string, folderName: string): Promise<FolderItem> {
+    checkDb();
+    const q = query(
+        collection(db, FOLDERS_COLLECTION),
+        where("userId", "==", userId),
+        where("name", "==", folderName),
+        where("parentId", "==", null)
+    );
+    const snapshot = await getDocs(q);
+    if (!snapshot.empty) {
+        return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as FolderItem;
+    }
+    return addFolder({ name: folderName, userId, parentId: null });
+}
