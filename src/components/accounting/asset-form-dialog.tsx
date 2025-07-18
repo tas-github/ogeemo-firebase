@@ -21,7 +21,7 @@ import { PlusCircle, Trash2 } from "lucide-react";
 import { Separator } from "../ui/separator";
 import { ScrollArea } from "../ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface AssetFormDialogProps {
   isOpen: boolean;
@@ -38,6 +38,19 @@ const emptyAssetForm = {
   cost: '',
   undepreciatedCapitalCost: '',
 };
+
+const CRA_ASSET_CLASSES = [
+    { value: "1", label: "Class 1 (4%) - Buildings" },
+    { value: "8", label: "Class 8 (20%) - Furniture, equipment" },
+    { value: "10", label: "Class 10 (30%) - Vehicles" },
+    { value: "10.1", label: "Class 10.1 (30%) - Passenger vehicles (cost limit)" },
+    { value: "12", label: "Class 12 (100%) - Tools < $500, software" },
+    { value: "16", label: "Class 16 (40%) - Taxis, freight trucks" },
+    { value: "43", label: "Class 43 (30%) - Manufacturing machinery" },
+    { value: "45", label: "Class 45 (45%) - Computer equipment" },
+    { value: "50", label: "Class 50 (55%) - Computer hardware" },
+    { value: "53", label: "Class 53 (50%) - Zero-emission vehicles" },
+];
 
 export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: AssetFormDialogProps) {
   const [formData, setFormData] = useState(emptyAssetForm);
@@ -62,11 +75,11 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
       } else if (purchaseDateSource instanceof Date) {
         dateToFormat = purchaseDateSource;
       } else {
-        dateToFormat = new Date(); // Fallback to today if type is unexpected
+        dateToFormat = new Date();
       }
       
       if (!isValid(dateToFormat)) {
-        dateToFormat = new Date(); // Fallback if parsing fails
+        dateToFormat = new Date();
       }
 
       setFormData({
@@ -161,7 +174,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
         amount: amountNum,
     };
     setDepreciationEntries(prev => [...prev, newEntry].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
-    setNewDepreciation({ date: format(new Date(), 'yyyy-MM-dd'), amount: '' }); // Reset form
+    setNewDepreciation({ date: format(new Date(), 'yyyy-MM-dd'), amount: '' });
   };
   
   const handleDeleteDepreciation = (entryId: string) => {
@@ -177,8 +190,8 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
             {assetToEdit ? 'Update details, view history, and record new depreciation.' : 'Enter the details for your new capital asset.'}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-1 -mx-6">
-            <div className="grid gap-6 py-4 px-6">
+        <ScrollArea className="flex-1 -mx-6 px-6">
+            <div className="grid gap-6 py-4">
             <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -187,7 +200,14 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                     </div>
                     <div className="space-y-2">
                     <Label htmlFor="assetClass">Asset Class # (for CRA)</Label>
-                    <Input id="assetClass" value={formData.assetClass} onChange={handleChange} placeholder="e.g., 8, 10, 50" />
+                     <Select value={formData.assetClass} onValueChange={(value) => setFormData(p => ({...p, assetClass: value}))}>
+                        <SelectTrigger id="assetClass">
+                            <SelectValue placeholder="Select a class..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {CRA_ASSET_CLASSES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
                     </div>
                 </div>
                 <div className="space-y-2">
@@ -199,21 +219,21 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                     <Label htmlFor="purchaseDate">Purchase Date</Label>
                     <Input id="purchaseDate" type="date" value={formData.purchaseDate} onChange={handleChange} />
                     </div>
-                    <div className="space-y-2">
+                     <div className="space-y-2">
                         <Label htmlFor="cost">Original Cost</Label>
                         <div className="relative">
                             <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
                             <Input id="cost" type="number" placeholder="0.00" value={formData.cost} onChange={handleChange} className="pl-7" />
                         </div>
                     </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="undepreciatedCapitalCost">Current Value (UCC)</Label>
-                      <div className="relative">
-                          <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                          <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} className="pl-7" />
-                      </div>
-                      <p className="text-xs text-muted-foreground">For a brand new asset, this is the same as the Original Cost. For a used asset, enter its current depreciated value.</p>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="undepreciatedCapitalCost">Current Value (UCC)</Label>
+                    <div className="relative">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                        <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} className="pl-7" />
                     </div>
+                    <p className="text-xs text-muted-foreground">For a brand new asset, this is the same as the Original Cost. For a used asset, enter its current depreciated value.</p>
                 </div>
             </div>
             
@@ -275,7 +295,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
 
             </div>
         </ScrollArea>
-        <DialogFooter className="pt-4">
+        <DialogFooter className="pt-4 border-t px-6">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSave}>{assetToEdit ? 'Save Changes' : 'Add Asset'}</Button>
         </DialogFooter>
