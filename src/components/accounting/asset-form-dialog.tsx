@@ -156,110 +156,112 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl flex flex-col h-[90vh]">
         <DialogHeader>
           <DialogTitle>{assetToEdit ? 'Edit Asset & Depreciation' : 'Add New Asset'}</DialogTitle>
           <DialogDescription>
             {assetToEdit ? 'Update details, view history, and record new depreciation.' : 'Enter the details for your new capital asset.'}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-6 py-4">
-          <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Asset Name</Label>
-                  <Input id="name" value={formData.name} onChange={handleChange} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="assetClass">Asset Class # (for CRA)</Label>
-                  <Input id="assetClass" value={formData.assetClass} onChange={handleChange} placeholder="e.g., 8, 10, 50" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea id="description" value={formData.description} onChange={handleChange} />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="purchaseDate">Purchase Date</Label>
-                  <Input id="purchaseDate" type="date" value={formData.purchaseDate} onChange={handleChange} />
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="cost">Original Cost</Label>
-                    <div className="relative">
-                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                        <Input id="cost" type="number" placeholder="0.00" value={formData.cost} onChange={handleChange} className="pl-7" />
+        <ScrollArea className="flex-1 pr-6">
+            <div className="grid gap-6 py-4">
+            <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                    <Label htmlFor="name">Asset Name</Label>
+                    <Input id="name" value={formData.name} onChange={handleChange} />
+                    </div>
+                    <div className="space-y-2">
+                    <Label htmlFor="assetClass">Asset Class # (for CRA)</Label>
+                    <Input id="assetClass" value={formData.assetClass} onChange={handleChange} placeholder="e.g., 8, 10, 50" />
                     </div>
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="undepreciatedCapitalCost">Current Value (as of Purchase Date)</Label>
-                    <div className="relative">
-                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                        <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} className="pl-7" />
-                    </div>
-                    <p className="text-xs text-muted-foreground">For a brand new asset, this is the same as the Original Cost. For a used asset, enter its value when you acquired it.</p>
+                <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea id="description" value={formData.description} onChange={handleChange} />
                 </div>
-              </div>
-          </div>
-          
-          {assetToEdit && (
-            <>
-              <Separator />
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Depreciation</h3>
-                 <div className="grid grid-cols-2 gap-4">
-                     <div className="space-y-2">
-                        <Label>Current Depreciated Value (UCC)</Label>
-                        <Input value={currentDepreciatedValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} readOnly disabled />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                    <Label htmlFor="purchaseDate">Purchase Date</Label>
+                    <Input id="purchaseDate" type="date" value={formData.purchaseDate} onChange={handleChange} />
                     </div>
-                 </div>
-
-                <Card>
-                    <CardHeader className="p-4">
-                        <CardTitle className="text-base">Record New Depreciation</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0 grid grid-cols-[1fr_1fr_auto] gap-4 items-end">
-                        <div className="space-y-2">
-                            <Label htmlFor="dep-date">Date</Label>
-                            <Input id="dep-date" type="date" value={newDepreciation.date} onChange={(e) => setNewDepreciation(p => ({ ...p, date: e.target.value }))} />
+                    <div className="space-y-2">
+                        <Label htmlFor="cost">Original Cost</Label>
+                        <div className="relative">
+                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                            <Input id="cost" type="number" placeholder="0.00" value={formData.cost} onChange={handleChange} className="pl-7" />
                         </div>
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="undepreciatedCapitalCost">Current Value (as of Purchase Date)</Label>
+                        <div className="relative">
+                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                            <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} className="pl-7" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">For a brand new asset, this is the same as the Original Cost. For a used asset, enter its value when you acquired it.</p>
+                    </div>
+                </div>
+            </div>
+            
+            {assetToEdit && (
+                <>
+                <Separator />
+                <div className="space-y-4">
+                    <h3 className="font-semibold text-lg">Depreciation</h3>
+                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="dep-amount">Amount</Label>
-                             <div className="relative">
-                                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                                <Input id="dep-amount" type="number" placeholder="0.00" value={newDepreciation.amount} onChange={(e) => setNewDepreciation(p => ({ ...p, amount: e.target.value }))} className="pl-7" />
+                            <Label>Current Depreciated Value (UCC)</Label>
+                            <Input value={currentDepreciatedValue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })} readOnly disabled />
+                        </div>
+                    </div>
+
+                    <Card>
+                        <CardHeader className="p-4">
+                            <CardTitle className="text-base">Record New Depreciation</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 pt-0 grid grid-cols-[1fr_1fr_auto] gap-4 items-end">
+                            <div className="space-y-2">
+                                <Label htmlFor="dep-date">Date</Label>
+                                <Input id="dep-date" type="date" value={newDepreciation.date} onChange={(e) => setNewDepreciation(p => ({ ...p, date: e.target.value }))} />
                             </div>
-                        </div>
-                        <Button onClick={handleAddDepreciation}><PlusCircle className="mr-2 h-4 w-4"/> Add</Button>
-                    </CardContent>
-                </Card>
+                            <div className="space-y-2">
+                                <Label htmlFor="dep-amount">Amount</Label>
+                                <div className="relative">
+                                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                                    <Input id="dep-amount" type="number" placeholder="0.00" value={newDepreciation.amount} onChange={(e) => setNewDepreciation(p => ({ ...p, amount: e.target.value }))} className="pl-7" />
+                                </div>
+                            </div>
+                            <Button onClick={handleAddDepreciation}><PlusCircle className="mr-2 h-4 w-4"/> Add</Button>
+                        </CardContent>
+                    </Card>
 
-                <div className="space-y-2">
-                    <Label>Depreciation History</Label>
-                    <ScrollArea className="h-32 w-full rounded-md border">
-                        <div className="p-4">
-                            {depreciationEntries.length > 0 ? (
-                                depreciationEntries.map(entry => (
-                                    <div key={entry.id} className="flex justify-between items-center text-sm mb-2">
-                                        <span>{format(parseISO(entry.date), 'PP')}</span>
-                                        <span>{entry.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteDepreciation(entry.id)}>
-                                            <Trash2 className="h-4 w-4 text-destructive"/>
-                                        </Button>
-                                    </div>
-                                ))
-                            ) : (
-                                <p className="text-sm text-muted-foreground text-center py-4">No depreciation recorded yet.</p>
-                            )}
-                        </div>
-                    </ScrollArea>
+                    <div className="space-y-2">
+                        <Label>Depreciation History</Label>
+                        <ScrollArea className="h-32 w-full rounded-md border">
+                            <div className="p-4">
+                                {depreciationEntries.length > 0 ? (
+                                    depreciationEntries.map(entry => (
+                                        <div key={entry.id} className="flex justify-between items-center text-sm mb-2">
+                                            <span>{format(parseISO(entry.date), 'PP')}</span>
+                                            <span>{entry.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteDepreciation(entry.id)}>
+                                                <Trash2 className="h-4 w-4 text-destructive"/>
+                                            </Button>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-sm text-muted-foreground text-center py-4">No depreciation recorded yet.</p>
+                                )}
+                            </div>
+                        </ScrollArea>
+                    </div>
                 </div>
-              </div>
-            </>
-          )}
+                </>
+            )}
 
-        </div>
-        <DialogFooter>
+            </div>
+        </ScrollArea>
+        <DialogFooter className="pt-4">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSave}>{assetToEdit ? 'Save Changes' : 'Add Asset'}</Button>
         </DialogFooter>
