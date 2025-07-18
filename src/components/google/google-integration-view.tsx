@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from "react";
-import { GoogleAuthProvider, signInWithRedirect } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,26 +37,36 @@ export function GoogleIntegrationView() {
     setIsConnecting(true);
     try {
         const { auth } = await initializeFirebase();
-        const provider = new GoogleAuthProvider();
+        if (!auth.currentUser) {
+            throw new Error("No user is signed in to link a Google account.");
+        }
         
-        // This scope asks for permission to read the user's contacts.
+        const provider = new GoogleAuthProvider();
         provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
         
-        // This tells our callback page where to redirect after a successful connection.
-        sessionStorage.setItem('google_auth_redirect', '/google');
-
-        await signInWithRedirect(auth, provider);
+        const result = await signInWithPopup(auth, provider);
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        
+        if (credential?.accessToken) {
+            sessionStorage.setItem('google_access_token', credential.accessToken);
+            window.location.reload(); // Refresh to update the UI
+        } else {
+            throw new Error("Could not retrieve Google access token.");
+        }
     } catch(error: any) {
         console.error("Google connection error:", error);
         let description = error.message || "An unknown error occurred.";
-        if (error.code === 'auth/unauthorized-domain') {
-            description = `This domain (${window.location.hostname}) is not authorized for OAuth operations. Please add it to the authorized domains in your Firebase console's authentication settings.`;
+        if (error.code === 'auth/popup-closed-by-user') {
+            description = "Connection was cancelled.";
+        } else if (error.code === 'auth/unauthorized-domain') {
+            description = `This domain is not authorized. Please add it to your Firebase console's authentication settings.`;
         }
         toast({
             variant: "destructive",
             title: "Connection Failed",
             description: description,
         });
+    } finally {
         setIsConnecting(false);
     }
   };

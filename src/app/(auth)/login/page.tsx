@@ -4,7 +4,7 @@
 import { useState } from "react";
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
-import { signInWithRedirect, GoogleAuthProvider, signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword } from "firebase/auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -71,21 +71,23 @@ export default function LoginPage() {
     try {
       const { auth } = await initializeFirebase();
       const provider = new GoogleAuthProvider();
-      await signInWithRedirect(auth, provider);
-      // After this call, the page will redirect to Google for auth.
-      // The loading modal will be visible until the redirect occurs.
+      await signInWithPopup(auth, provider);
+      router.push("/dashboard");
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
       let description = `An unknown error occurred. (Code: ${error.code})`;
-      if (error.code === 'auth/unauthorized-domain') {
-          description = `This domain (${window.location.hostname}) is not authorized for OAuth operations. Please add it to your Firebase console's authentication settings.`;
+      if (error.code === 'auth/popup-closed-by-user') {
+        description = "Sign-in was cancelled. Please try again.";
+      } else if (error.code === 'auth/unauthorized-domain') {
+          description = `This domain is not authorized. Please add it to your Firebase console's authentication settings.`;
       }
       toast({
         variant: "destructive",
         title: "Google Sign-In Failed",
         description: description,
       });
-      setIsLoading(false); // Hide modal on error
+    } finally {
+        setIsLoading(false);
     }
   };
 
