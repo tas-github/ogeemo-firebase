@@ -43,6 +43,9 @@ import { getAssets, addAsset, updateAsset, deleteAsset, type Asset } from "@/ser
 
 
 const formatCurrency = (amount: number) => {
+    if (typeof amount !== 'number') {
+        return (0).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    }
     return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
 
