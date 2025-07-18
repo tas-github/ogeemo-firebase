@@ -69,7 +69,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
 
   const handleSave = () => {
     const costNum = parseFloat(formData.cost);
-    const uccNum = parseFloat(formData.undepreciatedCapitalCost);
+    const uccNum = assetToEdit ? parseFloat(formData.undepreciatedCapitalCost) : costNum;
 
     if (!formData.name.trim() || !formData.purchaseDate || isNaN(costNum) || costNum <= 0 || isNaN(uccNum) || uccNum < 0) {
       toast({
@@ -128,10 +128,12 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
               <Label htmlFor="cost">Original Cost</Label>
               <Input id="cost" type="number" placeholder="0.00" value={formData.cost} onChange={handleChange} />
             </div>
-             <div className="space-y-2">
-              <Label htmlFor="undepreciatedCapitalCost">Undepreciated Capital Cost</Label>
-              <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} />
-            </div>
+             {assetToEdit && (
+                <div className="space-y-2">
+                    <Label htmlFor="undepreciatedCapitalCost">Undepreciated Capital Cost</Label>
+                    <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} />
+                </div>
+             )}
           </div>
         </div>
         <DialogFooter>
