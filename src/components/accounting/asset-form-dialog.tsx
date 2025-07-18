@@ -94,8 +94,6 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
     } else if (!assetToEdit && isOpen) {
       const newAssetDefaults = {
         ...emptyAssetForm,
-        cost: '',
-        undepreciatedCapitalCost: '',
       };
       setFormData(newAssetDefaults);
       setDepreciationEntries([]);
@@ -114,23 +112,26 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
       });
       return;
     }
-
-    if (isNaN(uccNum) || uccNum < 0) {
-       toast({
-        variant: "destructive",
-        title: "Invalid Input",
-        description: "Please enter a valid Current Value.",
-      });
-      return;
-    }
     
-    if (uccNum > costNum) {
-        toast({
-            variant: "destructive",
-            title: "Invalid Value",
-            description: "Current value cannot be greater than the original cost.",
-        });
-        return;
+    if (assetToEdit) { // If editing, UCC is required
+        if (isNaN(uccNum) || uccNum < 0) {
+            toast({
+                variant: "destructive",
+                title: "Invalid Input",
+                description: "Please enter a valid Current Value.",
+            });
+            return;
+        }
+        if (uccNum > costNum) {
+            toast({
+                variant: "destructive",
+                title: "Invalid Value",
+                description: "Current value cannot be greater than the original cost.",
+            });
+            return;
+        }
+    } else { // If new, UCC equals cost
+        uccNum = costNum;
     }
 
     const dataToSave = {
@@ -190,8 +191,8 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
             {assetToEdit ? 'Update details, view history, and record new depreciation.' : 'Enter the details for your new capital asset.'}
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-1 -mx-6 px-6">
-            <div className="grid gap-6 py-4">
+        <ScrollArea className="flex-1">
+            <div className="grid gap-6 py-4 px-6">
             <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -227,14 +228,20 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                         </div>
                     </div>
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="undepreciatedCapitalCost">Current Value (UCC)</Label>
-                    <div className="relative">
-                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                        <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} className="pl-7" />
+                {assetToEdit ? (
+                    <div className="space-y-2">
+                        <Label htmlFor="undepreciatedCapitalCost">Current Value (UCC)</Label>
+                        <div className="relative">
+                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                            <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} className="pl-7" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">For a brand new asset, this is the same as the Original Cost. For a used asset, enter its current depreciated value.</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">For a brand new asset, this is the same as the Original Cost. For a used asset, enter its current depreciated value.</p>
-                </div>
+                ) : (
+                    <div className="p-4 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                        <p>For a new asset, the <strong>Current Value</strong> is assumed to be the same as the <strong>Original Cost</strong>. To enter a used asset with a different current value, please save the asset first and then edit it.</p>
+                    </div>
+                )}
             </div>
             
             {assetToEdit && (
