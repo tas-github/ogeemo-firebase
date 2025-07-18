@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Contact2, FileText, CalendarOff, Banknote, Clock, Calculator } from "lucide-react";
+import { Contact2, FileText, CalendarOff, Banknote, Clock, Calculator, MapPin } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const FeatureDetail = ({
@@ -75,6 +75,14 @@ export default function HrManagerPage() {
                         <ul>
                             <li><strong>Secure Storage:</strong> Store important documents like employment contracts, performance reviews, and policy acknowledgements in the employee's profile.</li>
                             <li><strong>Access Control:</strong> Ensure that sensitive documents are only accessible to authorized personnel.</li>
+                        </ul>
+                    </FeatureDetail>
+                     <FeatureDetail title="Mobile Employee GPS Tracking" icon={MapPin}>
+                        <ul>
+                            <li><strong>Mobile Check-in/out:</strong> Employees can clock in and out from job sites using their mobile device, capturing precise location and time data.</li>
+                            <li><strong>Live Route Tracking:</strong> View employee locations in real-time on a map to optimize routes and manage dispatching for service calls.</li>
+                            <li><strong>Job Site Geofencing:</strong> (Future) Create virtual boundaries around job sites to automatically log arrival and departure times.</li>
+                            <li><strong>Automated Timesheets:</strong> GPS data automatically populates timesheets in the <strong>Time Manager</strong>, ensuring accurate payroll and client billing.</li>
                         </ul>
                     </FeatureDetail>
                 </Accordion>
