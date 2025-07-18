@@ -46,10 +46,10 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
   const { toast } = useToast();
 
   const currentDepreciatedValue = useMemo(() => {
-    const openingBalance = assetToEdit ? assetToEdit.undepreciatedCapitalCost : parseFloat(formData.undepreciatedCapitalCost) || 0;
+    const openingBalance = parseFloat(formData.undepreciatedCapitalCost) || 0;
     const totalDepreciation = depreciationEntries.reduce((sum, entry) => sum + entry.amount, 0);
     return openingBalance - totalDepreciation;
-  }, [assetToEdit, formData.undepreciatedCapitalCost, depreciationEntries]);
+  }, [formData.undepreciatedCapitalCost, depreciationEntries]);
 
 
   useEffect(() => {
@@ -93,10 +93,6 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
     const costNum = parseFloat(formData.cost);
     let uccNum = parseFloat(formData.undepreciatedCapitalCost);
 
-    if (assetToEdit === null) {
-      uccNum = costNum; // For new assets, UCC is the same as cost
-    }
-
     if (!formData.name.trim() || !formData.purchaseDate || isNaN(costNum) || costNum < 0) {
       toast({
         variant: "destructive",
@@ -106,7 +102,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
       return;
     }
 
-    if (assetToEdit && (isNaN(uccNum) || uccNum < 0)) {
+    if (isNaN(uccNum) || uccNum < 0) {
        toast({
         variant: "destructive",
         title: "Invalid Input",
@@ -210,22 +206,14 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                             <Input id="cost" type="number" placeholder="0.00" value={formData.cost} onChange={handleChange} className="pl-7" />
                         </div>
                     </div>
-                    {assetToEdit !== null ? (
-                      <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="undepreciatedCapitalCost">Current Value (UCC)</Label>
-                        <div className="relative">
-                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                            <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} className="pl-7" />
-                        </div>
-                        <p className="text-xs text-muted-foreground">This is the asset's value after any previous depreciation.</p>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="undepreciatedCapitalCost">Current Value (UCC)</Label>
+                      <div className="relative">
+                          <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                          <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} className="pl-7" />
                       </div>
-                    ) : (
-                      <div className="space-y-2 md:col-span-2">
-                        <Label>Current Value (UCC)</Label>
-                        <Input value="Same as Original Cost" readOnly disabled />
-                        <p className="text-xs text-muted-foreground">For a new asset, the Current Value is automatically set to its Original Cost.</p>
-                      </div>
-                    )}
+                      <p className="text-xs text-muted-foreground">For a brand new asset, this is the same as the Original Cost. For a used asset, enter its current depreciated value.</p>
+                    </div>
                 </div>
             </div>
             
