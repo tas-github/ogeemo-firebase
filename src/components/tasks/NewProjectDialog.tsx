@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { type ProjectTemplate, type PartialTask } from "@/data/project-templates";
+import { Plus, Trash2 } from "lucide-react";
 
 interface NewProjectDialogProps {
   isOpen: boolean;
@@ -44,6 +45,7 @@ export function NewProjectDialog({
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [tasks, setTasks] = useState<PartialTask[]>([]);
+  const [newStep, setNewStep] = useState("");
   const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
   const { toast } = useToast();
@@ -52,6 +54,7 @@ export function NewProjectDialog({
     setProjectName("");
     setProjectDescription("");
     setTasks([]);
+    setNewStep("");
   };
 
   useEffect(() => {
@@ -78,6 +81,17 @@ export function NewProjectDialog({
       title: "Template Applied",
       description: `Added ${template.steps.length} steps from the "${template.name}" template.`,
     });
+  };
+
+  const handleAddStep = () => {
+    if (newStep.trim()) {
+        setTasks(prev => [...prev, { title: newStep.trim(), description: '' }]);
+        setNewStep('');
+    }
+  };
+
+  const handleRemoveStep = (indexToRemove: number) => {
+    setTasks(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
   const handleCreateProject = () => {
@@ -149,17 +163,34 @@ export function NewProjectDialog({
               <Separator />
               <div>
                 <h3 className="text-lg font-semibold mb-2">Project Steps ({tasks.length})</h3>
+                <div className="flex items-center gap-2 mb-4">
+                    <Input 
+                        placeholder="Add a new step or task..."
+                        value={newStep}
+                        onChange={(e) => setNewStep(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddStep();
+                            }
+                        }}
+                    />
+                    <Button onClick={handleAddStep}><Plus className="mr-2 h-4 w-4"/> Add Step</Button>
+                </div>
                 <ScrollArea className="h-48 border rounded-md p-2">
                   {tasks.length > 0 ? (
                     <div className="space-y-2">
                       {tasks.map((task, index) => (
-                        <div key={index} className="p-2 bg-muted/50 rounded-md text-sm">
-                          {task.title}
+                        <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm">
+                          <span>{task.title}</span>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemoveStep(index)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">No steps added yet. Apply a template below.</p>
+                    <p className="text-sm text-muted-foreground text-center py-4">No steps added yet. Add a custom step or apply a template below.</p>
                   )}
                 </ScrollArea>
               </div>

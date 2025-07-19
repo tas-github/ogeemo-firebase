@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Plus, Edit, FileText, ChevronDown, LoaderCircle } from "lucide-react";
+import { Plus, Edit, FileText, ChevronDown, LoaderCircle, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { type Event } from "@/types/calendar";
@@ -24,7 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { ProjectInfoCard } from "@/components/tasks/ProjectInfoCard";
@@ -58,9 +57,6 @@ const EditProjectDialog = dynamic(() => import('@/components/tasks/EditProjectDi
     loading: () => <DialogLoader />,
 });
 
-const QUICK_TASKS_PROJECT_ID = 'quick_tasks';
-
-
 export function TasksView() {
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
   const [isNewProjectOpen, setIsNewProjectOpen] = useState(false);
@@ -73,8 +69,8 @@ export function TasksView() {
   const [isLoading, setIsLoading] = useState(true);
   const [taskToEdit, setTaskToEdit] = useState<Event | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<Event | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [initialProjectData, setInitialProjectData] = useState<{name: string, description: string} | null>(null);
-
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -93,8 +89,9 @@ export function TasksView() {
             setProjectTemplates(fetchedTemplates);
 
             if (!selectedProjectId && fetchedProjects.length > 0) {
-                // Default to the first project in the list
                 setSelectedProjectId(fetchedProjects[0].id);
+            } else if (fetchedProjects.length === 0) {
+                setSelectedProjectId(null);
             }
         } catch (error: any) {
             console.error("Failed to load project data:", error);
@@ -164,11 +161,11 @@ export function TasksView() {
     }
   };
 
-  const handleInitiateDelete = (task: Event) => {
+  const handleInitiateDeleteTask = (task: Event) => {
     setTaskToDelete(task);
   };
   
-  const handleConfirmDelete = async () => {
+  const handleConfirmDeleteTask = async () => {
     if (!taskToDelete || !user) return;
     try {
         await ProjectService.deleteTask(taskToDelete.id);
@@ -199,7 +196,7 @@ export function TasksView() {
             userId: user.uid,
         };
         const newProject = await ProjectService.addProject(newProjectData);
-        setProjects(prev => [...prev, newProject]);
+        setProjects(prev => [newProject, ...prev]);
         setSelectedProjectId(newProject.id);
 
         if (tasks.length > 0) {
@@ -233,7 +230,7 @@ export function TasksView() {
             name: updatedProject.name,
             description: updatedProject.description,
         });
-        setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+        setProjects(prev => prev.map(p => p.id === updatedProject.id ? { ...p, name: updatedProject.name, description: updatedProject.description } : p));
         
         const otherProjectTasks = allTasks.filter(t => t.projectId !== updatedProject.id);
         setAllTasks([...otherProjectTasks, ...updatedTasks]);
@@ -245,6 +242,29 @@ export function TasksView() {
     } catch (error: any) {
         console.error("Failed to save project:", error);
         toast({ variant: "destructive", title: "Save Project Failed", description: error.message });
+    }
+  };
+  
+  const handleDeleteProject = async () => {
+    if (!projectToDelete || !user) return;
+    try {
+      await ProjectService.deleteProject(projectToDelete.id);
+      setProjects(prev => prev.filter(p => p.id !== projectToDelete.id));
+      setAllTasks(prev => prev.filter(t => t.projectId !== projectToDelete.id));
+
+      // Select the first available project or none
+      const remainingProjects = projects.filter(p => p.id !== projectToDelete.id);
+      setSelectedProjectId(remainingProjects.length > 0 ? remainingProjects[0].id : null);
+      
+      toast({
+        title: "Project Deleted",
+        description: `"${projectToDelete.name}" and all its tasks have been deleted.`,
+      });
+    } catch (error: any) {
+       console.error("Failed to delete project:", error);
+       toast({ variant: "destructive", title: "Delete Failed", description: error.message });
+    } finally {
+        setProjectToDelete(null);
     }
   };
 
@@ -326,10 +346,19 @@ export function TasksView() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={() => setIsEditProjectOpen(true)} disabled={!selectedProjectId} className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Edit className="mr-2 h-4 w-4" />
-              Edit Project
-            </Button>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button disabled={!selectedProjectId} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                        <Edit className="mr-2 h-4 w-4" />
+                        Edit
+                        <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    <DropdownMenuItem onSelect={() => setIsEditProjectOpen(true)}>Edit Project Details</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setProjectToDelete(selectedProject || null)} className="text-destructive">Delete Project</DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
             <Button onClick={() => setIsNewTaskOpen(true)} disabled={!selectedProjectId}>
                 <Plus className="mr-2 h-4 w-4" />
                 New Task
@@ -343,7 +372,7 @@ export function TasksView() {
             project={selectedProject} 
             tasks={tasksForSelectedProject}
             onEditTask={handleEditTask}
-            onInitiateDelete={handleInitiateDelete}
+            onInitiateDelete={handleInitiateDeleteTask}
           />
         ) : (
           <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed">
@@ -406,7 +435,22 @@ export function TasksView() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete}>Delete</AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirmDeleteTask} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      <AlertDialog open={!!projectToDelete} onOpenChange={() => setProjectToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the project "{projectToDelete?.name}" and all of its associated tasks. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteProject} className="bg-destructive hover:bg-destructive/90">Delete Project</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
