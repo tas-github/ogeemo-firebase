@@ -10,7 +10,6 @@ import { getInitialEvents } from '@/data/events';
 import { mockContacts } from '@/data/contacts';
 import { type Event } from '@/types/calendar';
 import { ActionManagerCard } from './action-manager-card';
-import { ProjectStatusCard } from './project-status-card';
 
 export function NewDashboardView() {
   const tasks = React.useMemo(() => getInitialEvents(), []);
@@ -100,8 +99,6 @@ export function NewDashboardView() {
                     </ResponsiveContainer>
                 </CardContent>
             </Card>
-
-            <ProjectStatusCard />
 
              <Card>
                 <CardHeader>
