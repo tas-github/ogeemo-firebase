@@ -66,17 +66,18 @@ export function TimeManagerView() {
                         
                         setIsActive(true);
                         setIsPaused(false);
-                        setNotes(savedState.notes);
-                        setSelectedProjectId(savedState.projectId);
-                        setSelectedContactId(savedState.contactId);
+                        // Only set form fields if they are not already set by the user, to avoid overwriting selections
+                        if (!notes) setNotes(savedState.notes);
+                        if (!selectedProjectId) setSelectedProjectId(savedState.projectId);
+                        if (!selectedContactId) setSelectedContactId(savedState.contactId);
                     } else if (savedState.isActive && savedState.isPaused) {
                         const elapsed = Math.floor((savedState.pauseTime! - savedState.startTime) / 1000) - savedState.totalPausedDuration;
                         setElapsedSeconds(elapsed > 0 ? elapsed : 0);
                         setIsActive(true);
                         setIsPaused(true);
-                        setNotes(savedState.notes);
-                        setSelectedProjectId(savedState.projectId);
-                        setSelectedContactId(savedState.contactId);
+                         if (!notes) setNotes(savedState.notes);
+                        if (!selectedProjectId) setSelectedProjectId(savedState.projectId);
+                        if (!selectedContactId) setSelectedContactId(savedState.contactId);
                     } else {
                          setIsActive(false);
                          setIsPaused(false);
@@ -89,7 +90,7 @@ export function TimeManagerView() {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, []);
+    }, [notes, selectedProjectId, selectedContactId]);
 
     useEffect(() => {
         async function loadData() {
@@ -202,6 +203,44 @@ export function TimeManagerView() {
             toast({ variant: 'destructive', title: 'Log Failed', description: error.message });
         }
     };
+    
+    const handleNotesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newNotes = e.target.value;
+        setNotes(newNotes);
+        if (isActive) {
+            const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+            if (savedStateRaw) {
+                const savedState: StoredTimerState = JSON.parse(savedStateRaw);
+                savedState.notes = newNotes;
+                localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
+            }
+        }
+    };
+    
+    const handleProjectChange = (projectId: string) => {
+        setSelectedProjectId(projectId);
+        if (isActive) {
+            const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+            if (savedStateRaw) {
+                const savedState: StoredTimerState = JSON.parse(savedStateRaw);
+                savedState.projectId = projectId;
+                localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
+            }
+        }
+    };
+
+    const handleContactChange = (contactId: string) => {
+        setSelectedContactId(contactId);
+        if (isActive) {
+            const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+            if (savedStateRaw) {
+                const savedState: StoredTimerState = JSON.parse(savedStateRaw);
+                savedState.contactId = contactId;
+                localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
+            }
+        }
+    };
+
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -230,7 +269,7 @@ export function TimeManagerView() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="project">Project</Label>
-                                <Select value={selectedProjectId || ''} onValueChange={setSelectedProjectId} disabled={isActive}>
+                                <Select value={selectedProjectId || ''} onValueChange={handleProjectChange} disabled={isActive}>
                                     <SelectTrigger id="project"><SelectValue placeholder="Select a project..." /></SelectTrigger>
                                     <SelectContent>
                                         {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
@@ -239,7 +278,7 @@ export function TimeManagerView() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="client">Client</Label>
-                                <Select value={selectedContactId || ''} onValueChange={setSelectedContactId} disabled={isActive}>
+                                <Select value={selectedContactId || ''} onValueChange={handleContactChange} disabled={isActive}>
                                     <SelectTrigger id="client"><SelectValue placeholder="Select a client..." /></SelectTrigger>
                                     <SelectContent>
                                          {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -249,7 +288,7 @@ export function TimeManagerView() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="notes">Notes / Task Description</Label>
-                            <Input id="notes" placeholder="What are you working on?" value={notes} onChange={e => setNotes(e.target.value)} disabled={isActive} />
+                            <Input id="notes" placeholder="What are you working on?" value={notes} onChange={handleNotesChange} />
                         </div>
                     </CardContent>
                     <CardFooter className="flex-col sm:flex-row items-center justify-between gap-4">
