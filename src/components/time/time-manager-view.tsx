@@ -12,8 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { getProjects, type Project } from '@/services/project-service';
 import { getClientAccounts, type ClientAccount } from '@/services/client-manager-service';
-import { addEventEntry, type EventEntry } from '@/services/client-manager-service';
-import { format, formatDistanceToNow } from 'date-fns';
+import { addEventEntry, getEventEntries, type EventEntry } from '@/services/client-manager-service';
+import { formatDistanceToNow } from 'date-fns';
 
 const TIMER_STORAGE_KEY = 'activeTimeManagerEntry';
 
@@ -53,25 +53,6 @@ export function TimeManagerView() {
     const { user } = useAuth();
     const { toast } = useToast();
 
-    const saveState = useCallback(() => {
-        if (!isActive) {
-            localStorage.removeItem(TIMER_STORAGE_KEY);
-            return;
-        }
-        const stateToStore: StoredTimerState = {
-            startTime: JSON.parse(localStorage.getItem(TIMER_STORAGE_KEY) || '{}').startTime || Date.now(),
-            isActive,
-            isPaused,
-            pauseTime: isPaused ? Date.now() : null,
-            totalPausedDuration: JSON.parse(localStorage.getItem(TIMER_STORAGE_KEY) || '{}').totalPausedDuration || 0,
-            projectId: selectedProjectId,
-            clientId: selectedClientId,
-            notes,
-        };
-        localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(stateToStore));
-    }, [isActive, isPaused, selectedProjectId, selectedClientId, notes]);
-
-
     useEffect(() => {
         const interval = setInterval(() => {
             try {
@@ -83,7 +64,6 @@ export function TimeManagerView() {
                         const elapsed = Math.floor((now - savedState.startTime) / 1000) - savedState.totalPausedDuration;
                         setElapsedSeconds(elapsed > 0 ? elapsed : 0);
                         
-                        // Also sync form state if it's running
                         setIsActive(true);
                         setIsPaused(false);
                         setNotes(savedState.notes);
@@ -97,7 +77,13 @@ export function TimeManagerView() {
                         setNotes(savedState.notes);
                         setSelectedProjectId(savedState.projectId);
                         setSelectedClientId(savedState.clientId);
+                    } else {
+                         setIsActive(false);
+                         setIsPaused(false);
                     }
+                } else {
+                    setIsActive(false);
+                    setIsPaused(false);
                 }
             } catch (e) { console.error("Error reading timer state", e); }
         }, 1000);
@@ -113,12 +99,14 @@ export function TimeManagerView() {
             }
             setIsLoading(true);
             try {
-                const [projectsData, clientsData] = await Promise.all([
+                const [projectsData, clientsData, entriesData] = await Promise.all([
                     getProjects(user.uid),
                     getClientAccounts(user.uid),
+                    getEventEntries(user.uid),
                 ]);
                 setProjects(projectsData);
                 setClients(clientsData);
+                setRecentEntries(entriesData.slice(0, 5));
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
             } finally {
@@ -171,6 +159,17 @@ export function TimeManagerView() {
         localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
         setIsPaused(false);
     };
+    
+    const handleReset = () => {
+        setIsActive(false);
+        setIsPaused(false);
+        setElapsedSeconds(0);
+        setNotes("");
+        setSelectedClientId(null);
+        setSelectedProjectId(null);
+        localStorage.removeItem(TIMER_STORAGE_KEY);
+        toast({ title: 'Timer Reset', description: 'The timer and fields have been cleared.' });
+    }
 
     const handleLogTime = async () => {
         if (!user || elapsedSeconds <= 0) return;
@@ -196,23 +195,11 @@ export function TimeManagerView() {
             const addedEntry = await addEventEntry(newEntry);
             setRecentEntries(prev => [addedEntry, ...prev].slice(0, 5));
             toast({ title: 'Time Logged', description: `Logged ${formatTime(elapsedSeconds)} for ${client.name}` });
-
-            // Reset timer
-            setIsActive(false);
-            setIsPaused(false);
-            setElapsedSeconds(0);
-            setNotes("");
-            setSelectedClientId(null);
-            setSelectedProjectId(null);
-            localStorage.removeItem(TIMER_STORAGE_KEY);
+            handleReset(); // Reset the form after logging
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Log Failed', description: error.message });
         }
     };
-    
-    const selectedProjectName = useMemo(() => {
-        return projects.find(p => p.id === selectedProjectId)?.name || 'N/A';
-    }, [projects, selectedProjectId]);
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -281,7 +268,10 @@ export function TimeManagerView() {
                                 </>
                             )}
                         </div>
-                        <p className="text-sm text-muted-foreground">Entries are saved to the Client Manager.</p>
+                        <div className='flex items-center gap-2'>
+                          <Button variant="ghost" onClick={handleReset} disabled={!isActive && elapsedSeconds === 0}>Reset</Button>
+                          <p className="text-sm text-muted-foreground">Entries save to Client Manager.</p>
+                        </div>
                     </CardFooter>
                 </Card>
 
@@ -298,7 +288,7 @@ export function TimeManagerView() {
                             {recentEntries.map(entry => (
                                 <div key={entry.id} className="flex justify-between items-center text-sm">
                                     <div>
-                                        <p className="font-semibold">{entry.subject}</p>
+                                        <p className="font-semibold truncate">{entry.subject}</p>
                                         <p className="text-xs text-muted-foreground">{entry.contactName} - {formatDistanceToNow(entry.startTime, { addSuffix: true })}</p>
                                     </div>
                                     <p className="font-mono">{formatTime(entry.duration)}</p>
