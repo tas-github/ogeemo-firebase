@@ -19,15 +19,20 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { type ProjectTemplate, type PartialTask } from "@/data/project-templates";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Calendar as CalendarIcon } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { type Project } from "@/data/projects";
 
 interface NewProjectDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onProjectCreate: (projectName: string, projectDescription: string, tasks: PartialTask[]) => void;
+  onProjectCreate: (projectData: Omit<Project, 'id' | 'userId' | 'createdAt'>, tasks: PartialTask[]) => void;
   templates: ProjectTemplate[];
   onSaveAsTemplate: (name: string, tasks: PartialTask[]) => void;
-  initialTasks?: PartialTask[] | null;
   initialName?: string;
   initialDescription?: string;
 }
@@ -38,12 +43,15 @@ export function NewProjectDialog({
   onProjectCreate,
   templates,
   onSaveAsTemplate,
-  initialTasks,
   initialName,
   initialDescription,
 }: NewProjectDialogProps) {
-  const [projectName, setProjectName] = useState("");
-  const [projectDescription, setProjectDescription] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [owner, setOwner] = useState("");
+  const [assignee, setAssignee] = useState("");
+  const [importance, setImportance] = useState<'Critical' | 'Important' | 'Optional'>('Important');
+  const [dueDate, setDueDate] = useState<Date | undefined>();
   const [tasks, setTasks] = useState<PartialTask[]>([]);
   const [newStep, setNewStep] = useState("");
   const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
@@ -51,29 +59,28 @@ export function NewProjectDialog({
   const { toast } = useToast();
 
   const resetForm = () => {
-    setProjectName("");
-    setProjectDescription("");
+    setName("");
+    setDescription("");
+    setOwner("");
+    setAssignee("");
+    setImportance("Important");
+    setDueDate(undefined);
     setTasks([]);
     setNewStep("");
   };
 
   useEffect(() => {
     if (isOpen) {
-      if (initialTasks) {
-        setTasks(initialTasks);
-      }
-      if (initialName) {
-        setProjectName(initialName);
-      }
+      if (initialName) setName(initialName);
       if (initialDescription) {
         const tempDiv = document.createElement("div");
         tempDiv.innerHTML = initialDescription;
-        setProjectDescription(tempDiv.textContent || tempDiv.innerText || "");
+        setDescription(tempDiv.textContent || tempDiv.innerText || "");
       }
     } else {
       resetForm();
     }
-  }, [isOpen, initialTasks, initialName, initialDescription]);
+  }, [isOpen, initialName, initialDescription]);
 
   const handleApplyTemplate = (template: ProjectTemplate) => {
     setTasks(prevTasks => [...prevTasks, ...template.steps]);
@@ -95,7 +102,7 @@ export function NewProjectDialog({
   };
 
   const handleCreateProject = () => {
-    if (!projectName.trim()) {
+    if (!name.trim()) {
       toast({
         variant: "destructive",
         title: "Project Name Required",
@@ -103,7 +110,8 @@ export function NewProjectDialog({
       });
       return;
     }
-    onProjectCreate(projectName.trim(), projectDescription.trim(), tasks);
+    const projectData = { name: name.trim(), description: description.trim(), owner, assignee, importance, dueDate };
+    onProjectCreate(projectData, tasks);
     onOpenChange(false);
   };
   
@@ -116,7 +124,7 @@ export function NewProjectDialog({
       });
       return;
     }
-    setNewTemplateName(projectName); // Pre-fill with project name
+    setNewTemplateName(name); // Pre-fill with project name
     setIsSaveTemplateOpen(true);
   };
 
@@ -136,7 +144,7 @@ export function NewProjectDialog({
           <DialogHeader className="p-6 pb-4 border-b">
             <DialogTitle>Create a New Project</DialogTitle>
             <DialogDescription>
-              Give your new project a name, description, and pre-fill it with tasks from a template.
+              Fill in the project details and add initial tasks or steps.
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="flex-1">
@@ -146,8 +154,8 @@ export function NewProjectDialog({
                 <Input
                   id="project-name"
                   placeholder="e.g., Q4 Marketing Campaign"
-                  value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -155,10 +163,43 @@ export function NewProjectDialog({
                 <Textarea
                   id="project-description"
                   placeholder="Describe the project's goals and scope."
-                  value={projectDescription}
-                  onChange={(e) => setProjectDescription(e.target.value)}
-                  rows={4}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
                 />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="project-owner">Project Owner</Label>
+                    <Input id="project-owner" placeholder="e.g., Jane Doe" value={owner} onChange={(e) => setOwner(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="project-assignee">Project Assignee</Label>
+                    <Input id="project-assignee" placeholder="e.g., John Smith" value={assignee} onChange={(e) => setAssignee(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="project-importance">Importance</Label>
+                    <Select value={importance} onValueChange={(v) => setImportance(v as any)}>
+                        <SelectTrigger id="project-importance"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Critical">Critical</SelectItem>
+                            <SelectItem value="Important">Important</SelectItem>
+                            <SelectItem value="Optional">Optional</SelectItem>
+                        </SelectContent>
+                    </Select>
+                  </div>
+                   <div className="space-y-2">
+                    <Label>Due Date</Label>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dueDate && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {dueDate ? format(dueDate, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus /></PopoverContent>
+                    </Popover>
+                  </div>
               </div>
               <Separator />
               <div>

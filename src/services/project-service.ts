@@ -14,6 +14,7 @@ import {
   where,
   DocumentData,
   QueryDocumentSnapshot,
+  Timestamp,
 } from 'firebase/firestore';
 import { type Project } from '@/data/projects';
 import type { Event } from '@/types/calendar';
@@ -30,7 +31,15 @@ function checkDb() {
 }
 
 // Helper to convert Firestore doc to our types, handling Timestamps
-const docToProject = (doc: QueryDocumentSnapshot<DocumentData>): Project => ({ id: doc.id, ...doc.data() } as Project);
+const docToProject = (doc: QueryDocumentSnapshot<DocumentData>): Project => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        ...data,
+        createdAt: (data.createdAt as Timestamp)?.toDate ? (data.createdAt as Timestamp).toDate() : new Date(),
+        dueDate: data.dueDate ? (data.dueDate as Timestamp).toDate() : undefined,
+    } as Project;
+};
 const docToTemplate = (doc: QueryDocumentSnapshot<DocumentData>): ProjectTemplate => ({ id: doc.id, ...doc.data() } as ProjectTemplate);
 const docToEvent = (doc: QueryDocumentSnapshot<DocumentData>): Event => {
     const data = doc.data();
@@ -49,10 +58,11 @@ export async function getProjects(userId: string): Promise<Project[]> {
   const snapshot = await getDocs(q);
   if (snapshot.empty) {
     // If there are no projects, create the default "Project List"
-    const defaultProject: Omit<Project, 'id'> = {
+    const defaultProject: Omit<Project, 'id' | 'createdAt'> = {
       name: 'Project List',
       description: 'A collection of miscellaneous tasks and to-dos.',
       userId: userId,
+      importance: 'Optional',
     };
     const newProject = await addProject(defaultProject);
     return [newProject];
@@ -60,13 +70,17 @@ export async function getProjects(userId: string): Promise<Project[]> {
   return snapshot.docs.map(docToProject);
 }
 
-export async function addProject(projectData: Omit<Project, 'id'>): Promise<Project> {
+export async function addProject(projectData: Omit<Project, 'id' | 'createdAt'>): Promise<Project> {
   checkDb();
-  const docRef = await addDoc(collection(db, PROJECTS_COLLECTION), projectData);
-  return { id: docRef.id, ...projectData };
+  const dataWithTimestamp = {
+    ...projectData,
+    createdAt: new Date(),
+  };
+  const docRef = await addDoc(collection(db, PROJECTS_COLLECTION), dataWithTimestamp);
+  return { id: docRef.id, ...dataWithTimestamp };
 }
 
-export async function updateProject(projectId: string, projectData: Partial<Omit<Project, 'id' | 'userId'>>): Promise<void> {
+export async function updateProject(projectId: string, projectData: Partial<Omit<Project, 'id' | 'userId' | 'createdAt'>>): Promise<void> {
     checkDb();
     const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
     await updateDoc(projectRef, projectData);
@@ -144,5 +158,3 @@ export async function addProjectTemplate(templateData: Omit<ProjectTemplate, 'id
   const docRef = await addDoc(collection(db, TEMPLATES_COLLECTION), templateData);
   return { id: docRef.id, ...templateData };
 }
-
-    

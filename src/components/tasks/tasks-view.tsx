@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Plus, Edit, Trash2, LoaderCircle, ChevronDown, ArrowLeft, Eye, MoreVertical } from "lucide-react";
+import { Plus, Edit, Trash2, LoaderCircle, ArrowLeft, Eye, MoreVertical } from "lucide-react";
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
@@ -16,15 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import * as ProjectService from '@/services/project-service';
@@ -40,6 +32,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TaskBoard } from "@/components/tasks/TaskBoard";
 import { Progress } from "@/components/ui/progress";
+import { format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 const DialogLoader = () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -58,6 +53,15 @@ const NewProjectDialog = dynamic(() => import('@/components/tasks/NewProjectDial
 const EditProjectDialog = dynamic(() => import('@/components/tasks/EditProjectDialog'), {
     loading: () => <DialogLoader />,
 });
+
+const getImportanceBadgeVariant = (importance: 'Critical' | 'Important' | 'Optional') => {
+    switch (importance) {
+        case 'Critical': return 'destructive';
+        case 'Important': return 'secondary';
+        case 'Optional': return 'outline';
+        default: return 'outline';
+    }
+};
 
 export function TasksView() {
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
@@ -158,12 +162,11 @@ export function TasksView() {
     setIsNewTaskOpen(true);
   };
 
-  const handleCreateProject = async (projectName: string, projectDescription: string, tasks: ProjectService.PartialTask[]) => {
+  const handleCreateProject = async (projectData: Omit<Project, 'id' | 'userId' | 'createdAt'>, tasks: ProjectService.PartialTask[]) => {
     if (!user) return;
     try {
-        const newProjectData: Omit<Project, 'id'> = {
-            name: projectName,
-            description: projectDescription,
+        const newProjectData: Omit<Project, 'id' | 'createdAt'> = {
+            ...projectData,
             userId: user.uid,
         };
         const newProject = await ProjectService.addProject(newProjectData);
@@ -175,7 +178,7 @@ export function TasksView() {
                 title: task.title,
                 description: task.description,
                 start: new Date(),
-                end: new Date(new Date().getTime() + 24 * 60 * 60 * 1000), // Default 1 day
+                end: newProject.dueDate || new Date(new Date().getTime() + 24 * 60 * 60 * 1000), // Default 1 day
                 attendees: [],
                 status: 'todo',
                 projectId: newProject.id,
@@ -186,7 +189,7 @@ export function TasksView() {
         }
         toast({
             title: "Project Created",
-            description: `"${projectName}" has been created with ${tasks.length} tasks.`,
+            description: `"${projectData.name}" has been created with ${tasks.length} tasks.`,
         });
     } catch(error: any) {
         console.error("Failed to create project:", error);
@@ -197,11 +200,9 @@ export function TasksView() {
   const handleProjectSave = async (updatedProject: Project) => {
     if (!user) return;
     try {
-        await ProjectService.updateProject(updatedProject.id, {
-            name: updatedProject.name,
-            description: updatedProject.description,
-        });
-        setProjects(prev => prev.map(p => p.id === updatedProject.id ? { ...p, name: updatedProject.name, description: updatedProject.description } : p));
+        const { id, userId, createdAt, ...dataToUpdate } = updatedProject;
+        await ProjectService.updateProject(id, dataToUpdate);
+        setProjects(prev => prev.map(p => p.id === id ? updatedProject : p));
         
         toast({
             title: "Project Saved",
@@ -262,69 +263,63 @@ export function TasksView() {
   }
 
   const renderProjectList = () => (
-    <Card>
-      <CardHeader>
+    <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <CardTitle>All Projects</CardTitle>
-            <CardDescription>Select a project to view its task board.</CardDescription>
+            <h2 className="text-2xl font-bold">All Projects</h2>
+            <p className="text-muted-foreground">Select a project to view its task board or create a new one.</p>
           </div>
           <Button onClick={() => setIsNewProjectOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             New Project
           </Button>
         </div>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Project Name</TableHead>
-              <TableHead>Progress</TableHead>
-              <TableHead className="text-right">Tasks</TableHead>
-              <TableHead className="w-10 text-right"><span className="sr-only">Actions</span></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map(project => {
               const projectTasks = allTasks.filter(t => t.projectId === project.id);
               const completedTasks = projectTasks.filter(t => t.status === 'done').length;
               const progress = projectTasks.length > 0 ? (completedTasks / projectTasks.length) * 100 : 0;
               return (
-                <TableRow key={project.id}>
-                  <TableCell className="font-medium">{project.name}</TableCell>
-                  <TableCell><Progress value={progress} className="w-[120px]" /></TableCell>
-                  <TableCell className="text-right">{completedTasks} / {projectTasks.length}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreVertical className="h-4 w-4" />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => setSelectedProjectId(project.id)}>
-                                <Eye className="mr-2 h-4 w-4" /> Open
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => {
-                                setProjectToEdit(project);
-                                setIsEditProjectOpen(true);
-                            }}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => setProjectToDelete(project)} className="text-destructive">
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
+                <Card key={project.id} className="flex flex-col">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                        <CardTitle className="text-lg">{project.name}</CardTitle>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 -mt-2 -mr-2"><MoreVertical className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onSelect={() => setSelectedProjectId(project.id)}><Eye className="mr-2 h-4 w-4" /> Open Project</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => { setProjectToEdit(project); setIsEditProjectOpen(true); }}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => setProjectToDelete(project)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                    <CardDescription className="text-sm line-clamp-2 h-10">{project.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4 flex-1">
+                      <div>
+                          <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                            <span>Progress</span>
+                            <span>{completedTasks} / {projectTasks.length} Tasks</span>
+                          </div>
+                          <Progress value={progress} />
+                      </div>
+                      <div className="text-xs text-muted-foreground space-y-2">
+                          <div className="flex justify-between"><span className="font-medium">Owner:</span> <span>{project.owner || 'N/A'}</span></div>
+                          <div className="flex justify-between"><span className="font-medium">Assignee:</span> <span>{project.assignee || 'N/A'}</span></div>
+                          <div className="flex justify-between"><span className="font-medium">Due:</span> <span>{project.dueDate ? format(project.dueDate, 'PP') : 'N/A'}</span></div>
+                      </div>
+                  </CardContent>
+                  <CardFooter className="flex justify-between items-center">
+                       <Badge variant={getImportanceBadgeVariant(project.importance)}>{project.importance}</Badge>
+                       <span className="text-xs text-muted-foreground">Created: {format(project.createdAt, 'PP')}</span>
+                  </CardFooter>
+                </Card>
               )
             })}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+        </div>
+    </div>
   );
 
   const renderTaskBoard = () => {
@@ -339,29 +334,11 @@ export function TasksView() {
                   <div className="flex items-center gap-2">
                       <Button variant="outline" onClick={() => setSelectedProjectId(null)}>
                           <ArrowLeft className="mr-2 h-4 w-4" />
-                          Back to All Projects
+                          All Projects
                       </Button>
-                      <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                              <Button variant="outline">
-                                  Project Actions
-                                  <ChevronDown className="ml-2 h-4 w-4" />
-                              </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                              <DropdownMenuItem onSelect={() => {
-                                  setProjectToEdit(selectedProject);
-                                  setIsEditProjectOpen(true);
-                                }}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit Project
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => setProjectToDelete(selectedProject)} className="text-destructive">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete Project
-                              </DropdownMenuItem>
-                          </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button onClick={() => { setNewTaskDefaultStatus('todo'); setIsNewTaskOpen(true); }}>
+                        <Plus className="mr-2 h-4 w-4" /> New Task
+                      </Button>
                   </div>
               </div>
                <main className="flex-1 min-h-0">
