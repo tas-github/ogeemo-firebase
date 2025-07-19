@@ -15,6 +15,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -280,7 +281,7 @@ export function TasksView() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onSelect={() => setSelectedProjectId(project.id)}><Eye className="mr-2 h-4 w-4"/> View Project Board</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => { setProjectToEdit(project); setIsEditProjectOpen(true); }}><Edit className="mr-2 h-4 w-4" /> Edit Project Details</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => { setProjectToEdit(project); setIsEditProjectOpen(true); }}><Edit className="mr-2 h-4 w-4" /> View Project Details</DropdownMenuItem>
                                         <DropdownMenuItem onSelect={() => setProjectToDelete(project)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Project</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -365,7 +366,7 @@ export function TasksView() {
             Projects Manager
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Oversee your projects from start to finish. All tasks created here are automatically added to your calendar.
+            A project is a collection of tasks. All tasks created here are automatically added to your calendar.
           </p>
         </header>
 
