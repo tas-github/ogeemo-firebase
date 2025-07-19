@@ -339,3 +339,40 @@ export async function deleteAsset(id: string): Promise<void> {
   if (!db) throw new Error("Firestore not initialized");
   await deleteDoc(doc(db, ASSETS_COLLECTION, id));
 }
+
+
+// --- Equity Interfaces & Functions ---
+export interface EquityTransaction {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  type: 'contribution' | 'draw';
+  userId: string;
+}
+
+const EQUITY_COLLECTION = 'equityTransactions';
+const docToEquityTransaction = (doc: QueryDocumentSnapshot<DocumentData>): EquityTransaction => ({ id: doc.id, ...doc.data() } as EquityTransaction);
+
+export async function getEquityTransactions(userId: string): Promise<EquityTransaction[]> {
+    if (!db) throw new Error("Firestore not initialized");
+    const q = query(collection(db, EQUITY_COLLECTION), where("userId", "==", userId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(docToEquityTransaction);
+}
+
+export async function addEquityTransaction(data: Omit<EquityTransaction, 'id'>): Promise<EquityTransaction> {
+    if (!db) throw new Error("Firestore not initialized");
+    const docRef = await addDoc(collection(db, EQUITY_COLLECTION), data);
+    return { id: docRef.id, ...data };
+}
+
+export async function updateEquityTransaction(id: string, data: Partial<Omit<EquityTransaction, 'id' | 'userId'>>): Promise<void> {
+    if (!db) throw new Error("Firestore not initialized");
+    await updateDoc(doc(db, EQUITY_COLLECTION, id), data);
+}
+
+export async function deleteEquityTransaction(id: string): Promise<void> {
+    if (!db) throw new Error("Firestore not initialized");
+    await deleteDoc(doc(db, EQUITY_COLLECTION, id));
+}
