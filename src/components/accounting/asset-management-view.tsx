@@ -18,7 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreVertical, Pencil, Trash2, LoaderCircle } from "lucide-react";
+import { PlusCircle, MoreVertical, Pencil, Trash2, LoaderCircle, ArrowUpDown } from "lucide-react";
 import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { AssetFormDialog } from './asset-form-dialog';
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +57,7 @@ export function AssetManagementView() {
   const [isAssetFormOpen, setIsAssetFormOpen] = useState(false);
   const [assetToEdit, setAssetToEdit] = useState<Asset | null>(null);
   const [assetToDelete, setAssetToDelete] = useState<Asset | null>(null);
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Asset; direction: 'ascending' | 'descending' } | null>({ key: 'assetClass', direction: 'ascending' });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -77,6 +78,39 @@ export function AssetManagementView() {
     };
     loadData();
   }, [user, toast]);
+
+  const sortedAssets = useMemo(() => {
+    let sortableAssets = [...assets];
+    if (sortConfig !== null) {
+      sortableAssets.sort((a, b) => {
+        const aValue = a[sortConfig.key] || '';
+        const bValue = b[sortConfig.key] || '';
+        
+        // Attempt to compare as numbers if they look like numbers
+        const aNum = parseFloat(String(aValue));
+        const bNum = parseFloat(String(bValue));
+
+        let comparison = 0;
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+            comparison = aNum - bNum;
+        } else {
+            comparison = String(aValue).localeCompare(String(bValue));
+        }
+
+        return sortConfig.direction === 'ascending' ? comparison : -comparison;
+      });
+    }
+    return sortableAssets;
+  }, [assets, sortConfig]);
+
+  const requestSort = (key: keyof Asset) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
 
   const totalAssetValue = useMemo(() => {
     return assets.reduce((sum, asset) => sum + asset.cost, 0);
@@ -157,7 +191,12 @@ export function AssetManagementView() {
                         <TableHeader>
                         <TableRow>
                             <TableHead>Asset</TableHead>
-                            <TableHead>Class #</TableHead>
+                            <TableHead>
+                                <Button variant="ghost" onClick={() => requestSort('assetClass')}>
+                                Class #
+                                <ArrowUpDown className="ml-2 h-4 w-4" />
+                                </Button>
+                            </TableHead>
                             <TableHead>Acquired</TableHead>
                             <TableHead className="text-right">Original Cost</TableHead>
                             <TableHead className="text-right">Undepreciated Capital Cost</TableHead>
@@ -165,7 +204,7 @@ export function AssetManagementView() {
                         </TableRow>
                         </TableHeader>
                         <TableBody>
-                        {assets.map((asset) => (
+                        {sortedAssets.map((asset) => (
                             <TableRow key={asset.id}>
                             <TableCell className="font-medium">{asset.name}</TableCell>
                             <TableCell>{asset.assetClass || 'N/A'}</TableCell>
