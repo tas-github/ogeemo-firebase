@@ -85,7 +85,7 @@ export function AccountingHubView() {
     { icon: ShieldCheck, title: "Tax Auditor's View", description: "Detailed records required for tax preparation and audits.", href: "/accounting/tax", cta: "Go to Tax Center" },
     { icon: Landmark, title: "Banker's View", description: "The essential financial statements for credit analysis and loans.", href: "/accounting/bank-statements", cta: "Go to Bank Statements" },
     { icon: WalletCards, title: "Capital Assets", description: "Track your business's capital assets, manage depreciation, and record disposals.", href: "/accounting/asset-management", cta: "Manage Assets" },
-    { icon: DollarSign, title: "Equity Account", description: "Set up and manage your equity account.", href: "/accounting/equity", cta: "Set up Equity Account" },
+    { icon: DollarSign, title: "Equity Account", description: "Set up and manage your equity account.", href: "/accounting/equity", cta: "Manage Equity" },
     { icon: Banknote, title: "Payroll", description: "Set up and manage your payroll account.", href: "/accounting/payroll", cta: "Manage Payroll" },
     { icon: Activity, title: "Financial Vitals", description: "A quick glance at your most important financial numbers.", href: "/accounting/vitals", cta: "Check Vitals" },
   ];
