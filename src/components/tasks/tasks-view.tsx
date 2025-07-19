@@ -92,8 +92,9 @@ export function TasksView() {
             setAllTasks(fetchedTasks);
             setProjectTemplates(fetchedTemplates);
 
-            if (!selectedProjectId) {
-                setSelectedProjectId(QUICK_TASKS_PROJECT_ID);
+            if (!selectedProjectId && fetchedProjects.length > 0) {
+                // Default to the first project in the list
+                setSelectedProjectId(fetchedProjects[0].id);
             }
         } catch (error: any) {
             console.error("Failed to load project data:", error);
@@ -130,9 +131,6 @@ export function TasksView() {
   }, []);
   
   const tasksForSelectedProject = allTasks.filter(task => {
-    if (selectedProjectId === QUICK_TASKS_PROJECT_ID) {
-        return !task.projectId;
-    }
     return task.projectId === selectedProjectId;
   });
 
@@ -273,16 +271,6 @@ export function TasksView() {
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   
-  const quickTasksVirtualProject: Project = {
-      id: QUICK_TASKS_PROJECT_ID,
-      name: "Project List",
-      description: "A collection of miscellaneous tasks and to-dos.",
-      userId: user?.uid || '',
-  };
-
-  const displayProject = selectedProjectId === QUICK_TASKS_PROJECT_ID ? quickTasksVirtualProject : selectedProject;
-
-
   if (isLoading) {
     return (
         <div className="flex h-full w-full items-center justify-center p-4">
@@ -308,8 +296,6 @@ export function TasksView() {
             <SelectValue placeholder="Select a project" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={QUICK_TASKS_PROJECT_ID}>Project List</SelectItem>
-            {projects.length > 0 && <Separator className="my-1"/>}
             {projects.map((project) => (
               <SelectItem key={project.id} value={project.id}>
                 {project.name}
@@ -340,7 +326,7 @@ export function TasksView() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={() => setIsEditProjectOpen(true)} disabled={!selectedProjectId || selectedProjectId === QUICK_TASKS_PROJECT_ID} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button onClick={() => setIsEditProjectOpen(true)} disabled={!selectedProjectId} className="bg-primary text-primary-foreground hover:bg-primary/90">
               <Edit className="mr-2 h-4 w-4" />
               Edit Project
             </Button>
@@ -352,9 +338,9 @@ export function TasksView() {
       </div>
 
       <main className="flex-1 min-h-0">
-        {displayProject ? (
+        {selectedProject ? (
           <ProjectInfoCard 
-            project={displayProject} 
+            project={selectedProject} 
             tasks={tasksForSelectedProject}
             onEditTask={handleEditTask}
             onInitiateDelete={handleInitiateDelete}
@@ -364,7 +350,7 @@ export function TasksView() {
             <div className="text-center max-w-2xl">
               <h3 className="text-xl font-semibold">Welcome to Your Integrated Workspace</h3>
               <p className="text-muted-foreground mt-2">
-                Create or select a project to get started.
+                Create or select a project to get started. If you see no projects, create your first one to begin.
               </p>
             </div>
           </div>
@@ -380,7 +366,7 @@ export function TasksView() {
           onTaskCreate={handleCreateTask}
           onTaskUpdate={handleUpdateTask}
           eventToEdit={taskToEdit}
-          projectId={selectedProjectId === QUICK_TASKS_PROJECT_ID ? null : selectedProjectId} 
+          projectId={selectedProjectId} 
       />}
       
       {isNewProjectOpen && <NewProjectDialog
