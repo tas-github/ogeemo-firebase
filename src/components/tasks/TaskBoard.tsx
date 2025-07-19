@@ -149,5 +149,3 @@ export const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onTaskStatusChange,
     </div>
   );
 };
-
-    

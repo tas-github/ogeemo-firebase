@@ -39,7 +39,7 @@ interface NewTaskDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onTaskCreate: (newEvent: Omit<Event, 'id' | 'userId'>) => void;
-  onTaskUpdate: (updatedEvent: Event) => void;
+  onTaskUpdate: (updatedEvent: Omit<Event, 'userId'>) => void;
   eventToEdit?: Event | null;
   projectId: string | null;
   defaultStatus?: 'todo' | 'inProgress' | 'done';
@@ -98,7 +98,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdate
     }
     
     if (isEditMode && eventToEdit) {
-        const updatedEvent: Event = {
+        const updatedEvent: Omit<Event, 'userId'> = {
             ...eventToEdit,
             title,
             description: description,
@@ -207,5 +207,3 @@ export function NewTaskDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdate
 }
 
 export default NewTaskDialog;
-
-    

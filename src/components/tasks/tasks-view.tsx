@@ -31,9 +31,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { TaskBoard } from "@/components/tasks/TaskBoard";
-import { Progress } from "@/components/ui/progress";
-import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
 
 const DialogLoader = () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -52,15 +49,6 @@ const NewProjectDialog = dynamic(() => import('@/components/tasks/NewProjectDial
 const EditProjectDialog = dynamic(() => import('@/components/tasks/EditProjectDialog'), {
     loading: () => <DialogLoader />,
 });
-
-const getImportanceBadgeVariant = (importance: 'Critical' | 'Important' | 'Optional') => {
-    switch (importance) {
-        case 'Critical': return 'destructive';
-        case 'Important': return 'secondary';
-        case 'Optional': return 'outline';
-        default: return 'outline';
-    }
-};
 
 export function TasksView() {
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
@@ -144,7 +132,8 @@ export function TasksView() {
   const handleUpdateTask = async (updatedTaskData: Event) => {
     if (!user) return;
     try {
-        await ProjectService.updateTask(updatedTaskData.id, updatedTaskData);
+        const { id, userId, ...dataToUpdate } = updatedTaskData;
+        await ProjectService.updateTask(id, dataToUpdate);
         setAllTasks(prev => prev.map(t => t.id === updatedTaskData.id ? updatedTaskData : t));
         toast({
             title: "Task Updated",
