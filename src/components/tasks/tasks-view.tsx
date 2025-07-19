@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Plus, Edit, Trash2, LoaderCircle, ArrowLeft, Eye, MoreVertical } from "lucide-react";
+import { Plus, Edit, Trash2, LoaderCircle, ArrowLeft, Eye, MoreVertical, FileText } from "lucide-react";
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
@@ -34,7 +34,6 @@ import { TaskBoard } from "@/components/tasks/TaskBoard";
 import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
 const DialogLoader = () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -262,62 +261,91 @@ export function TasksView() {
     );
   }
 
-  const renderProjectList = () => (
+  const renderProjectHub = () => (
     <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold">All Projects</h2>
-            <p className="text-muted-foreground">Select a project to view its task board or create a new one.</p>
+            <h2 className="text-2xl font-bold">Projects Hub</h2>
+            <p className="text-muted-foreground">Manage your projects and templates from this central hub.</p>
           </div>
           <Button onClick={() => setIsNewProjectOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             New Project
           </Button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map(project => {
-              const projectTasks = allTasks.filter(t => t.projectId === project.id);
-              const completedTasks = projectTasks.filter(t => t.status === 'done').length;
-              const progress = projectTasks.length > 0 ? (completedTasks / projectTasks.length) * 100 : 0;
-              return (
-                <Card key={project.id} className="flex flex-col">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{project.name}</CardTitle>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 -mt-2 -mr-2"><MoreVertical className="h-4 w-4" /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onSelect={() => setSelectedProjectId(project.id)}><Eye className="mr-2 h-4 w-4" /> Open Project</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => { setProjectToEdit(project); setIsEditProjectOpen(true); }}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => setProjectToDelete(project)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Active Projects</CardTitle>
+                    <CardDescription>All your current projects are listed here.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                         {projects.map(project => {
+                            const projectTasks = allTasks.filter(t => t.projectId === project.id);
+                            const completedTasks = projectTasks.filter(t => t.status === 'done').length;
+                            const progress = projectTasks.length > 0 ? (completedTasks / projectTasks.length) * 100 : 0;
+                            return (
+                                <Card key={project.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4">
+                                    <div className="flex-1 mb-4 sm:mb-0">
+                                        <h4 className="font-semibold">{project.name}</h4>
+                                        <p className="text-xs text-muted-foreground line-clamp-1">{project.description}</p>
+                                        <div className="mt-2">
+                                            <Progress value={progress} className="h-2" />
+                                            <p className="text-xs text-muted-foreground mt-1">{completedTasks} of {projectTasks.length} tasks complete</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 self-end sm:self-center">
+                                         <Button variant="outline" size="sm" onClick={() => setSelectedProjectId(project.id)}>
+                                            <Eye className="mr-2 h-4 w-4"/> View
+                                        </Button>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onSelect={() => { setProjectToEdit(project); setIsEditProjectOpen(true); }}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => setProjectToDelete(project)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                </Card>
+                            )
+                        })}
                     </div>
-                    <CardDescription className="text-sm line-clamp-2 h-10">{project.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 flex-1">
-                      <div>
-                          <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                            <span>Progress</span>
-                            <span>{completedTasks} / {projectTasks.length} Tasks</span>
-                          </div>
-                          <Progress value={progress} />
-                      </div>
-                      <div className="text-xs text-muted-foreground space-y-2">
-                          <div className="flex justify-between"><span className="font-medium">Owner:</span> <span>{project.owner || 'N/A'}</span></div>
-                          <div className="flex justify-between"><span className="font-medium">Assignee:</span> <span>{project.assignee || 'N/A'}</span></div>
-                          <div className="flex justify-between"><span className="font-medium">Due:</span> <span>{project.dueDate ? format(project.dueDate, 'PP') : 'N/A'}</span></div>
-                      </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-between items-center">
-                       <Badge variant={getImportanceBadgeVariant(project.importance)}>{project.importance}</Badge>
-                       <span className="text-xs text-muted-foreground">Created: {format(project.createdAt, 'PP')}</span>
-                  </CardFooter>
-                </Card>
-              )
-            })}
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Project Templates</CardTitle>
+                    <CardDescription>Reusable templates to kickstart your projects.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-2">
+                        {projectTemplates.map(template => (
+                             <div key={template.id} className="flex items-center justify-between p-3 rounded-md border">
+                                <div className="flex items-center gap-3">
+                                    <FileText className="h-5 w-5 text-primary"/>
+                                    <div>
+                                        <p className="font-semibold text-sm">{template.name}</p>
+                                        <p className="text-xs text-muted-foreground">{template.steps.length} steps</p>
+                                    </div>
+                                </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem disabled><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                        <DropdownMenuItem disabled className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                             </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     </div>
   );
@@ -368,7 +396,7 @@ export function TasksView() {
           </p>
         </header>
 
-        {selectedProjectId ? renderTaskBoard() : renderProjectList()}
+        {selectedProjectId ? renderTaskBoard() : renderProjectHub()}
         
       </div>
 
