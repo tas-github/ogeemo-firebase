@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Clock, Play, Pause, Square, LoaderCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
@@ -87,6 +86,14 @@ export function TimeManagerView() {
                         // Also sync form state if it's running
                         setIsActive(true);
                         setIsPaused(false);
+                        setNotes(savedState.notes);
+                        setSelectedProjectId(savedState.projectId);
+                        setSelectedClientId(savedState.clientId);
+                    } else if (savedState.isActive && savedState.isPaused) {
+                        const elapsed = Math.floor((savedState.pauseTime! - savedState.startTime) / 1000) - savedState.totalPausedDuration;
+                        setElapsedSeconds(elapsed > 0 ? elapsed : 0);
+                        setIsActive(true);
+                        setIsPaused(true);
                         setNotes(savedState.notes);
                         setSelectedProjectId(savedState.projectId);
                         setSelectedClientId(savedState.clientId);
