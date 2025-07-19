@@ -66,18 +66,17 @@ export function TimeManagerView() {
                         
                         setIsActive(true);
                         setIsPaused(false);
-                        // Only set form fields if they are not already set by the user, to avoid overwriting selections
-                        if (!notes) setNotes(savedState.notes);
-                        if (!selectedProjectId) setSelectedProjectId(savedState.projectId);
-                        if (!selectedContactId) setSelectedContactId(savedState.contactId);
+                        setNotes(savedState.notes);
+                        setSelectedProjectId(savedState.projectId);
+                        setSelectedContactId(savedState.contactId);
                     } else if (savedState.isActive && savedState.isPaused) {
                         const elapsed = Math.floor((savedState.pauseTime! - savedState.startTime) / 1000) - savedState.totalPausedDuration;
                         setElapsedSeconds(elapsed > 0 ? elapsed : 0);
                         setIsActive(true);
                         setIsPaused(true);
-                         if (!notes) setNotes(savedState.notes);
-                        if (!selectedProjectId) setSelectedProjectId(savedState.projectId);
-                        if (!selectedContactId) setSelectedContactId(savedState.contactId);
+                        setNotes(savedState.notes);
+                        setSelectedProjectId(savedState.projectId);
+                        setSelectedContactId(savedState.contactId);
                     } else {
                          setIsActive(false);
                          setIsPaused(false);
@@ -90,7 +89,7 @@ export function TimeManagerView() {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [notes, selectedProjectId, selectedContactId]);
+    }, []);
 
     useEffect(() => {
         async function loadData() {
@@ -204,42 +203,40 @@ export function TimeManagerView() {
         }
     };
     
-    const handleNotesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newNotes = e.target.value;
-        setNotes(newNotes);
+    const updateStoredState = (key: keyof StoredTimerState, value: any) => {
         if (isActive) {
             const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
             if (savedStateRaw) {
                 const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-                savedState.notes = newNotes;
-                localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
-            }
-        }
-    };
-    
-    const handleProjectChange = (projectId: string) => {
-        setSelectedProjectId(projectId);
-        if (isActive) {
-            const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
-            if (savedStateRaw) {
-                const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-                savedState.projectId = projectId;
+                (savedState as any)[key] = value;
                 localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
             }
         }
     };
 
+    const handleNotesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newNotes = e.target.value;
+        setNotes(newNotes);
+        updateStoredState('notes', newNotes);
+    };
+    
+    const handleProjectChange = (projectId: string) => {
+        setSelectedProjectId(projectId);
+        updateStoredState('projectId', projectId);
+    };
+
     const handleContactChange = (contactId: string) => {
         setSelectedContactId(contactId);
-        if (isActive) {
-            const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
-            if (savedStateRaw) {
-                const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-                savedState.contactId = contactId;
-                localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
-            }
-        }
+        updateStoredState('contactId', contactId);
     };
+
+    if (isLoading) {
+        return (
+            <div className="flex h-full w-full items-center justify-center">
+                <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+            </div>
+        )
+    }
 
 
     return (
@@ -322,9 +319,7 @@ export function TimeManagerView() {
                         <CardDescription>Your last 5 time entries.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {isLoading ? (
-                             <div className="flex justify-center items-center h-48"><LoaderCircle className="h-6 w-6 animate-spin" /></div>
-                        ) : recentEntries.length > 0 ? (
+                        {recentEntries.length > 0 ? (
                             <div className="space-y-4">
                             {recentEntries.map(entry => (
                                 <div key={entry.id} className="flex justify-between items-center text-sm">
