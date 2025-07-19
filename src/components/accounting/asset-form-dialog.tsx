@@ -22,6 +22,7 @@ import { Separator } from "../ui/separator";
 import { ScrollArea } from "../ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface AssetFormDialogProps {
   isOpen: boolean;
@@ -37,6 +38,7 @@ const emptyAssetForm = {
   purchaseDate: format(new Date(), 'yyyy-MM-dd'),
   cost: '',
   undepreciatedCapitalCost: '',
+  applyHalfYearRule: true,
 };
 
 const CRA_ASSET_CLASSES = [
@@ -89,6 +91,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
         purchaseDate: format(dateToFormat, 'yyyy-MM-dd'),
         cost: String(assetToEdit.cost),
         undepreciatedCapitalCost: String(assetToEdit.undepreciatedCapitalCost),
+        applyHalfYearRule: assetToEdit.applyHalfYearRule,
       });
       setDepreciationEntries(assetToEdit.depreciationEntries || []);
     } else if (!assetToEdit && isOpen) {
@@ -138,6 +141,7 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
       purchaseDate: formData.purchaseDate,
       cost: costNum,
       undepreciatedCapitalCost: uccNum,
+      applyHalfYearRule: formData.applyHalfYearRule,
       depreciationEntries: depreciationEntries,
     };
 
@@ -149,12 +153,11 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
     onOpenChange(false);
   };
 
-  const handleValueChange = (key: keyof typeof formData, value: string) => {
+  const handleValueChange = (key: keyof typeof formData, value: string | boolean) => {
     setFormData(prev => {
         const newState = { ...prev, [key]: value };
-        // Smart default: If it's a new asset and user changes current value, update original cost too.
         if (!assetToEdit && key === 'undepreciatedCapitalCost') {
-            newState.cost = value;
+            newState.cost = String(value);
         }
         return newState;
     });
@@ -239,6 +242,24 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                         <Input id="cost" type="number" placeholder="0.00" value={formData.cost} onChange={(e) => handleValueChange('cost', e.target.value)} className="pl-7" />
                     </div>
                     <p className="text-xs text-muted-foreground">For new assets, this value is the same as the Current Value. For used assets, enter the price you originally paid.</p>
+                </div>
+                <div className="flex items-center space-x-2 pt-2">
+                    <Checkbox 
+                        id="half-year-rule" 
+                        checked={formData.applyHalfYearRule}
+                        onCheckedChange={(checked) => handleValueChange('applyHalfYearRule', !!checked)}
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                        <label
+                        htmlFor="half-year-rule"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                        Apply half-year rule
+                        </label>
+                        <p className="text-xs text-muted-foreground">
+                        Claim depreciation on half the cost in the first year.
+                        </p>
+                    </div>
                 </div>
             </div>
             

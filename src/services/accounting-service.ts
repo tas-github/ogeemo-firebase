@@ -301,12 +301,21 @@ export interface Asset {
   purchaseDate: string;
   cost: number;
   undepreciatedCapitalCost: number;
+  applyHalfYearRule: boolean;
   depreciationEntries?: DepreciationEntry[];
   userId: string;
 }
 
 const ASSETS_COLLECTION = 'assets';
-const docToAsset = (doc: QueryDocumentSnapshot<DocumentData>): Asset => ({ id: doc.id, ...doc.data(), depreciationEntries: doc.data().depreciationEntries || [] } as Asset);
+const docToAsset = (doc: QueryDocumentSnapshot<DocumentData>): Asset => {
+    const data = doc.data();
+    return { 
+        id: doc.id, 
+        ...data, 
+        applyHalfYearRule: data.applyHalfYearRule !== false, // Default to true if not present
+        depreciationEntries: data.depreciationEntries || [] 
+    } as Asset
+};
 
 export async function getAssets(userId: string): Promise<Asset[]> {
   if (!db) throw new Error("Firestore not initialized");
