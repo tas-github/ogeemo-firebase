@@ -9,6 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter
 } from "@/components/ui/table";
 import {
   Card,
@@ -78,6 +79,29 @@ export function AssetManagementView() {
     };
     loadData();
   }, [user, toast]);
+
+  const assetClassSummary = useMemo(() => {
+    const summary: Record<string, { count: number; totalCost: number; totalUCC: number }> = {};
+    
+    assets.forEach(asset => {
+        const key = asset.assetClass || "Unclassified";
+        if (!summary[key]) {
+            summary[key] = { count: 0, totalCost: 0, totalUCC: 0 };
+        }
+        summary[key].count++;
+        summary[key].totalCost += asset.cost;
+        summary[key].totalUCC += asset.undepreciatedCapitalCost;
+    });
+
+    return Object.entries(summary).sort(([classA], [classB]) => {
+        const numA = parseFloat(classA);
+        const numB = parseFloat(classB);
+        if (!isNaN(numA) && !isNaN(numB)) {
+            return numA - numB;
+        }
+        return classA.localeCompare(classB);
+    });
+  }, [assets]);
 
   const sortedAssets = useMemo(() => {
     let sortableAssets = [...assets];
@@ -165,10 +189,46 @@ export function AssetManagementView() {
         </header>
 
         <Card>
+            <CardHeader>
+                <CardTitle>Asset Class Summary</CardTitle>
+                <CardDescription>A summary of your capital assets grouped by CRA class number.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Class #</TableHead>
+                            <TableHead className="text-center"># of Assets</TableHead>
+                            <TableHead className="text-right">Total Original Cost</TableHead>
+                            <TableHead className="text-right">Total UCC</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {assetClassSummary.map(([assetClass, { count, totalCost, totalUCC }]) => (
+                            <TableRow key={assetClass}>
+                                <TableCell className="font-medium">{assetClass}</TableCell>
+                                <TableCell className="text-center">{count}</TableCell>
+                                <TableCell className="text-right font-mono">{formatCurrency(totalCost)}</TableCell>
+                                <TableCell className="text-right font-mono">{formatCurrency(totalUCC)}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                    <TableFooter>
+                        <TableRow>
+                            <TableCell colSpan={2} className="font-bold">Grand Totals</TableCell>
+                            <TableCell className="text-right font-bold font-mono">{formatCurrency(assetClassSummary.reduce((sum, [, data]) => sum + data.totalCost, 0))}</TableCell>
+                            <TableCell className="text-right font-bold font-mono">{formatCurrency(assetClassSummary.reduce((sum, [, data]) => sum + data.totalUCC, 0))}</TableCell>
+                        </TableRow>
+                    </TableFooter>
+                </Table>
+            </CardContent>
+        </Card>
+
+        <Card>
           <CardHeader className="flex-row justify-between items-start">
               <div>
                   <CardTitle>Asset Register</CardTitle>
-                  <CardDescription>A list of all capital assets owned by the business.</CardDescription>
+                  <CardDescription>A detailed list of all capital assets owned by the business.</CardDescription>
               </div>
               <div className="text-right">
                   <p className="text-sm text-muted-foreground">Total Original Cost</p>
@@ -264,3 +324,4 @@ export function AssetManagementView() {
     </>
   );
 }
+
