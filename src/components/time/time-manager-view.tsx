@@ -24,7 +24,7 @@ interface StoredTimerState {
     pauseTime: number | null;
     totalPausedDuration: number;
     projectId: string | null;
-    clientId: string | null;
+    contactId: string | null;
     notes: string;
 }
 
@@ -68,7 +68,7 @@ export function TimeManagerView() {
                         setIsPaused(false);
                         setNotes(savedState.notes);
                         setSelectedProjectId(savedState.projectId);
-                        setSelectedContactId(savedState.clientId);
+                        setSelectedContactId(savedState.contactId);
                     } else if (savedState.isActive && savedState.isPaused) {
                         const elapsed = Math.floor((savedState.pauseTime! - savedState.startTime) / 1000) - savedState.totalPausedDuration;
                         setElapsedSeconds(elapsed > 0 ? elapsed : 0);
@@ -76,7 +76,7 @@ export function TimeManagerView() {
                         setIsPaused(true);
                         setNotes(savedState.notes);
                         setSelectedProjectId(savedState.projectId);
-                        setSelectedContactId(savedState.clientId);
+                        setSelectedContactId(savedState.contactId);
                     } else {
                          setIsActive(false);
                          setIsPaused(false);
@@ -125,7 +125,7 @@ export function TimeManagerView() {
             pauseTime: null,
             totalPausedDuration: 0,
             projectId: selectedProjectId,
-            clientId: selectedContactId,
+            contactId: selectedContactId,
             notes,
         };
         localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(state));
