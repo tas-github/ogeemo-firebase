@@ -15,7 +15,7 @@ import {
   DocumentData,
   QueryDocumentSnapshot,
 } from 'firebase/firestore';
-import type { Project } from '@/data/projects';
+import { type Project, initialProjects } from '@/data/projects';
 import type { Event } from '@/types/calendar';
 import type { ProjectTemplate, PartialTask } from '@/data/project-templates';
 
@@ -44,10 +44,9 @@ const docToEvent = (doc: QueryDocumentSnapshot<DocumentData>): Event => {
 
 // --- Project Functions ---
 export async function getProjects(userId: string): Promise<Project[]> {
-  checkDb();
-  const q = query(collection(db, PROJECTS_COLLECTION), where("userId", "==", userId));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(docToProject);
+  // NOTE: This service is temporarily using mock data.
+  // We will switch to a live Firestore query once project creation is implemented.
+  return Promise.resolve(initialProjects.map(p => ({ ...p, userId })));
 }
 
 export async function addProject(projectData: Omit<Project, 'id'>): Promise<Project> {
