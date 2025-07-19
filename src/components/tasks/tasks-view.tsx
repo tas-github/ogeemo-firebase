@@ -4,17 +4,16 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Plus, Edit, FileText, ChevronDown, LoaderCircle, Trash2 } from "lucide-react";
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 
 import { Button } from "@/components/ui/button";
 import { type Event } from "@/types/calendar";
 import { type Project } from "@/data/projects";
-import { type ProjectTemplate, type PartialTask } from "@/data/project-templates";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -26,7 +25,6 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
-import { ProjectInfoCard } from "@/components/tasks/ProjectInfoCard";
 import * as ProjectService from '@/services/project-service';
 import {
   AlertDialog,
@@ -38,6 +36,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TaskBoard } from "@/components/tasks/TaskBoard";
 
 const DialogLoader = () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -63,14 +62,14 @@ export function TasksView() {
   const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
   const [allTasks, setAllTasks] = useState<Event[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [projectTemplates, setProjectTemplates] = useState<ProjectTemplate[]>([]);
-  const [templateToApply, setTemplateToApply] = useState<PartialTask[] | null>(null);
+  const [projectTemplates, setProjectTemplates] = useState<ProjectService.ProjectTemplate[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [taskToEdit, setTaskToEdit] = useState<Event | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<Event | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [initialProjectData, setInitialProjectData] = useState<{name: string, description: string} | null>(null);
+  const [newTaskDefaultStatus, setNewTaskDefaultStatus] = useState<'todo' | 'inProgress' | 'done'>('todo');
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -127,10 +126,6 @@ export function TasksView() {
     }
   }, []);
   
-  const tasksForSelectedProject = allTasks.filter(task => {
-    return task.projectId === selectedProjectId;
-  });
-
   const handleCreateTask = async (taskData: Omit<Event, 'id' | 'userId'>) => {
     if (!user) return;
     try {
@@ -161,10 +156,6 @@ export function TasksView() {
     }
   };
 
-  const handleInitiateDeleteTask = (task: Event) => {
-    setTaskToDelete(task);
-  };
-  
   const handleConfirmDeleteTask = async () => {
     if (!taskToDelete || !user) return;
     try {
@@ -187,7 +178,7 @@ export function TasksView() {
     setIsNewTaskOpen(true);
   };
 
-  const handleCreateProject = async (projectName: string, projectDescription: string, tasks: PartialTask[]) => {
+  const handleCreateProject = async (projectName: string, projectDescription: string, tasks: ProjectService.PartialTask[]) => {
     if (!user) return;
     try {
         const newProjectData: Omit<Project, 'id'> = {
@@ -204,7 +195,7 @@ export function TasksView() {
                 title: task.title,
                 description: task.description,
                 start: new Date(),
-                end: new Date(new Date().getTime() + 30 * 60 * 1000), // Default 30 min duration
+                end: new Date(new Date().getTime() + 24 * 60 * 60 * 1000), // Default 1 day
                 attendees: [],
                 status: 'todo',
                 projectId: newProject.id,
@@ -223,7 +214,7 @@ export function TasksView() {
     }
   };
   
-  const handleProjectSave = async (updatedProject: Project, updatedTasks: Event[]) => {
+  const handleProjectSave = async (updatedProject: Project) => {
     if (!user) return;
     try {
         await ProjectService.updateProject(updatedProject.id, {
@@ -231,9 +222,6 @@ export function TasksView() {
             description: updatedProject.description,
         });
         setProjects(prev => prev.map(p => p.id === updatedProject.id ? { ...p, name: updatedProject.name, description: updatedProject.description } : p));
-        
-        const otherProjectTasks = allTasks.filter(t => t.projectId !== updatedProject.id);
-        setAllTasks([...otherProjectTasks, ...updatedTasks]);
         
         toast({
             title: "Project Saved",
@@ -252,7 +240,6 @@ export function TasksView() {
       setProjects(prev => prev.filter(p => p.id !== projectToDelete.id));
       setAllTasks(prev => prev.filter(t => t.projectId !== projectToDelete.id));
 
-      // Select the first available project or none
       const remainingProjects = projects.filter(p => p.id !== projectToDelete.id);
       setSelectedProjectId(remainingProjects.length > 0 ? remainingProjects[0].id : null);
       
@@ -268,10 +255,10 @@ export function TasksView() {
     }
   };
 
-  const handleSaveTemplate = async (name: string, steps: PartialTask[]) => {
+  const handleSaveTemplate = async (name: string, steps: ProjectService.PartialTask[]) => {
     if (!user) return;
     try {
-        const newTemplateData: Omit<ProjectTemplate, 'id'> = { name, steps, userId: user.uid };
+        const newTemplateData: Omit<ProjectService.ProjectTemplate, 'id'> = { name, steps, userId: user.uid };
         const newTemplate = await ProjectService.addProjectTemplate(newTemplateData);
         setProjectTemplates(prev => [...prev, newTemplate]);
         toast({
@@ -284,13 +271,8 @@ export function TasksView() {
     }
   };
   
-  const handleSelectTemplate = (template: ProjectTemplate) => {
-    setTemplateToApply(template.steps);
-    setIsNewProjectOpen(true);
-  };
-
   const selectedProject = projects.find(p => p.id === selectedProjectId);
-  
+
   if (isLoading) {
     return (
         <div className="flex h-full w-full items-center justify-center p-4">
@@ -300,91 +282,74 @@ export function TasksView() {
   }
 
   return (
-    <div className="p-4 sm:p-6 flex flex-col h-full">
-      <header className="text-center pb-4 border-b shrink-0">
-        <h1 className="text-3xl font-bold font-headline text-primary">
-          Projects Manager
-        </h1>
-        <p className="text-sm text-muted-foreground mt-2">
-          Oversee your projects from start to finish. All tasks created here are automatically added to your calendar.
-        </p>
-      </header>
+    <DndProvider backend={HTML5Backend}>
+      <div className="p-4 sm:p-6 flex flex-col h-full">
+        <header className="text-center pb-4 border-b shrink-0">
+          <h1 className="text-3xl font-bold font-headline text-primary">
+            Projects Manager
+          </h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            Oversee your projects from start to finish. All tasks created here are automatically added to your calendar.
+          </p>
+        </header>
 
-      <div className="flex items-center justify-between py-4 flex-wrap gap-4">
-        <Select value={selectedProjectId ?? ''} onValueChange={setSelectedProjectId}>
-          <SelectTrigger className="w-[250px] bg-primary text-primary-foreground hover:bg-primary/90 border-primary [&>svg]:opacity-100">
-            <SelectValue placeholder="Select a project" />
-          </SelectTrigger>
-          <SelectContent>
-            {projects.map((project) => (
-              <SelectItem key={project.id} value={project.id}>
-                {project.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <div className="flex items-center gap-2">
-            <Button onClick={() => setIsNewProjectOpen(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                <Plus className="mr-2 h-4 w-4" />
-                New Project
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Project Templates
-                    <ChevronDown className="ml-2 h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuLabel>Apply a Template</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {projectTemplates.map((template) => (
-                    <DropdownMenuItem key={template.id} onSelect={() => handleSelectTemplate(template)}>
-                        {template.name}
-                    </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button disabled={!selectedProjectId} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                        <ChevronDown className="ml-2 h-4 w-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                    <DropdownMenuItem onSelect={() => setIsEditProjectOpen(true)}>Edit Project Details</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setProjectToDelete(selectedProject || null)} className="text-destructive">Delete Project</DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
-            <Button onClick={() => setIsNewTaskOpen(true)} disabled={!selectedProjectId}>
-                <Plus className="mr-2 h-4 w-4" />
-                New Task
-            </Button>
-        </div>
-      </div>
-
-      <main className="flex-1 min-h-0">
-        {selectedProject ? (
-          <ProjectInfoCard 
-            project={selectedProject} 
-            tasks={tasksForSelectedProject}
-            onEditTask={handleEditTask}
-            onInitiateDelete={handleInitiateDeleteTask}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed">
-            <div className="text-center max-w-2xl">
-              <h3 className="text-xl font-semibold">Welcome to Your Integrated Workspace</h3>
-              <p className="text-muted-foreground mt-2">
-                Create or select a project to get started. If you see no projects, create your first one to begin.
-              </p>
-            </div>
+        <div className="flex items-center justify-between py-4 flex-wrap gap-4">
+          <Select value={selectedProjectId ?? ''} onValueChange={setSelectedProjectId}>
+            <SelectTrigger className="w-full sm:w-[300px] text-lg font-semibold py-6">
+              <SelectValue placeholder="Select a project" />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map((project) => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-2">
+              <Button onClick={() => setIsNewProjectOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Project
+              </Button>
+              <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                      <Button disabled={!selectedProjectId} variant="outline">
+                          <Edit className="mr-2 h-4 w-4" />
+                          Project Actions
+                          <ChevronDown className="ml-2 h-4 w-4" />
+                      </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                      <DropdownMenuItem onSelect={() => setIsEditProjectOpen(true)}>Edit Project Details</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setProjectToDelete(selectedProject || null)} className="text-destructive">Delete Project</DropdownMenuItem>
+                  </DropdownMenuContent>
+              </DropdownMenu>
           </div>
-        )}
-      </main>
+        </div>
+
+        <main className="flex-1 min-h-0">
+          {selectedProject ? (
+            <TaskBoard
+              tasks={allTasks.filter(task => task.projectId === selectedProjectId)}
+              onTaskStatusChange={handleUpdateTask}
+              onEditTask={handleEditTask}
+              onNewTask={(status) => {
+                setNewTaskDefaultStatus(status);
+                setIsNewTaskOpen(true);
+              }}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed">
+              <div className="text-center max-w-2xl">
+                <h3 className="text-xl font-semibold">Welcome to Your Integrated Workspace</h3>
+                <p className="text-muted-foreground mt-2">
+                  Create or select a project to get started.
+                </p>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
 
       {isNewTaskOpen && <NewTaskDialog 
           isOpen={isNewTaskOpen} 
@@ -396,6 +361,7 @@ export function TasksView() {
           onTaskUpdate={handleUpdateTask}
           eventToEdit={taskToEdit}
           projectId={selectedProjectId} 
+          defaultStatus={newTaskDefaultStatus}
       />}
       
       {isNewProjectOpen && <NewProjectDialog
@@ -403,14 +369,12 @@ export function TasksView() {
         onOpenChange={(open) => {
             setIsNewProjectOpen(open);
             if (!open) {
-                setTemplateToApply(null);
                 setInitialProjectData(null);
             }
         }}
         onProjectCreate={handleCreateProject}
         templates={projectTemplates}
         onSaveAsTemplate={handleSaveTemplate}
-        initialTasks={templateToApply}
         initialName={initialProjectData?.name}
         initialDescription={initialProjectData?.description}
       />}
@@ -419,10 +383,7 @@ export function TasksView() {
         isOpen={isEditProjectOpen}
         onOpenChange={setIsEditProjectOpen}
         project={selectedProject}
-        tasks={tasksForSelectedProject}
-        onProjectSave={handleProjectSave}
-        templates={projectTemplates}
-        onSaveAsTemplate={handleSaveTemplate}
+        onProjectSave={(updatedProject) => handleProjectSave(updatedProject)}
       />}
 
       <AlertDialog open={!!taskToDelete} onOpenChange={() => setTaskToDelete(null)}>
@@ -454,6 +415,8 @@ export function TasksView() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </DndProvider>
   );
 }
+
+    

@@ -1,4 +1,5 @@
 
+
 export type Event = {
   id: string;
   title: string;
@@ -7,8 +8,10 @@ export type Event = {
   end: Date;
   attendees: string[];
   status: 'todo' | 'inProgress' | 'done';
-  projectId?: string;
+  projectId: string | null;
   isBillable?: boolean;
   billableRate?: number;
   userId: string;
 };
+
+    

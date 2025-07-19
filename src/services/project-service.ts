@@ -72,6 +72,25 @@ export async function updateProject(projectId: string, projectData: Partial<Omit
     await updateDoc(projectRef, projectData);
 }
 
+export async function deleteProject(projectId: string): Promise<void> {
+    checkDb();
+    const batch = writeBatch(db);
+
+    // Delete project
+    const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
+    batch.delete(projectRef);
+
+    // Delete associated tasks
+    const tasksQuery = query(collection(db, TASKS_COLLECTION), where("projectId", "==", projectId));
+    const tasksSnapshot = await getDocs(tasksQuery);
+    tasksSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+}
+
+
 // --- Task/Event Functions ---
 export async function getTasks(userId: string): Promise<Event[]> {
   checkDb();
@@ -125,3 +144,5 @@ export async function addProjectTemplate(templateData: Omit<ProjectTemplate, 'id
   const docRef = await addDoc(collection(db, TEMPLATES_COLLECTION), templateData);
   return { id: docRef.id, ...templateData };
 }
+
+    
