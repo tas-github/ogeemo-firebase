@@ -281,38 +281,22 @@ export function TasksView() {
                     <CardDescription>All your current projects are listed here.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-4">
-                         {projects.map(project => {
-                            const projectTasks = allTasks.filter(t => t.projectId === project.id);
-                            const completedTasks = projectTasks.filter(t => t.status === 'done').length;
-                            const progress = projectTasks.length > 0 ? (completedTasks / projectTasks.length) * 100 : 0;
-                            return (
-                                <Card key={project.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4">
-                                    <div className="flex-1 mb-4 sm:mb-0">
-                                        <h4 className="font-semibold">{project.name}</h4>
-                                        <p className="text-xs text-muted-foreground line-clamp-1">{project.description}</p>
-                                        <div className="mt-2">
-                                            <Progress value={progress} className="h-2" />
-                                            <p className="text-xs text-muted-foreground mt-1">{completedTasks} of {projectTasks.length} tasks complete</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 self-end sm:self-center">
-                                         <Button variant="outline" size="sm" onClick={() => setSelectedProjectId(project.id)}>
-                                            <Eye className="mr-2 h-4 w-4"/> View
-                                        </Button>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onSelect={() => { setProjectToEdit(project); setIsEditProjectOpen(true); }}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => setProjectToDelete(project)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                </Card>
-                            )
-                        })}
+                    <div className="space-y-2">
+                         {projects.map(project => (
+                            <div key={project.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                                <span className="font-semibold truncate pr-4">{project.name}</span>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onSelect={() => setSelectedProjectId(project.id)}><Eye className="mr-2 h-4 w-4"/> View Project Board</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => { setProjectToEdit(project); setIsEditProjectOpen(true); }}><Edit className="mr-2 h-4 w-4" /> Edit Project Details</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => setProjectToDelete(project)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Project</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        ))}
                     </div>
                 </CardContent>
             </Card>
@@ -324,9 +308,9 @@ export function TasksView() {
                 <CardContent>
                     <div className="space-y-2">
                         {projectTemplates.map(template => (
-                             <div key={template.id} className="flex items-center justify-between p-3 rounded-md border">
+                             <div key={template.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                                 <div className="flex items-center gap-3">
-                                    <FileText className="h-5 w-5 text-primary"/>
+                                    <FileText className="h-5 w-5 text-muted-foreground"/>
                                     <div>
                                         <p className="font-semibold text-sm">{template.name}</p>
                                         <p className="text-xs text-muted-foreground">{template.steps.length} steps</p>
