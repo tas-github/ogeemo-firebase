@@ -102,36 +102,33 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
 
   const handleSave = () => {
     const costNum = parseFloat(formData.cost);
-    let uccNum = parseFloat(formData.undepreciatedCapitalCost);
+    const uccNum = parseFloat(formData.undepreciatedCapitalCost);
 
-    if (!formData.name.trim() || !formData.purchaseDate || isNaN(costNum) || costNum < 0) {
+    if (!formData.name.trim() || !formData.purchaseDate || isNaN(uccNum) || uccNum < 0) {
       toast({
         variant: "destructive",
         title: "Invalid Input",
-        description: "Please fill out Asset Name, Purchase Date, and a valid Original Cost.",
+        description: "Please fill out Asset Name, Purchase Date, and a valid Current Value.",
+      });
+      return;
+    }
+
+    if (isNaN(costNum) || costNum < 0) {
+      toast({
+        variant: "destructive",
+        title: "Invalid Input",
+        description: "Please enter a valid Original Purchase Price.",
       });
       return;
     }
     
-    if (assetToEdit) { // If editing, UCC is required
-        if (isNaN(uccNum) || uccNum < 0) {
-            toast({
-                variant: "destructive",
-                title: "Invalid Input",
-                description: "Please enter a valid Current Value.",
-            });
-            return;
-        }
-        if (uccNum > costNum) {
-            toast({
-                variant: "destructive",
-                title: "Invalid Value",
-                description: "Current value cannot be greater than the original cost.",
-            });
-            return;
-        }
-    } else { // If new, UCC equals cost
-        uccNum = costNum;
+    if (uccNum > costNum) {
+        toast({
+            variant: "destructive",
+            title: "Invalid Value",
+            description: "Current value cannot be greater than the original purchase price.",
+        });
+        return;
     }
 
     const dataToSave = {
@@ -152,10 +149,16 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
     onOpenChange(false);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { id, value } = e.target;
-    setFormData(prev => ({ ...prev, [id]: value }));
-  }
+  const handleValueChange = (key: keyof typeof formData, value: string) => {
+    setFormData(prev => {
+        const newState = { ...prev, [key]: value };
+        // Smart default: If it's a new asset and user changes current value, update original cost too.
+        if (!assetToEdit && key === 'undepreciatedCapitalCost') {
+            newState.cost = value;
+        }
+        return newState;
+    });
+  };
   
   const handleAddDepreciation = () => {
     const amountNum = parseFloat(newDepreciation.amount);
@@ -192,16 +195,16 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="flex-1">
-            <div className="grid gap-6 py-4 px-6">
+            <div className="space-y-6 px-6 py-4">
             <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                     <Label htmlFor="name">Asset Name</Label>
-                    <Input id="name" value={formData.name} onChange={handleChange} />
+                    <Input id="name" value={formData.name} onChange={(e) => handleValueChange('name', e.target.value)} />
                     </div>
                     <div className="space-y-2">
                     <Label htmlFor="assetClass">Asset Class # (for CRA)</Label>
-                     <Select value={formData.assetClass} onValueChange={(value) => setFormData(p => ({...p, assetClass: value}))}>
+                     <Select value={formData.assetClass} onValueChange={(value) => handleValueChange('assetClass', value)}>
                         <SelectTrigger id="assetClass">
                             <SelectValue placeholder="Select a class..." />
                         </SelectTrigger>
@@ -213,35 +216,30 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="description">Description</Label>
-                    <Textarea id="description" value={formData.description} onChange={handleChange} />
+                    <Textarea id="description" value={formData.description} onChange={(e) => handleValueChange('description', e.target.value)} />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                    <Label htmlFor="purchaseDate">Purchase Date</Label>
-                    <Input id="purchaseDate" type="date" value={formData.purchaseDate} onChange={handleChange} />
+                        <Label htmlFor="purchaseDate">Purchase Date</Label>
+                        <Input id="purchaseDate" type="date" value={formData.purchaseDate} onChange={(e) => handleValueChange('purchaseDate', e.target.value)} />
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="cost">Original Cost</Label>
+                        <Label htmlFor="undepreciatedCapitalCost">Current Value</Label>
                         <div className="relative">
                             <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                            <Input id="cost" type="number" placeholder="0.00" value={formData.cost} onChange={handleChange} className="pl-7" />
+                            <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={(e) => handleValueChange('undepreciatedCapitalCost', e.target.value)} className="pl-7" />
                         </div>
+                         <p className="text-xs text-muted-foreground">For new items, this is the purchase price. For used items, enter its current depreciated value.</p>
                     </div>
                 </div>
-                {assetToEdit ? (
-                    <div className="space-y-2">
-                        <Label htmlFor="undepreciatedCapitalCost">Current Value (UCC)</Label>
-                        <div className="relative">
-                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                            <Input id="undepreciatedCapitalCost" type="number" placeholder="0.00" value={formData.undepreciatedCapitalCost} onChange={handleChange} className="pl-7" />
-                        </div>
-                        <p className="text-xs text-muted-foreground">For a brand new asset, this is the same as the Original Cost. For a used asset, enter its current depreciated value.</p>
+                <div className="space-y-2">
+                    <Label htmlFor="cost">Original Purchase Price</Label>
+                    <div className="relative">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                        <Input id="cost" type="number" placeholder="0.00" value={formData.cost} onChange={(e) => handleValueChange('cost', e.target.value)} className="pl-7" />
                     </div>
-                ) : (
-                    <div className="p-4 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-                        <p>For a new asset, the <strong>Current Value</strong> is assumed to be the same as the <strong>Original Cost</strong>. To enter a used asset with a different current value, please save the asset first and then edit it.</p>
-                    </div>
-                )}
+                    <p className="text-xs text-muted-foreground">For new assets, this value is the same as the Current Value. For used assets, enter the price you originally paid.</p>
+                </div>
             </div>
             
             {assetToEdit && (
@@ -299,7 +297,6 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                 </div>
                 </>
             )}
-
             </div>
         </ScrollArea>
         <DialogFooter className="pt-4 border-t px-6">
