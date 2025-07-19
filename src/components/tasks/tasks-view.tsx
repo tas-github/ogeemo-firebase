@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Plus, Edit, Trash2, LoaderCircle, ChevronDown, ArrowLeft, Eye } from "lucide-react";
+import { Plus, Edit, Trash2, LoaderCircle, ChevronDown, ArrowLeft, Eye, MoreVertical } from "lucide-react";
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
@@ -69,6 +69,7 @@ export function TasksView() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [taskToEdit, setTaskToEdit] = useState<Event | null>(null);
+  const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [initialProjectData, setInitialProjectData] = useState<{name: string, description: string} | null>(null);
   const [newTaskDefaultStatus, setNewTaskDefaultStatus] = useState<'todo' | 'inProgress' | 'done'>('todo');
@@ -281,7 +282,7 @@ export function TasksView() {
               <TableHead>Project Name</TableHead>
               <TableHead>Progress</TableHead>
               <TableHead className="text-right">Tasks</TableHead>
-              <TableHead className="w-24"><span className="sr-only">Actions</span></TableHead>
+              <TableHead className="w-10 text-right"><span className="sr-only">Actions</span></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -295,10 +296,27 @@ export function TasksView() {
                   <TableCell><Progress value={progress} className="w-[120px]" /></TableCell>
                   <TableCell className="text-right">{completedTasks} / {projectTasks.length}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => setSelectedProjectId(project.id)}>
-                      <Eye className="mr-2 h-4 w-4" />
-                      Open
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => setSelectedProjectId(project.id)}>
+                                <Eye className="mr-2 h-4 w-4" /> Open
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => {
+                                setProjectToEdit(project);
+                                setIsEditProjectOpen(true);
+                            }}>
+                                <Edit className="mr-2 h-4 w-4" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => setProjectToDelete(project)} className="text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               )
@@ -331,7 +349,10 @@ export function TasksView() {
                               </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
-                              <DropdownMenuItem onSelect={() => setIsEditProjectOpen(true)}>
+                              <DropdownMenuItem onSelect={() => {
+                                  setProjectToEdit(selectedProject);
+                                  setIsEditProjectOpen(true);
+                                }}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit Project
                               </DropdownMenuItem>
@@ -402,10 +423,10 @@ export function TasksView() {
         initialDescription={initialProjectData?.description}
       />}
       
-      {isEditProjectOpen && selectedProject && <EditProjectDialog
+      {isEditProjectOpen && projectToEdit && <EditProjectDialog
         isOpen={isEditProjectOpen}
         onOpenChange={setIsEditProjectOpen}
-        project={selectedProject}
+        project={projectToEdit}
         onProjectSave={(updatedProject) => handleProjectSave(updatedProject)}
       />}
       
