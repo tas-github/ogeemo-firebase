@@ -11,7 +11,7 @@ import { Clock, Play, Pause, Square, LoaderCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { getProjects, type Project } from '@/services/project-service';
-import { getClientAccounts, type ClientAccount } from '@/services/client-manager-service';
+import { getContacts, type Contact } from '@/services/contact-service';
 import { addEventEntry, getEventEntries, type EventEntry } from '@/services/client-manager-service';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -43,10 +43,10 @@ export function TimeManagerView() {
     
     const [notes, setNotes] = useState("");
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-    const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+    const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
 
     const [projects, setProjects] = useState<Project[]>([]);
-    const [clients, setClients] = useState<ClientAccount[]>([]);
+    const [contacts, setContacts] = useState<Contact[]>([]);
     const [recentEntries, setRecentEntries] = useState<EventEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -68,7 +68,7 @@ export function TimeManagerView() {
                         setIsPaused(false);
                         setNotes(savedState.notes);
                         setSelectedProjectId(savedState.projectId);
-                        setSelectedClientId(savedState.clientId);
+                        setSelectedContactId(savedState.clientId);
                     } else if (savedState.isActive && savedState.isPaused) {
                         const elapsed = Math.floor((savedState.pauseTime! - savedState.startTime) / 1000) - savedState.totalPausedDuration;
                         setElapsedSeconds(elapsed > 0 ? elapsed : 0);
@@ -76,7 +76,7 @@ export function TimeManagerView() {
                         setIsPaused(true);
                         setNotes(savedState.notes);
                         setSelectedProjectId(savedState.projectId);
-                        setSelectedClientId(savedState.clientId);
+                        setSelectedContactId(savedState.clientId);
                     } else {
                          setIsActive(false);
                          setIsPaused(false);
@@ -99,13 +99,13 @@ export function TimeManagerView() {
             }
             setIsLoading(true);
             try {
-                const [projectsData, clientsData, entriesData] = await Promise.all([
+                const [projectsData, contactsData, entriesData] = await Promise.all([
                     getProjects(user.uid),
-                    getClientAccounts(user.uid),
+                    getContacts(user.uid),
                     getEventEntries(user.uid),
                 ]);
                 setProjects(projectsData);
-                setClients(clientsData);
+                setContacts(contactsData);
                 setRecentEntries(entriesData.slice(0, 5));
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
@@ -125,7 +125,7 @@ export function TimeManagerView() {
             pauseTime: null,
             totalPausedDuration: 0,
             projectId: selectedProjectId,
-            clientId: selectedClientId,
+            clientId: selectedContactId,
             notes,
         };
         localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(state));
@@ -165,7 +165,7 @@ export function TimeManagerView() {
         setIsPaused(false);
         setElapsedSeconds(0);
         setNotes("");
-        setSelectedClientId(null);
+        setSelectedContactId(null);
         setSelectedProjectId(null);
         localStorage.removeItem(TIMER_STORAGE_KEY);
         toast({ title: 'Timer Reset', description: 'The timer and fields have been cleared.' });
@@ -174,15 +174,17 @@ export function TimeManagerView() {
     const handleLogTime = async () => {
         if (!user || elapsedSeconds <= 0) return;
         
-        const client = clients.find(c => c.id === selectedClientId);
-        if (!client) {
+        const contact = contacts.find(c => c.id === selectedContactId);
+        if (!contact) {
             toast({ variant: 'destructive', title: 'Client Required', description: 'Please select a client to log time.' });
             return;
         }
+        
+        const accountId = contact.id; // In this context, contact id serves as the account id link
 
         const newEntry: Omit<EventEntry, 'id'> = {
-            accountId: client.id,
-            contactName: client.name,
+            accountId: accountId,
+            contactName: contact.name,
             subject: notes || 'Time Entry',
             startTime: new Date(Date.now() - elapsedSeconds * 1000),
             endTime: new Date(),
@@ -194,7 +196,7 @@ export function TimeManagerView() {
         try {
             const addedEntry = await addEventEntry(newEntry);
             setRecentEntries(prev => [addedEntry, ...prev].slice(0, 5));
-            toast({ title: 'Time Logged', description: `Logged ${formatTime(elapsedSeconds)} for ${client.name}` });
+            toast({ title: 'Time Logged', description: `Logged ${formatTime(elapsedSeconds)} for ${contact.name}` });
             handleReset(); // Reset the form after logging
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Log Failed', description: error.message });
@@ -237,10 +239,10 @@ export function TimeManagerView() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="client">Client</Label>
-                                <Select value={selectedClientId || ''} onValueChange={setSelectedClientId} disabled={isActive}>
+                                <Select value={selectedContactId || ''} onValueChange={setSelectedContactId} disabled={isActive}>
                                     <SelectTrigger id="client"><SelectValue placeholder="Select a client..." /></SelectTrigger>
                                     <SelectContent>
-                                         {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                                         {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                             </div>
