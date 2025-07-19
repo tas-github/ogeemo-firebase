@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Plus, Edit, FileText, ChevronDown, LoaderCircle, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, LoaderCircle, ChevronDown, ArrowLeft, Eye } from "lucide-react";
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
@@ -17,12 +17,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import * as ProjectService from '@/services/project-service';
@@ -37,6 +39,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { TaskBoard } from "@/components/tasks/TaskBoard";
+import { Progress } from "@/components/ui/progress";
 
 const DialogLoader = () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -66,7 +69,6 @@ export function TasksView() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [taskToEdit, setTaskToEdit] = useState<Event | null>(null);
-  const [taskToDelete, setTaskToDelete] = useState<Event | null>(null);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [initialProjectData, setInitialProjectData] = useState<{name: string, description: string} | null>(null);
   const [newTaskDefaultStatus, setNewTaskDefaultStatus] = useState<'todo' | 'inProgress' | 'done'>('todo');
@@ -86,12 +88,6 @@ export function TasksView() {
             setProjects(fetchedProjects);
             setAllTasks(fetchedTasks);
             setProjectTemplates(fetchedTemplates);
-
-            if (!selectedProjectId && fetchedProjects.length > 0) {
-                setSelectedProjectId(fetchedProjects[0].id);
-            } else if (fetchedProjects.length === 0) {
-                setSelectedProjectId(null);
-            }
         } catch (error: any) {
             console.error("Failed to load project data:", error);
             toast({
@@ -153,23 +149,6 @@ export function TasksView() {
     } catch (error: any) {
         console.error("Failed to update task:", error);
         toast({ variant: "destructive", title: "Update Failed", description: error.message });
-    }
-  };
-
-  const handleConfirmDeleteTask = async () => {
-    if (!taskToDelete || !user) return;
-    try {
-        await ProjectService.deleteTask(taskToDelete.id);
-        setAllTasks(prev => prev.filter(t => t.id !== taskToDelete.id));
-        toast({
-            title: "Task Deleted",
-            description: `"${taskToDelete.title}" has been deleted.`,
-        });
-    } catch (error: any) {
-        console.error("Failed to delete task:", error);
-        toast({ variant: "destructive", title: "Delete Failed", description: error.message });
-    } finally {
-        setTaskToDelete(null);
     }
   };
 
@@ -281,10 +260,108 @@ export function TasksView() {
     );
   }
 
+  const renderProjectList = () => (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle>All Projects</CardTitle>
+            <CardDescription>Select a project to view its task board.</CardDescription>
+          </div>
+          <Button onClick={() => setIsNewProjectOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Project
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Project Name</TableHead>
+              <TableHead>Progress</TableHead>
+              <TableHead className="text-right">Tasks</TableHead>
+              <TableHead className="w-24"><span className="sr-only">Actions</span></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {projects.map(project => {
+              const projectTasks = allTasks.filter(t => t.projectId === project.id);
+              const completedTasks = projectTasks.filter(t => t.status === 'done').length;
+              const progress = projectTasks.length > 0 ? (completedTasks / projectTasks.length) * 100 : 0;
+              return (
+                <TableRow key={project.id}>
+                  <TableCell className="font-medium">{project.name}</TableCell>
+                  <TableCell><Progress value={progress} className="w-[120px]" /></TableCell>
+                  <TableCell className="text-right">{completedTasks} / {projectTasks.length}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm" onClick={() => setSelectedProjectId(project.id)}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Open
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+
+  const renderTaskBoard = () => {
+      if (!selectedProject) return null;
+      return (
+          <div className="flex flex-col h-full">
+              <div className="flex items-center justify-between py-4 flex-wrap gap-4">
+                  <div>
+                      <h2 className="text-2xl font-bold font-headline text-primary">{selectedProject.name}</h2>
+                      <p className="text-muted-foreground">{selectedProject.description}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <Button variant="outline" onClick={() => setSelectedProjectId(null)}>
+                          <ArrowLeft className="mr-2 h-4 w-4" />
+                          Back to All Projects
+                      </Button>
+                      <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                              <Button variant="outline">
+                                  Project Actions
+                                  <ChevronDown className="ml-2 h-4 w-4" />
+                              </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                              <DropdownMenuItem onSelect={() => setIsEditProjectOpen(true)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Project
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setProjectToDelete(selectedProject)} className="text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Project
+                              </DropdownMenuItem>
+                          </DropdownMenuContent>
+                      </DropdownMenu>
+                  </div>
+              </div>
+               <main className="flex-1 min-h-0">
+                    <TaskBoard
+                        tasks={allTasks.filter(task => task.projectId === selectedProjectId)}
+                        onTaskStatusChange={handleUpdateTask}
+                        onEditTask={handleEditTask}
+                        onNewTask={(status) => {
+                            setNewTaskDefaultStatus(status);
+                            setIsNewTaskOpen(true);
+                        }}
+                    />
+               </main>
+          </div>
+      );
+  }
+
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="p-4 sm:p-6 flex flex-col h-full">
-        <header className="text-center pb-4 border-b shrink-0">
+        <header className="text-center pb-4 shrink-0">
           <h1 className="text-3xl font-bold font-headline text-primary">
             Projects Manager
           </h1>
@@ -293,62 +370,8 @@ export function TasksView() {
           </p>
         </header>
 
-        <div className="flex items-center justify-between py-4 flex-wrap gap-4">
-          <Select value={selectedProjectId ?? ''} onValueChange={setSelectedProjectId}>
-            <SelectTrigger className="w-full sm:w-[300px] text-lg font-semibold py-6">
-              <SelectValue placeholder="Select a project" />
-            </SelectTrigger>
-            <SelectContent>
-              {projects.map((project) => (
-                <SelectItem key={project.id} value={project.id}>
-                  {project.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="flex items-center gap-2">
-              <Button onClick={() => setIsNewProjectOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Project
-              </Button>
-              <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                      <Button disabled={!selectedProjectId} variant="outline">
-                          <Edit className="mr-2 h-4 w-4" />
-                          Project Actions
-                          <ChevronDown className="ml-2 h-4 w-4" />
-                      </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                      <DropdownMenuItem onSelect={() => setIsEditProjectOpen(true)}>Edit Project Details</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => setProjectToDelete(selectedProject || null)} className="text-destructive">Delete Project</DropdownMenuItem>
-                  </DropdownMenuContent>
-              </DropdownMenu>
-          </div>
-        </div>
-
-        <main className="flex-1 min-h-0">
-          {selectedProject ? (
-            <TaskBoard
-              tasks={allTasks.filter(task => task.projectId === selectedProjectId)}
-              onTaskStatusChange={handleUpdateTask}
-              onEditTask={handleEditTask}
-              onNewTask={(status) => {
-                setNewTaskDefaultStatus(status);
-                setIsNewTaskOpen(true);
-              }}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed">
-              <div className="text-center max-w-2xl">
-                <h3 className="text-xl font-semibold">Welcome to Your Integrated Workspace</h3>
-                <p className="text-muted-foreground mt-2">
-                  Create or select a project to get started.
-                </p>
-              </div>
-            </div>
-          )}
-        </main>
+        {selectedProjectId ? renderTaskBoard() : renderProjectList()}
+        
       </div>
 
       {isNewTaskOpen && <NewTaskDialog 
@@ -385,21 +408,6 @@ export function TasksView() {
         project={selectedProject}
         onProjectSave={(updatedProject) => handleProjectSave(updatedProject)}
       />}
-
-      <AlertDialog open={!!taskToDelete} onOpenChange={() => setTaskToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the task "{taskToDelete?.title}".
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDeleteTask} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
       
       <AlertDialog open={!!projectToDelete} onOpenChange={() => setProjectToDelete(null)}>
         <AlertDialogContent>
@@ -418,5 +426,3 @@ export function TasksView() {
     </DndProvider>
   );
 }
-
-    
