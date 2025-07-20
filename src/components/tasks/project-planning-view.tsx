@@ -66,11 +66,6 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
                             </CardDescription>
                         </div>
                         <div className='flex gap-2'>
-                             <Button asChild variant="outline">
-                                <Link href={`/projects/${project.id}`}>
-                                    Go to Task Board
-                                </Link>
-                            </Button>
                             <Button asChild>
                                 <Link href="/projects">
                                     <ArrowLeft className="mr-2 h-4 w-4" />
