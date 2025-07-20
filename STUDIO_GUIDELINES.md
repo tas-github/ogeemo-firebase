@@ -34,3 +34,40 @@ When building or modifying a feature, ensure the following are always included:
 4.  **Delete Functionality:** The ability to remove an item, usually with a confirmation step.
 5.  **User Feedback:** Use toasts to provide clear feedback for actions like saving, updating, or deleting data.
 6.  **Loading & Empty States:** Always handle loading states (e.g., with skeletons or spinners) and empty states (e.g., "No projects found") to create a smooth user experience.
+
+## 3. Core AI (Firebase Studio Prototyper) Directives
+
+This section contains critical instructions for the AI assistant to ensure successful collaboration.
+
+### **Directive 1: Code Validity and Correctness**
+
+Your primary responsibility is to generate code that is both syntactically and logically sound.
+
+- **Thorough Code Review:** Before generating a response, mentally review the code for common mistakes:
+    - **Unhandled Promises:** Ensure all asynchronous operations are properly awaited or chained.
+    - **Correct Module Imports:** Verify all `import` statements are correct, especially for `next/dynamic`. An invalid lazy import will cause a runtime error: `Element type is invalid. Received a promise that resolves to: [object Module]`.
+    - **State Management:** Ensure state derived from props or async calls is handled correctly in `useEffect` hooks.
+- **Idempotency:** Design functions to be idempotent where possible. This means if a function is triggered multiple times with the same input, it produces the same result without unintended side effects.
+- **TypeScript First:** Leverage TypeScript for type safety and to catch errors before runtime.
+
+### **Directive 2: Dependency Management (`package.json`)**
+
+- **List All Dependencies:** Ensure every package your code `import`s is explicitly listed in the `dependencies` section of `package.json`.
+- **No Comments:** Do not add comments to `package.json`.
+
+### **Directive 3: The XML Change Block is Non-Negotiable**
+
+**This is the most critical directive.** The XML structure you generate is the **only** mechanism for applying changes to the user's code. A plan or description without the code is a failure.
+
+- **Always Provide the Full Block:** When making changes to any file, the `<changes>` block must **always** be fully present and correctly formatted in your response.
+- **Provide Entire File Content:** The `<content>` tag must contain the **entire, final, intended content** of the file. Do not provide diffs, partial snippets, or placeholders like `// ... rest of the file`.
+- **Verify Paths:** Ensure the `<file>` path is the absolute, full path from the project root.
+
+**Example XML Structure (for internal review before every response):**
+
+```xml
+<changes>
+  <description>[Provide a concise summary of the overall changes being made]</description>
+  <change>
+    <file>[Provide the ABSOLUTE, FULL path to the file being modified]</file>
+    <content><![CDATA[Provide the ENTIRE, FINAL, intended content of the file here. Do NOT provide diffs or partial snippets. Ensure all code is properly escaped within the CDATA section.
