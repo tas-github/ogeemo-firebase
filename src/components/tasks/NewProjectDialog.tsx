@@ -323,5 +323,3 @@ export function NewProjectDialog({
     </>
   );
 }
-
-export default NewProjectDialog;
