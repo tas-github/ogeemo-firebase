@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, 'react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -43,10 +43,10 @@ const projectSchema = z.object({
 type ProjectFormData = z.infer<typeof projectSchema>;
 
 export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, contacts }: { isOpen: boolean; onOpenChange: (open: boolean) => void; onProjectCreated: (project: Project, tasks: TaskEvent[]) => void; contacts: Contact[] }) {
-  const [descriptionBeforeSpeech, setDescriptionBeforeSpeech] = useState("");
-  const [templates, setTemplates] = useState<ProjectTemplate[]>([]);
-  const [isTemplateSaveDialogOpen, setIsTemplateSaveDialogOpen] = useState(false);
-  const [newTemplateName, setNewTemplateName] = useState("");
+  const [descriptionBeforeSpeech, setDescriptionBeforeSpeech] = React.useState("");
+  const [templates, setTemplates] = React.useState<ProjectTemplate[]>([]);
+  const [isTemplateSaveDialogOpen, setIsTemplateSaveDialogOpen] = React.useState(false);
+  const [newTemplateName, setNewTemplateName] = React.useState("");
   const router = useRouter();
 
   const { user } = useAuth();
@@ -74,7 +74,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
       }
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     async function loadTemplates() {
         if (user && isOpen) {
             try {
@@ -89,7 +89,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
   }, [user, isOpen, toast]);
 
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (isOpen) {
         const ideaToProjectRaw = sessionStorage.getItem('ogeemo-idea-to-project');
         if (ideaToProjectRaw) {
@@ -200,7 +200,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
     const template = templates.find(t => t.id === templateId);
     if (template) {
         form.setValue('name', template.name);
-        const description = template.steps.map(step => `- ${step.title}`).join('\n');
+        const description = template.steps.map(step => `- ${step.title}`).join('\\n');
         form.setValue('description', description);
     }
   };
@@ -247,12 +247,12 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
                         <div className="space-y-2">
                             <FormLabel>Start Date & Time</FormLabel>
                             <div className="flex gap-2">
-                                <FormField control={form.control} name="startDate" render={({ field }) => ( <FormItem className="flex-1"><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
+                                <FormField control={form.control} name="startDate" render={({ field }) => ( <FormItem><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
                                 <FormField control={form.control} name="startHour" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
                                 <FormField control={form.control} name="startMinute" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
                             </div>
                         </div>
-                        <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
                     </div>
                 </div>
             </ScrollArea>
