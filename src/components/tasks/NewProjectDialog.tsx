@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -43,6 +44,7 @@ type ProjectFormData = z.infer<typeof projectSchema>;
 export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, contacts }: { isOpen: boolean; onOpenChange: (open: boolean) => void; onProjectCreated: (project: Project, tasks: TaskEvent[]) => void; contacts: Contact[] }) {
   const [descriptionBeforeSpeech, setDescriptionBeforeSpeech] = useState("");
   const [templates, setTemplates] = useState<ProjectTemplate[]>([]);
+  const router = useRouter();
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -100,31 +102,60 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
     }
   }, [isOpen, form]);
   
-  async function onSubmit(values: ProjectFormData) {
-    if (!user) { toast({ variant: "destructive", title: "Not logged in" }); return; }
-    
+  const saveProject = async (values: ProjectFormData): Promise<Project | null> => {
+    if (!user) {
+      toast({ variant: "destructive", title: "Not logged in" });
+      return null;
+    }
+
     let finalStartDate: Date | null = null;
     if (values.startDate && values.startHour && values.startMinute) {
-        finalStartDate = set(values.startDate, {
-            hours: parseInt(values.startHour),
-            minutes: parseInt(values.startMinute)
-        });
+      finalStartDate = set(values.startDate, {
+        hours: parseInt(values.startHour),
+        minutes: parseInt(values.startMinute)
+      });
     }
 
     const projectData = { ...values, startDate: finalStartDate, userId: user.uid, reminder: null };
-    
-    // Tasks are now handled on a separate page, so we pass an empty array.
     const tasksData: Omit<TaskEvent, 'id' | 'userId' | 'projectId'>[] = [];
 
     try {
-        const newProject = await addProjectWithTasks(projectData, tasksData);
-        onProjectCreated(newProject, []);
-        toast({ title: "Project Created", description: `"${newProject.name}" has been successfully created.` });
-        onOpenChange(false);
+      const newProject = await addProjectWithTasks(projectData, tasksData);
+      onProjectCreated(newProject, []);
+      toast({ title: "Project Created", description: `"${newProject.name}" has been successfully created.` });
+      return newProject;
     } catch (error: any) {
-        toast({ variant: "destructive", title: "Failed to create project", description: error.message });
+      toast({ variant: "destructive", title: "Failed to create project", description: error.message });
+      return null;
+    }
+  };
+  
+  const onSubmit = async (values: ProjectFormData) => {
+    const newProject = await saveProject(values);
+    if (newProject) {
+        onOpenChange(false);
+    }
+  };
+
+  const handleSaveAndDefineSteps = async () => {
+    const isValid = await form.trigger();
+    if (isValid) {
+      const values = form.getValues();
+      const newProject = await saveProject(values);
+      if (newProject) {
+          // TODO: Pass the new project ID to the steps page
+          router.push('/projects/steps');
+          onOpenChange(false);
+      }
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description: "Please fill in all required fields before proceeding.",
+        })
     }
   }
+
 
   const hourOptions = Array.from({ length: 24 }, (_, i) => {
     const date = set(new Date(), { hours: i });
@@ -140,7 +171,6 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
     const template = templates.find(t => t.id === templateId);
     if (template) {
         form.setValue('name', template.name);
-        // Assuming template.steps is an array of objects with a `title` property.
         const description = template.steps.map(step => `- ${step.title}`).join('\n');
         form.setValue('description', description);
     }
@@ -149,7 +179,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-        <DialogHeader className="p-6 pb-4 border-b text-center">
+        <DialogHeader className="p-6 pb-4 border-b text-center sm:text-left">
           <DialogTitle className="text-3xl font-bold font-headline text-primary">Create New Project</DialogTitle>
           <DialogDescription>
             Fill in the details below to create a new project. You can define specific steps and tasks after creation.
@@ -184,33 +214,29 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
                     </div>
                     
                     <div className="space-y-4">
-                        <div className="space-y-2">
-                           <FormLabel>Start Date &amp; Time</FormLabel>
-                           <div className="flex gap-2">
-                               <FormField control={form.control} name="startDate" render={({ field }) => ( <FormItem className="flex-1"><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
-                               <FormField control={form.control} name="startHour" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
-                               <FormField control={form.control} name="startMinute" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
-                           </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <div className="space-y-2">
+                               <FormLabel>Start Date & Time</FormLabel>
+                               <div className="flex gap-2">
+                                   <FormField control={form.control} name="startDate" render={({ field }) => ( <FormItem className="flex-1"><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
+                                   <FormField control={form.control} name="startHour" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
+                                   <FormField control={form.control} name="startMinute" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
+                               </div>
+                            </div>
+                            <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
                         </div>
-                         <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
                     </div>
-                    
-                    <Separator />
-
-                    <div>
-                        <Button asChild type="button" variant="outline" className="w-full">
-                            <Link href="/projects/steps">
-                                <HardHat className="mr-2 h-4 w-4" />
-                                Define Project Steps
-                            </Link>
-                        </Button>
-                    </div>
-
                 </div>
             </ScrollArea>
-            <DialogFooter className="p-6 border-t">
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit">Create Project</Button>
+            <DialogFooter className="p-6 border-t flex-col-reverse sm:flex-row sm:justify-between sm:items-center">
+              <Button type="button" onClick={handleSaveAndDefineSteps} className="bg-orange-500 hover:bg-orange-600 text-white w-full sm:w-auto">
+                  <HardHat className="mr-2 h-4 w-4" />
+                  Save & Define Steps
+              </Button>
+              <div className="flex justify-end gap-2 w-full sm:w-auto">
+                  <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                  <Button type="submit">Create Project</Button>
+              </div>
             </DialogFooter>
           </form>
         </Form>
