@@ -249,11 +249,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
                                 <div key={step.id} className="flex items-center gap-2 p-1 rounded hover:bg-muted/50">
                                     <Checkbox checked={step.checked} onCheckedChange={() => toggleStep(step.id)} id={`step-${step.id}`} />
                                     <Label htmlFor={`step-${step.id}`} className="font-mono text-xs w-6">{index + 1}.</Label>
-                                    {editingStepId === step.id ? (
-                                        <Input value={step.title} onChange={e => updateStepTitle(step.id, e.target.value)} onBlur={() => setEditingStepId(null)} onKeyDown={e => {if (e.key === 'Enter') setEditingStepId(null)}} autoFocus className="h-8 flex-1" />
-                                    ) : (
-                                        <Label className="flex-1 cursor-text" onClick={() => setEditingStepId(step.id)}>{step.title}</Label>
-                                    )}
+                                    <Label className="flex-1 cursor-text" onClick={() => setEditingStepId(step.id)}>{step.title}</Label>
                                      <div className="flex items-center gap-1">
                                         <Select value={String(step.startTime.getHours())} onValueChange={(value) => updateStepTime(step.id, 'hour', value)}>
                                             <SelectTrigger className="w-[80px] h-8 text-xs"><SelectValue /></SelectTrigger>
