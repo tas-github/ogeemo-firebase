@@ -12,6 +12,7 @@ export type Event = {
   isBillable?: boolean;
   billableRate?: number;
   userId: string;
+  position: number;
 };
 
     

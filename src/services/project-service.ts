@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -48,6 +49,7 @@ const docToEvent = (doc: QueryDocumentSnapshot<DocumentData>): Event => {
         ...data,
         start: data.start?.toDate ? data.start.toDate() : new Date(),
         end: data.end?.toDate ? data.end.toDate() : new Date(),
+        position: data.position || 0, // Add position with a default
     } as Event;
 };
 
@@ -137,6 +139,17 @@ export async function updateTask(taskId: string, taskData: Partial<Omit<Event, '
     const taskRef = doc(db, TASKS_COLLECTION, taskId);
     await updateDoc(taskRef, taskData);
 }
+
+export async function updateTaskOrder(tasksToUpdate: { id: string, position: number }[]): Promise<void> {
+    checkDb();
+    const batch = writeBatch(db);
+    tasksToUpdate.forEach(task => {
+        const docRef = doc(db, TASKS_COLLECTION, task.id);
+        batch.update(docRef, { position: task.position });
+    });
+    await batch.commit();
+}
+
 
 export async function deleteTask(taskId: string): Promise<void> {
     checkDb();

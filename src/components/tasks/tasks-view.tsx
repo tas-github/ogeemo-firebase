@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -114,11 +115,52 @@ export function TasksView() {
       console.error("Could not process idea data from session storage", error);
     }
   }, []);
-  
-  const handleCreateTask = async (taskData: Omit<Event, 'id' | 'userId'>) => {
-    if (!user) return;
+
+  const handleTaskReorder = async (draggedTask: Event, targetTask: Event) => {
+    if (draggedTask.id === targetTask.id) return;
+
+    const tasksInColumn = allTasks
+        .filter(t => t.status === draggedTask.status && t.projectId === draggedTask.projectId)
+        .sort((a, b) => a.position - b.position);
+    
+    const dragIndex = tasksInColumn.findIndex(t => t.id === draggedTask.id);
+    const targetIndex = tasksInColumn.findIndex(t => t.id === targetTask.id);
+
+    // Optimistically update UI
+    const reorderedTasks = [...tasksInColumn];
+    const [removed] = reorderedTasks.splice(dragIndex, 1);
+    reorderedTasks.splice(targetIndex, 0, removed);
+    
+    const updates = reorderedTasks.map((task, index) => ({
+      ...task,
+      position: index,
+    }));
+    
+    const otherTasks = allTasks.filter(t => t.status !== draggedTask.status || t.projectId !== draggedTask.projectId);
+    setAllTasks([...otherTasks, ...updates]);
+
     try {
-        const newTask = await ProjectService.addTask({...taskData, userId: user.uid});
+        await ProjectService.updateTaskOrder(updates.map(t => ({ id: t.id, position: t.position })));
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Reorder Failed", description: error.message });
+        // Revert UI on failure
+        setAllTasks(allTasks);
+    }
+  };
+  
+  const handleCreateTask = async (taskData: Omit<Event, 'id' | 'userId' | 'position'>) => {
+    if (!user || !selectedProjectId) return;
+    try {
+        const tasksInStatus = allTasks.filter(t => t.status === taskData.status && t.projectId === selectedProjectId);
+        const maxPosition = tasksInStatus.reduce((max, t) => Math.max(max, t.position), -1);
+
+        const newTaskPayload = {
+            ...taskData,
+            userId: user.uid,
+            position: maxPosition + 1,
+        };
+
+        const newTask = await ProjectService.addTask(newTaskPayload);
         setAllTasks(prev => [newTask, ...prev]);
          toast({
             title: "Task Created",
@@ -145,6 +187,23 @@ export function TasksView() {
         toast({ variant: "destructive", title: "Update Failed", description: error.message });
     }
   };
+  
+  const handleTaskStatusChange = async (task: Event, newStatus: 'todo' | 'inProgress' | 'done') => {
+      const tasksInNewColumn = allTasks.filter(t => t.status === newStatus && t.projectId === task.projectId);
+      const maxPosition = tasksInNewColumn.reduce((max, t) => Math.max(t.position, max), -1);
+      const updatedTask = { ...task, status: newStatus, position: maxPosition + 1 };
+      
+      // Optimistic UI update
+      setAllTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t));
+
+      try {
+          await ProjectService.updateTask(task.id, { status: newStatus, position: maxPosition + 1 });
+      } catch (error: any) {
+          toast({ variant: "destructive", title: "Update Failed", description: error.message });
+          // Revert UI on failure
+          setAllTasks(allTasks);
+      }
+  };
 
   const handleEditTask = (task: Event) => {
     setTaskToEdit(task);
@@ -163,7 +222,7 @@ export function TasksView() {
         setSelectedProjectId(newProject.id);
 
         if (tasks.length > 0) {
-            const newTasksData: Omit<Event, 'id'>[] = tasks.map((task) => ({
+            const newTasksData: Omit<Event, 'id'>[] = tasks.map((task, index) => ({
                 title: task.title,
                 description: task.description,
                 start: new Date(),
@@ -172,6 +231,7 @@ export function TasksView() {
                 status: 'todo',
                 projectId: newProject.id,
                 userId: user.uid,
+                position: index,
             }));
             const addedTasks = await ProjectService.addMultipleTasks(newTasksData);
             setAllTasks(prev => [...prev, ...addedTasks]);
@@ -346,12 +406,13 @@ export function TasksView() {
                <main className="flex-1 min-h-0">
                     <TaskBoard
                         tasks={allTasks.filter(task => task.projectId === selectedProjectId)}
-                        onTaskStatusChange={handleUpdateTask}
+                        onTaskStatusChange={handleTaskStatusChange}
                         onEditTask={handleEditTask}
                         onNewTask={(status) => {
                             setNewTaskDefaultStatus(status);
                             setIsNewTaskOpen(true);
                         }}
+                        onTaskReorder={handleTaskReorder}
                     />
                </main>
           </div>

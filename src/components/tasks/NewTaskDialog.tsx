@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -38,7 +39,7 @@ import { useAuth } from "@/context/auth-context";
 interface NewTaskDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onTaskCreate: (newEvent: Omit<Event, 'id' | 'userId'>) => void;
+  onTaskCreate: (newEvent: Omit<Event, 'id' | 'userId' | 'position'>) => void;
   onTaskUpdate: (updatedEvent: Omit<Event, 'userId'>) => void;
   eventToEdit?: Event | null;
   projectId: string | null;
@@ -108,7 +109,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdate
         onTaskUpdate(updatedEvent);
     } else {
         const now = new Date();
-        const newEventData: Omit<Event, 'id' | 'userId'> = {
+        const newEventData: Omit<Event, 'id' | 'userId' | 'position'> = {
             title,
             description: description,
             start: now,
