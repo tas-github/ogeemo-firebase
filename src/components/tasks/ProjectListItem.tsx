@@ -5,7 +5,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useDrag, useDrop } from 'react-dnd';
 import { Card, CardContent } from '@/components/ui/card';
-import { GripVertical, MoreVertical, Pencil, Trash2, BarChart2, Route } from 'lucide-react';
+import { GripVertical, MoreVertical, Pencil, Trash2, Route, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type Project } from '@/types/calendar';
 import {

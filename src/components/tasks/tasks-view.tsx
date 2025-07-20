@@ -15,11 +15,22 @@ import { getContacts, type Contact } from '@/services/contact-service';
 import { NewProjectDialog } from './NewProjectDialog';
 import { ProjectListItem } from './ProjectListItem';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function TasksViewContent() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+    const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
     
@@ -64,20 +75,20 @@ function TasksViewContent() {
         setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
     };
     
-    const handleDeleteProject = async (projectToDelete: Project) => {
+    const handleConfirmDelete = async () => {
         if (!projectToDelete) return;
-        if (window.confirm(`Are you sure you want to delete the project "${projectToDelete.name}" and all its tasks? This action cannot be undone.`)) {
-            try {
-                const tasksToDelete = await getTasksForProject(projectToDelete.id);
-                await deleteProject(projectToDelete.id, tasksToDelete.map(t => t.id));
-                
-                const newProjects = projects.filter(p => p.id !== projectToDelete.id);
-                setProjects(newProjects);
-                
-                toast({ title: "Project Deleted" });
-            } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Failed to delete project', description: error.message });
-            }
+        try {
+            const tasksToDelete = await getTasksForProject(projectToDelete.id);
+            await deleteProject(projectToDelete.id, tasksToDelete.map(t => t.id));
+            
+            const newProjects = projects.filter(p => p.id !== projectToDelete.id);
+            setProjects(newProjects);
+            
+            toast({ title: "Project Deleted" });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Failed to delete project', description: error.message });
+        } finally {
+            setProjectToDelete(null);
         }
     };
     
@@ -98,61 +109,79 @@ function TasksViewContent() {
     };
 
     return (
-        <div className="p-4 sm:p-6 flex flex-col h-full items-center">
-            <header className="text-center mb-6">
-                <h1 className="text-3xl font-bold font-headline text-primary">Project Hub</h1>
-                <p className="text-muted-foreground">Select a project to view its tasks or create a new one.</p>
-            </header>
+        <>
+            <div className="p-4 sm:p-6 flex flex-col h-full items-center">
+                <header className="text-center mb-6">
+                    <h1 className="text-3xl font-bold font-headline text-primary">Project Hub</h1>
+                    <p className="text-muted-foreground">Select a project to view its tasks or create a new one.</p>
+                </header>
 
-            <Card className="w-full max-w-4xl flex-1 flex flex-col">
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>All Projects</CardTitle>
-                            <CardDescription>Click a project to view its tasks.</CardDescription>
+                <Card className="w-full max-w-4xl flex-1 flex flex-col">
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle>All Projects</CardTitle>
+                                <CardDescription>Click a project to view its tasks.</CardDescription>
+                            </div>
+                            <Button onClick={() => { setProjectToEdit(null); setIsNewProjectDialogOpen(true); }}>
+                                <Plus className="mr-2 h-4 w-4" /> New Project
+                            </Button>
                         </div>
-                        <Button onClick={() => { setProjectToEdit(null); setIsNewProjectDialogOpen(true); }}>
-                            <Plus className="mr-2 h-4 w-4" /> New Project
-                        </Button>
-                    </div>
-                </CardHeader>
-                <CardContent className="flex-1 overflow-hidden p-2">
-                    <ScrollArea className="h-full">
-                        <div className="p-2 space-y-2">
-                            {isLoading ? (
-                                <div className="flex items-center justify-center h-full pt-16">
-                                    <LoaderCircle className="h-8 w-8 animate-spin" />
-                                </div>
-                            ) : projects.length > 0 ? (
-                                projects.map((p, index) => (
-                                    <ProjectListItem
-                                        key={p.id}
-                                        project={p}
-                                        index={index}
-                                        onMoveProject={onMoveProject}
-                                        onEdit={handleEditProject}
-                                        onDelete={handleDeleteProject}
-                                    />
-                                ))
-                            ) : (
-                                <p className="text-sm text-muted-foreground text-center p-8">
-                                    No projects yet. Create one to get started.
-                                </p>
-                            )}
-                        </div>
-                    </ScrollArea>
-                </CardContent>
-            </Card>
+                    </CardHeader>
+                    <CardContent className="flex-1 overflow-hidden p-2">
+                        <ScrollArea className="h-full">
+                            <div className="p-2 space-y-2">
+                                {isLoading ? (
+                                    <div className="flex items-center justify-center h-full pt-16">
+                                        <LoaderCircle className="h-8 w-8 animate-spin" />
+                                    </div>
+                                ) : projects.length > 0 ? (
+                                    projects.map((p, index) => (
+                                        <ProjectListItem
+                                            key={p.id}
+                                            project={p}
+                                            index={index}
+                                            onMoveProject={onMoveProject}
+                                            onEdit={handleEditProject}
+                                            onDelete={setProjectToDelete}
+                                        />
+                                    ))
+                                ) : (
+                                    <p className="text-sm text-muted-foreground text-center p-8">
+                                        No projects yet. Create one to get started.
+                                    </p>
+                                )}
+                            </div>
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
 
-            <NewProjectDialog
-                isOpen={isNewProjectDialogOpen}
-                onOpenChange={setIsNewProjectDialogOpen}
-                onProjectCreated={handleProjectCreated}
-                onProjectUpdated={handleProjectUpdated}
-                contacts={contacts}
-                projectToEdit={projectToEdit}
-            />
-        </div>
+                <NewProjectDialog
+                    isOpen={isNewProjectDialogOpen}
+                    onOpenChange={setIsNewProjectDialogOpen}
+                    onProjectCreated={handleProjectCreated}
+                    onProjectUpdated={handleProjectUpdated}
+                    contacts={contacts}
+                    projectToEdit={projectToEdit}
+                />
+            </div>
+            <AlertDialog open={!!projectToDelete} onOpenChange={() => setProjectToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete the project "{projectToDelete?.name}" and all of its tasks. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     );
 }
 
