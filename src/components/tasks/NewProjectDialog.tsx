@@ -31,6 +31,7 @@ const projectSchema = z.object({
   description: z.string().optional(),
   clientId: z.string().nullable(),
   ownerId: z.string().nullable(),
+  assigneeIds: z.array(z.string()).optional(), // Changed to array for future multi-assign
   dueDate: z.date().nullable(),
 });
 
@@ -74,7 +75,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
-    defaultValues: { name: "", description: "", clientId: null, ownerId: null, dueDate: null },
+    defaultValues: { name: "", description: "", clientId: null, ownerId: null, assigneeIds: [], dueDate: null },
   });
   
   const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
@@ -162,7 +163,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
   async function onSubmit(values: ProjectFormData) {
     if (!user) { toast({ variant: "destructive", title: "Not logged in" }); return; }
     
-    const projectData = { ...values, userId: user.uid, assigneeIds: [], reminder: null };
+    const projectData = { ...values, userId: user.uid, reminder: null };
     const tasksData = steps
       .filter(s => s.checked)
       .map(s => ({
@@ -203,21 +204,22 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
+      <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
+        <DialogHeader className="p-6 pb-4 border-b">
           <DialogTitle>Create New Project</DialogTitle>
           <DialogDescription>Fill in the details below to create a new project and its initial tasks.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <ScrollArea className="h-[60vh] p-1">
-                <div className="space-y-4 pr-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
+            <ScrollArea className="flex-1">
+                <div className="space-y-6 px-6 py-4">
                     <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Project Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                     <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><div className="relative"><FormControl><Textarea {...field} className="pr-10" /></FormControl><Button type="button" variant={isListening ? 'destructive' : 'ghost'} size="icon" className="absolute bottom-2 right-2 h-7 w-7" onClick={handleDictateDescription} disabled={isSupported === false}><span className="sr-only">Dictate description</span>{isListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}</Button></div><FormMessage /></FormItem> )} />
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <FormField control={form.control} name="clientId" render={({ field }) => ( <FormItem><FormLabel>Client</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select a client" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
                         <FormField control={form.control} name="ownerId" render={({ field }) => ( <FormItem><FormLabel>Project Owner</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select an owner" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
-                        <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="assigneeIds" render={({ field }) => ( <FormItem><FormLabel>Assignee</FormLabel><Select onValueChange={(value) => field.onChange([value])} defaultValue={field.value?.[0] || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select an assignee" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value || null} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
                     </div>
                     
                     <Separator />
@@ -233,7 +235,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
                                     </SelectContent>
                                 </Select>
                                  <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
-                                    <Button type="button" variant="outline" onClick={() => setIsTemplateDialogOpen(true)}><Save className="mr-2 h-4 w-4" /> Save as Template</Button>
+                                    <DialogTrigger asChild><Button type="button" variant="outline"><Save className="mr-2 h-4 w-4" /> Save as Template</Button></DialogTrigger>
                                     <DialogContent><DialogHeader><DialogTitle>Save as Template</DialogTitle><DialogDescription>Save the currently selected steps as a new reusable template.</DialogDescription></DialogHeader><div className="py-4"><Input placeholder="Template Name" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} /></div><DialogFooter><Button variant="ghost" onClick={() => setIsTemplateDialogOpen(false)}>Cancel</Button><Button onClick={handleSaveTemplate}>Save Template</Button></DialogFooter></DialogContent>
                                 </Dialog>
                             </div>
@@ -257,7 +259,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
                                             <SelectTrigger className="w-[80px] h-8 text-xs"><SelectValue /></SelectTrigger>
                                             <SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
                                         </Select>
-                                        <Select value={String(step.startTime.getMinutes() - (step.startTime.getMinutes() % 5))} onValueChange={(value) => updateStepTime(step.id, 'minute', value)}>
+                                        <Select value={String(Math.floor(step.startTime.getMinutes() / 5) * 5)} onValueChange={(value) => updateStepTime(step.id, 'minute', value)}>
                                             <SelectTrigger className="w-[60px] h-8 text-xs"><SelectValue /></SelectTrigger>
                                             <SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
                                         </Select>
@@ -271,7 +273,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
 
                 </div>
             </ScrollArea>
-            <DialogFooter>
+            <DialogFooter className="p-6 border-t">
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="submit">Create Project</Button>
             </DialogFooter>
