@@ -58,7 +58,7 @@ export function ProjectListItem({ project, index, onMoveProject, onEdit, onDelet
   drag(drop(ref));
   
   const handleSelectProject = () => {
-    router.push(`/projects/${project.id}`);
+    router.push(`/projects/${project.id}/planning`);
   };
 
   return (
