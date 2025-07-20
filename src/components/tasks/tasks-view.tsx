@@ -289,12 +289,12 @@ function TasksViewContent() {
                                     <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
                                 </div>
                             ) : selectedProject ? (
-                                <>
-                                <div className="p-2 border-b">
-                                    <h2 className="text-xl font-bold">{selectedProject.name}</h2>
-                                    <p className="text-sm text-muted-foreground truncate max-w-xs md:max-w-md">{selectedProject.description}</p>
+                                <div className="flex flex-col h-full">
+                                <div className="p-4 border-b">
+                                    <h2 className="text-2xl font-bold font-headline">{selectedProject.name}</h2>
+                                    <p className="text-sm text-muted-foreground mt-1">{selectedProject.description}</p>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full overflow-auto p-2">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 overflow-auto p-4">
                                     {statusMap.map(status => (
                                         <TaskColumn
                                             key={status}
@@ -308,9 +308,9 @@ function TasksViewContent() {
                                         />
                                     ))}
                                 </div>
-                                </>
+                                </div>
                             ) : (
-                                <div className="flex h-full items-center justify-center">
+                                <div className="flex h-full items-center justify-center p-4">
                                     <Card className="w-full max-w-md text-center">
                                         <CardHeader>
                                             <CardTitle>No Project Selected</CardTitle>
