@@ -16,6 +16,13 @@ export interface Event {
   reminder?: string | null;
 }
 
+export interface ProjectStep {
+    id: string;
+    title: string;
+    durationHours: number;
+    isCompleted: boolean;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -28,6 +35,7 @@ export interface Project {
   userId: string;
   createdAt: Date;
   reminder?: string | null;
+  steps?: ProjectStep[];
 }
 
 export interface ProjectTemplate {

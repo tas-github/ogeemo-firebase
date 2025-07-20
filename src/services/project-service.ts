@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -17,7 +18,7 @@ import {
   QueryDocumentSnapshot,
   Timestamp,
 } from 'firebase/firestore';
-import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus } from '@/types/calendar';
+import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep } from '@/types/calendar';
 
 const PROJECTS_COLLECTION = 'projects';
 const TASKS_COLLECTION = 'tasks';
@@ -45,6 +46,7 @@ const docToProject = (doc: QueryDocumentSnapshot<DocumentData> | DocumentData): 
     userId: data.userId,
     createdAt: (data.createdAt as Timestamp)?.toDate ? (data.createdAt as Timestamp).toDate() : new Date(),
     reminder: data.reminder || null,
+    steps: data.steps || [],
   };
 };
 
@@ -77,6 +79,16 @@ export async function getProjects(userId: string): Promise<Project[]> {
   return snapshot.docs.map(docToProject).sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
+export async function getProjectById(projectId: string): Promise<Project | null> {
+    checkDb();
+    const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
+    const projectSnap = await getDoc(projectRef);
+    if (projectSnap.exists()) {
+        return docToProject(projectSnap);
+    }
+    return null;
+}
+
 export async function addProjectWithTasks(
   projectData: Omit<Project, 'id' | 'createdAt'>,
   tasksData: Omit<TaskEvent, 'id' | 'userId' | 'projectId'>[]
@@ -85,7 +97,7 @@ export async function addProjectWithTasks(
   const batch = writeBatch(db);
 
   const projectRef = doc(collection(db, PROJECTS_COLLECTION));
-  const newProjectData = { ...projectData, createdAt: new Date() };
+  const newProjectData = { ...projectData, steps: [], createdAt: new Date() };
   batch.set(projectRef, newProjectData);
 
   tasksData.forEach((task, index) => {
