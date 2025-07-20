@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Plus, Trash2, WandSparkles, FileText, LoaderCircle, Save, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,7 +21,7 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, set } from 'date-fns';
 import { type Contact } from '@/services/contact-service';
 import { addProjectWithTasks, getProjectTemplates, addProjectTemplate, type Project, type ProjectTemplate, type Event as TaskEvent } from '@/services/project-service';
 
@@ -38,6 +38,7 @@ interface Step {
   id: number;
   title: string;
   defaultDurationHours: number;
+  startTime: Date;
   checked: boolean;
 }
 
@@ -45,6 +46,17 @@ const defaultTemplates: Omit<ProjectTemplate, 'id' | 'userId'>[] = [
     { name: 'Website Design', steps: [ { title: 'Initial Consultation', defaultDurationHours: 2 }, { title: 'Wireframing', defaultDurationHours: 8 }, { title: 'Mockup Design', defaultDurationHours: 16 }, { title: 'Client Review', defaultDurationHours: 4 }, { title: 'Final Delivery', defaultDurationHours: 2 } ] },
     { name: 'Marketing Campaign', steps: [ { title: 'Strategy Session', defaultDurationHours: 4 }, { title: 'Content Creation', defaultDurationHours: 24 }, { title: 'Ad Setup', defaultDurationHours: 8 }, { title: 'Campaign Launch', defaultDurationHours: 2 }, { title: 'Performance Review', defaultDurationHours: 4 } ] }
 ];
+
+const hourOptions = Array.from({ length: 24 }, (_, i) => {
+    const date = set(new Date(), { hours: i });
+    return { value: String(i), label: format(date, 'h a') };
+});
+
+const minuteOptions = Array.from({ length: 12 }, (_, i) => {
+    const minutes = i * 5;
+    return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` };
+});
+
 
 export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, contacts }: { isOpen: boolean; onOpenChange: (open: boolean) => void; onProjectCreated: (project: Project, tasks: TaskEvent[]) => void; contacts: Contact[] }) {
   const [steps, setSteps] = useState<Step[]>([]);
@@ -93,7 +105,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
   
   const handleAddStep = () => {
     if (!newStepTitle.trim()) return;
-    setSteps(prev => [...prev, { id: Date.now(), title: newStepTitle.trim(), defaultDurationHours: 1, checked: true }]);
+    setSteps(prev => [...prev, { id: Date.now(), title: newStepTitle.trim(), defaultDurationHours: 1, startTime: new Date(), checked: true }]);
     setNewStepTitle("");
   };
 
@@ -105,10 +117,22 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
     setSteps(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
   };
 
+  const updateStepTime = (id: number, type: 'hour' | 'minute', value: string) => {
+    setSteps(prev => prev.map(s => {
+      if (s.id === id) {
+        const newTime = new Date(s.startTime);
+        if (type === 'hour') newTime.setHours(parseInt(value));
+        if (type === 'minute') newTime.setMinutes(parseInt(value));
+        return { ...s, startTime: newTime };
+      }
+      return s;
+    }));
+  };
+
   const handleApplyTemplate = (templateName: string) => {
       const template = [...defaultTemplates, ...templates].find(t => t.name === templateName);
       if (template) {
-          const newSteps = template.steps.map(step => ({ ...step, id: Date.now() + Math.random(), checked: true }));
+          const newSteps = template.steps.map(step => ({ ...step, id: Date.now() + Math.random(), startTime: new Date(), checked: true }));
           setSteps(prev => [...prev, ...newSteps]);
           toast({ title: 'Template Applied', description: `Added ${newSteps.length} steps from "${templateName}".`});
       }
@@ -123,8 +147,8 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
       .map(s => ({
         title: s.title,
         status: 'todo' as 'todo',
-        start: new Date(),
-        end: new Date(Date.now() + s.defaultDurationHours * 60 * 60 * 1000),
+        start: s.startTime,
+        end: new Date(s.startTime.getTime() + s.defaultDurationHours * 60 * 60 * 1000),
       }));
 
     try {
@@ -141,7 +165,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
   async function handleSaveTemplate() {
     if (!user) return;
     if (!newTemplateName.trim()) { toast({ variant: 'destructive', title: 'Template name is required.' }); return; }
-    const stepsToSave = steps.filter(s => s.checked).map(({ id, checked, ...rest }) => rest);
+    const stepsToSave = steps.filter(s => s.checked).map(({ id, checked, startTime, ...rest }) => rest);
     if (stepsToSave.length === 0) { toast({ variant: 'destructive', title: 'No steps selected.', description: 'Please select at least one step to save in the template.' }); return; }
 
     const templateData = { name: newTemplateName.trim(), steps: stepsToSave, userId: user.uid };
@@ -166,7 +190,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Create New Project</DialogTitle>
           <DialogDescription>Fill in the details below to create a new project and its initial tasks.</DialogDescription>
@@ -195,7 +219,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
                                     </SelectContent>
                                 </Select>
                                  <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
-                                    <DialogTrigger asChild><Button type="button" variant="outline"><Save className="mr-2 h-4 w-4" /> Save as Template</Button></DialogTrigger>
+                                    <Button type="button" variant="outline" onClick={() => setIsTemplateDialogOpen(true)}><Save className="mr-2 h-4 w-4" /> Save as Template</Button>
                                     <DialogContent><DialogHeader><DialogTitle>Save as Template</DialogTitle><DialogDescription>Save the currently selected steps as a new reusable template.</DialogDescription></DialogHeader><div className="py-4"><Input placeholder="Template Name" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} /></div><DialogFooter><Button variant="ghost" onClick={() => setIsTemplateDialogOpen(false)}>Cancel</Button><Button onClick={handleSaveTemplate}>Save Template</Button></DialogFooter></DialogContent>
                                 </Dialog>
                             </div>
@@ -213,6 +237,16 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
                                     ) : (
                                         <Label htmlFor={`step-${step.id}`} className="flex-1 cursor-pointer">{step.title}</Label>
                                     )}
+                                     <div className="flex items-center gap-1">
+                                        <Select value={String(step.startTime.getHours())} onValueChange={(value) => updateStepTime(step.id, 'hour', value)}>
+                                            <SelectTrigger className="w-[80px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                                            <SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                        <Select value={String(step.startTime.getMinutes() - (step.startTime.getMinutes() % 5))} onValueChange={(value) => updateStepTime(step.id, 'minute', value)}>
+                                            <SelectTrigger className="w-[60px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                                            <SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                    </div>
                                     <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditStep(step)}><Pencil className="h-3 w-3" /></Button>
                                     <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSteps(prev => prev.filter(s => s.id !== step.id))}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                                 </div>
