@@ -37,15 +37,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { type Event } from "@/types/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
-import * as ProjectService from "@/services/project-service";
 
 const NewTaskDialog = dynamic(() => import('@/components/tasks/NewTaskDialog').then((mod) => mod.NewTaskDialog), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
 });
 
+
+// Placeholder Event type until new service is built
+type Event = {
+    id: string;
+    title: string;
+    description?: string;
+    start: Date;
+    end: Date;
+    attendees?: string[];
+    status?: 'todo' | 'inProgress' | 'done';
+    projectId?: string;
+    userId?: string;
+};
 
 type CalendarView = "day" | "5days" | "week" | "month";
 
@@ -219,7 +230,7 @@ function CalendarPageContent() {
   const [today, setToday] = React.useState<Date | null>(null);
   const [view, setView] = React.useState<CalendarView>("day");
   const [events, setEvents] = React.useState<Event[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isLoading, setIsLoading] = React.useState(false);
   
   const [viewStartHour, setViewStartHour] = React.useState(9);
   const [viewEndHour, setViewEndHour] = React.useState(17);
@@ -242,30 +253,6 @@ function CalendarPageContent() {
   }, []);
 
   React.useEffect(() => {
-    async function loadEvents(userId: string) {
-        setIsLoading(true);
-        try {
-            const fetchedEvents = await ProjectService.getTasks(userId);
-            setEvents(fetchedEvents);
-        } catch (error: any) {
-            console.error("Failed to load events:", error);
-            toast({
-                variant: "destructive",
-                title: "Failed to load events",
-                description: error.message || "Could not retrieve calendar events from the database.",
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    }
-    if (user) {
-        loadEvents(user.uid);
-    } else {
-        setIsLoading(false);
-    }
-  }, [user, toast]);
-
-  React.useEffect(() => {
     try {
       const savedStartHour = localStorage.getItem('calendarViewStartHour');
       const savedEndHour = localStorage.getItem('calendarViewEndHour');
@@ -283,25 +270,16 @@ function CalendarPageContent() {
   }, []);
 
   const handleTaskCreate = async (taskData: Omit<Event, 'id' | 'userId'>) => {
-    if (!user) return;
-    try {
-      const newEvent = await ProjectService.addTask({ ...taskData, userId: user.uid });
-      setEvents(prev => [...prev, newEvent]);
-    } catch (error: any) {
-      console.error("Failed to create task:", error);
-      toast({ variant: "destructive", title: "Create Failed", description: error.message });
-    }
+    // Placeholder until project-service is rebuilt
+    const newEvent = { ...taskData, id: `temp-${Date.now()}`, userId: user?.uid };
+    setEvents(prev => [...prev, newEvent]);
+    toast({ title: "Event Created (Local)" });
   };
 
   const handleTaskUpdate = async (updatedEventData: Omit<Event, 'userId'>) => {
-    try {
-      const { id, ...dataToUpdate } = updatedEventData;
-      await ProjectService.updateTask(id, dataToUpdate);
-      setEvents(prev => prev.map(e => e.id === id ? { ...e, ...dataToUpdate } : e));
-    } catch (error: any) {
-      console.error("Failed to update task:", error);
-      toast({ variant: "destructive", title: "Update Failed", description: error.message });
-    }
+    // Placeholder until project-service is rebuilt
+    setEvents(prev => prev.map(e => e.id === updatedEventData.id ? { ...e, ...updatedEventData } : e));
+    toast({ title: "Event Updated (Local)" });
   };
 
   const handleEventClick = (event: Event) => {
@@ -363,15 +341,10 @@ function CalendarPageContent() {
     const duration = eventToUpdate.end.getTime() - eventToUpdate.start.getTime();
     const newEnd = new Date(newStart.getTime() + duration);
     
-    try {
-        await ProjectService.updateTask(eventId, { start: newStart, end: newEnd });
-        setEvents(prevEvents => prevEvents.map(e => 
-          e.id === eventId ? { ...e, start: newStart, end: newEnd } : e
-        ));
-    } catch(error: any) {
-        console.error("Failed to update task time:", error);
-        toast({ variant: "destructive", title: "Update Failed", description: error.message });
-    }
+    setEvents(prevEvents => prevEvents.map(e => 
+      e.id === eventId ? { ...e, start: newStart, end: newEnd } : e
+    ));
+    toast({ title: "Event Time Updated (Local)" });
   }, [events, toast]);
 
   const handleHourClick = (hour: number) => {

@@ -23,13 +23,10 @@ import { generateSearchQuery } from '@/ai/flows/ai-search-flow';
 
 // Import mock data
 import { mockContacts, mockFolders as mockContactFolders, type Contact } from '@/data/contacts';
-import { initialProjects, type Project } from '@/data/projects';
-import { getInitialEvents } from '@/data/events';
-import { type Event } from '@/types/calendar';
 import { mockFiles, mockFolders as mockFileFolders, type FileItem } from '@/data/files';
 import { type Email, mockEmails } from '@/data/emails';
 
-type DataSource = 'contacts' | 'projects' | 'tasks' | 'files' | 'emails';
+type DataSource = 'contacts' | 'files' | 'emails';
 
 interface Condition {
   field: string;
@@ -39,8 +36,6 @@ interface Condition {
 
 const dataSources: { value: DataSource; label: string }[] = [
   { value: 'contacts', label: 'Contacts' },
-  { value: 'projects', label: 'Projects' },
-  { value: 'tasks', label: 'Tasks' },
   { value: 'files', label: 'Files' },
   { value: 'emails', label: 'Emails' },
 ];
@@ -60,33 +55,7 @@ const ContactsTable = ({ items }: { items: Contact[] }) => (
     </TableBody>
   </Table>
 );
-const ProjectsTable = ({ items }: { items: Project[] }) => (
-  <Table>
-    <TableHeader><TableRow><TableHead>Project Name</TableHead><TableHead>Description</TableHead></TableRow></TableHeader>
-    <TableBody>
-      {items.map((project) => (
-        <TableRow key={project.id}>
-          <TableCell>{project.name}</TableCell>
-          <TableCell>{project.description}</TableCell>
-        </TableRow>
-      ))}
-    </TableBody>
-  </Table>
-);
-const TasksTable = ({ items }: { items: Event[] }) => (
-  <Table>
-    <TableHeader><TableRow><TableHead>Task Title</TableHead><TableHead>Status</TableHead><TableHead>Project</TableHead></TableRow></TableHeader>
-    <TableBody>
-      {items.map((task) => (
-        <TableRow key={task.id}>
-          <TableCell>{task.title}</TableCell>
-          <TableCell>{task.status}</TableCell>
-          <TableCell>{initialProjects.find(p => p.id === task.projectId)?.name || 'N/A'}</TableCell>
-        </TableRow>
-      ))}
-    </TableBody>
-  </Table>
-);
+
 const FilesTable = ({ items }: { items: FileItem[] }) => (
   <Table>
     <TableHeader><TableRow><TableHead className="w-10"></TableHead><TableHead>File Name</TableHead><TableHead>Type</TableHead><TableHead>Folder</TableHead></TableRow></TableHeader>
@@ -141,7 +110,6 @@ export default function AdvancedSearchPage() {
   const { toast } = useToast();
   const baseTextRef = React.useRef('');
 
-  const allTasks = React.useMemo(() => getInitialEvents(), []);
   const allFiles = React.useMemo(() => mockFiles, []);
   
   const {
@@ -213,8 +181,6 @@ export default function AdvancedSearchPage() {
 
       const dataMap: Record<DataSource, any[]> = {
         contacts: mockContacts,
-        projects: initialProjects,
-        tasks: allTasks,
         files: allFiles,
         emails: mockEmails,
       };
@@ -285,8 +251,6 @@ export default function AdvancedSearchPage() {
                 <div key={source}>
                     <h3 className="text-xl font-semibold mb-2 capitalize">{source} ({items.length})</h3>
                     {source === 'contacts' && <ContactsTable items={items as Contact[]} />}
-                    {source === 'projects' && <ProjectsTable items={items as Project[]} />}
-                    {source === 'tasks' && <TasksTable items={items as Event[]} />}
                     {source === 'files' && <FilesTable items={items as FileItem[]} />}
                     {source === 'emails' && <EmailsTable items={items as Email[]} />}
                 </div>
