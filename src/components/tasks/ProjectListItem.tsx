@@ -5,9 +5,16 @@ import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, MoreVertical, Pencil, Trash2, BarChart2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type Project } from '@/types/calendar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from '../ui/button';
 
 interface ProjectListItemProps {
   project: Project;
@@ -17,6 +24,8 @@ interface ProjectListItemProps {
   onSelect: (id: string) => void;
   index: number;
   onMoveProject: (dragIndex: number, hoverIndex: number) => void;
+  onEdit: (project: Project) => void;
+  onDelete: (project: Project) => void;
 }
 
 interface DragItem {
@@ -24,7 +33,7 @@ interface DragItem {
   index: number;
 }
 
-export function ProjectListItem({ project, taskCount, completedTaskCount, isSelected, onSelect, index, onMoveProject }: ProjectListItemProps) {
+export function ProjectListItem({ project, taskCount, completedTaskCount, isSelected, onSelect, index, onMoveProject, onEdit, onDelete }: ProjectListItemProps) {
   const ref = React.useRef<HTMLDivElement>(null);
 
   const [{ isDragging }, drag] = useDrag({
@@ -57,7 +66,7 @@ export function ProjectListItem({ project, taskCount, completedTaskCount, isSele
     <div ref={ref} style={{ opacity: isDragging ? 0.5 : 1 }}>
       <Card
         className={cn(
-          "cursor-pointer hover:bg-accent/50",
+          "cursor-pointer hover:bg-accent/50 group",
           isSelected && "bg-accent"
         )}
         onClick={() => onSelect(project.id)}
@@ -71,6 +80,24 @@ export function ProjectListItem({ project, taskCount, completedTaskCount, isSele
               <span className="text-xs text-muted-foreground whitespace-nowrap">{completedTaskCount}/{taskCount}</span>
             </div>
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-50 group-hover:opacity-100 flex-shrink-0">
+                    <MoreVertical className="h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem onSelect={() => onEdit(project)}>
+                    <Pencil className="mr-2 h-4 w-4" /> Edit Details
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled>
+                    <BarChart2 className="mr-2 h-4 w-4" /> Status Report
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => onDelete(project)} className="text-destructive">
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete Project
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </CardContent>
       </Card>
     </div>

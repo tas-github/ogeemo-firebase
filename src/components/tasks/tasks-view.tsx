@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Plus, LoaderCircle, Settings } from 'lucide-react';
+import { Plus, LoaderCircle, Settings, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/context/auth-context';
@@ -115,14 +115,21 @@ function TasksViewContent() {
         setTasks(prev => prev.filter(t => t.id !== taskId));
     };
     
-    const handleDeleteProject = async () => {
-        if (!selectedProject) return;
-        if (window.confirm(`Are you sure you want to delete the project "${selectedProject.name}" and all its tasks? This action cannot be undone.`)) {
+    const handleDeleteProject = async (projectToDelete: Project) => {
+        if (!projectToDelete) return;
+        if (window.confirm(`Are you sure you want to delete the project "${projectToDelete.name}" and all its tasks? This action cannot be undone.`)) {
             try {
-                await deleteProject(selectedProject.id, tasks.map(t => t.id));
-                const newProjects = projects.filter(p => p.id !== selectedProject.id);
+                // We need to fetch tasks for the project to be deleted if it's not the currently selected one
+                const tasksToDelete = projectToDelete.id === selectedProject?.id ? tasks : await getTasksForProject(projectToDelete.id);
+                await deleteProject(projectToDelete.id, tasksToDelete.map(t => t.id));
+                
+                const newProjects = projects.filter(p => p.id !== projectToDelete.id);
                 setProjects(newProjects);
-                setSelectedProject(newProjects[0] || null);
+                
+                if (selectedProject?.id === projectToDelete.id) {
+                    setSelectedProject(newProjects[0] || null);
+                }
+                
                 toast({ title: "Project Deleted" });
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Failed to delete project', description: error.message });
@@ -260,6 +267,11 @@ function TasksViewContent() {
                                                 onSelect={() => setSelectedProject(p)}
                                                 index={index}
                                                 onMoveProject={onMoveProject}
+                                                onEdit={(project) => {
+                                                    setSelectedProject(project);
+                                                    setIsProjectDetailsDialogOpen(true);
+                                                }}
+                                                onDelete={handleDeleteProject}
                                             />
                                         ))}
                                     </div>
@@ -278,14 +290,9 @@ function TasksViewContent() {
                                 </div>
                             ) : selectedProject ? (
                                 <>
-                                <div className="p-2 border-b flex items-center justify-between">
-                                    <div>
-                                        <h2 className="text-xl font-bold">{selectedProject.name}</h2>
-                                        <p className="text-sm text-muted-foreground truncate max-w-xs md:max-w-md">{selectedProject.description}</p>
-                                    </div>
-                                    <Button variant="ghost" size="icon" onClick={() => setIsProjectDetailsDialogOpen(true)}>
-                                        <Settings className="h-5 w-5"/>
-                                    </Button>
+                                <div className="p-2 border-b">
+                                    <h2 className="text-xl font-bold">{selectedProject.name}</h2>
+                                    <p className="text-sm text-muted-foreground truncate max-w-xs md:max-w-md">{selectedProject.description}</p>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full overflow-auto p-2">
                                     {statusMap.map(status => (
