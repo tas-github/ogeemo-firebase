@@ -42,6 +42,7 @@ type ProjectFormData = z.infer<typeof projectSchema>;
 
 export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, contacts }: { isOpen: boolean; onOpenChange: (open: boolean) => void; onProjectCreated: (project: Project, tasks: TaskEvent[]) => void; contacts: Contact[] }) {
   const [descriptionBeforeSpeech, setDescriptionBeforeSpeech] = useState("");
+  const [templates, setTemplates] = useState<ProjectTemplate[]>([]);
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -67,6 +68,20 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
           startListening();
       }
   };
+
+  useEffect(() => {
+    async function loadTemplates() {
+        if (user && isOpen) {
+            try {
+                const fetchedTemplates = await getProjectTemplates(user.uid);
+                setTemplates(fetchedTemplates);
+            } catch (error) {
+                toast({ variant: 'destructive', title: 'Could not load templates' });
+            }
+        }
+    }
+    loadTemplates();
+  }, [user, isOpen, toast]);
 
 
   useEffect(() => {
@@ -120,6 +135,16 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
     const minutes = i * 5;
     return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` };
   });
+  
+  const handleTemplateSelect = (templateId: string) => {
+    const template = templates.find(t => t.id === templateId);
+    if (template) {
+        form.setValue('name', template.name);
+        // Assuming template.steps is an array of objects with a `title` property.
+        const description = template.steps.map(step => `- ${step.title}`).join('\n');
+        form.setValue('description', description);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -127,15 +152,31 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
         <DialogHeader className="p-6 pb-4 border-b text-center">
           <DialogTitle className="text-3xl font-bold font-headline text-primary">Create New Project</DialogTitle>
           <DialogDescription>
-            Fill in the details below to create a new project and its initial tasks.
+            Fill in the details below to create a new project. You can define specific steps and tasks after creation.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
             <ScrollArea className="flex-1">
                 <div className="space-y-6 px-6 py-4">
-                    <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Project Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><div className="relative"><FormControl><Textarea {...field} className="pr-10" /></FormControl><Button type="button" variant={isListening ? 'destructive' : 'ghost'} size="icon" className="absolute bottom-2 right-2 h-7 w-7" onClick={handleDictateDescription} disabled={isSupported === false}><span className="sr-only">Dictate description</span>{isListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}</Button></div><FormMessage /></FormItem> )} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Project Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                        <FormItem>
+                            <FormLabel>Select a Template</FormLabel>
+                            <Select onValueChange={handleTemplateSelect}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Or choose a template..." />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {templates.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </FormItem>
+                    </div>
+
+                    <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><div className="relative"><FormControl><Textarea {...field} className="pr-10" rows={4} /></FormControl><Button type="button" variant={isListening ? 'destructive' : 'ghost'} size="icon" className="absolute bottom-2 right-2 h-7 w-7" onClick={handleDictateDescription} disabled={isSupported === false}><span className="sr-only">Dictate description</span>{isListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}</Button></div><FormMessage /></FormItem> )} />
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <FormField control={form.control} name="clientId" render={({ field }) => ( <FormItem><FormLabel>Client</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select a client" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
                         <FormField control={form.control} name="ownerId" render={({ field }) => ( <FormItem><FormLabel>Project Owner</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select an owner" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
