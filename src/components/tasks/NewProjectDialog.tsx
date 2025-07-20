@@ -26,6 +26,7 @@ import { type Contact } from '@/services/contact-service';
 import { addProjectWithTasks, getProjectTemplates, addProjectTemplate, type Project, type ProjectTemplate, type Event as TaskEvent } from '@/services/project-service';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import Link from 'next/link';
+import { Label } from '../ui/label';
 
 const projectSchema = z.object({
   name: z.string().min(2, { message: "Project name must be at least 2 characters." }),
@@ -44,6 +45,8 @@ type ProjectFormData = z.infer<typeof projectSchema>;
 export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, contacts }: { isOpen: boolean; onOpenChange: (open: boolean) => void; onProjectCreated: (project: Project, tasks: TaskEvent[]) => void; contacts: Contact[] }) {
   const [descriptionBeforeSpeech, setDescriptionBeforeSpeech] = useState("");
   const [templates, setTemplates] = useState<ProjectTemplate[]>([]);
+  const [isTemplateSaveDialogOpen, setIsTemplateSaveDialogOpen] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
   const router = useRouter();
 
   const { user } = useAuth();
@@ -143,7 +146,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
       const values = form.getValues();
       const newProject = await saveProject(values);
       if (newProject) {
-          // TODO: Pass the new project ID to the steps page
+          sessionStorage.setItem('selectedProjectId', newProject.id);
           router.push('/projects/steps');
           onOpenChange(false);
       }
@@ -156,6 +159,32 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
     }
   }
 
+  const handleSaveAsTemplate = async () => {
+    if (!user) return;
+    const { name, description } = form.getValues();
+    if (!newTemplateName.trim()) {
+      toast({ variant: 'destructive', title: 'Template name is required.' });
+      return;
+    }
+    
+    // Note: Project templates have 'steps', but this dialog doesn't manage them.
+    // We'll save with an empty steps array for now.
+    const templateData: Omit<ProjectTemplate, 'id'> = {
+        name: newTemplateName.trim(),
+        userId: user.uid,
+        steps: [], // No steps defined in this dialog
+    };
+
+    try {
+        const newTemplate = await addProjectTemplate(templateData);
+        setTemplates(prev => [...prev, newTemplate]);
+        toast({ title: "Template Saved", description: `"${newTemplate.name}" has been created.` });
+        setIsTemplateSaveDialogOpen(false);
+        setNewTemplateName("");
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Failed to save template", description: error.message });
+    }
+  };
 
   const hourOptions = Array.from({ length: 24 }, (_, i) => {
     const date = set(new Date(), { hours: i });
@@ -177,9 +206,10 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-        <DialogHeader className="p-6 pb-4 border-b text-center sm:text-left">
+        <DialogHeader className="p-6 pb-4 border-b text-center">
           <DialogTitle className="text-3xl font-bold font-headline text-primary">Create New Project</DialogTitle>
           <DialogDescription>
             Fill in the details below to create a new project. You can define specific steps and tasks after creation.
@@ -223,18 +253,23 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
                                    <FormField control={form.control} name="startMinute" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
                                </div>
                             </div>
-                            <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
+                            <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
                         </div>
                     </div>
                 </div>
             </ScrollArea>
             <DialogFooter className="p-6 border-t flex-col-reverse sm:flex-row sm:justify-between sm:items-center">
-              <Button type="button" onClick={handleSaveAndDefineSteps} className="bg-orange-500 hover:bg-orange-600 text-white w-full sm:w-auto">
-                  <HardHat className="mr-2 h-4 w-4" />
-                  Save & Define Steps
-              </Button>
+              <div className="flex justify-start gap-2 w-full sm:w-auto">
+                <Button type="button" variant="outline" onClick={() => setIsTemplateSaveDialogOpen(true)}>
+                  <Save className="mr-2 h-4 w-4" /> Save as Template
+                </Button>
+              </div>
               <div className="flex justify-end gap-2 w-full sm:w-auto">
                   <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                  <Button type="button" onClick={handleSaveAndDefineSteps} className="bg-orange-500 hover:bg-orange-600 text-white">
+                      <HardHat className="mr-2 h-4 w-4" />
+                      Save & Define Steps
+                  </Button>
                   <Button type="submit">Create Project</Button>
               </div>
             </DialogFooter>
@@ -242,5 +277,30 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
         </Form>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={isTemplateSaveDialogOpen} onOpenChange={setIsTemplateSaveDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Save Project as Template</DialogTitle>
+                <DialogDescription>
+                    This will save the project's name and description as a reusable template.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-2">
+                <Label htmlFor="template-name">Template Name</Label>
+                <Input
+                    id="template-name"
+                    value={newTemplateName}
+                    onChange={(e) => setNewTemplateName(e.target.value)}
+                    placeholder="e.g., Standard Website Build"
+                />
+            </div>
+            <DialogFooter>
+                <Button variant="ghost" onClick={() => setIsTemplateSaveDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSaveAsTemplate}>Save Template</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+    </>
   );
 }
