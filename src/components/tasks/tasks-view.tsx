@@ -4,17 +4,21 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Plus, Users, LoaderCircle, MoreVertical } from 'lucide-react';
+import { Plus, Users, LoaderCircle, MoreVertical, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getProjects, getTasksForProject, type Project, type Event as TaskEvent, updateTask } from '@/services/project-service';
+import { getProjects, getTasksForProject, type Project, type Event as TaskEvent, updateTask, updateTaskPositions, addProjectTemplate } from '@/services/project-service';
 import { getContacts, type Contact } from '@/services/contact-service';
 import { NewProjectDialog } from './NewProjectDialog';
 import { ProjectDetailsDialog } from './ProjectDetailsDialog';
 import { TaskColumn } from './TaskColumn';
 import { type TaskStatus } from '@/types/calendar';
+import { NewTaskDialog } from './NewTaskDialog';
+
 
 const statusMap: TaskStatus[] = ['todo', 'inProgress', 'done'];
 
@@ -26,6 +30,8 @@ function TasksViewContent() {
     const [isLoading, setIsLoading] = useState(true);
     const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
     const [isProjectDetailsDialogOpen, setIsProjectDetailsDialogOpen] = useState(false);
+    const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
+    
     const { user } = useAuth();
     const { toast } = useToast();
 
@@ -82,63 +88,88 @@ function TasksViewContent() {
                 }
             } else {
                 setTasks([]);
+                setIsLoading(false);
             }
         }
         loadTasks();
     }, [selectedProject, user, toast]);
 
-    const handleProjectCreated = (newProject: Project) => {
+    const handleProjectCreated = (newProject: Project, newTasks: TaskEvent[]) => {
         setProjects(prev => [...prev, newProject]);
         setSelectedProject(newProject);
+        setTasks(newTasks);
     };
 
-    const handleMoveTask = useCallback(async (taskId: string, newStatus: TaskStatus, newPosition?: number) => {
+    const handleTaskCreated = (newTask: TaskEvent) => {
+        setTasks(prev => [...prev, newTask]);
+    };
+
+    const handleTaskUpdated = (updatedTask: TaskEvent) => {
+        setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+    };
+
+    const handleMoveTask = useCallback(async (taskId: string, newStatus: TaskStatus, newPosition: number) => {
         const taskToMove = tasks.find(t => t.id === taskId);
         if (!taskToMove) return;
 
-        let reorderedTasks = tasks.filter(t => t.id !== taskId);
+        const oldStatus = taskToMove.status || 'todo';
         
-        // Remove from old status list (for position calculation)
-        const oldColumnTasks = reorderedTasks
-            .filter(t => t.status === (taskToMove.status || 'todo'))
-            .sort((a, b) => a.position - b.position);
+        // Optimistic UI Update
+        const optimisticTasks = tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t);
         
-        // Add to new status list
-        let newColumnTasks = reorderedTasks
-            .filter(t => t.status === newStatus)
-            .sort((a, b) => a.position - b.position);
+        const reorder = (list: TaskEvent[], startIndex: number, endIndex: number) => {
+            const result = Array.from(list);
+            const [removed] = result.splice(startIndex, 1);
+            result.splice(endIndex, 0, removed);
+            return result;
+        };
+        
+        const sourceColumnTasks = optimisticTasks.filter(t => t.status === (newStatus === oldStatus ? newStatus : oldStatus)).sort((a,b) => a.position - b.position);
+        const destColumnTasks = optimisticTasks.filter(t => t.status === newStatus).sort((a,b) => a.position - b.position);
+        const otherTasks = optimisticTasks.filter(t => t.status !== newStatus && t.status !== oldStatus);
+        
+        let finalTasks: TaskEvent[];
+        const tasksToUpdate: { id: string; position: number; status: TaskStatus }[] = [];
 
-        const updatedTask = { ...taskToMove, status: newStatus };
-
-        if (newPosition !== undefined) {
-             newColumnTasks.splice(newPosition, 0, updatedTask);
+        if (oldStatus === newStatus) {
+            const currentPosition = sourceColumnTasks.findIndex(t => t.id === taskId);
+            const reordered = reorder(sourceColumnTasks, currentPosition, newPosition);
+            reordered.forEach((t, index) => {
+                if (t.position !== index) {
+                    t.position = index;
+                    tasksToUpdate.push({ id: t.id, position: index, status: newStatus });
+                }
+            });
+            finalTasks = [...otherTasks, ...reordered];
         } else {
-            // If dropped on column, add to end
-            newColumnTasks.push(updatedTask);
+            const [movedTask] = sourceColumnTasks.splice(sourceColumnTasks.findIndex(t => t.id === taskId), 1);
+            movedTask.status = newStatus;
+            destColumnTasks.splice(newPosition, 0, movedTask);
+            
+            sourceColumnTasks.forEach((t, index) => {
+                if (t.position !== index) {
+                    t.position = index;
+                    tasksToUpdate.push({ id: t.id, position: index, status: oldStatus });
+                }
+            });
+            destColumnTasks.forEach((t, index) => {
+                if (t.position !== index) {
+                    t.position = index;
+                    tasksToUpdate.push({ id: t.id, position: index, status: newStatus });
+                }
+            });
+
+            finalTasks = [...otherTasks, ...sourceColumnTasks, ...destColumnTasks];
         }
+
+        setTasks(finalTasks);
         
-        // Recalculate positions for the new column
-        newColumnTasks.forEach((task, index) => {
-            task.position = index;
-        });
-        
-        // Update positions for old column
-        oldColumnTasks.forEach((task, index) => {
-            task.position = index;
-        });
-
-        const otherTasks = tasks.filter(t => t.status !== newStatus && t.status !== (taskToMove.status || 'todo'));
-
-        const finalTaskState = [...otherTasks, ...oldColumnTasks, ...newColumnTasks];
-        setTasks(finalTaskState);
-
         try {
-            // Persist changes
-            await updateTask(taskId, { status: newStatus, position: updatedTask.position });
-            // Ideally, batch update all reordered positions
+            if (tasksToUpdate.length > 0) {
+                 await updateTaskPositions(tasksToUpdate);
+            }
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Failed to move task', description: error.message });
-            // Revert optimistic update on failure
             setTasks(tasks); 
         }
 
@@ -171,17 +202,18 @@ function TasksViewContent() {
 
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
-                    <Users className="h-6 w-6 text-primary" />
-                    <h2 className="text-2xl font-semibold">{selectedProject ? selectedProject.name : 'Select a Project'}</h2>
+                    <Select value={selectedProject?.id || ''} onValueChange={(projectId) => setSelectedProject(projects.find(p => p.id === projectId) || null)}>
+                        <SelectTrigger className="w-[250px] text-2xl font-semibold h-auto border-0 shadow-none">
+                            <SelectValue placeholder="Select a Project..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
                     {selectedProject && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5"/></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                <DropdownMenuItem onSelect={() => setIsProjectDetailsDialogOpen(true)}>View Project Details</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Button variant="ghost" size="icon" onClick={() => setIsProjectDetailsDialogOpen(true)}>
+                            <Settings className="h-5 w-5"/>
+                        </Button>
                     )}
                 </div>
                 <Button onClick={() => setIsNewProjectDialogOpen(true)}>
@@ -202,6 +234,9 @@ function TasksViewContent() {
                                 status={status}
                                 tasks={tasksByStatus[status]}
                                 onMoveTask={handleMoveTask}
+                                projectId={selectedProject.id}
+                                onTaskCreated={handleTaskCreated}
+                                onTaskUpdated={handleTaskUpdated}
                             />
                         ))}
                     </div>
