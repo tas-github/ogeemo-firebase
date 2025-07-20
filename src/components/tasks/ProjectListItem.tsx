@@ -5,7 +5,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useDrag, useDrop } from 'react-dnd';
 import { Card, CardContent } from '@/components/ui/card';
-import { GripVertical, MoreVertical, Pencil, Trash2, BarChart2, BookOpen, Route } from 'lucide-react';
+import { GripVertical, MoreVertical, Pencil, Trash2, BarChart2, Route } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type Project } from '@/types/calendar';
 import {
@@ -59,7 +59,7 @@ export function ProjectListItem({ project, index, onMoveProject, onEdit, onDelet
   drag(drop(ref));
   
   const handleSelectProject = () => {
-    router.push(`/projects/${project.id}`);
+    router.push(`/projects/${project.id}/planning`);
   };
 
   return (
@@ -80,12 +80,7 @@ export function ProjectListItem({ project, index, onMoveProject, onEdit, onDelet
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                 <DropdownMenuItem onSelect={handleSelectProject}>
-                    <BookOpen className="mr-2 h-4 w-4" /> Open Tasks
-                </DropdownMenuItem>
-                 <DropdownMenuItem asChild>
-                    <Link href={`/projects/${project.id}/planning`}>
-                      <Route className="mr-2 h-4 w-4" /> Planning & Progress
-                    </Link>
+                    <Route className="mr-2 h-4 w-4" /> Planning & Progress
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => onEdit(project)}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit Details
