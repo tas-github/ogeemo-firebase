@@ -85,9 +85,6 @@ export function ProjectListItem({ project, index, onMoveProject, onEdit, onDelet
                 <DropdownMenuItem onSelect={() => onEdit(project)}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit Details
                 </DropdownMenuItem>
-                <DropdownMenuItem disabled>
-                    <BarChart2 className="mr-2 h-4 w-4" /> Status Report
-                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => onDelete(project)} className="text-destructive">
                     <Trash2 className="mr-2 h-4 w-4" /> Delete Project
                 </DropdownMenuItem>
