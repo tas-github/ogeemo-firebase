@@ -130,7 +130,7 @@ export function MainMenu() {
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isActive("/projects")} tooltip="Projects">
+        <SidebarMenuButton asChild isActive={isActive("/projects...")} tooltip="Projects">
           <Link href="/projects" onClick={(e) => handleClick(e, "/projects")}>
             <Briefcase />
             <span>Projects</span>
