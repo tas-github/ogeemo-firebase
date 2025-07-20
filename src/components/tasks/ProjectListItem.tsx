@@ -4,7 +4,6 @@
 import React from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { GripVertical, MoreVertical, Pencil, Trash2, BarChart2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type Project } from '@/types/calendar';
@@ -60,8 +59,6 @@ export function ProjectListItem({ project, taskCount, completedTaskCount, isSele
 
   drag(drop(ref));
   
-  const progress = taskCount > 0 ? (completedTaskCount / taskCount) * 100 : 0;
-
   return (
     <div ref={ref} style={{ opacity: isDragging ? 0.5 : 1 }}>
       <Card
@@ -75,10 +72,6 @@ export function ProjectListItem({ project, taskCount, completedTaskCount, isSele
           <GripVertical className="h-5 w-5 text-muted-foreground flex-shrink-0" />
           <div className="flex-1 overflow-hidden">
             <p className="font-semibold truncate">{project.name}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <Progress value={progress} className="h-2 w-full" />
-              <span className="text-xs text-muted-foreground whitespace-nowrap">{completedTaskCount}/{taskCount}</span>
-            </div>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
