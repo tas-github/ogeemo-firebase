@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -206,8 +206,10 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
         <DialogHeader className="p-6 pb-4 border-b text-center">
-          <DialogTitle>Create New Project</DialogTitle>
-          <DialogDescription>Fill in the details below to create a new project and its initial tasks.</DialogDescription>
+          <DialogTitle className="text-3xl font-bold font-headline text-primary">Create New Project</DialogTitle>
+          <DialogDescription>
+            Fill in the details below to create a new project and its initial tasks.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
