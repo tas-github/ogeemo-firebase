@@ -5,9 +5,9 @@ import React, { useState, useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Plus, Trash2, WandSparkles, FileText, LoaderCircle, Save, Pencil, Mic, Square } from 'lucide-react';
+import { Plus, Trash2, Save, Pencil, Mic, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,7 +31,7 @@ const projectSchema = z.object({
   description: z.string().optional(),
   clientId: z.string().nullable(),
   ownerId: z.string().nullable(),
-  assigneeIds: z.array(z.string()).optional(), // Changed to array for future multi-assign
+  assigneeIds: z.array(z.string()).optional(),
   dueDate: z.date().nullable(),
 });
 
@@ -235,9 +235,9 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
                                     </SelectContent>
                                 </Select>
                                  <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
-                                    <DialogTrigger asChild><Button type="button" variant="outline"><Save className="mr-2 h-4 w-4" /> Save as Template</Button></DialogTrigger>
-                                    <DialogContent><DialogHeader><DialogTitle>Save as Template</DialogTitle><DialogDescription>Save the currently selected steps as a new reusable template.</DialogDescription></DialogHeader><div className="py-4"><Input placeholder="Template Name" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} /></div><DialogFooter><Button variant="ghost" onClick={() => setIsTemplateDialogOpen(false)}>Cancel</Button><Button onClick={handleSaveTemplate}>Save Template</Button></DialogFooter></DialogContent>
-                                </Dialog>
+                                     <DialogTrigger asChild><Button type="button" variant="outline"><Save className="mr-2 h-4 w-4" /> Save as Template</Button></DialogTrigger>
+                                     <DialogContent><DialogHeader><DialogTitle>Save as Template</DialogTitle><DialogDescription>Save the currently selected steps as a new reusable template.</DialogDescription></DialogHeader><div className="py-4"><Input placeholder="Template Name" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} /></div><DialogFooter><Button variant="ghost" onClick={() => setIsTemplateDialogOpen(false)}>Cancel</Button><Button onClick={handleSaveTemplate}>Save Template</Button></DialogFooter></DialogContent>
+                                 </Dialog>
                             </div>
                             <div className="flex gap-2">
                                 <Input placeholder="Add a new custom step..." value={newStepTitle} onChange={e => setNewStepTitle(e.target.value)} onKeyDown={e => {if (e.key === 'Enter') { e.preventDefault(); handleAddStep();}}} />
