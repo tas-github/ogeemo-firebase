@@ -5,7 +5,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useDrag, useDrop } from 'react-dnd';
 import { Card, CardContent } from '@/components/ui/card';
-import { GripVertical, MoreVertical, Pencil, Trash2, BarChart2 } from 'lucide-react';
+import { GripVertical, MoreVertical, Pencil, Trash2, BarChart2, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { type Project } from '@/types/calendar';
 import {
@@ -78,6 +78,9 @@ export function ProjectListItem({ project, index, onMoveProject, onEdit, onDelet
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem onSelect={handleSelectProject}>
+                    <BookOpen className="mr-2 h-4 w-4" /> Open Project
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => onEdit(project)}>
                     <Pencil className="mr-2 h-4 w-4" /> Edit Details
                 </DropdownMenuItem>
