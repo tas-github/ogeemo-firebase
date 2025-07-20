@@ -205,7 +205,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-        <DialogHeader className="p-6 pb-4 border-b">
+        <DialogHeader className="p-6 pb-4 border-b text-center">
           <DialogTitle>Create New Project</DialogTitle>
           <DialogDescription>Fill in the details below to create a new project and its initial tasks.</DialogDescription>
         </DialogHeader>
