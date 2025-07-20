@@ -2,6 +2,7 @@
 "use client";
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { useDrag, useDrop } from 'react-dnd';
 import { Card, CardContent } from '@/components/ui/card';
 import { GripVertical, MoreVertical, Pencil, Trash2, BarChart2 } from 'lucide-react';
@@ -17,10 +18,6 @@ import { Button } from '../ui/button';
 
 interface ProjectListItemProps {
   project: Project;
-  taskCount: number;
-  completedTaskCount: number;
-  isSelected: boolean;
-  onSelect: (id: string) => void;
   index: number;
   onMoveProject: (dragIndex: number, hoverIndex: number) => void;
   onEdit: (project: Project) => void;
@@ -32,8 +29,9 @@ interface DragItem {
   index: number;
 }
 
-export function ProjectListItem({ project, taskCount, completedTaskCount, isSelected, onSelect, index, onMoveProject, onEdit, onDelete }: ProjectListItemProps) {
+export function ProjectListItem({ project, index, onMoveProject, onEdit, onDelete }: ProjectListItemProps) {
   const ref = React.useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const [{ isDragging }, drag] = useDrag({
     type: 'project',
@@ -59,18 +57,18 @@ export function ProjectListItem({ project, taskCount, completedTaskCount, isSele
 
   drag(drop(ref));
   
+  const handleSelectProject = () => {
+    router.push(`/projects/${project.id}`);
+  };
+
   return (
     <div ref={ref} style={{ opacity: isDragging ? 0.5 : 1 }}>
       <Card
-        className={cn(
-          "cursor-pointer hover:bg-accent/50 group",
-          isSelected && "bg-accent"
-        )}
-        onClick={() => onSelect(project.id)}
+        className="cursor-pointer hover:bg-accent/50 group"
       >
         <CardContent className="p-3 flex items-center gap-2">
           <GripVertical className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden" onClick={handleSelectProject}>
             <p className="font-semibold truncate">{project.name}</p>
           </div>
           <DropdownMenu>
