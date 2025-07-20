@@ -283,3 +283,5 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
     </Dialog>
   );
 }
+
+    
