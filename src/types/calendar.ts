@@ -23,6 +23,7 @@ export interface Project {
   clientId: string | null;
   ownerId: string | null;
   assigneeIds: string[];
+  startDate?: Date | null;
   dueDate?: Date | null;
   userId: string;
   createdAt: Date;

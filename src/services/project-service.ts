@@ -40,6 +40,7 @@ const docToProject = (doc: QueryDocumentSnapshot<DocumentData> | DocumentData): 
     clientId: data.clientId || null,
     ownerId: data.ownerId || null,
     assigneeIds: data.assigneeIds || [],
+    startDate: (data.startDate as Timestamp)?.toDate ? (data.startDate as Timestamp).toDate() : null,
     dueDate: (data.dueDate as Timestamp)?.toDate ? (data.dueDate as Timestamp).toDate() : null,
     userId: data.userId,
     createdAt: (data.createdAt as Timestamp)?.toDate ? (data.createdAt as Timestamp).toDate() : new Date(),
