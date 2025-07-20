@@ -264,20 +264,8 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
               </div>
               <div className="flex justify-end gap-2 w-full sm:w-auto">
                   <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                  <div className="flex rounded-md">
-                    <Button type="submit" className="rounded-r-none">Create Project</Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button className="rounded-l-none px-2"><ChevronDown className="h-4 w-4"/></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={handleSaveAndDefineSteps}>
-                          <HardHat className="mr-2 h-4 w-4" />
-                          Create & Define Steps
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                  <Button type="button" onClick={handleSaveAndDefineSteps}>Add Project Steps</Button>
+                  <Button type="submit">Create Project</Button>
               </div>
             </DialogFooter>
           </form>
@@ -311,3 +299,5 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
     </>
   );
 }
+
+    
