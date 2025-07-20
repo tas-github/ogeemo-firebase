@@ -32,8 +32,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 const projectSchema = z.object({
   name: z.string().min(2, { message: "Project name must be at least 2 characters." }),
   description: z.string().optional(),
-  clientId: z.string().nullable(),
-  ownerId: z.string().nullable(),
+  clientId: z.string().nullable().optional(),
+  ownerId: z.string().nullable().optional(),
   assigneeIds: z.array(z.string()).optional(),
   startDate: z.date().nullable(),
   startHour: z.string().optional(),
@@ -264,7 +264,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
               </div>
               <div className="flex justify-end gap-2 w-full sm:w-auto">
                   <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                  <Button type="button" onClick={handleSaveAndDefineSteps}>Add Project Steps</Button>
+                  <Button type="button" onClick={handleSaveAndDefineSteps} className="bg-orange-500 hover:bg-orange-600 text-white">Add Project Steps</Button>
                   <Button type="submit">Create Project</Button>
               </div>
             </DialogFooter>
