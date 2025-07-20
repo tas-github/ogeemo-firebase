@@ -161,7 +161,6 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
 
   const handleSaveAsTemplate = async () => {
     if (!user) return;
-    const { name, description } = form.getValues();
     if (!newTemplateName.trim()) {
       toast({ variant: 'destructive', title: 'Template name is required.' });
       return;
@@ -252,18 +251,18 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
                                 <FormField control={form.control} name="startMinute" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
                             </div>
                         </div>
-                        <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
+                         <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
                     </div>
                 </div>
             </ScrollArea>
             <DialogFooter className="p-6 border-t flex-col-reverse sm:flex-row sm:justify-between sm:items-center">
               <div className="flex justify-start w-full sm:w-auto">
-                <Button type="button" variant="outline" onClick={() => setIsTemplateSaveDialogOpen(true)}>
+                <Button type="button" onClick={() => setIsTemplateSaveDialogOpen(true)}>
                   <Save className="mr-2 h-4 w-4" /> Save as Template
                 </Button>
               </div>
               <div className="flex justify-end gap-2 w-full sm:w-auto">
-                  <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                  <Button type="button" onClick={() => onOpenChange(false)}>Cancel</Button>
                   <Button type="button" onClick={handleSaveAndDefineSteps} className="bg-orange-500 hover:bg-orange-600 text-white">
                       <HardHat className="mr-2 h-4 w-4" />
                       Save & Define Steps
