@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Plus, Trash2, Save, Pencil, Mic, Square, HardHat } from 'lucide-react';
+import { Plus, Trash2, Save, Pencil, Mic, Square, HardHat, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -27,6 +27,7 @@ import { addProjectWithTasks, getProjectTemplates, addProjectTemplate, type Proj
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import Link from 'next/link';
 import { Label } from '../ui/label';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 const projectSchema = z.object({
   name: z.string().min(2, { message: "Project name must be at least 2 characters." }),
@@ -257,17 +258,26 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
             </ScrollArea>
             <DialogFooter className="p-6 border-t flex-col-reverse sm:flex-row sm:justify-between sm:items-center">
               <div className="flex justify-start w-full sm:w-auto">
-                <Button type="button" onClick={() => setIsTemplateSaveDialogOpen(true)}>
+                <Button type="button" variant="outline" onClick={() => setIsTemplateSaveDialogOpen(true)}>
                   <Save className="mr-2 h-4 w-4" /> Save as Template
                 </Button>
               </div>
               <div className="flex justify-end gap-2 w-full sm:w-auto">
-                  <Button type="button" onClick={() => onOpenChange(false)}>Cancel</Button>
-                  <Button type="button" onClick={handleSaveAndDefineSteps} className="bg-orange-500 hover:bg-orange-600 text-white">
-                      <HardHat className="mr-2 h-4 w-4" />
-                      Save & Define Steps
-                  </Button>
-                  <Button type="submit">Create Project</Button>
+                  <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                  <div className="flex rounded-md">
+                    <Button type="submit" className="rounded-r-none">Create Project</Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button className="rounded-l-none px-2"><ChevronDown className="h-4 w-4"/></Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={handleSaveAndDefineSteps}>
+                          <HardHat className="mr-2 h-4 w-4" />
+                          Create & Define Steps
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
               </div>
             </DialogFooter>
           </form>
