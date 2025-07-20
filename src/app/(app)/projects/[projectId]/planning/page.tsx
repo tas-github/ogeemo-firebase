@@ -2,8 +2,10 @@
 import dynamic from 'next/dynamic';
 import { LoaderCircle } from 'lucide-react';
 
-const ProjectPlanningView = dynamic(
-  () => import('@/components/tasks/project-planning-view').then((mod) => mod.ProjectPlanningView),
+// This view has been consolidated into the main project tasks view.
+// For now, let's keep the route but use the same component, we can differentiate later if needed.
+const ProjectTasksView = dynamic(
+  () => import('@/components/tasks/project-tasks-view').then((mod) => mod.ProjectTasksView),
   {
     ssr: false,
     loading: () => (
@@ -18,5 +20,5 @@ const ProjectPlanningView = dynamic(
 );
 
 export default function ProjectPlanningPage({ params }: { params: { projectId: string } }) {
-  return <ProjectPlanningView projectId={params.projectId} />;
+  return <ProjectTasksView projectId={params.projectId} />;
 }

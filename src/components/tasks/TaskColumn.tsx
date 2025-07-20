@@ -22,6 +22,7 @@ interface TaskColumnProps {
   onMoveTask: (taskId: string, newStatus: TaskStatus, newPosition: number) => void;
   onTaskCreated: (newTask: TaskEvent) => void;
   onTaskUpdated: (updatedTask: TaskEvent) => void;
+  onTaskDeleted: (taskId: string) => void;
 }
 
 const statusTitles: Record<TaskStatus, string> = {
@@ -30,7 +31,7 @@ const statusTitles: Record<TaskStatus, string> = {
   done: 'Done',
 };
 
-export function TaskColumn({ status, tasks, projectId, onMoveTask, onTaskCreated, onTaskUpdated }: TaskColumnProps) {
+export function TaskColumn({ status, tasks, projectId, onMoveTask, onTaskCreated, onTaskUpdated, onTaskDeleted }: TaskColumnProps) {
   const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -74,6 +75,7 @@ export function TaskColumn({ status, tasks, projectId, onMoveTask, onTaskCreated
                   index={index}
                   onMoveTask={onMoveTask}
                   onTaskUpdated={onTaskUpdated}
+                  onTaskDeleted={onTaskDeleted}
                 />
               ))}
             </div>

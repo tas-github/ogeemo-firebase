@@ -58,7 +58,7 @@ export function ProjectListItem({ project, index, onMoveProject, onEdit, onDelet
   drag(drop(ref));
   
   const handleSelectProject = () => {
-    router.push(`/projects/${project.id}/planning`);
+    router.push(`/projects/${project.id}`);
   };
 
   return (
@@ -67,7 +67,7 @@ export function ProjectListItem({ project, index, onMoveProject, onEdit, onDelet
         className="cursor-pointer hover:bg-accent/50 group"
       >
         <CardContent className="p-3 flex items-center gap-2">
-          <GripVertical className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+          <GripVertical className="h-5 w-5 text-muted-foreground flex-shrink-0 cursor-move" />
           <div className="flex-1 overflow-hidden" onClick={handleSelectProject}>
             <p className="font-semibold truncate">{project.name}</p>
           </div>

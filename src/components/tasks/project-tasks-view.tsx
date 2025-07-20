@@ -10,9 +10,9 @@ import { LoaderCircle, Settings, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getProjectById, getTasksForProject, type Project, type Event as TaskEvent, updateTaskPositions } from '@/services/project-service';
+import { getProjectById, getTasksForProject, type Project, type Event as TaskEvent, updateTaskPositions, updateProject } from '@/services/project-service';
 import { getContacts, type Contact } from '@/services/contact-service';
-import { ProjectDetailsDialog } from './ProjectDetailsDialog';
+import { NewProjectDialog } from './NewProjectDialog';
 import { TaskColumn } from './TaskColumn';
 import { type TaskStatus } from '@/types/calendar';
 
@@ -83,6 +83,7 @@ export function ProjectTasksView({ projectId }: ProjectTasksViewProps) {
 
         const oldStatus = taskToMove.status || 'todo';
         
+        // Optimistic UI update
         const optimisticTasks = tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t);
         
         const reorder = (list: TaskEvent[], startIndex: number, endIndex: number) => {
@@ -138,7 +139,7 @@ export function ProjectTasksView({ projectId }: ProjectTasksViewProps) {
             }
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Failed to move task', description: error.message });
-            setTasks(tasks); 
+            setTasks(tasks); // Revert on error
         }
 
     }, [tasks, toast]);
@@ -160,6 +161,10 @@ export function ProjectTasksView({ projectId }: ProjectTasksViewProps) {
         }
         return grouped;
     }, [tasks]);
+    
+    const handleProjectUpdated = (updatedProject: Project) => {
+        setProject(updatedProject);
+    };
 
     if (isLoading) {
         return (
@@ -210,14 +215,13 @@ export function ProjectTasksView({ projectId }: ProjectTasksViewProps) {
                     ))}
                 </div>
             </div>
-             <ProjectDetailsDialog
+             <NewProjectDialog
                 isOpen={isDetailsDialogOpen}
                 onOpenChange={setIsDetailsDialogOpen}
-                project={project}
+                projectToEdit={project}
                 contacts={contacts}
-                onProjectUpdated={(updatedProject) => {
-                    setProject(updatedProject);
-                }}
+                onProjectUpdated={handleProjectUpdated}
+                onProjectCreated={() => {}} // Not used in edit mode
             />
         </DndProvider>
     );
