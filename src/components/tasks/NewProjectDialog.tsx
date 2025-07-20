@@ -19,13 +19,19 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { type ProjectTemplate, type PartialTask } from "@/data/project-templates";
-import { Plus, Trash2, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Trash2, Calendar as CalendarIcon, Pencil } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { type Project } from "@/data/projects";
+import { Checkbox } from "@/components/ui/checkbox";
+
+interface TaskWithSelection extends PartialTask {
+  id: number;
+  selected: boolean;
+}
 
 interface NewProjectDialogProps {
   isOpen: boolean;
@@ -52,10 +58,11 @@ export function NewProjectDialog({
   const [assignee, setAssignee] = useState("");
   const [importance, setImportance] = useState<'Critical' | 'Important' | 'Optional'>('Important');
   const [dueDate, setDueDate] = useState<Date | undefined>();
-  const [tasks, setTasks] = useState<PartialTask[]>([]);
+  const [tasks, setTasks] = useState<TaskWithSelection[]>([]);
   const [newStep, setNewStep] = useState("");
   const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const { toast } = useToast();
 
   const resetForm = () => {
@@ -83,7 +90,12 @@ export function NewProjectDialog({
   }, [isOpen, initialName, initialDescription]);
 
   const handleApplyTemplate = (template: ProjectTemplate) => {
-    setTasks(prevTasks => [...prevTasks, ...template.steps]);
+    const newTasksFromTemplate = template.steps.map(step => ({
+        ...step,
+        id: Date.now() + Math.random(),
+        selected: true, // Default to selected when applying a template
+    }));
+    setTasks(prevTasks => [...prevTasks, ...newTasksFromTemplate]);
     toast({
       title: "Template Applied",
       description: `Added ${template.steps.length} steps from the "${template.name}" template.`,
@@ -92,13 +104,21 @@ export function NewProjectDialog({
 
   const handleAddStep = () => {
     if (newStep.trim()) {
-        setTasks(prev => [...prev, { title: newStep.trim(), description: '' }]);
+        setTasks(prev => [...prev, { id: Date.now(), title: newStep.trim(), description: '', selected: true }]);
         setNewStep('');
     }
   };
 
-  const handleRemoveStep = (indexToRemove: number) => {
-    setTasks(prev => prev.filter((_, index) => index !== indexToRemove));
+  const handleRemoveStep = (idToRemove: number) => {
+    setTasks(prev => prev.filter(task => task.id !== idToRemove));
+  };
+
+  const handleToggleStep = (id: number) => {
+      setTasks(prev => prev.map(task => task.id === id ? { ...task, selected: !task.selected } : task));
+  };
+  
+  const handleUpdateStepTitle = (id: number, newTitle: string) => {
+    setTasks(prev => prev.map(task => task.id === id ? { ...task, title: newTitle } : task));
   };
 
   const handleCreateProject = () => {
@@ -111,16 +131,18 @@ export function NewProjectDialog({
       return;
     }
     const projectData = { name: name.trim(), description: description.trim(), owner, assignee, importance, dueDate };
-    onProjectCreate(projectData, tasks);
+    const selectedTasks = tasks.filter(task => task.selected).map(({ id, selected, ...rest }) => rest);
+    onProjectCreate(projectData, selectedTasks);
     onOpenChange(false);
   };
   
   const handleSaveTemplateClick = () => {
-    if (tasks.length === 0) {
+    const selectedTasks = tasks.filter(task => task.selected);
+    if (selectedTasks.length === 0) {
       toast({
         variant: "destructive",
-        title: "No Steps to Save",
-        description: "Add some steps to the project before saving it as a template.",
+        title: "No Steps Selected",
+        description: "Select some steps to include in the template before saving.",
       });
       return;
     }
@@ -133,7 +155,8 @@ export function NewProjectDialog({
       toast({ variant: "destructive", title: "Template name required" });
       return;
     }
-    onSaveAsTemplate(newTemplateName, tasks);
+    const selectedTasksForTemplate = tasks.filter(task => task.selected).map(({ id, selected, ...rest }) => rest);
+    onSaveAsTemplate(newTemplateName, selectedTasksForTemplate);
     setIsSaveTemplateOpen(false);
   };
 
@@ -144,7 +167,7 @@ export function NewProjectDialog({
           <DialogHeader className="p-6 pb-4 border-b">
             <DialogTitle>Create a New Project</DialogTitle>
             <DialogDescription>
-              Fill in the project details and add initial tasks or steps.
+              Fill in the project details and add initial tasks or steps. Only selected steps will be added to the project.
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="flex-1">
@@ -203,7 +226,7 @@ export function NewProjectDialog({
               </div>
               <Separator />
               <div>
-                <h3 className="text-lg font-semibold mb-2">Project Steps ({tasks.length})</h3>
+                <h3 className="text-lg font-semibold mb-2">Project Steps ({tasks.filter(t=>t.selected).length} Selected)</h3>
                 <div className="flex items-center gap-2 mb-4">
                     <Input 
                         placeholder="Add a new step or task..."
@@ -221,12 +244,31 @@ export function NewProjectDialog({
                 <ScrollArea className="h-48 border rounded-md p-2">
                   {tasks.length > 0 ? (
                     <div className="space-y-2">
-                      {tasks.map((task, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm">
-                          <span>{task.title}</span>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemoveStep(index)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                      {tasks.map((task) => (
+                        <div key={task.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md text-sm group">
+                          <div className="flex items-center gap-3 flex-1">
+                            <Checkbox checked={task.selected} onCheckedChange={() => handleToggleStep(task.id)} id={`task-${task.id}`} />
+                            {editingTaskId === task.id ? (
+                                <Input 
+                                    value={task.title} 
+                                    onChange={(e) => handleUpdateStepTitle(task.id, e.target.value)}
+                                    onBlur={() => setEditingTaskId(null)}
+                                    onKeyDown={(e) => { if(e.key === 'Enter') setEditingTaskId(null); }}
+                                    autoFocus
+                                    className="h-7"
+                                />
+                            ) : (
+                                <label htmlFor={`task-${task.id}`} className="flex-1 cursor-pointer">{task.title}</label>
+                            )}
+                          </div>
+                          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingTaskId(task.id)}>
+                                <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemoveStep(task.id)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -266,7 +308,7 @@ export function NewProjectDialog({
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Save Project as Template</DialogTitle>
-                <DialogDescription>Enter a name for your new template. The current project steps will be saved.</DialogDescription>
+                <DialogDescription>Enter a name for your new template. Only the selected steps will be saved.</DialogDescription>
             </DialogHeader>
             <div className="py-4">
                 <Label htmlFor="template-name" className="sr-only">Template Name</Label>
