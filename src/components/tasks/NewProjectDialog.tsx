@@ -18,14 +18,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { type ProjectTemplate, type PartialTask } from "@/data/project-templates";
+import { type PartialTask, type ProjectTemplate } from "@/services/project-service";
 import { Plus, Trash2, Calendar as CalendarIcon, Pencil } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { type Project } from "@/data/projects";
+import { type Project } from "@/services/project-service";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface TaskWithSelection extends PartialTask {
@@ -93,7 +93,7 @@ export function NewProjectDialog({
     const newTasksFromTemplate = template.steps.map(step => ({
         ...step,
         id: Date.now() + Math.random(),
-        selected: true, // Default to selected when applying a template
+        selected: false,
     }));
     setTasks(prevTasks => [...prevTasks, ...newTasksFromTemplate]);
     toast({

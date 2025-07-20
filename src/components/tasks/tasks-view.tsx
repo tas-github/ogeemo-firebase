@@ -1,16 +1,14 @@
 
-
 "use client";
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { Plus, Edit, Trash2, LoaderCircle, ArrowLeft, Eye, MoreVertical, FileText } from "lucide-react";
+import { Plus, Edit, Trash2, LoaderCircle, ArrowLeft, Eye, MoreVertical, FileText, Briefcase } from "lucide-react";
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
 import { Button } from "@/components/ui/button";
 import { type Event } from "@/types/calendar";
-import { type Project } from "@/data/projects";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,10 +16,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import * as ProjectService from '@/services/project-service';
+import { type Project, type PartialTask, type ProjectTemplate } from '@/services/project-service';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,7 +57,7 @@ export function TasksView() {
   const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
   const [allTasks, setAllTasks] = useState<Event[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [projectTemplates, setProjectTemplates] = useState<ProjectService.ProjectTemplate[]>([]);
+  const [projectTemplates, setProjectTemplates] = useState<ProjectTemplate[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [taskToEdit, setTaskToEdit] = useState<Event | null>(null);
@@ -126,7 +125,6 @@ export function TasksView() {
     const dragIndex = tasksInColumn.findIndex(t => t.id === draggedTask.id);
     const targetIndex = tasksInColumn.findIndex(t => t.id === targetTask.id);
 
-    // Optimistically update UI
     const reorderedTasks = [...tasksInColumn];
     const [removed] = reorderedTasks.splice(dragIndex, 1);
     reorderedTasks.splice(targetIndex, 0, removed);
@@ -143,7 +141,6 @@ export function TasksView() {
         await ProjectService.updateTaskOrder(updates.map(t => ({ id: t.id, position: t.position })));
     } catch (error: any) {
         toast({ variant: "destructive", title: "Reorder Failed", description: error.message });
-        // Revert UI on failure
         setAllTasks(allTasks);
     }
   };
@@ -193,14 +190,12 @@ export function TasksView() {
       const maxPosition = tasksInNewColumn.reduce((max, t) => Math.max(t.position, max), -1);
       const updatedTask = { ...task, status: newStatus, position: maxPosition + 1 };
       
-      // Optimistic UI update
       setAllTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t));
 
       try {
           await ProjectService.updateTask(task.id, { status: newStatus, position: maxPosition + 1 });
       } catch (error: any) {
           toast({ variant: "destructive", title: "Update Failed", description: error.message });
-          // Revert UI on failure
           setAllTasks(allTasks);
       }
   };
@@ -210,7 +205,7 @@ export function TasksView() {
     setIsNewTaskOpen(true);
   };
 
-  const handleCreateProject = async (projectData: Omit<Project, 'id' | 'userId' | 'createdAt'>, tasks: ProjectService.PartialTask[]) => {
+  const handleCreateProject = async (projectData: Omit<Project, 'id' | 'userId' | 'createdAt'>, tasks: PartialTask[]) => {
     if (!user) return;
     try {
         const newProjectData: Omit<Project, 'id' | 'createdAt'> = {
@@ -226,7 +221,7 @@ export function TasksView() {
                 title: task.title,
                 description: task.description,
                 start: new Date(),
-                end: newProject.dueDate || new Date(new Date().getTime() + 24 * 60 * 60 * 1000), // Default 1 day
+                end: newProject.dueDate || new Date(new Date().getTime() + 24 * 60 * 60 * 1000),
                 attendees: [],
                 status: 'todo',
                 projectId: newProject.id,
@@ -285,10 +280,10 @@ export function TasksView() {
     }
   };
 
-  const handleSaveTemplate = async (name: string, steps: ProjectService.PartialTask[]) => {
+  const handleSaveTemplate = async (name: string, steps: PartialTask[]) => {
     if (!user) return;
     try {
-        const newTemplateData: Omit<ProjectService.ProjectTemplate, 'id'> = { name, steps, userId: user.uid };
+        const newTemplateData: Omit<ProjectTemplate, 'id'> = { name, steps, userId: user.uid };
         const newTemplate = await ProjectService.addProjectTemplate(newTemplateData);
         setProjectTemplates(prev => [...prev, newTemplate]);
         toast({
@@ -316,7 +311,7 @@ export function TasksView() {
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold">Projects Hub</h2>
-            <p className="text-muted-foreground">A project is a collection of tasks. Manage your projects and templates from this central hub.</p>
+            <p className="text-muted-foreground">A project is a collection of tasks. Manage your projects and templates from here.</p>
           </div>
           <Button onClick={() => setIsNewProjectOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
@@ -341,7 +336,7 @@ export function TasksView() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onSelect={() => setSelectedProjectId(project.id)}><Eye className="mr-2 h-4 w-4"/> View Project Board</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => { setProjectToEdit(project); setIsEditProjectOpen(true); }}><Edit className="mr-2 h-4 w-4" /> View Project Details</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => { setProjectToEdit(project); setIsEditProjectOpen(true); }}><Briefcase className="mr-2 h-4 w-4" /> View Project Details</DropdownMenuItem>
                                         <DropdownMenuItem onSelect={() => setProjectToDelete(project)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Project</DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -366,15 +361,6 @@ export function TasksView() {
                                         <p className="text-xs text-muted-foreground">{template.steps.length} steps</p>
                                     </div>
                                 </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem disabled><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                                        <DropdownMenuItem disabled className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
                              </div>
                         ))}
                     </div>
@@ -427,7 +413,7 @@ export function TasksView() {
             Projects Manager
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            A project is a collection of tasks. All tasks created here are automatically added to your calendar.
+            A project is just a list of to-do's with supporting information. All tasks created here are automatically added to your calendar.
           </p>
         </header>
 

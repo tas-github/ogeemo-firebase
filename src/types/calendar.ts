@@ -14,5 +14,3 @@ export type Event = {
   userId: string;
   position: number;
 };
-
-    
