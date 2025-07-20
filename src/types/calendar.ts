@@ -1,4 +1,5 @@
 
+
 export type TaskStatus = 'todo' | 'inProgress' | 'done';
 
 export interface Event {
@@ -7,21 +8,25 @@ export interface Event {
   description?: string;
   start: Date;
   end: Date;
-  attendees?: string[];
   status?: TaskStatus;
   position: number;
   projectId: string;
   userId: string;
+  assigneeIds?: string[];
+  reminder?: string | null;
 }
 
 export interface Project {
   id: string;
   name: string;
   description?: string;
+  clientId: string | null;
   ownerId: string | null;
+  assigneeIds: string[];
   dueDate?: Date | null;
   userId: string;
   createdAt: Date;
+  reminder?: string | null;
 }
 
 export interface ProjectTemplate {

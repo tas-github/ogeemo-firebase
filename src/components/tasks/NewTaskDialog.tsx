@@ -22,6 +22,7 @@ const taskSchema = z.object({
   description: z.string().optional(),
   start: z.date(),
   end: z.date(),
+  reminder: z.string().optional(), // New field
 });
 
 type TaskFormData = z.infer<typeof taskSchema>;
@@ -45,6 +46,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdate
         description: "",
         start: defaultStartDate || new Date(),
         end: defaultStartDate ? new Date(defaultStartDate.getTime() + 60 * 60 * 1000) : new Date(Date.now() + 60 * 60 * 1000),
+        reminder: "none",
     }
   });
   
@@ -56,6 +58,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdate
                 description: eventToEdit.description,
                 start: eventToEdit.start,
                 end: eventToEdit.end,
+                reminder: eventToEdit.reminder || "none",
             });
         } else {
              form.reset({
@@ -63,6 +66,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdate
                 description: "",
                 start: defaultStartDate || new Date(),
                 end: defaultStartDate ? new Date(defaultStartDate.getTime() + 60 * 60 * 1000) : new Date(Date.now() + 60 * 60 * 1000),
+                reminder: "none",
             });
         }
     }
@@ -77,6 +81,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdate
             projectId,
             status: defaultStatus,
             position: 0, // Will be recalculated in the parent
+            assigneeIds: [],
         });
     }
     onOpenChange(false);
@@ -99,6 +104,9 @@ export function NewTaskDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdate
                 <FormField control={form.control} name="start" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Start Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="end" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>End Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
             </div>
+             <FormField control={form.control} name="reminder" render={({ field }) => ( <FormItem><FormLabel>Reminder</FormLabel><FormControl>
+                <Input placeholder="e.g., 15 minutes before" {...field} />
+             </FormControl><FormMessage /></FormItem> )} />
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="submit">{eventToEdit ? 'Save Changes' : 'Create Task'}</Button>

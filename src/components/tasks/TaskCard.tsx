@@ -8,13 +8,22 @@ import { type Event as TaskEvent, type TaskStatus } from '@/types/calendar';
 import { NewTaskDialog } from './NewTaskDialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { updateTask } from '@/services/project-service';
+import { updateTask, deleteTask } from '@/services/project-service';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreVertical, Pencil, Trash2, Clock, FileText } from 'lucide-react';
+import { Button } from '../ui/button';
 
 interface TaskCardProps {
   task: TaskEvent;
   index: number;
   onMoveTask: (draggedId: string, newStatus: TaskStatus, newPosition: number) => void;
   onTaskUpdated: (updatedTask: TaskEvent) => void;
+  onTaskDeleted: (taskId: string) => void;
 }
 
 interface DragItem {
@@ -23,7 +32,7 @@ interface DragItem {
   status: TaskStatus;
 }
 
-export function TaskCard({ task, index, onMoveTask, onTaskUpdated }: TaskCardProps) {
+export function TaskCard({ task, index, onMoveTask, onTaskUpdated, onTaskDeleted }: TaskCardProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -77,17 +86,41 @@ export function TaskCard({ task, index, onMoveTask, onTaskUpdated }: TaskCardPro
         toast({ variant: 'destructive', title: 'Failed to update task', description: error.message });
     }
   };
+  
+  const handleDelete = async () => {
+    if (window.confirm(`Are you sure you want to delete the task "${task.title}"?`)) {
+        try {
+            await deleteTask(task.id);
+            onTaskDeleted(task.id);
+            toast({ title: "Task Deleted" });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Failed to delete task', description: error.message });
+        }
+    }
+  };
 
   return (
     <>
       <Card
         ref={ref}
-        className="cursor-pointer"
+        className="cursor-pointer group"
         style={{ opacity: isDragging ? 0.5 : 1 }}
-        onClick={() => setIsEditDialogOpen(true)}
       >
-        <CardContent className="p-3">
-          <p className="text-sm font-medium">{task.title}</p>
+        <CardContent className="p-3 flex items-start justify-between">
+          <p className="text-sm font-medium flex-1 pr-2" onClick={() => setIsEditDialogOpen(true)}>{task.title}</p>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-50 group-hover:opacity-100 flex-shrink-0">
+                    <MoreVertical className="h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}><Pencil className="mr-2 h-4 w-4" /> Edit Task</DropdownMenuItem>
+                <DropdownMenuItem disabled><Clock className="mr-2 h-4 w-4" /> Start Timer</DropdownMenuItem>
+                <DropdownMenuItem disabled><FileText className="mr-2 h-4 w-4" /> Create Template from Task</DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleDelete} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Task</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </CardContent>
       </Card>
       <NewTaskDialog

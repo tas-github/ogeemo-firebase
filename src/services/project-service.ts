@@ -37,10 +37,13 @@ const docToProject = (doc: QueryDocumentSnapshot<DocumentData> | DocumentData): 
     id: doc.id,
     name: data.name,
     description: data.description || '',
+    clientId: data.clientId || null,
     ownerId: data.ownerId || null,
+    assigneeIds: data.assigneeIds || [],
     dueDate: (data.dueDate as Timestamp)?.toDate ? (data.dueDate as Timestamp).toDate() : null,
     userId: data.userId,
     createdAt: (data.createdAt as Timestamp)?.toDate ? (data.createdAt as Timestamp).toDate() : new Date(),
+    reminder: data.reminder || null,
   };
 };
 
@@ -57,6 +60,8 @@ const docToTask = (doc: QueryDocumentSnapshot<DocumentData> | DocumentData): Tas
     position: data.position || 0,
     projectId: data.projectId,
     userId: data.userId,
+    assigneeIds: data.assigneeIds || [],
+    reminder: data.reminder || null,
   };
 };
 
@@ -100,6 +105,23 @@ export async function updateProject(projectId: string, projectData: Partial<Omit
     checkDb();
     const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
     await updateDoc(projectRef, projectData);
+}
+
+export async function deleteProject(projectId: string, taskIds: string[]): Promise<void> {
+    checkDb();
+    const batch = writeBatch(db);
+    
+    // Delete all tasks associated with the project
+    taskIds.forEach(taskId => {
+        const taskRef = doc(db, TASKS_COLLECTION, taskId);
+        batch.delete(taskRef);
+    });
+    
+    // Delete the project itself
+    const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
+    batch.delete(projectRef);
+
+    await batch.commit();
 }
 
 // --- Task Functions ---

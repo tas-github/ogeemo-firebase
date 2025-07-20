@@ -23,6 +23,7 @@ import { updateProject, type Project } from '@/services/project-service';
 const projectSchema = z.object({
   name: z.string().min(2, { message: "Project name must be at least 2 characters." }),
   description: z.string().optional(),
+  clientId: z.string().nullable(),
   ownerId: z.string().nullable(),
   dueDate: z.date().nullable(),
 });
@@ -37,6 +38,7 @@ export function ProjectDetailsDialog({ isOpen, onOpenChange, project, onProjectU
     defaultValues: {
         name: project.name,
         description: project.description,
+        clientId: project.clientId,
         ownerId: project.ownerId,
         dueDate: project.dueDate,
     }
@@ -47,6 +49,7 @@ export function ProjectDetailsDialog({ isOpen, onOpenChange, project, onProjectU
         form.reset({
             name: project.name,
             description: project.description,
+            clientId: project.clientId,
             ownerId: project.ownerId,
             dueDate: project.dueDate,
         });
@@ -75,7 +78,8 @@ export function ProjectDetailsDialog({ isOpen, onOpenChange, project, onProjectU
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
             <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Project Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
             <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                <FormField control={form.control} name="clientId" render={({ field }) => ( <FormItem><FormLabel>Client</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select a client" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="ownerId" render={({ field }) => ( <FormItem><FormLabel>Project Owner</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select an owner" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
             </div>

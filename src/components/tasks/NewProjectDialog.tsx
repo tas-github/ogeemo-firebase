@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Plus, Trash2, WandSparkles, FileText, LoaderCircle, Save, Pencil } from 'lucide-react';
+import { Plus, Trash2, WandSparkles, FileText, LoaderCircle, Save, Pencil, Mic, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -24,10 +24,12 @@ import { cn } from '@/lib/utils';
 import { format, set } from 'date-fns';
 import { type Contact } from '@/services/contact-service';
 import { addProjectWithTasks, getProjectTemplates, addProjectTemplate, type Project, type ProjectTemplate, type Event as TaskEvent } from '@/services/project-service';
+import { useSpeechToText } from '@/hooks/use-speech-to-text';
 
 const projectSchema = z.object({
   name: z.string().min(2, { message: "Project name must be at least 2 characters." }),
   description: z.string().optional(),
+  clientId: z.string().nullable(),
   ownerId: z.string().nullable(),
   dueDate: z.date().nullable(),
 });
@@ -65,15 +67,34 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
   const [editingStepId, setEditingStepId] = useState<number | null>(null);
+  const [descriptionBeforeSpeech, setDescriptionBeforeSpeech] = useState("");
 
   const { user } = useAuth();
   const { toast } = useToast();
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
-    defaultValues: { name: "", description: "", ownerId: null, dueDate: null },
+    defaultValues: { name: "", description: "", clientId: null, ownerId: null, dueDate: null },
   });
   
+  const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
+    onTranscript: (transcript) => {
+      const newText = descriptionBeforeSpeech ? `${descriptionBeforeSpeech} ${transcript}`.trim() : transcript;
+      form.setValue('description', newText, { shouldValidate: true });
+    },
+  });
+
+  const handleDictateDescription = () => {
+      if (isListening) {
+          stopListening();
+      } else {
+          setDescriptionBeforeSpeech(form.getValues('description') || '');
+          form.setFocus('description');
+          startListening();
+      }
+  };
+
+
   useEffect(() => {
     if (isOpen) {
         const ideaToProjectRaw = sessionStorage.getItem('ogeemo-idea-to-project');
@@ -81,7 +102,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
             try {
                 const idea = JSON.parse(ideaToProjectRaw);
                 form.setValue('name', idea.title || "");
-                form.setValue('description', idea.description?.replace(/<[^>]+>/g, '') || ""); // Strip HTML from idea content
+                form.setValue('description', idea.description?.replace(/<[^>]+>/g, '') || ""); // Strip HTML
             } catch { /* ignore parse error */ }
             sessionStorage.removeItem('ogeemo-idea-to-project');
         }
@@ -141,7 +162,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
   async function onSubmit(values: ProjectFormData) {
     if (!user) { toast({ variant: "destructive", title: "Not logged in" }); return; }
     
-    const projectData = { ...values, userId: user.uid };
+    const projectData = { ...values, userId: user.uid, assigneeIds: [], reminder: null };
     const tasksData = steps
       .filter(s => s.checked)
       .map(s => ({
@@ -179,14 +200,6 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
         toast({ variant: "destructive", title: "Failed to save template", description: error.message });
     }
   }
-  
-  const handleEditStep = (step: Step) => {
-      setEditingStepId(step.id);
-  };
-  
-  const handleSaveStep = (stepId: number) => {
-      setEditingStepId(null);
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -200,8 +213,9 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
             <ScrollArea className="h-[60vh] p-1">
                 <div className="space-y-4 pr-6">
                     <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Project Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
-                    <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><div className="relative"><FormControl><Textarea {...field} className="pr-10" /></FormControl><Button type="button" variant={isListening ? 'destructive' : 'ghost'} size="icon" className="absolute bottom-2 right-2 h-7 w-7" onClick={handleDictateDescription} disabled={isSupported === false}><span className="sr-only">Dictate description</span>{isListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}</Button></div><FormMessage /></FormItem> )} />
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                        <FormField control={form.control} name="clientId" render={({ field }) => ( <FormItem><FormLabel>Client</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select a client" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
                         <FormField control={form.control} name="ownerId" render={({ field }) => ( <FormItem><FormLabel>Project Owner</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select an owner" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
                         <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
                     </div>
@@ -229,13 +243,14 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
                             </div>
                         </div>
                         <div className="mt-4 space-y-2 rounded-md border p-2">
-                            {steps.length > 0 ? steps.map((step) => (
+                            {steps.length > 0 ? steps.map((step, index) => (
                                 <div key={step.id} className="flex items-center gap-2 p-1 rounded hover:bg-muted/50">
                                     <Checkbox checked={step.checked} onCheckedChange={() => toggleStep(step.id)} id={`step-${step.id}`} />
+                                    <Label htmlFor={`step-${step.id}`} className="font-mono text-xs w-6">{index + 1}.</Label>
                                     {editingStepId === step.id ? (
-                                        <Input value={step.title} onChange={e => updateStepTitle(step.id, e.target.value)} onBlur={() => handleSaveStep(step.id)} onKeyDown={e => {if (e.key === 'Enter') handleSaveStep(step.id)}} autoFocus className="h-8 flex-1" />
+                                        <Input value={step.title} onChange={e => updateStepTitle(step.id, e.target.value)} onBlur={() => setEditingStepId(null)} onKeyDown={e => {if (e.key === 'Enter') setEditingStepId(null)}} autoFocus className="h-8 flex-1" />
                                     ) : (
-                                        <Label htmlFor={`step-${step.id}`} className="flex-1 cursor-pointer">{step.title}</Label>
+                                        <Label className="flex-1 cursor-text" onClick={() => setEditingStepId(step.id)}>{step.title}</Label>
                                     )}
                                      <div className="flex items-center gap-1">
                                         <Select value={String(step.startTime.getHours())} onValueChange={(value) => updateStepTime(step.id, 'hour', value)}>
@@ -247,7 +262,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
                                             <SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
                                         </Select>
                                     </div>
-                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditStep(step)}><Pencil className="h-3 w-3" /></Button>
+                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingStepId(step.id)}><Pencil className="h-3 w-3" /></Button>
                                     <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSteps(prev => prev.filter(s => s.id !== step.id))}><Trash2 className="h-3 w-3 text-destructive" /></Button>
                                 </div>
                             )) : <p className="text-sm text-muted-foreground text-center p-4">No steps added yet.</p>}

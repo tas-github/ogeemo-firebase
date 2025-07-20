@@ -4,20 +4,20 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { Plus, Users, LoaderCircle, MoreVertical, Settings } from 'lucide-react';
+import { Plus, LoaderCircle, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getProjects, getTasksForProject, type Project, type Event as TaskEvent, updateTask, updateTaskPositions, addProjectTemplate } from '@/services/project-service';
+import { getProjects, getTasksForProject, type Project, type Event as TaskEvent, updateTaskPositions, deleteProject } from '@/services/project-service';
 import { getContacts, type Contact } from '@/services/contact-service';
 import { NewProjectDialog } from './NewProjectDialog';
 import { ProjectDetailsDialog } from './ProjectDetailsDialog';
 import { TaskColumn } from './TaskColumn';
 import { type TaskStatus } from '@/types/calendar';
-import { NewTaskDialog } from './NewTaskDialog';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { ProjectListItem } from './ProjectListItem';
 
 
 const statusMap: TaskStatus[] = ['todo', 'inProgress', 'done'];
@@ -30,7 +30,6 @@ function TasksViewContent() {
     const [isLoading, setIsLoading] = useState(true);
     const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
     const [isProjectDetailsDialogOpen, setIsProjectDetailsDialogOpen] = useState(false);
-    const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
     
     const { user } = useAuth();
     const { toast } = useToast();
@@ -88,11 +87,15 @@ function TasksViewContent() {
                 }
             } else {
                 setTasks([]);
-                setIsLoading(false);
+                if (projects.length > 0 && !selectedProject) {
+                    setSelectedProject(projects[0]);
+                } else {
+                    setIsLoading(false);
+                }
             }
         }
         loadTasks();
-    }, [selectedProject, user, toast]);
+    }, [selectedProject, user, toast, projects]);
 
     const handleProjectCreated = (newProject: Project, newTasks: TaskEvent[]) => {
         setProjects(prev => [...prev, newProject]);
@@ -106,6 +109,36 @@ function TasksViewContent() {
 
     const handleTaskUpdated = (updatedTask: TaskEvent) => {
         setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+    };
+
+    const handleTaskDeleted = (taskId: string) => {
+        setTasks(prev => prev.filter(t => t.id !== taskId));
+    };
+    
+    const handleDeleteProject = async () => {
+        if (!selectedProject) return;
+        if (window.confirm(`Are you sure you want to delete the project "${selectedProject.name}" and all its tasks? This action cannot be undone.`)) {
+            try {
+                await deleteProject(selectedProject.id, tasks.map(t => t.id));
+                const newProjects = projects.filter(p => p.id !== selectedProject.id);
+                setProjects(newProjects);
+                setSelectedProject(newProjects[0] || null);
+                toast({ title: "Project Deleted" });
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Failed to delete project', description: error.message });
+            }
+        }
+    };
+    
+    const onMoveProject = (dragIndex: number, hoverIndex: number) => {
+        const draggedProject = projects[dragIndex];
+        setProjects(prev => {
+            const newProjects = [...prev];
+            newProjects.splice(dragIndex, 1);
+            newProjects.splice(hoverIndex, 0, draggedProject);
+            return newProjects;
+        });
+        // Here you would call a service to update positions in the backend
     };
 
     const handleMoveTask = useCallback(async (taskId: string, newStatus: TaskStatus, newPosition: number) => {
@@ -200,56 +233,88 @@ function TasksViewContent() {
                 <p className="text-muted-foreground">A project is a collection of tasks. Drag tasks to change their status.</p>
             </header>
 
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                    <Select value={selectedProject?.id || ''} onValueChange={(projectId) => setSelectedProject(projects.find(p => p.id === projectId) || null)}>
-                        <SelectTrigger className="w-[250px] text-2xl font-semibold h-auto border-0 shadow-none">
-                            <SelectValue placeholder="Select a Project..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    {selectedProject && (
-                        <Button variant="ghost" size="icon" onClick={() => setIsProjectDetailsDialogOpen(true)}>
-                            <Settings className="h-5 w-5"/>
-                        </Button>
-                    )}
-                </div>
-                <Button onClick={() => setIsNewProjectDialogOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" /> New Project
-                </Button>
-            </div>
-
             <div className="flex-1 min-h-0">
-                {isLoading ? (
-                    <div className="flex h-full items-center justify-center">
-                        <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
-                    </div>
-                ) : selectedProject ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full">
-                        {statusMap.map(status => (
-                            <TaskColumn
-                                key={status}
-                                status={status}
-                                tasks={tasksByStatus[status]}
-                                onMoveTask={handleMoveTask}
-                                projectId={selectedProject.id}
-                                onTaskCreated={handleTaskCreated}
-                                onTaskUpdated={handleTaskUpdated}
-                            />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="flex h-full items-center justify-center">
-                        <Card className="w-full max-w-md text-center">
-                            <CardHeader>
-                                <CardTitle>No Project Selected</CardTitle>
-                                <CardDescription>Create a new project or select one to view its tasks.</CardDescription>
-                            </CardHeader>
-                        </Card>
-                    </div>
-                )}
+                <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
+                    <ResizablePanel defaultSize={25} minSize={20}>
+                        <div className="h-full flex flex-col">
+                            <div className="p-2 border-b flex items-center justify-between">
+                                <h2 className="text-lg font-semibold">Projects</h2>
+                                <Button size="sm" onClick={() => setIsNewProjectDialogOpen(true)}>
+                                    <Plus className="mr-2 h-4 w-4" /> New
+                                </Button>
+                            </div>
+                            <ScrollArea className="flex-1 p-2">
+                                {isLoading && projects.length === 0 ? (
+                                    <div className="flex items-center justify-center h-full">
+                                        <LoaderCircle className="h-6 w-6 animate-spin" />
+                                    </div>
+                                ) : projects.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {projects.map((p, index) => (
+                                            <ProjectListItem
+                                                key={p.id}
+                                                project={p}
+                                                taskCount={tasks.filter(t => t.projectId === p.id).length}
+                                                completedTaskCount={tasks.filter(t => t.projectId === p.id && t.status === 'done').length}
+                                                isSelected={selectedProject?.id === p.id}
+                                                onSelect={() => setSelectedProject(p)}
+                                                index={index}
+                                                onMoveProject={onMoveProject}
+                                            />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground text-center p-4">No projects yet. Create one to get started.</p>
+                                )}
+                            </ScrollArea>
+                        </div>
+                    </ResizablePanel>
+                    <ResizableHandle withHandle />
+                    <ResizablePanel defaultSize={75}>
+                        <div className="h-full flex flex-col">
+                            {isLoading ? (
+                                <div className="flex h-full items-center justify-center">
+                                    <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+                                </div>
+                            ) : selectedProject ? (
+                                <>
+                                <div className="p-2 border-b flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-xl font-bold">{selectedProject.name}</h2>
+                                        <p className="text-sm text-muted-foreground truncate max-w-xs md:max-w-md">{selectedProject.description}</p>
+                                    </div>
+                                    <Button variant="ghost" size="icon" onClick={() => setIsProjectDetailsDialogOpen(true)}>
+                                        <Settings className="h-5 w-5"/>
+                                    </Button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-full overflow-auto p-2">
+                                    {statusMap.map(status => (
+                                        <TaskColumn
+                                            key={status}
+                                            status={status}
+                                            tasks={tasksByStatus[status]}
+                                            onMoveTask={handleMoveTask}
+                                            projectId={selectedProject.id}
+                                            onTaskCreated={handleTaskCreated}
+                                            onTaskUpdated={handleTaskUpdated}
+                                            onTaskDeleted={handleTaskDeleted}
+                                        />
+                                    ))}
+                                </div>
+                                </>
+                            ) : (
+                                <div className="flex h-full items-center justify-center">
+                                    <Card className="w-full max-w-md text-center">
+                                        <CardHeader>
+                                            <CardTitle>No Project Selected</CardTitle>
+                                            <CardDescription>Create a new project or select one from the list to view its tasks.</CardDescription>
+                                        </CardHeader>
+                                    </Card>
+                                </div>
+                            )}
+                        </div>
+                    </ResizablePanel>
+                </ResizablePanelGroup>
             </div>
 
             <NewProjectDialog
