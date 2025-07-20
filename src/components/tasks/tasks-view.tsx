@@ -13,7 +13,6 @@ import { useToast } from '@/hooks/use-toast';
 import { getProjects, deleteProject, getTasksForProject, type Project, type Event as TaskEvent } from '@/services/project-service';
 import { getContacts, type Contact } from '@/services/contact-service';
 import { NewProjectDialog } from './NewProjectDialog';
-import { ProjectDetailsDialog } from './ProjectDetailsDialog';
 import { ProjectListItem } from './ProjectListItem';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -60,6 +59,10 @@ function TasksViewContent() {
     const handleProjectCreated = (newProject: Project) => {
         setProjects(prev => [newProject, ...prev]);
     };
+
+    const handleProjectUpdated = (updatedProject: Project) => {
+        setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+    };
     
     const handleDeleteProject = async (projectToDelete: Project) => {
         if (!projectToDelete) return;
@@ -91,6 +94,7 @@ function TasksViewContent() {
     
     const handleEditProject = (project: Project) => {
         setProjectToEdit(project);
+        setIsNewProjectDialogOpen(true);
     };
 
     return (
@@ -107,7 +111,7 @@ function TasksViewContent() {
                             <CardTitle>All Projects</CardTitle>
                             <CardDescription>Click a project to view its tasks.</CardDescription>
                         </div>
-                        <Button onClick={() => setIsNewProjectDialogOpen(true)}>
+                        <Button onClick={() => { setProjectToEdit(null); setIsNewProjectDialogOpen(true); }}>
                             <Plus className="mr-2 h-4 w-4" /> New Project
                         </Button>
                     </div>
@@ -144,19 +148,10 @@ function TasksViewContent() {
                 isOpen={isNewProjectDialogOpen}
                 onOpenChange={setIsNewProjectDialogOpen}
                 onProjectCreated={handleProjectCreated}
+                onProjectUpdated={handleProjectUpdated}
                 contacts={contacts}
+                projectToEdit={projectToEdit}
             />
-            {projectToEdit && (
-                <ProjectDetailsDialog
-                    isOpen={!!projectToEdit}
-                    onOpenChange={(open) => !open && setProjectToEdit(null)}
-                    project={projectToEdit}
-                    contacts={contacts}
-                    onProjectUpdated={(updatedProject) => {
-                        setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
-                    }}
-                />
-            )}
         </div>
     );
 }

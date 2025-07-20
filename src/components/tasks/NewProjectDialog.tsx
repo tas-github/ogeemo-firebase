@@ -21,9 +21,9 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format, set } from 'date-fns';
+import { format, set, parseISO } from 'date-fns';
 import { type Contact } from '@/services/contact-service';
-import { addProjectWithTasks, getProjectTemplates, addProjectTemplate, type Project, type ProjectTemplate, type Event as TaskEvent } from '@/services/project-service';
+import { addProjectWithTasks, getProjectTemplates, addProjectTemplate, updateProject, type Project, type ProjectTemplate, type Event as TaskEvent } from '@/services/project-service';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import Link from 'next/link';
 import { Label } from '../ui/label';
@@ -43,7 +43,16 @@ const projectSchema = z.object({
 
 type ProjectFormData = z.infer<typeof projectSchema>;
 
-export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, contacts }: { isOpen: boolean; onOpenChange: (open: boolean) => void; onProjectCreated: (project: Project, tasks: TaskEvent[]) => void; contacts: Contact[] }) {
+interface NewProjectDialogProps {
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+    onProjectCreated: (project: Project, tasks: TaskEvent[]) => void;
+    onProjectUpdated: (project: Project) => void;
+    contacts: Contact[];
+    projectToEdit?: Project | null;
+}
+
+export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onProjectUpdated, contacts, projectToEdit }: NewProjectDialogProps) {
   const [descriptionBeforeSpeech, setDescriptionBeforeSpeech] = React.useState("");
   const [templates, setTemplates] = React.useState<ProjectTemplate[]>([]);
   const [isTemplateSaveDialogOpen, setIsTemplateSaveDialogOpen] = React.useState(false);
@@ -52,6 +61,8 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
 
   const { user } = useAuth();
   const { toast } = useToast();
+  
+  const isEditing = !!projectToEdit;
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
@@ -92,19 +103,37 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
 
   React.useEffect(() => {
     if (isOpen) {
-        const ideaToProjectRaw = sessionStorage.getItem('ogeemo-idea-to-project');
-        if (ideaToProjectRaw) {
-            try {
-                const idea = JSON.parse(ideaToProjectRaw);
-                form.setValue('name', idea.title || "");
-                form.setValue('description', idea.description?.replace(/<[^>]+>/g, '') || ""); // Strip HTML
-            } catch { /* ignore parse error */ }
-            sessionStorage.removeItem('ogeemo-idea-to-project');
+        if (projectToEdit) {
+            const startDate = projectToEdit.startDate ? (typeof projectToEdit.startDate === 'string' ? parseISO(projectToEdit.startDate) : projectToEdit.startDate) : null;
+            form.reset({
+                name: projectToEdit.name,
+                description: projectToEdit.description || "",
+                clientId: projectToEdit.clientId,
+                ownerId: projectToEdit.ownerId,
+                assigneeIds: projectToEdit.assigneeIds || [],
+                startDate: startDate,
+                startHour: startDate ? String(startDate.getHours()) : undefined,
+                startMinute: startDate ? String(startDate.getMinutes()) : undefined,
+                dueDate: projectToEdit.dueDate ? (typeof projectToEdit.dueDate === 'string' ? parseISO(projectToEdit.dueDate) : projectToEdit.dueDate) : null,
+            });
+        } else {
+            const ideaToProjectRaw = sessionStorage.getItem('ogeemo-idea-to-project');
+            if (ideaToProjectRaw) {
+                try {
+                    const idea = JSON.parse(ideaToProjectRaw);
+                    form.reset({
+                        ...form.getValues(),
+                        name: idea.title || "",
+                        description: idea.description?.replace(/<[^>]+>/g, '') || "", // Strip HTML
+                    });
+                } catch { /* ignore parse error */ }
+                sessionStorage.removeItem('ogeemo-idea-to-project');
+            } else {
+                form.reset(); // Reset to default for new project
+            }
         }
-    } else {
-        form.reset();
     }
-  }, [isOpen, form]);
+  }, [isOpen, projectToEdit, form]);
   
   const saveProject = async (values: ProjectFormData): Promise<Project | null> => {
     if (!user) {
@@ -124,19 +153,27 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
     const tasksData: Omit<TaskEvent, 'id' | 'userId' | 'projectId'>[] = [];
 
     try {
-      const newProject = await addProjectWithTasks(projectData, tasksData);
-      onProjectCreated(newProject, []);
-      toast({ title: "Project Created", description: `"${newProject.name}" has been successfully created.` });
-      return newProject;
+      if (isEditing) {
+        await updateProject(projectToEdit.id, projectData);
+        const updatedProject = { ...projectToEdit, ...projectData };
+        onProjectUpdated(updatedProject);
+        toast({ title: "Project Updated", description: `"${updatedProject.name}" has been successfully updated.` });
+        return updatedProject;
+      } else {
+        const newProject = await addProjectWithTasks(projectData, tasksData);
+        onProjectCreated(newProject, []);
+        toast({ title: "Project Created", description: `"${newProject.name}" has been successfully created.` });
+        return newProject;
+      }
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Failed to create project", description: error.message });
+      toast({ variant: "destructive", title: isEditing ? "Failed to update project" : "Failed to create project", description: error.message });
       return null;
     }
   };
   
   const onSubmit = async (values: ProjectFormData) => {
-    const newProject = await saveProject(values);
-    if (newProject) {
+    const savedProject = await saveProject(values);
+    if (savedProject) {
         onOpenChange(false);
     }
   };
@@ -145,9 +182,9 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
     const isValid = await form.trigger();
     if (isValid) {
       const values = form.getValues();
-      const newProject = await saveProject(values);
-      if (newProject) {
-          sessionStorage.setItem('selectedProjectId', newProject.id);
+      const savedProject = await saveProject(values);
+      if (savedProject) {
+          sessionStorage.setItem('selectedProjectId', savedProject.id);
           router.push('/projects/steps');
           onOpenChange(false);
       }
@@ -210,9 +247,9 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
         <DialogHeader className="p-6 pb-4 border-b text-center">
-          <DialogTitle className="text-3xl font-bold font-headline text-primary">Create New Project</DialogTitle>
+          <DialogTitle className="text-3xl font-bold font-headline text-primary">{isEditing ? 'Edit Project' : 'Create New Project'}</DialogTitle>
           <DialogDescription>
-            Fill in the details below to create a new project. You can define specific steps and tasks after creation.
+            {isEditing ? `Editing details for ${projectToEdit.name}` : 'Fill in the details below to create a new project.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -238,8 +275,8 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
 
                     <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><div className="relative"><FormControl><Textarea {...field} className="pr-10" rows={4} /></FormControl><Button type="button" variant={isListening ? 'destructive' : 'ghost'} size="icon" className="absolute bottom-2 right-2 h-7 w-7" onClick={handleDictateDescription} disabled={isSupported === false}><span className="sr-only">Dictate description</span>{isListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}</Button></div><FormMessage /></FormItem> )} />
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormField control={form.control} name="clientId" render={({ field }) => ( <FormItem><FormLabel>Client</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select a client" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
-                        <FormField control={form.control} name="ownerId" render={({ field }) => ( <FormItem><FormLabel>Project Owner</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select an owner" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="clientId" render={({ field }) => ( <FormItem><FormLabel>Client</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select a client" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="ownerId" render={({ field }) => ( <FormItem><FormLabel>Project Owner</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select an owner" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
                         <FormField control={form.control} name="assigneeIds" render={({ field }) => ( <FormItem><FormLabel>Assignee</FormLabel><Select onValueChange={(value) => field.onChange([value])} defaultValue={field.value?.[0] || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select an assignee" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
                     </div>
                     
@@ -248,8 +285,8 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
                             <FormLabel>Start Date & Time</FormLabel>
                             <div className="flex gap-2">
                                 <FormField control={form.control} name="startDate" render={({ field }) => ( <FormItem><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-[240px] justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
-                                <FormField control={form.control} name="startHour" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
-                                <FormField control={form.control} name="startMinute" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
+                                <FormField control={form.control} name="startHour" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
+                                <FormField control={form.control} name="startMinute" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
                             </div>
                         </div>
                          <FormField control={form.control} name="dueDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Due Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
@@ -258,14 +295,14 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
             </ScrollArea>
             <DialogFooter className="p-6 border-t flex-col-reverse sm:flex-row sm:justify-between sm:items-center">
               <div className="flex justify-start w-full sm:w-auto">
-                <Button type="button" variant="outline" onClick={() => setIsTemplateSaveDialogOpen(true)}>
+                <Button type="button" variant="outline" onClick={() => setIsTemplateSaveDialogOpen(true)} disabled={isEditing}>
                   <Save className="mr-2 h-4 w-4" /> Save as Template
                 </Button>
               </div>
               <div className="flex justify-end gap-2 w-full sm:w-auto">
                   <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
                   <Button type="button" onClick={handleSaveAndDefineSteps} className="bg-orange-500 hover:bg-orange-600 text-white">Add Project Steps</Button>
-                  <Button type="submit">Create Project</Button>
+                  <Button type="submit">{isEditing ? 'Save Changes' : 'Create Project'}</Button>
               </div>
             </DialogFooter>
           </form>
@@ -299,5 +336,3 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, conta
     </>
   );
 }
-
-    
