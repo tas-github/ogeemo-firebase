@@ -58,7 +58,7 @@ export default function HomePage() {
             </p>
             <div className="mt-8 flex justify-center gap-4">
               <Button asChild size="lg">
-                <Link href="#">Get Started Free</Link>
+                <Link href="/register">Get Started Free</Link>
               </Button>
               <Button asChild size="lg" variant="outline">
                 <Link href="#">Request a Demo</Link>
@@ -127,7 +127,7 @@ export default function HomePage() {
             <p className="mt-4 text-lg text-muted-foreground">Join our beta program and experience the peace of mind Ogeemo provides.</p>
             <div className="mt-8">
               <Button asChild size="lg">
-                <Link href="#">Start Your Free Beta Trial</Link>
+                <Link href="/register">Start Your Free Beta Trial</Link>
               </Button>
             </div>
           </div>
