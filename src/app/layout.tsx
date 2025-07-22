@@ -3,8 +3,6 @@ import type {Metadata} from 'next';
 import { Inter, Space_Grotesk as SpaceGrotesk } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
-// import { AuthProvider } from '@/context/auth-context';
-// import { LoadingProvider } from '@/context/loading-context';
 import { Suspense } from 'react';
 
 const inter = Inter({
@@ -34,15 +32,12 @@ export default function RootLayout({
       <head />
       <body>
         {/*
-          <AuthProvider>
-            <LoadingProvider>
+          The AuthProvider and LoadingProvider have been temporarily removed
+          to isolate a startup issue. They will be restored once the
+          basic application rendering is confirmed.
         */}
-              {children}
-              <Toaster />
-        {/*
-            </LoadingProvider>
-          </AuthProvider>
-        */}
+        {children}
+        <Toaster />
       </body>
     </html>
   );

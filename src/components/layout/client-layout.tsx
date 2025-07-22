@@ -3,22 +3,7 @@
 
 import {
   SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarFooter,
-  SidebarTrigger,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarInset,
 } from "@/components/ui/sidebar";
-import { UserNav } from "@/components/user-nav";
-import { Logo } from "@/components/logo";
-import { MainMenu } from "@/components/layout/main-menu";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
