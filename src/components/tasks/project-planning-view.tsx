@@ -1,19 +1,17 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, LoaderCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { getProjectById, type Project } from '@/services/project-service';
-import { getContacts, type Contact } from '@/services/contact-service';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 
 export function ProjectPlanningView({ projectId }: { projectId: string }) {
     const [project, setProject] = useState<Project | null>(null);
-    const [contacts, setContacts] = useState<Contact[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
@@ -26,21 +24,15 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
             return;
         }
 
-        async function loadData() {
+        async function loadProject() {
             setIsLoading(true);
-            setError(null);
             try {
-                const [projectData, contactsData] = await Promise.all([
-                    getProjectById(projectId),
-                    getContacts(user.uid),
-                ]);
-
+                const projectData = await getProjectById(projectId);
                 if (!projectData) {
                     setError("Project not found.");
                 } else {
                     setProject(projectData);
                 }
-                setContacts(contactsData);
             } catch (err: any) {
                 setError("Failed to load project details.");
                 toast({ variant: 'destructive', title: 'Error', description: err.message });
@@ -49,21 +41,15 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
             }
         }
 
-        loadData();
+        loadProject();
     }, [projectId, user, toast]);
-
-    const clientName = useMemo(() => {
-        if (!project || !project.clientId) return "No Client Assigned";
-        const contact = contacts.find(c => c.id === project.clientId);
-        return contact?.name || "Unknown Client";
-    }, [project, contacts]);
 
     if (isLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
-                    <p className="text-muted-foreground">Loading Project Plan...</p>
+                    <p className="text-muted-foreground">Loading Project...</p>
                 </div>
             </div>
         );
@@ -101,17 +87,12 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
                     </Button>
                 </div>
                 <div className="text-center">
-                    <h1 className="text-3xl font-bold font-headline text-primary">Project Planning and Progress</h1>
+                    <h1 className="text-3xl font-bold font-headline text-primary">Project: {project.name}</h1>
                     <p className="text-muted-foreground mt-1">
-                        Project: <span className="font-semibold text-foreground">{project.name}</span> | Client: <span className="font-semibold text-foreground">{clientName}</span>
+                        Planning and progress view coming soon.
                     </p>
                 </div>
             </header>
-            
-            {/* Future content will go here */}
-            <div className="flex items-center justify-center h-96 border-2 border-dashed rounded-lg">
-                <p className="text-muted-foreground">Planning and progress view coming soon.</p>
-            </div>
         </div>
     );
 }
