@@ -12,22 +12,22 @@ const features = [
   {
     icon: <CheckCircle className="h-6 w-6 text-primary" />,
     title: 'Audit-Ready Accounting',
-    description: 'Simplify your finances with a system built for peace of mind, even for non-accountants.',
+    description: 'Simplify your finances with a system built for peace of mind. Designed for non-accountants, Ogeemo ensures your books are audit-ready by default, taking the fear and complexity out of financial management.',
   },
   {
     icon: <CheckCircle className="h-6 w-6 text-primary" />,
     title: 'Intuitive Time & Task Management',
-    description: 'Easily manage projects, track billable hours, and invoice clients without the complexity.',
+    description: 'Easily manage projects, track billable hours, and invoice clients without the complexity. See exactly where your time goes and turn your efforts directly into revenue.',
   },
   {
     icon: <CheckCircle className="h-6 w-6 text-primary" />,
     title: 'Seamless Google Integration',
-    description: 'Leverage the power of Google Workspace without the nuances. A Google account is all you need.',
+    description: 'Built on powerful Google technology, a Google account is all you need to get started. Ogeemo integrates with your workflow, removing the common nuances of workspace management.',
   },
   {
     icon: <CheckCircle className="h-6 w-6 text-primary" />,
     title: 'Powerful Action Manager',
-    description: 'Your central hub to begin your journey where you don’t need to know a lot to accomplish a lot.',
+    description: 'The heart of Ogeemo. The Action Manager is your central hub to begin any task. It\'s where you can start your journey without needing to know a lot to accomplish a lot.',
   },
 ];
 
