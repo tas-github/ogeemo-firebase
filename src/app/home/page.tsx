@@ -41,7 +41,7 @@ const personas = [
     {
         title: "For Accountants and Bookkeepers",
         description: "Unlock a significant financial opportunity in high-value consulting. By sharing your client's Ogeemo workspace, you can provide ongoing advisory services and increase your billable hours—all while using Ogeemo itself to track your time and bill for it.",
-        href: "#", // Placeholder for when the page is created
+        href: "/for-accountants",
         cta: "Reinvent Your Practice"
     }
 ]
