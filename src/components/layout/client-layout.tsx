@@ -1,3 +1,14 @@
-// This file has been intentionally left blank and can be safely deleted.
-// Its functionality has been simplified and moved directly into the main app layout
-// to resolve a critical startup error.
+
+'use client';
+
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { RouteChangeListener } from '../route-change-listener';
+
+export function ClientLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider>
+      <RouteChangeListener />
+      {children}
+    </SidebarProvider>
+  );
+}
