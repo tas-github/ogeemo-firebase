@@ -34,7 +34,7 @@ const features = [
 const personas = [
     {
         title: "For Small Businesses",
-        description: "Tired of confusing software and audit fears? Ogeemo simplifies your operations so you can focus on growth.",
+        description: "Tired of confusing software and audit fears? Ogeemo simplifies your operations so you can focus on growth. Capitalize on your accountant's or consultant's services by sharing your Ogeemo workspace to obtain ongoing support for your business.",
         href: "/for-small-businesses",
         cta: "Learn More for Your Business"
     },
