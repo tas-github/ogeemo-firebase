@@ -19,12 +19,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-        config.externals.push('@opentelemetry/sdk-node');
-    }
-    return config;
-  }
 };
 
 export default nextConfig;
