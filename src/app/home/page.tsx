@@ -39,8 +39,8 @@ const personas = [
         cta: "Learn More for Your Business"
     },
     {
-        title: "For Accountants",
-        description: "Ready to transform your practice? Ogeemo provides the tools for audit-ready clients and high-value consulting.",
+        title: "For Accountants and Bookkeepers",
+        description: "Unlock a significant financial opportunity in high-value consulting. By sharing your client's Ogeemo workspace, you can provide ongoing advisory services and increase your billable hours—all while using Ogeemo itself to track your time and bill for it.",
         href: "#", // Placeholder for when the page is created
         cta: "Reinvent Your Practice"
     }
