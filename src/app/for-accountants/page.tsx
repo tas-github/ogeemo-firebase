@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { DollarSign, Share2, Clock, ShieldCheck, Zap } from "lucide-react";
+import { DollarSign, Share2, Clock, ShieldCheck, Zap, Award, Users } from "lucide-react";
 import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const benefits = [
     {
@@ -47,16 +48,24 @@ export default function ForAccountantsPage() {
                     <p className="mt-4 text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
                         Move beyond compliance and become an indispensable financial partner to your clients. Ogeemo is the collaborative platform that turns bookkeeping into a gateway for high-value advisory services.
                     </p>
+                </div>
+            </section>
+            
+            {/* CTA Section */}
+            <section className="py-16 md:py-20">
+                <div className="container mx-auto px-4 text-center">
+                    <h2 className="text-3xl md:text-4xl font-bold font-headline">Ready to Become a High-Value Advisor?</h2>
+                    <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">Join our beta program and discover how Ogeemo can transform your client relationships and your bottom line.</p>
                     <div className="mt-8">
                         <Button asChild size="lg">
-                            <Link href="/register">Join the Beta Program</Link>
+                            <Link href="/register">Start Your Free Beta Trial</Link>
                         </Button>
                     </div>
                 </div>
             </section>
             
             {/* Benefits Section */}
-            <section className="py-16 md:py-24">
+            <section className="py-16 md:py-24 bg-slate-50">
                 <div className="container mx-auto px-4">
                      <div className="text-center mb-16">
                         <h2 className="text-3xl md:text-4xl font-bold font-headline">The Accountant's Advantage</h2>
@@ -66,7 +75,7 @@ export default function ForAccountantsPage() {
                     </div>
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {benefits.map(benefit => (
-                             <div key={benefit.title} className="flex flex-col items-start text-left p-6 border rounded-lg hover:shadow-lg transition-shadow">
+                             <div key={benefit.title} className="flex flex-col items-start text-left p-6 border rounded-lg hover:shadow-lg transition-shadow bg-background">
                                 <div className="p-3 bg-primary/10 rounded-lg">
                                     {benefit.icon}
                                 </div>
@@ -78,15 +87,42 @@ export default function ForAccountantsPage() {
                 </div>
             </section>
 
-             {/* CTA Section */}
-            <section className="py-20 md:py-28 bg-slate-50">
-                <div className="container mx-auto px-4 text-center">
-                    <h2 className="text-3xl md:text-4xl font-bold font-headline">Ready to Become a High-Value Advisor?</h2>
-                    <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">Join our beta program and discover how Ogeemo can transform your client relationships and your bottom line.</p>
-                    <div className="mt-8">
-                        <Button asChild size="lg">
-                            <Link href="/register">Start Your Free Beta Trial</Link>
-                        </Button>
+            {/* Consultant Advantage Section */}
+            <section className="py-16 md:py-24">
+                <div className="container mx-auto px-4">
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl md:text-4xl font-bold font-headline">The Ogeemo Consultant Advantage</h2>
+                        <p className="mt-4 text-muted-foreground max-w-3xl mx-auto">
+                            Master Ogeemo as a beta tester and unlock a new business opportunity. Become a certified consultant and market your services to a growing community.
+                        </p>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                        <Card>
+                            <CardHeader className="flex-row items-start gap-4">
+                                <div className="p-3 bg-primary/10 rounded-lg">
+                                    <Award className="h-6 w-6 text-primary" />
+                                </div>
+                                <div>
+                                    <CardTitle>Become a Certified Expert</CardTitle>
+                                    <CardContent className="p-0 pt-2 text-muted-foreground">
+                                        Know the app inside and out? Pass our competency test to become a Certified Ogeemo Consultant, validating your expertise and building trust with potential clients.
+                                    </CardContent>
+                                </div>
+                            </CardHeader>
+                        </Card>
+                        <Card>
+                             <CardHeader className="flex-row items-start gap-4">
+                                <div className="p-3 bg-primary/10 rounded-lg">
+                                    <Users className="h-6 w-6 text-primary" />
+                                </div>
+                                <div>
+                                    <CardTitle>Expand Your Client Base</CardTitle>
+                                     <CardContent className="p-0 pt-2 text-muted-foreground">
+                                        Onboard your existing clients to Ogeemo for streamlined service, and market your expertise to other Ogeemo users who need professional bookkeeping and advisory help.
+                                    </CardContent>
+                                </div>
+                            </CardHeader>
+                        </Card>
                     </div>
                 </div>
             </section>
