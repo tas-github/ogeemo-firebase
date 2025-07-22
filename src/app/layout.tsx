@@ -4,6 +4,8 @@ import { AuthProvider } from '@/context/auth-context';
 import { LoadingProvider } from '@/context/loading-context';
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from '@/lib/utils';
+import { SiteHeader } from "@/components/landing/header";
+import { SiteFooter } from "@/components/landing/footer";
 import "./globals.css";
 
 const fontBody = Inter({
@@ -17,12 +19,16 @@ const fontHeadline = SpaceGrotesk({
 });
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const isAppRoute = (children as React.ReactElement)?.props?.childProp?.segment === '(app)';
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={cn(fontBody.variable, fontHeadline.variable)}>
         <AuthProvider>
           <LoadingProvider>
+            {!isAppRoute && <SiteHeader />}
             {children}
+            {!isAppRoute && <SiteFooter />}
             <Toaster />
           </LoadingProvider>
         </AuthProvider>

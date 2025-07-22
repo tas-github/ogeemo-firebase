@@ -1,8 +1,8 @@
+// The marketing site's home page is now at /home
+// This middleware will redirect the root path to the /login page for the app
+// For development, you can navigate directly to /home to see the new website.
+import { redirect } from 'next/navigation';
 
-// This is now the recommended way to do a redirect in Next.js.
-// The `redirect()` function is not called directly in the component.
-// Instead, the middleware handles the redirect.
-// See `src/middleware.ts` for the implementation.
 export default function Home() {
-  return null;
+  redirect('/home');
 }
