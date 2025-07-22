@@ -24,9 +24,9 @@ export default function ContactPage() {
                             <Mail className="h-6 w-6 text-primary" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold">Email</h3>
-                            <p className="text-muted-foreground">General Inquiries</p>
-                            <a href="mailto:support@ogeemo.com" className="text-primary hover:underline">support@ogeemo.com</a>
+                            <h3 className="text-lg font-semibold">Dan White, President</h3>
+                            <p className="text-muted-foreground">dan@ogeemo.com</p>
+                            <a href="https://www.ogeemo.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">www.ogeemo.com</a>
                         </div>
                     </div>
                      <div className="flex items-start gap-4">
@@ -36,7 +36,7 @@ export default function ContactPage() {
                         <div>
                             <h3 className="text-lg font-semibold">Phone</h3>
                             <p className="text-muted-foreground">Mon-Fri from 9am to 5pm</p>
-                            <a href="tel:+1-555-123-4567" className="text-primary hover:underline">+1 (555) 123-4567</a>
+                            <a href="tel:902-510-1967" className="text-primary hover:underline">902-510-1967</a>
                         </div>
                     </div>
                      <div className="flex items-start gap-4">
@@ -45,7 +45,7 @@ export default function ContactPage() {
                         </div>
                         <div>
                             <h3 className="text-lg font-semibold">Office</h3>
-                            <p className="text-muted-foreground">123 Business Rd, Suite 100<br/>Innovation City, 12345</p>
+                            <p className="text-muted-foreground">6860 Highway 101, <br/>Plympton, NS B0W 2R0</p>
                         </div>
                     </div>
                 </div>
