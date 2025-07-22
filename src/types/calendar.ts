@@ -19,7 +19,10 @@ export interface Event {
 export interface ProjectStep {
     id: string;
     title: string;
+    description: string;
     durationHours: number;
+    isBillable: boolean;
+    connectToCalendar: boolean;
     isCompleted: boolean;
 }
 

@@ -119,7 +119,9 @@ export function ProjectStepsView() {
     
     const handleSaveAndContinue = async () => {
         await handleSaveChanges();
-        router.push(`/projects/${project?.id}/planning`);
+        if (project) {
+          router.push(`/projects/${project.id}/planning`);
+        }
     }
 
     if (isLoading) {
@@ -131,7 +133,7 @@ export function ProjectStepsView() {
     }
     
     if (!project) {
-        return null;
+        return null; // or some fallback UI
     }
 
     return (
