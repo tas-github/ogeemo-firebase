@@ -3,8 +3,8 @@ import type {Metadata} from 'next';
 import { Inter, Space_Grotesk as SpaceGrotesk } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
-// import { AuthProvider } from '@/context/auth-context';
-// import { LoadingProvider } from '@/context/loading-context';
+import { AuthProvider } from '@/context/auth-context';
+import { LoadingProvider } from '@/context/loading-context';
 import { RouteChangeListener } from '@/components/route-change-listener';
 import { Suspense } from 'react';
 
@@ -34,15 +34,15 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <head />
       <body>
-        {/* <LoadingProvider>
-          <AuthProvider> */}
+        <LoadingProvider>
+          <AuthProvider>
             <Suspense>
               <RouteChangeListener />
             </Suspense>
             {children}
             <Toaster />
-          {/* </AuthProvider>
-        </LoadingProvider> */}
+          </AuthProvider>
+        </LoadingProvider>
       </body>
     </html>
   );
