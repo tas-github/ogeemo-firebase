@@ -72,7 +72,7 @@ export default function LoginPage() {
       const { auth } = await initializeFirebase();
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      router.push("/dashboard");
+      // On successful sign-in, the AuthProvider will handle the redirect.
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
       let description = `An unknown error occurred. (Code: ${error.code})`;
@@ -86,8 +86,7 @@ export default function LoginPage() {
         title: "Google Sign-In Failed",
         description: description,
       });
-    } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -130,6 +129,9 @@ export default function LoginPage() {
                 </FormItem>
               )}
             />
+            <p className="text-xs text-center text-muted-foreground pt-1">
+              By signing in, you agree to our <Link href="/terms" target="_blank" className="underline">Terms of Service</Link>.
+            </p>
             <Button type="submit" className="w-full" disabled={isLoading}>
               Sign In
             </Button>

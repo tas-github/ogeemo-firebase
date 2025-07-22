@@ -3,7 +3,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -16,6 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { initializeFirebase } from '@/lib/firebase';
+import { TermsDialog } from '@/components/auth/terms-dialog';
 
 const registerSchema = z.object({
     name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -23,25 +23,35 @@ const registerSchema = z.object({
     password: z.string().min(6, { message: "Password must be at least 6 characters." }),
 });
 
+type RegisterFormData = z.infer<typeof registerSchema>;
+
 export default function RegisterPage() {
-  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
+  const [formData, setFormData] = useState<RegisterFormData | null>(null);
 
-  const form = useForm<z.infer<typeof registerSchema>>({
+  const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: { name: "", email: "", password: "" },
   });
 
-  async function onSubmit(values: z.infer<typeof registerSchema>) {
+  const handleInitialSubmit = (values: RegisterFormData) => {
+    setFormData(values);
+    setIsTermsDialogOpen(true);
+  };
+
+  const handleFinalSubmit = async () => {
+    if (!formData) return;
+    
     setIsLoading(true);
     try {
         const { auth } = await initializeFirebase();
-        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
         
         if (userCredential.user) {
             await updateProfile(userCredential.user, {
-                displayName: values.name,
+                displayName: formData.name,
             });
         }
         
@@ -49,7 +59,10 @@ export default function RegisterPage() {
             title: "Account Created!",
             description: "You have been successfully registered.",
         });
-        router.push('/dashboard');
+        
+        // The AuthProvider will handle the redirect to /dashboard
+        // so we don't need a router.push here.
+
     } catch (error: any) {
         let description = "An unknown error occurred. Please try again.";
         if (error.code === 'auth/email-already-in-use') {
@@ -62,6 +75,8 @@ export default function RegisterPage() {
         });
     } finally {
         setIsLoading(false);
+        setIsTermsDialogOpen(false);
+        setFormData(null);
     }
   }
 
@@ -75,7 +90,7 @@ export default function RegisterPage() {
       </CardHeader>
       <CardContent>
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(handleInitialSubmit)} className="space-y-4">
                 <FormField
                     control={form.control}
                     name="name"
@@ -115,9 +130,11 @@ export default function RegisterPage() {
                         </FormItem>
                     )}
                 />
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                    Create Account
+                <p className="text-xs text-center text-muted-foreground pt-2">
+                    By clicking "Review Terms", you agree to our Terms of Service and Privacy Policy.
+                </p>
+                <Button type="submit" className="w-full">
+                    Review Terms
                 </Button>
             </form>
         </Form>
@@ -130,6 +147,13 @@ export default function RegisterPage() {
             </Link>
         </p>
       </CardFooter>
+
+      <TermsDialog
+        isOpen={isTermsDialogOpen}
+        onOpenChange={setIsTermsDialogOpen}
+        onConfirm={handleFinalSubmit}
+        isSubmitting={isLoading}
+      />
     </>
   );
 }
