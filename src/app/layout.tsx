@@ -34,15 +34,8 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
       <head />
       <body>
-        <LoadingProvider>
-          <AuthProvider>
-            <Suspense>
-              <RouteChangeListener />
-            </Suspense>
-            {children}
-            <Toaster />
-          </AuthProvider>
-        </LoadingProvider>
+        {children}
+        <Toaster />
       </body>
     </html>
   );
