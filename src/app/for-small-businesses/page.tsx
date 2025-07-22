@@ -35,7 +35,7 @@ export default function ForSmallBusinessesPage() {
                     </p>
                     <div className="mt-8">
                         <Button asChild size="lg">
-                            <Link href="#">Start Your Free Beta Trial</Link>
+                            <Link href="/register">Join Beta Program</Link>
                         </Button>
                     </div>
                 </div>
@@ -99,7 +99,7 @@ export default function ForSmallBusinessesPage() {
                 <h2 className="text-3xl md:text-4xl font-bold font-headline">Ready to Focus on Growth, Not Complexity?</h2>
                 <div className="mt-8">
                 <Button asChild size="lg">
-                    <Link href="#">Start Your Free Beta Trial</Link>
+                    <Link href="/register">Join our Ogeemo Beta Tester Community</Link>
                 </Button>
                 </div>
             </div>

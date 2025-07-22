@@ -26,7 +26,7 @@ export function SiteHeader() {
                 <Link href="/login">Log In</Link>
             </Button>
             <Button asChild>
-                <Link href="/register">Get Started Free</Link>
+                <Link href="/register">Join Beta Program</Link>
             </Button>
         </div>
       </div>

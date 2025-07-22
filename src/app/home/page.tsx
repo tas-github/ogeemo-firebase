@@ -7,7 +7,6 @@ import { ArrowRight, CheckCircle, Target } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import React, { useState } from 'react';
-import { RequestDemoDialog } from '@/components/landing/request-demo-dialog';
 
 const features = [
   {
@@ -48,7 +47,6 @@ const personas = [
 ]
 
 export default function HomePage() {
-  const [isDemoDialogOpen, setIsDemoDialogOpen] = useState(false);
 
   return (
     <>
@@ -65,10 +63,7 @@ export default function HomePage() {
               </p>
               <div className="mt-8 flex justify-center gap-4">
                 <Button asChild size="lg">
-                  <Link href="/register">Get Started Free</Link>
-                </Button>
-                <Button size="lg" variant="outline" onClick={() => setIsDemoDialogOpen(true)}>
-                  Request a Demo
+                  <Link href="/register">Join Beta Program</Link>
                 </Button>
               </div>
             </div>
@@ -134,14 +129,13 @@ export default function HomePage() {
               <p className="mt-4 text-lg text-muted-foreground">Join our beta program and experience the peace of mind Ogeemo provides.</p>
               <div className="mt-8">
                 <Button asChild size="lg">
-                  <Link href="/register">Start Your Free Beta Trial</Link>
+                  <Link href="/register">Join our Ogeemo Beta Tester Community</Link>
                 </Button>
               </div>
             </div>
           </section>
         </main>
       </div>
-      <RequestDemoDialog isOpen={isDemoDialogOpen} onOpenChange={setIsDemoDialogOpen} />
     </>
   );
 }

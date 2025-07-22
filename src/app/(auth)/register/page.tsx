@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { LoaderCircle } from 'lucide-react';
+import { LoaderCircle, Rocket } from 'lucide-react';
 
 import { CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -56,8 +56,8 @@ export default function RegisterPage() {
         }
         
         toast({
-            title: "Account Created!",
-            description: "You have been successfully registered.",
+            title: "Welcome to the Beta Program!",
+            description: "Your account has been created successfully.",
         });
         
         // The AuthProvider will handle the redirect to /dashboard
@@ -83,9 +83,12 @@ export default function RegisterPage() {
   return (
     <>
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-headline font-semibold">Create an Account</CardTitle>
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <Rocket className="h-8 w-8 text-primary" />
+        </div>
+        <CardTitle className="text-2xl font-headline font-semibold">Join the Ogeemo Beta Program</CardTitle>
         <CardDescription>
-            Enter your information to create your Ogeemo account.
+            Welcome! By signing up, you'll be part of a cutting-edge technology project. Your input will form an invaluable part of our success. We encourage you to use your own business to test Ogeemo, as that will provide real-world data to help us improve.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -131,7 +134,7 @@ export default function RegisterPage() {
                     )}
                 />
                 <p className="text-xs text-center text-muted-foreground pt-2">
-                    By clicking "Review Terms", you agree to our Terms of Service and Privacy Policy.
+                    By clicking "Review Terms", you agree to our Beta Program Terms of Service.
                 </p>
                 <Button type="submit" className="w-full">
                     Review Terms
