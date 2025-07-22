@@ -27,6 +27,11 @@ const benefits = [
         icon: <Zap className="h-8 w-8 text-primary" />,
         title: "Modernize Your Practice",
         description: "Offer your clients a cutting-edge, all-in-one solution that sets your practice apart. Become an indispensable partner in their business growth by introducing them to a platform that simplifies their operations."
+    },
+    {
+        icon: <ShieldCheck className="h-8 w-8 text-primary" />,
+        title: "Be Audit Ready",
+        description: "Take the stress out of CRA audits by having everything always ready for an audit. No more having CRA sit in your office for weeks on end wasting your time and stressing out your clients."
     }
 ]
 
