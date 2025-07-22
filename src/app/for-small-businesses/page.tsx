@@ -90,7 +90,7 @@ export default function ForSmallBusinessesPage() {
                             </div>
                         </div>
                         <div>
-                            <Image src="https://placehold.co/600x400.png" alt="Ogeemo Screenshot" width={600} height={400} className="rounded-lg shadow-xl" data-ai-hint="business dashboard" />
+                            <Image src="https://placehold.co/600x400.png" alt="Ogeemo Screenshot" width={600} height={400} className="rounded-lg shadow-xl" data-ai-hint="desk relief" />
                         </div>
                     </div>
                 </div>
