@@ -1,24 +1,4 @@
-import type {Metadata} from 'next';
-import { Inter, Space_Grotesk as SpaceGrotesk } from 'next/font/google';
 import './globals.css';
-import { Toaster } from "@/components/ui/toaster"
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-body',
-});
-
-const spaceGrotesk = SpaceGrotesk({
-  subsets: ['latin'],
-  variable: '--font-headline',
-});
-
-
-export const metadata: Metadata = {
-  title: 'Ogeemo Firebase Console',
-  description: 'Manage your Firebase projects with ease.',
-  manifest: '/manifest.json',
-};
 
 export default function RootLayout({
   children,
@@ -26,12 +6,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${spaceGrotesk.variable}`}>
-      <head />
-      <body>
-        {children}
-        <Toaster />
-      </body>
+    <html lang="en">
+      <body>{children}</body>
     </html>
   );
 }
