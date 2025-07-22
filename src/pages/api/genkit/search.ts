@@ -14,7 +14,7 @@ export default async function handler(
     const { query, dataSources } = req.body;
 
     try {
-        const result = await aiSearchFlow.run({
+        const result = await aiSearchFlow({
             query,
             dataSources,
         });

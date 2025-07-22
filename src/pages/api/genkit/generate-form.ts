@@ -14,7 +14,7 @@ export default async function handler(
     const { topic } = req.body;
 
     try {
-        const result = await generateFormFlow.run({
+        const result = await generateFormFlow({
             topic,
         });
         res.status(200).json(result);

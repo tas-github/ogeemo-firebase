@@ -1,5 +1,5 @@
 
-import { summarizeDatabase } from "../../../genkit";
+import { summarizeDatabaseFlow } from "../../../genkit";
 import { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(
@@ -14,7 +14,7 @@ export default async function handler(
     const { databaseDescription, collectionsDescription } = req.body;
 
     try {
-        const result = await summarizeDatabase.run({
+        const result = await summarizeDatabaseFlow({
             databaseDescription,
             collectionsDescription,
         });

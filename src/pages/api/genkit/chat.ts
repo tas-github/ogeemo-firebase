@@ -1,5 +1,5 @@
 
-import { ogeemoChat } from "../../../genkit";
+import { ogeemoChatFlow } from "../../../genkit";
 import { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(
@@ -14,7 +14,7 @@ export default async function handler(
     const { message, history } = req.body;
 
     try {
-        const result = await ogeemoChat.run({
+        const result = await ogeemoChatFlow({
             message,
             history,
         });
