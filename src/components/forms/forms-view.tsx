@@ -44,7 +44,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { generateForm, type GenerateFormOutput } from "@/ai/flows/generate-form-flow";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -53,6 +52,16 @@ import { useAuth } from "@/context/auth-context";
 import { addTask } from "@/services/project-service";
 import { type Event } from "@/types/calendar";
 
+// Define the type for the generated form output
+export type GenerateFormOutput = {
+  name: string;
+  fields: {
+    name: string;
+    label: string;
+    type: "text" | "textarea" | "select" | "number" | "date";
+    options?: string[];
+  }[];
+};
 
 const contactFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -526,7 +535,18 @@ export function FormsView() {
       }
       setIsGenerating(true);
       try {
-          const schema = await generateForm({ description: generationDescription });
+          const response = await fetch('/api/genkit/generate-form', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic: generationDescription })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'The API returned an error.');
+          }
+
+          const schema = await response.json();
           setGeneratedSchema(schema);
           setIsGenerateDialogOpen(false);
           setGenerationDescription("");

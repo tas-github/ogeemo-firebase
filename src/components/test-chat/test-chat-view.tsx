@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { askTestChat } from "@/ai/flows/test-chat";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useSpeechToText, type SpeechRecognitionStatus } from "@/hooks/use-speech-to-text";
@@ -81,30 +80,49 @@ export function TestChatView() {
       text: currentInput,
       sender: "user",
     };
-    setMessages((prev) => [...prev, userMessage]);
+    
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     setInput("");
     setIsLoading(true);
 
     try {
-      const response = await askTestChat({ message: currentInput });
+      const response = await fetch('/api/genkit/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: currentInput,
+          history: newMessages.slice(0, -1).map(msg => ({
+            role: msg.sender === 'user' ? 'user' : 'model',
+            content: [{ text: msg.text }]
+          }))
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'The API returned an error.');
+      }
+
+      const responseData = await response.json();
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: response.reply,
+        text: responseData.reply,
         sender: "bot",
       };
       setMessages((prev) => [...prev, botMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error with Test Chat:", error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: "Sorry, the test chat encountered an error. Please check the console.",
+        text: `Sorry, the test chat encountered an error: ${error.message}`,
         sender: "bot",
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, isListening, stopListening]);
+  }, [input, isLoading, isListening, stopListening, messages]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

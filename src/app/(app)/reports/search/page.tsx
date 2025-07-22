@@ -18,9 +18,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { cn } from '@/lib/utils';
 
-// Import AI Flow
-import { generateSearchQuery } from '@/ai/flows/ai-search-flow';
-
 // Import mock data
 import { mockContacts, mockFolders as mockContactFolders, type Contact } from '@/data/contacts';
 import { mockFiles, mockFolders as mockFileFolders, type FileItem } from '@/data/files';
@@ -174,10 +171,18 @@ export default function AdvancedSearchPage() {
     setSearchResults({});
 
     try {
-      const { conditions, logic } = await generateSearchQuery({
-        query: searchQuery,
-        dataSources: selectedDataSources,
-      });
+        const response = await fetch('/api/genkit/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: searchQuery, dataSources: selectedDataSources })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'The API returned an error.');
+        }
+
+        const { conditions, logic } = await response.json();
 
       const dataMap: Record<DataSource, any[]> = {
         contacts: mockContacts,

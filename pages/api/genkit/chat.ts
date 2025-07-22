@@ -1,9 +1,6 @@
 
-import { initGenkit } from "./init";
-import { ogeemoChat } from "@/lib/ai/ogeemo-chat";
+import { ogeemoChat } from "../../../genkit";
 import { NextApiRequest, NextApiResponse } from "next";
-
-initGenkit();
 
 export default async function handler(
     req: NextApiRequest,

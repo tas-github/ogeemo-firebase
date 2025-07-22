@@ -1,9 +1,6 @@
 
-import { initGenkit } from "./init";
-import { aiSearchFlow } from "@/lib/ai/ai-search-flow";
+import { aiSearchFlow } from "../../../genkit";
 import { NextApiRequest, NextApiResponse } from "next";
-
-initGenkit();
 
 export default async function handler(
     req: NextApiRequest,

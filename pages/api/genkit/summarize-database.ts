@@ -1,9 +1,6 @@
 
-import { initGenkit } from "./init";
-import { summarizeDatabase } from "@/lib/ai/summarize-database";
+import { summarizeDatabase } from "../../../genkit";
 import { NextApiRequest, NextApiResponse } from "next";
-
-initGenkit();
 
 export default async function handler(
     req: NextApiRequest,
@@ -21,7 +18,7 @@ export default async function handler(
             databaseDescription,
             collectionsDescription,
         });
-        res.status(200).json(.result);
+        res.status(200).json(result);
     } catch (error: any) {
         console.error(error);
         res.status(500).json({ error: error.message });

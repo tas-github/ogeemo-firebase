@@ -1,5 +1,4 @@
 
-import "./genkit";
 import { onFlow } from "genkit";
 import { z } from "zod";
 import { geminiPro as gemini10pro } from "@genkit-ai/googleai";

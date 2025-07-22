@@ -19,6 +19,7 @@ import { ArrowLeft, Plus, Trash2, MoreVertical, Save, LoaderCircle } from "lucid
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getProjectById, updateProject, type Project, type ProjectStep } from '@/services/project-service';
+import { Textarea } from '../ui/textarea';
 
 export function ProjectStepsView() {
     const [project, setProject] = useState<Project | null>(null);
@@ -77,7 +78,6 @@ export function ProjectStepsView() {
     useEffect(() => {
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
             if (hasUnsavedChanges.current) {
-                // This message is often ignored by modern browsers, but it's good practice
                 e.preventDefault();
                 e.returnValue = '';
             }
@@ -97,7 +97,10 @@ export function ProjectStepsView() {
         const newStep: ProjectStep = {
             id: `temp-${Date.now()}`,
             title: '',
+            description: '',
             durationHours: 1,
+            isBillable: false,
+            connectToCalendar: false,
             isCompleted: false,
         };
         setSteps(prev => [...prev, newStep]);
@@ -116,7 +119,7 @@ export function ProjectStepsView() {
     
     const handleSaveAndContinue = async () => {
         await handleSaveChanges();
-        router.push('/projects');
+        router.push(`/projects/${project?.id}/planning`);
     }
 
     if (isLoading) {
@@ -128,12 +131,12 @@ export function ProjectStepsView() {
     }
     
     if (!project) {
-        return null; // or a more robust error component
+        return null;
     }
 
     return (
         <div className="p-4 sm:p-6 flex flex-col items-center justify-start h-full">
-            <Card className="w-full max-w-4xl">
+            <Card className="w-full max-w-6xl">
                 <CardHeader>
                     <div className="flex justify-between items-start">
                         <div>
@@ -153,41 +156,70 @@ export function ProjectStepsView() {
                 <CardContent className="space-y-4">
                     <div className="space-y-3">
                         {steps.map((step, index) => (
-                            <div key={step.id} className="flex items-center gap-3 p-2 border rounded-lg">
-                                <span className="font-mono text-sm text-muted-foreground">{index + 1}.</span>
-                                <Checkbox
-                                    checked={step.isCompleted}
-                                    onCheckedChange={(checked) => handleUpdateStep(step.id, 'isCompleted', !!checked)}
-                                />
-                                <Input
-                                    value={step.title}
-                                    onChange={(e) => handleUpdateStep(step.id, 'title', e.target.value)}
-                                    placeholder="Enter step description..."
-                                    className="flex-1"
-                                />
-                                <div className="flex items-center gap-2">
+                            <div key={step.id} className="grid grid-cols-12 items-start gap-4 p-3 border rounded-lg">
+                               <div className="col-span-12 md:col-span-6 space-y-2">
+                                    <Label htmlFor={`title-${step.id}`}>Step {index + 1}: Title</Label>
                                     <Input
-                                        type="number"
-                                        value={step.durationHours}
-                                        onChange={(e) => handleUpdateStep(step.id, 'durationHours', Number(e.target.value))}
-                                        className="w-20"
-                                        min="0"
+                                        id={`title-${step.id}`}
+                                        value={step.title}
+                                        onChange={(e) => handleUpdateStep(step.id, 'title', e.target.value)}
+                                        placeholder="Enter step title..."
                                     />
-                                    <Label className="text-sm text-muted-foreground">hours</Label>
-                                </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <MoreVertical className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteStep(step.id)}>
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Delete Step
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                    <Label htmlFor={`desc-${step.id}`} className="mt-2">Description</Label>
+                                    <Textarea
+                                        id={`desc-${step.id}`}
+                                        value={step.description}
+                                        onChange={(e) => handleUpdateStep(step.id, 'description', e.target.value)}
+                                        placeholder="Describe the step..."
+                                        rows={2}
+                                    />
+                               </div>
+                               <div className="col-span-12 md:col-span-5 space-y-4">
+                                    <div className="flex items-end gap-2">
+                                        <div className="space-y-2 flex-1">
+                                            <Label htmlFor={`duration-${step.id}`}>Est. Duration</Label>
+                                            <Input
+                                                id={`duration-${step.id}`}
+                                                type="number"
+                                                value={step.durationHours}
+                                                onChange={(e) => handleUpdateStep(step.id, 'durationHours', Number(e.target.value))}
+                                                min="0"
+                                            />
+                                        </div>
+                                        <span className="text-sm text-muted-foreground pb-2">hours</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id={`billable-${step.id}`}
+                                            checked={step.isBillable}
+                                            onCheckedChange={(checked) => handleUpdateStep(step.id, 'isBillable', !!checked)}
+                                        />
+                                        <Label htmlFor={`billable-${step.id}`}>Billable</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                            id={`calendar-${step.id}`}
+                                            checked={step.connectToCalendar}
+                                            onCheckedChange={(checked) => handleUpdateStep(step.id, 'connectToCalendar', !!checked)}
+                                        />
+                                        <Label htmlFor={`calendar-${step.id}`}>Connect to Calendar</Label>
+                                    </div>
+                               </div>
+                               <div className="col-span-12 md:col-span-1 flex justify-end items-start">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                <MoreVertical className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteStep(step.id)}>
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Delete Step
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                               </div>
                             </div>
                         ))}
                     </div>

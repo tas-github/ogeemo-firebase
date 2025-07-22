@@ -1,9 +1,6 @@
 
-import { initGenkit } from "./init";
-import { generateFormFlow } from "@/lib/ai/generate-form-flow";
+import { generateFormFlow } from "../../../genkit";
 import { NextApiRequest, NextApiResponse } from "next";
-
-initGenkit();
 
 export default async function handler(
     req: NextApiRequest,

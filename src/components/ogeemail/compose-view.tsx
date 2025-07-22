@@ -59,7 +59,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { generateImage } from '@/ai/flows/generate-image-flow';
 import { Textarea } from '@/components/ui/textarea';
 import { type Contact, type FolderData } from '@/data/contacts';
 import { getContacts, getFolders, addContact } from '@/services/contact-service';
@@ -309,7 +308,18 @@ export function ComposeEmailView() {
     setIsGeneratingImage(true);
     setGeneratedImageUrl(null);
     try {
-      const result = await generateImage({ prompt: imagePrompt });
+      const response = await fetch('/api/genkit/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: imagePrompt })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'The API returned an error.');
+      }
+
+      const result = await response.json();
       setGeneratedImageUrl(result.imageUrl);
     } catch (error: any) {
       console.error("Image generation UI error:", error);
