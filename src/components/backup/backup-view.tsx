@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -23,6 +24,17 @@ import { Badge } from "@/components/ui/badge";
 import { DatabaseBackup, History, LoaderCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 type Backup = {
   id: string;
@@ -53,6 +65,8 @@ export function BackupView() {
   const [backups, setBackups] = useState<Backup[]>(initialBackups);
   const [backupStatus, setBackupStatus] = useState<"idle" | "running" | "complete">("idle");
   const [progress, setProgress] = useState(0);
+  const [backupToRestore, setBackupToRestore] = useState<Backup | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -90,106 +104,146 @@ export function BackupView() {
     setBackupStatus("running");
   };
 
+  const handleConfirmRestore = () => {
+    if (!backupToRestore) return;
+
+    setIsRestoring(true);
+    toast({
+        title: "Restore Started",
+        description: `Restoring data from backup created on ${format(backupToRestore.createdAt, "MMM d, yyyy")}.`,
+    });
+
+    // Simulate the restore process
+    setTimeout(() => {
+        setIsRestoring(false);
+        setBackupToRestore(null);
+        toast({
+            title: "Restore Complete",
+            description: "Your application data has been successfully restored.",
+        });
+    }, 3000);
+  };
+
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <header className="text-center">
-        <h1 className="text-3xl font-bold font-headline text-primary">
-          Backup Manager
-        </h1>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          Secure your application data by creating and managing backups. You can restore your data from any of the saved points.
-        </p>
-      </header>
+    <>
+      <div className="p-4 sm:p-6 space-y-6">
+        <header className="text-center">
+          <h1 className="text-3xl font-bold font-headline text-primary">
+            Backup Manager
+          </h1>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Secure your application data by creating and managing backups. You can restore your data from any of the saved points.
+          </p>
+        </header>
 
-      <div className="grid gap-6 md:grid-cols-2 max-w-6xl mx-auto items-start">
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Create a New Backup</CardTitle>
-            <CardDescription>
-              Create a point-in-time backup of your entire Ogeemo application, including all files and database records.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {backupStatus === "running" ? (
-              <div className="space-y-4 text-center">
-                <p className="text-sm font-medium">Backup in progress...</p>
-                <Progress value={progress} className="w-full" />
-                <p className="text-xs text-muted-foreground">{progress}%</p>
-              </div>
-            ) : backupStatus === "complete" ? (
-                <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <p className="font-semibold text-green-700 dark:text-green-400">Backup successfully created!</p>
-                    <Button variant="link" onClick={() => setBackupStatus('idle')}>Create another backup</Button>
-                </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                This process may take several minutes depending on the size of your data. The application will remain available during the backup.
-              </p>
-            )}
-          </CardContent>
-          <CardFooter>
-            <Button onClick={handleCreateBackup} disabled={backupStatus === "running"}>
+        <div className="grid gap-6 md:grid-cols-2 max-w-6xl mx-auto items-start">
+          <Card className="md:col-span-1">
+            <CardHeader>
+              <CardTitle>Create a New Backup</CardTitle>
+              <CardDescription>
+                Create a point-in-time backup of your entire Ogeemo application, including all files and database records.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
               {backupStatus === "running" ? (
-                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                <div className="space-y-4 text-center">
+                  <p className="text-sm font-medium">Backup in progress...</p>
+                  <Progress value={progress} className="w-full" />
+                  <p className="text-xs text-muted-foreground">{progress}%</p>
+                </div>
+              ) : backupStatus === "complete" ? (
+                  <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <p className="font-semibold text-green-700 dark:text-green-400">Backup successfully created!</p>
+                      <Button variant="link" onClick={() => setBackupStatus('idle')}>Create another backup</Button>
+                  </div>
               ) : (
-                <DatabaseBackup className="mr-2 h-4 w-4" />
+                <p className="text-sm text-muted-foreground">
+                  This process may take several minutes depending on the size of your data. The application will remain available during the backup.
+                </p>
               )}
-              {backupStatus === 'running' ? 'Backing Up...' : 'Create Backup'}
-            </Button>
-          </CardFooter>
-        </Card>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleCreateBackup} disabled={backupStatus === "running"}>
+                {backupStatus === "running" ? (
+                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <DatabaseBackup className="mr-2 h-4 w-4" />
+                )}
+                {backupStatus === 'running' ? 'Backing Up...' : 'Create Backup'}
+              </Button>
+            </CardFooter>
+          </Card>
 
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle>Backup History</CardTitle>
-            <CardDescription>
-              A log of all previous backups.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {backups.map((backup) => (
-                    <TableRow key={backup.id}>
-                      <TableCell>
-                        <div className="font-medium">{format(backup.createdAt, "MMM d, yyyy, h:mm a")}</div>
-                        <div className="text-xs text-muted-foreground">{backup.description}</div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            backup.status === "Completed"
-                              ? "secondary"
-                              : "destructive"
-                          }
-                          className={
-                            backup.status === "Completed" ? "bg-green-100 text-green-800" : ""
-                          }
-                        >
-                          {backup.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                         <Button variant="ghost" size="sm" disabled>
-                           <History className="mr-2 h-4 w-4" /> Restore
-                         </Button>
-                      </TableCell>
+          <Card className="md:col-span-1">
+            <CardHeader>
+              <CardTitle>Backup History</CardTitle>
+              <CardDescription>
+                A log of all previous backups.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {backups.map((backup) => (
+                      <TableRow key={backup.id}>
+                        <TableCell>
+                          <div className="font-medium">{format(backup.createdAt, "MMM d, yyyy, h:mm a")}</div>
+                          <div className="text-xs text-muted-foreground">{backup.description}</div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              backup.status === "Completed"
+                                ? "secondary"
+                                : "destructive"
+                            }
+                            className={
+                              backup.status === "Completed" ? "bg-green-100 text-green-800" : ""
+                            }
+                          >
+                            {backup.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                           <Button variant="ghost" size="sm" onClick={() => setBackupToRestore(backup)} disabled={backup.status === 'Failed'}>
+                             <History className="mr-2 h-4 w-4" /> Restore
+                           </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+
+      <AlertDialog open={!!backupToRestore} onOpenChange={() => setBackupToRestore(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Restore Backup?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will overwrite all current application data with the data from the backup created on <strong>{backupToRestore ? format(backupToRestore.createdAt, "PPPp") : ""}</strong>. This action cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel disabled={isRestoring}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmRestore} disabled={isRestoring}>
+                    {isRestoring && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                    {isRestoring ? "Restoring..." : "Yes, Restore Data"}
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
