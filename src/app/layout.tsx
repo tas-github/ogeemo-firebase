@@ -5,7 +5,6 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 // import { AuthProvider } from '@/context/auth-context';
 // import { LoadingProvider } from '@/context/loading-context';
-import { RouteChangeListener } from '@/components/route-change-listener';
 import { Suspense } from 'react';
 
 const inter = Inter({
@@ -38,9 +37,6 @@ export default function RootLayout({
           <AuthProvider>
             <LoadingProvider>
         */}
-              <Suspense>
-                <RouteChangeListener />
-              </Suspense>
               {children}
               <Toaster />
         {/*
