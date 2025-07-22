@@ -27,16 +27,17 @@ export function SiteFooter() {
                          <div>
                             <h4 className="font-semibold mb-2">Company</h4>
                             <ul className="space-y-2">
-                                <li><Link href="#" className="text-sm text-muted-foreground hover:text-foreground">About Us</Link></li>
-                                <li><Link href="#" className="text-sm text-muted-foreground hover:text-foreground">Blog</Link></li>
-                                <li><Link href="#" className="text-sm text-muted-foreground hover:text-foreground">Contact</Link></li>
+                                <li><Link href="/about" className="text-sm text-muted-foreground hover:text-foreground">About Us</Link></li>
+                                <li><Link href="/news" className="text-sm text-muted-foreground hover:text-foreground">Blog</Link></li>
+                                <li><Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground">Contact</Link></li>
+                                <li><Link href="/register" className="text-sm text-muted-foreground hover:text-foreground">Beta Program</Link></li>
                             </ul>
                         </div>
                          <div>
                             <h4 className="font-semibold mb-2">Legal</h4>
                             <ul className="space-y-2">
-                                <li><Link href="#" className="text-sm text-muted-foreground hover:text-foreground">Privacy Policy</Link></li>
-                                <li><Link href="#" className="text-sm text-muted-foreground hover:text-foreground">Terms of Service</Link></li>
+                                <li><Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">Privacy Policy</Link></li>
+                                <li><Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground">Terms of Service</Link></li>
                             </ul>
                         </div>
                     </div>
