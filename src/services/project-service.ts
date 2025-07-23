@@ -69,6 +69,7 @@ const docToTask = (doc: QueryDocumentSnapshot<DocumentData> | DocumentData): Tas
     userId: data.userId,
     assigneeIds: data.assigneeIds || [],
     reminder: data.reminder || null,
+    stepId: data.stepId || null,
   };
 };
 
@@ -128,11 +129,25 @@ export async function updateProjectWithTasks(userId: string, projectId: string, 
     checkDb();
     const batch = writeBatch(db);
     const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
-    batch.update(projectRef, projectData);
+
+    // Ensure temporary IDs are removed before saving
+    const stepsToSave = projectData.steps?.map(step => {
+        const { id, ...rest } = step;
+        return { id: id?.startsWith('temp_') ? '' : id, ...rest };
+    });
+
+    batch.update(projectRef, { ...projectData, steps: stepsToSave });
 
     if (projectData.steps) {
+        const existingTasksQuery = query(collection(db, TASKS_COLLECTION), where("projectId", "==", projectId));
+        const existingTasksSnapshot = await getDocs(existingTasksQuery);
+        const existingTasks = existingTasksSnapshot.docs.map(docToTask);
+        const existingStepIds = existingTasks.map(t => t.stepId).filter(Boolean);
+
         for (const step of projectData.steps) {
-            if (step.connectToCalendar && step.startTime) {
+            const existingTask = existingTasks.find(t => t.stepId === step.id);
+            
+            if (step.connectToCalendar && step.startTime && step.id) {
                 const taskData = {
                     title: step.title,
                     description: step.description,
@@ -142,11 +157,22 @@ export async function updateProjectWithTasks(userId: string, projectId: string, 
                     position: 0,
                     projectId,
                     userId,
+                    stepId: step.id,
                 };
-                // In a real app, you would check if a task for this step already exists and update it.
-                // For simplicity, we are creating a new one.
-                const taskRef = doc(collection(db, TASKS_COLLECTION));
-                batch.set(taskRef, taskData);
+                
+                if (existingTask) {
+                    // Update existing task
+                    const taskRef = doc(db, TASKS_COLLECTION, existingTask.id);
+                    batch.update(taskRef, taskData);
+                } else {
+                    // Create new task
+                    const taskRef = doc(collection(db, TASKS_COLLECTION));
+                    batch.set(taskRef, taskData);
+                }
+            } else if (!step.connectToCalendar && existingTask) {
+                // Delete task if it's no longer connected to calendar
+                const taskRef = doc(db, TASKS_COLLECTION, existingTask.id);
+                batch.delete(taskRef);
             }
         }
     }

@@ -14,6 +14,7 @@ export interface Event {
   userId: string;
   assigneeIds?: string[];
   reminder?: string | null;
+  stepId?: string | null; // Link back to the project step
 }
 
 export interface ProjectStep {
