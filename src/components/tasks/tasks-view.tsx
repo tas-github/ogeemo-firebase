@@ -3,8 +3,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Plus, LoaderCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -26,7 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-function TasksViewContent() {
+export function TasksView() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
@@ -182,13 +180,5 @@ function TasksViewContent() {
                 </AlertDialogContent>
             </AlertDialog>
         </>
-    );
-}
-
-export function TasksView() {
-    return (
-        <DndProvider backend={HTML5Backend}>
-            <TasksViewContent />
-        </DndProvider>
     );
 }

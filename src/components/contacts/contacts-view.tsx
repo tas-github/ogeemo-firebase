@@ -4,8 +4,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+import { useDrag, useDrop } from 'react-dnd';
 import {
   Folder,
   Plus,
@@ -95,7 +94,7 @@ const ItemTypes = {
 type DroppableItem = (Contact & { type?: 'contact' }) | (FolderData & { type: 'folder' });
 
 
-function ContactsViewContent() {
+export function ContactsView() {
   const [folders, setFolders] = useState<FolderData[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -543,7 +542,7 @@ function ContactsViewContent() {
                           <span className="sr-only">New Root Folder</span>
                       </Button>
                   </div>
-                  <ScrollArea ref={dropToRoot} className={cn("flex-1 rounded-md p-2", isOverRoot && canDropToRoot && 'bg-primary/10 ring-1 ring-primary')}>
+                  <ScrollArea ref={dropToRoot} className={cn("flex-1 rounded-md p-2", isOverRoot && canDropToRoot && 'bg-primary/10 ring-1 ring-primary-foreground')}>
                       <Button variant={selectedFolderId === 'all' ? "secondary" : "ghost"} className="w-full justify-start gap-3 my-1" onClick={() => setSelectedFolderId('all')}>
                           <Users className="h-4 w-4" /> <span>All Contacts</span>
                       </Button>
@@ -659,12 +658,4 @@ function ContactsViewContent() {
       )}
     </>
   );
-}
-
-export function ContactsView() {
-    return (
-        <DndProvider backend={HTML5Backend}>
-            <ContactsViewContent />
-        </DndProvider>
-    )
 }

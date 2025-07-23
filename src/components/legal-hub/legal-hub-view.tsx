@@ -2,60 +2,14 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import dynamic from 'next/dynamic';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 import {
-  Folder,
   LoaderCircle,
-  FolderPlus,
-  MoreVertical,
-  Trash2,
-  FileUp,
-  ChevronRight,
-  Pencil,
-  Download,
-  FolderSearch,
   Landmark,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { type FolderItem, type FileItem } from '@/data/files';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
-import { FileIcon } from '@/components/files/file-icon';
-import { format } from 'date-fns';
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
+import { type FolderItem } from '@/data/files';
 import { useAuth } from '@/context/auth-context';
 import { 
-    getFiles, 
-    getFolders, 
-    addFolder, 
-    updateFolder, 
-    updateFile, 
-    deleteFiles, 
-    deleteFolderAndContents,
-    uploadFiles,
     findOrCreateTopLevelFolder,
 } from '@/services/file-service';
 import { FilesViewContent } from '@/components/files/files-view-content';
@@ -112,13 +66,11 @@ export function LegalHubView() {
     }
     
     return (
-        <DndProvider backend={HTML5Backend}>
-            <FilesViewContent
-                rootFolderId={legalRootFolder.id}
-                headerIcon={Landmark}
-                headerTitle="Legal Hub"
-                headerDescription="Manage all your legal documents, contracts, and compliance files in one secure place."
-            />
-        </DndProvider>
+        <FilesViewContent
+            rootFolderId={legalRootFolder.id}
+            headerIcon={Landmark}
+            headerTitle="Legal Hub"
+            headerDescription="Manage all your legal documents, contracts, and compliance files in one secure place."
+        />
     );
 }

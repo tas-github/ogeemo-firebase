@@ -5,8 +5,7 @@ import * as React from "react"
 import dynamic from "next/dynamic"
 import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set, addMinutes, startOfMinute, startOfMonth, endOfMonth, isToday, isSameMonth, addMonths, addWeeks } from "date-fns"
 import { Users, Settings, Plus, Calendar as CalendarIcon, Edit, ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react"
-import { DndProvider, useDrag, useDrop } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+import { useDrag, useDrop } from 'react-dnd';
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -225,7 +224,7 @@ const MonthView = ({ date, events, onEventClick, today }: { date: Date; events: 
   );
 };
 
-function CalendarPageContent() {
+export function CalendarView() {
   const [date, setDate] = React.useState<Date | undefined>();
   const [today, setToday] = React.useState<Date | null>(null);
   const [view, setView] = React.useState<CalendarView>("day");
@@ -639,14 +638,5 @@ function CalendarPageContent() {
             />
         )}
       </div>
-  )
-}
-
-
-export function CalendarView() {
-  return (
-    <DndProvider backend={HTML5Backend}>
-      <CalendarPageContent />
-    </DndProvider>
   )
 }
