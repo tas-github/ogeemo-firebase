@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -13,7 +14,17 @@ import { LoaderCircle, Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getProjectById, updateProject, type Project, type ProjectStep } from '@/services/project-service';
-import { format } from 'date-fns';
+
+const formatDuration = (totalMinutes: number) => {
+    if (totalMinutes < 0) totalMinutes = 0;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const hourString = hours > 0 ? `${hours} hour${hours > 1 ? 's' : ''}` : '';
+    const minuteString = minutes > 0 ? `${minutes} minute${minutes > 1 ? 's' : ''}` : '';
+    
+    if (hourString && minuteString) return `${hourString}, ${minuteString}`;
+    return hourString || minuteString || '0 minutes';
+};
 
 export function ProjectPlanningView({ projectId }: { projectId: string }) {
     const [project, setProject] = useState<Project | null>(null);
@@ -22,7 +33,8 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
     
     const [newStepTitle, setNewStepTitle] = useState("");
     const [newStepDescription, setNewStepDescription] = useState("");
-    const [newStepDuration, setNewStepDuration] = useState<number | ''>(1);
+    const [newStepHours, setNewStepHours] = useState<number | ''>(1);
+    const [newStepMinutes, setNewStepMinutes] = useState<number | ''>(0);
 
     const { user } = useAuth();
     const { toast } = useToast();
@@ -53,8 +65,12 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
     }, [user, loadProject]);
     
     const handleAddStep = () => {
-        if (!newStepTitle.trim() || !newStepDuration) {
-            toast({ variant: 'destructive', title: 'Missing Information', description: 'Please provide a title and duration for the step.' });
+        const hours = Number(newStepHours) || 0;
+        const minutes = Number(newStepMinutes) || 0;
+        const totalDurationMinutes = (hours * 60) + minutes;
+
+        if (!newStepTitle.trim() || totalDurationMinutes <= 0) {
+            toast({ variant: 'destructive', title: 'Missing Information', description: 'Please provide a title and a duration greater than 0.' });
             return;
         }
         
@@ -62,7 +78,7 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
             id: `temp_${Date.now()}`,
             title: newStepTitle,
             description: newStepDescription,
-            durationHours: Number(newStepDuration),
+            durationMinutes: totalDurationMinutes,
             isBillable: true,
             connectToCalendar: false,
             isCompleted: false,
@@ -71,7 +87,8 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
         setSteps(prev => [...prev, newStep]);
         setNewStepTitle("");
         setNewStepDescription("");
-        setNewStepDuration(1);
+        setNewStepHours(1);
+        setNewStepMinutes(0);
     };
     
     const handleDeleteStep = (stepId: string) => {
@@ -139,8 +156,17 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
                             <Textarea id="step-desc" value={newStepDescription} onChange={(e) => setNewStepDescription(e.target.value)} />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="step-duration">Estimated Duration (hours)</Label>
-                            <Input id="step-duration" type="number" value={newStepDuration} onChange={(e) => setNewStepDuration(Number(e.target.value))} />
+                            <Label>Estimated Duration</Label>
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1 space-y-1">
+                                    <Label htmlFor="step-hours" className="text-xs text-muted-foreground">Hours</Label>
+                                    <Input id="step-hours" type="number" min="0" value={newStepHours} onChange={(e) => setNewStepHours(Number(e.target.value))} />
+                                </div>
+                                 <div className="flex-1 space-y-1">
+                                    <Label htmlFor="step-minutes" className="text-xs text-muted-foreground">Minutes</Label>
+                                    <Input id="step-minutes" type="number" min="0" max="59" step="5" value={newStepMinutes} onChange={(e) => setNewStepMinutes(Number(e.target.value))} />
+                                </div>
+                            </div>
                         </div>
                          <Button onClick={handleAddStep} className="w-full">
                             <Plus className="mr-2 h-4 w-4" /> Add Step to Plan
@@ -161,7 +187,7 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
                                        <div>
                                            <h4 className="font-semibold">{index + 1}. {step.title}</h4>
                                            <p className="text-sm text-muted-foreground">{step.description}</p>
-                                           <p className="text-xs text-muted-foreground mt-1">Est. Duration: {step.durationHours} hour(s)</p>
+                                           <p className="text-xs text-muted-foreground mt-1">Est. Duration: {formatDuration(step.durationMinutes!)}</p>
                                        </div>
                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteStep(step.id!)}>
                                            <Trash2 className="h-4 w-4 text-destructive" />
