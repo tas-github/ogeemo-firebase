@@ -3,7 +3,6 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Plus, Trash2, Save, Pencil, Mic, Square, HardHat, ChevronDown } from 'lucide-react';
@@ -34,7 +33,7 @@ const projectSchema = z.object({
   description: z.string().optional(),
   clientId: z.string().nullable().optional(),
   ownerId: z.string().nullable().optional(),
-  assigneeId: z.string().optional(), // Changed from assigneeIds to handle single selection
+  assigneeId: z.string().optional(),
   startDate: z.date().nullable(),
   startHour: z.string().optional(),
   startMinute: z.string().optional(),
@@ -65,7 +64,8 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
   const isEditing = !!projectToEdit;
 
   const form = useForm<ProjectFormData>({
-    resolver: zodResolver(projectSchema),
+    // Temporarily removing resolver to disable validation
+    // resolver: zodResolver(projectSchema),
     defaultValues: { name: "", description: "", clientId: null, ownerId: null, assigneeId: "", startDate: new Date(), startHour: String(new Date().getHours()), startMinute: '0', dueDate: null },
   });
   
