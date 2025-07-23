@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect } from 'react';
@@ -75,7 +76,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdate
   function onSubmit(values: TaskFormData) {
     if (eventToEdit && onTaskUpdate) {
         onTaskUpdate({ ...eventToEdit, ...values });
-    } else if (onTaskCreate && projectId) {
+    } else if (onTaskCreate) {
         onTaskCreate({
             ...values,
             projectId,
@@ -91,9 +92,9 @@ export function NewTaskDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdate
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{eventToEdit ? 'Edit Task' : 'Create New Task'}</DialogTitle>
+          <DialogTitle>{eventToEdit ? 'Edit Event' : 'Create New Event'}</DialogTitle>
           <DialogDescription>
-            {eventToEdit ? 'Update the details for this task.' : `Add a new task to this project.`}
+            {eventToEdit ? 'Update the details for this event.' : `Add a new event to your calendar.`}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -109,7 +110,7 @@ export function NewTaskDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdate
              </FormControl><FormMessage /></FormItem> )} />
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit">{eventToEdit ? 'Save Changes' : 'Create Task'}</Button>
+              <Button type="submit">{eventToEdit ? 'Save Changes' : 'Create Event'}</Button>
             </DialogFooter>
           </form>
         </Form>

@@ -10,7 +10,7 @@ export interface Event {
   end: Date;
   status?: TaskStatus;
   position: number;
-  projectId: string;
+  projectId?: string | null;
   userId: string;
   assigneeIds?: string[];
   reminder?: string | null;

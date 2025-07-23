@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -38,24 +39,14 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
+import { addTask, getTasksForUser } from "@/services/project-service";
+import { type Event } from "@/types/calendar";
+
 
 const NewTaskDialog = dynamic(() => import('@/components/tasks/NewTaskDialog').then((mod) => mod.NewTaskDialog), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
 });
 
-
-// Placeholder Event type until new service is built
-type Event = {
-    id: string;
-    title: string;
-    description?: string;
-    start: Date;
-    end: Date;
-    attendees?: string[];
-    status?: 'todo' | 'inProgress' | 'done';
-    projectId?: string;
-    userId?: string;
-};
 
 type CalendarView = "day" | "5days" | "week" | "month";
 
@@ -229,7 +220,7 @@ export function CalendarView() {
   const [today, setToday] = React.useState<Date | null>(null);
   const [view, setView] = React.useState<CalendarView>("day");
   const [events, setEvents] = React.useState<Event[]>([]);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(true);
   
   const [viewStartHour, setViewStartHour] = React.useState(9);
   const [viewEndHour, setViewEndHour] = React.useState(17);
@@ -250,6 +241,24 @@ export function CalendarView() {
     setDate(now);
     setToday(now);
   }, []);
+  
+  const loadEvents = React.useCallback(async () => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+        const userTasks = await getTasksForUser(user.uid);
+        setEvents(userTasks);
+    } catch(error: any) {
+        toast({ variant: "destructive", title: "Could not load events", description: error.message });
+    } finally {
+        setIsLoading(false);
+    }
+  }, [user, toast]);
+  
+  React.useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
+
 
   React.useEffect(() => {
     try {
@@ -269,10 +278,17 @@ export function CalendarView() {
   }, []);
 
   const handleTaskCreate = async (taskData: Omit<Event, 'id' | 'userId'>) => {
-    // Placeholder until project-service is rebuilt
-    const newEvent = { ...taskData, id: `temp-${Date.now()}`, userId: user?.uid };
-    setEvents(prev => [...prev, newEvent]);
-    toast({ title: "Event Created (Local)" });
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to create events.' });
+        return;
+    }
+    try {
+        const newEvent = await addTask({ ...taskData, userId: user.uid });
+        setEvents(prev => [...prev, newEvent]);
+        toast({ title: "Event Created" });
+    } catch (error: any) {
+         toast({ variant: 'destructive', title: 'Failed to create event', description: error.message });
+    }
   };
 
   const handleTaskUpdate = async (updatedEventData: Omit<Event, 'userId'>) => {
