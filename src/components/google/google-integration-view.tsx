@@ -12,7 +12,7 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { LoaderCircle, CheckCircle2, AlertTriangle, LogOut, ExternalLink, Mail, FileText, Sheet as SheetIcon, Contact } from "lucide-react";
+import { LoaderCircle, CheckCircle2, AlertTriangle, LogOut, ExternalLink, Mail, FileText, Sheet as SheetIcon, Contact, Presentation, Calendar } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { initializeFirebase } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
@@ -47,6 +47,8 @@ const workspaceLinks = [
     { name: "Gmail", href: "https://mail.google.com/", icon: Mail },
     { name: "Docs", href: "https://docs.google.com/", icon: FileText },
     { name: "Sheets", href: "https://sheets.google.com/", icon: SheetIcon },
+    { name: "Slides", href: "https://slides.google.com/", icon: Presentation },
+    { name: "Calendar", href: "https://calendar.google.com/", icon: Calendar },
     { name: "Contacts", href: "https://contacts.google.com/", icon: Contact },
 ];
 
