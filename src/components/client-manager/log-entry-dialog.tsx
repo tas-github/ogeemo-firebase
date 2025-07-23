@@ -20,6 +20,7 @@ import { type Event } from '@/types/calendar';
 import { type Contact } from '@/services/contact-service';
 import { format, set, parseISO, differenceInSeconds } from 'date-fns';
 import { Play, Pause, Square, Save } from 'lucide-react';
+import { Checkbox } from '../ui/checkbox';
 
 const formatTime = (totalSeconds: number) => {
     if (totalSeconds < 0) totalSeconds = 0;
@@ -49,6 +50,7 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
     const [description, setDescription] = useState('');
     const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
     const [billableRate, setBillableRate] = useState(0);
+    const [isBillable, setIsBillable] = useState(true);
     
     // Timer state
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -65,6 +67,7 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
                 setDescription(eventToEdit.description || '');
                 setSelectedContactId(eventToEdit.contactId || null);
                 setBillableRate(eventToEdit.billableRate || 0);
+                setIsBillable((eventToEdit.billableRate || 0) > 0);
                 setElapsedSeconds(eventToEdit.duration || 0);
                 setIsActive(false);
                 setIsPaused(true);
@@ -73,6 +76,7 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
                 setDescription('');
                 setSelectedContactId(null);
                 setBillableRate(100); // Default rate
+                setIsBillable(true);
                 setElapsedSeconds(0);
                 setIsActive(false);
                 setIsPaused(true);
@@ -108,7 +112,7 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
             end,
             duration: elapsedSeconds,
             contactId: selectedContactId,
-            billableRate,
+            billableRate: isBillable ? billableRate : 0,
             status: eventToEdit?.status || 'todo',
             position: eventToEdit?.position || 0,
             projectId: eventToEdit?.projectId,
@@ -146,10 +150,16 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="log-rate">Billable Rate ($/hr)</Label>
-                            <Input id="log-rate" type="number" value={billableRate} onChange={(e) => setBillableRate(Number(e.target.value))} />
-                        </div>
+                        {isBillable && (
+                            <div className="space-y-2 animate-in fade-in-50 duration-300">
+                                <Label htmlFor="log-rate">Billable Rate ($/hr)</Label>
+                                <Input id="log-rate" type="number" value={billableRate} onChange={(e) => setBillableRate(Number(e.target.value))} />
+                            </div>
+                        )}
+                     </div>
+                     <div className="flex items-center space-x-2">
+                        <Checkbox id="is-billable" checked={isBillable} onCheckedChange={(checked) => setIsBillable(!!checked)} />
+                        <Label htmlFor="is-billable" className="font-normal">This is a billable event</Label>
                      </div>
                     <div className="space-y-2">
                         <Label htmlFor="log-description">Description / Notes</Label>
