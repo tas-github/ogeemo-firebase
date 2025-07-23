@@ -136,8 +136,8 @@ export function BackupView() {
           </p>
         </header>
 
-        <div className="grid gap-6 md:grid-cols-2 max-w-6xl mx-auto items-start">
-          <Card className="md:col-span-1">
+        <div className="flex flex-col gap-6 max-w-4xl mx-auto">
+          <Card>
             <CardHeader>
               <CardTitle>Create a New Backup</CardTitle>
               <CardDescription>
@@ -174,7 +174,7 @@ export function BackupView() {
             </CardFooter>
           </Card>
 
-          <Card className="md:col-span-1">
+          <Card>
             <CardHeader>
               <CardTitle>Backup History</CardTitle>
               <CardDescription>
