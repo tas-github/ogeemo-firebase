@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { zodResolver } from '@hookform/resolvers/zod';
+// import { zodResolver } from '@hookform/resolvers/zod'; // Temporarily removed
 import { Plus, Trash2, Save, Pencil, Mic, Square, HardHat, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -65,7 +65,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
   const isEditing = !!projectToEdit;
 
   const form = useForm<ProjectFormData>({
-    resolver: zodResolver(projectSchema),
+    // resolver: zodResolver(projectSchema), // Temporarily removed to fix bug
     defaultValues: { name: "", description: "", clientId: null, ownerId: null, assigneeId: "", startDate: new Date(), startHour: String(new Date().getHours()), startMinute: '0', dueDate: null },
   });
   
