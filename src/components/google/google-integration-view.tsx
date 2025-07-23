@@ -10,7 +10,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ExternalLink, Mail, FileText, Sheet as SheetIcon, Contact, Presentation, Calendar, MessageSquare, Video, LayoutPanelTop, Map, Sparkles } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ExternalLink, Mail, FileText, Sheet as SheetIcon, Contact, Presentation, Calendar, MessageSquare, Video, LayoutPanelTop, Map, Sparkles, Info } from "lucide-react";
 
 function GoogleDriveIcon() {
     return (
@@ -45,11 +54,51 @@ export function GoogleIntegrationView() {
   return (
     <div className="p-4 sm:p-6 flex items-center justify-center h-full">
       <Card className="w-full max-w-lg">
-        <CardHeader>
-          <CardTitle>Google Integration</CardTitle>
-          <CardDescription>
-            Quickly access your Google Workspace apps.
-          </CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between">
+          <div>
+            <CardTitle>Google Integration</CardTitle>
+            <CardDescription>
+              Quickly access your Google Workspace apps.
+            </CardDescription>
+          </div>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Info className="h-5 w-5" />
+                <span className="sr-only">About Google Integration</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Why Connect with Google?</DialogTitle>
+                <DialogDescription>
+                  Ogeemo is designed to work seamlessly with the tools you already use.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4 prose prose-sm dark:prose-invert max-w-none">
+                <p>
+                  This page provides quick shortcuts to your most-used Google Workspace applications, allowing you to easily switch between Ogeemo and your Google tools without losing context.
+                </p>
+                <h4 className="font-semibold mt-4">Full Integration (Coming Soon)</h4>
+                <p>
+                  Our goal is to create a deep, two-way integration between Ogeemo and Google Workspace. Soon, you'll be able to:
+                </p>
+                <ul>
+                  <li>Automatically sync your Google Contacts with Ogeemo's Contact Manager.</li>
+                  <li>Link Google Drive files directly to projects and tasks within Ogeemo.</li>
+                  <li>See your Ogeemo deadlines and meetings on your Google Calendar.</li>
+                </ul>
+                <p>
+                  This will turn Ogeemo into a true central hub for all your work, both inside and outside of Google's ecosystem.
+                </p>
+              </div>
+              <DialogFooter>
+                  <DialogTrigger asChild>
+                      <Button>Close</Button>
+                  </DialogTrigger>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </CardHeader>
         <CardContent>
             <div>
