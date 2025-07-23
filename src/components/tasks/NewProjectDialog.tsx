@@ -191,8 +191,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
       const values = form.getValues();
       const savedProject = await saveProject(values);
       if (savedProject) {
-          sessionStorage.setItem('selectedProjectId', savedProject.id);
-          router.push('/projects/steps');
+          router.push(`/projects/${savedProject.id}/planning`);
           onOpenChange(false);
       }
     } else {
