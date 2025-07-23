@@ -45,6 +45,8 @@ export interface StoredTimerState {
     totalPausedDuration: number; // in seconds
     pauseTime: number | null; // Timestamp when paused
     title: string;
+    isActive: boolean;
+    isPaused: boolean;
 }
 
 export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdate, eventToEdit, contacts }: LogEntryDialogProps) {
@@ -93,16 +95,11 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
                     const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
                     if (savedStateRaw) {
                         const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-                        setIsActive(true);
-                        setIsPaused(!!savedState.pauseTime);
+                        setIsActive(savedState.isActive);
+                        setIsPaused(savedState.isPaused);
                         setTitle(savedState.title);
                     } else {
-                        setTitle('');
-                        setDescription('');
-                        setSelectedContactId(null);
-                        setBillableRate(100);
-                        setIsBillable(true);
-                        setElapsedSeconds(0);
+                        resetTimerAndForm();
                     }
                 } catch (e) {
                     console.error("Error loading timer state:", e);
@@ -111,16 +108,16 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
             }
         }
     }, [isOpen, eventToEdit, resetTimerAndForm]);
-
+    
     useEffect(() => {
         const calculateElapsed = () => {
             const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
             if (savedStateRaw) {
                 const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-                if (savedState.pauseTime) { // Paused
-                    const elapsed = Math.floor((savedState.pauseTime - savedState.startTime) / 1000) - savedState.totalPausedDuration;
+                if (savedState.isPaused) {
+                    const elapsed = Math.floor((savedState.pauseTime! - savedState.startTime) / 1000) - savedState.totalPausedDuration;
                     setElapsedSeconds(elapsed > 0 ? elapsed : 0);
-                } else { // Running
+                } else {
                     const elapsed = Math.floor((Date.now() - savedState.startTime) / 1000) - savedState.totalPausedDuration;
                     setElapsedSeconds(elapsed > 0 ? elapsed : 0);
                 }
@@ -199,8 +196,10 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
                 savedState.totalPausedDuration += pausedDuration;
             }
             savedState.pauseTime = null;
+            savedState.isPaused = false;
         } else { // Pausing
             savedState.pauseTime = Date.now();
+            savedState.isPaused = true;
         }
         localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
         window.dispatchEvent(new Event('storage'));
