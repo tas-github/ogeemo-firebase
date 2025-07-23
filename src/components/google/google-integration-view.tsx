@@ -12,7 +12,7 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { LoaderCircle, CheckCircle2, AlertTriangle, LogOut, ExternalLink, Mail, FileText, Sheet as SheetIcon } from "lucide-react";
+import { LoaderCircle, CheckCircle2, AlertTriangle, LogOut, ExternalLink, Mail, FileText, Sheet as SheetIcon, Contact } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { initializeFirebase } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
@@ -47,6 +47,7 @@ const workspaceLinks = [
     { name: "Gmail", href: "https://mail.google.com/", icon: Mail },
     { name: "Docs", href: "https://docs.google.com/", icon: FileText },
     { name: "Sheets", href: "https://sheets.google.com/", icon: SheetIcon },
+    { name: "Contacts", href: "https://contacts.google.com/", icon: Contact },
 ];
 
 export function GoogleIntegrationView() {
@@ -105,7 +106,7 @@ export function GoogleIntegrationView() {
         <CardHeader>
           <CardTitle>Google Integration</CardTitle>
           <CardDescription>
-            Connect your Google account to integrate services like Contacts, or quickly access your Google Workspace apps.
+            Connect your Google account to integrate services, or quickly access your Google Workspace apps.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -128,9 +129,9 @@ export function GoogleIntegrationView() {
             <Separator />
 
             <div>
-                <h3 className="text-lg font-semibold mb-2">Google Contacts</h3>
+                <h3 className="text-lg font-semibold mb-2">Account Connection</h3>
                  <p className="text-sm text-muted-foreground mb-4">
-                    This will request read-only access to your Google Contacts list for import into Ogeemo.
+                    Connect your account to enable deeper integrations like importing contacts.
                 </p>
                 {isLoading ? (
                     <div className="flex items-center justify-center p-8">
