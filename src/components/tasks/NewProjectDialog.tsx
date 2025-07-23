@@ -5,6 +5,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Trash2, Save, Pencil, Mic, Square, HardHat, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -31,13 +32,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 const projectSchema = z.object({
   name: z.string().min(2, { message: "Project name must be at least 2 characters." }),
   description: z.string().optional(),
-  clientId: z.string().nullable().optional(),
-  ownerId: z.string().nullable().optional(),
+  clientId: z.string({ required_error: "Please select a client." }).nullable(),
+  ownerId: z.string({ required_error: "Please select a project owner." }).nullable(),
   assigneeId: z.string().optional(),
-  startDate: z.date().nullable(),
+  startDate: z.date({ required_error: "A start date is required." }).nullable(),
   startHour: z.string().optional(),
   startMinute: z.string().optional(),
-  dueDate: z.date().nullable(),
+  dueDate: z.date({ required_error: "A due date is required." }).nullable(),
 });
 
 type ProjectFormData = z.infer<typeof projectSchema>;
@@ -64,8 +65,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
   const isEditing = !!projectToEdit;
 
   const form = useForm<ProjectFormData>({
-    // Temporarily removing resolver to disable validation
-    // resolver: zodResolver(projectSchema),
+    resolver: zodResolver(projectSchema),
     defaultValues: { name: "", description: "", clientId: null, ownerId: null, assigneeId: "", startDate: new Date(), startHour: String(new Date().getHours()), startMinute: '0', dueDate: null },
   });
   
