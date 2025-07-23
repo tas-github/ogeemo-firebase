@@ -16,6 +16,9 @@ export interface Event {
   attendees?: string[];
   reminder?: string | null;
   stepId?: string | null; // Link back to the project step
+  contactId?: string | null;
+  billableRate?: number;
+  duration?: number; // in seconds
 }
 
 export interface ProjectStep {

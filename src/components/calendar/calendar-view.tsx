@@ -13,23 +13,11 @@ import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -39,11 +27,11 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
-import { addTask, getTasksForUser } from "@/services/project-service";
+import { addTask, getTasksForUser, updateTask } from "@/services/project-service";
 import { type Event } from "@/types/calendar";
+import { getContacts, type Contact } from "@/services/contact-service";
 
-
-const NewTaskDialog = dynamic(() => import('@/components/tasks/NewTaskDialog').then((mod) => mod.NewTaskDialog), {
+const LogEntryDialog = dynamic(() => import('@/components/client-manager/log-entry-dialog').then((mod) => mod.LogEntryDialog), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
 });
 
@@ -220,17 +208,13 @@ export function CalendarView() {
   const [today, setToday] = React.useState<Date | null>(null);
   const [view, setView] = React.useState<CalendarView>("day");
   const [events, setEvents] = React.useState<Event[]>([]);
+  const [contacts, setContacts] = React.useState<Contact[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   
   const [viewStartHour, setViewStartHour] = React.useState(9);
   const [viewEndHour, setViewEndHour] = React.useState(17);
   
-  const [newTaskDefaultDate, setNewTaskDefaultDate] = React.useState<Date | undefined>();
-  const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = React.useState(false);
-  const [isMonthViewOpen, setIsMonthViewOpen] = React.useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
-  const [tempViewHours, setTempViewHours] = React.useState({ start: viewStartHour, end: viewEndHour });
-  
+  const [isLogEntryDialogOpen, setIsLogEntryDialogOpen] = React.useState(false);
   const [eventToEdit, setEventToEdit] = React.useState<Event | null>(null);
 
   const { toast } = useToast();
@@ -242,40 +226,30 @@ export function CalendarView() {
     setToday(now);
   }, []);
   
-  const loadEvents = React.useCallback(async () => {
-    if (!user) return;
+  const loadData = React.useCallback(async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    };
     setIsLoading(true);
     try {
-        const userTasks = await getTasksForUser(user.uid);
+        const [userTasks, userContacts] = await Promise.all([
+            getTasksForUser(user.uid),
+            getContacts(user.uid)
+        ]);
         setEvents(userTasks);
+        setContacts(userContacts);
     } catch(error: any) {
-        toast({ variant: "destructive", title: "Could not load events", description: error.message });
+        toast({ variant: "destructive", title: "Could not load data", description: error.message });
     } finally {
         setIsLoading(false);
     }
   }, [user, toast]);
   
   React.useEffect(() => {
-    loadEvents();
-  }, [loadEvents]);
+    loadData();
+  }, [loadData]);
 
-
-  React.useEffect(() => {
-    try {
-      const savedStartHour = localStorage.getItem('calendarViewStartHour');
-      const savedEndHour = localStorage.getItem('calendarViewEndHour');
-      if (savedStartHour) {
-        setViewStartHour(Number(savedStartHour));
-        setTempViewHours(prev => ({ ...prev, start: Number(savedStartHour) }));
-      }
-      if (savedEndHour) {
-        setViewEndHour(Number(savedEndHour));
-        setTempViewHours(prev => ({ ...prev, end: Number(savedEndHour) }));
-      }
-    } catch (error) {
-      console.error("Could not read calendar settings from localStorage", error);
-    }
-  }, []);
 
   const handleTaskCreate = async (taskData: Omit<Event, 'id' | 'userId'>) => {
     if (!user) {
@@ -292,14 +266,18 @@ export function CalendarView() {
   };
 
   const handleTaskUpdate = async (updatedEventData: Omit<Event, 'userId'>) => {
-    // Placeholder until project-service is rebuilt
-    setEvents(prev => prev.map(e => e.id === updatedEventData.id ? { ...e, ...updatedEventData } : e));
-    toast({ title: "Event Updated (Local)" });
+    try {
+      await updateTask(updatedEventData.id, updatedEventData);
+      setEvents(prev => prev.map(e => e.id === updatedEventData.id ? { ...e, ...updatedEventData } : e));
+      toast({ title: "Event Updated" });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Failed to update event', description: error.message });
+    }
   };
 
   const handleEventClick = (event: Event) => {
     setEventToEdit(event);
-    setIsNewTaskDialogOpen(true);
+    setIsLogEntryDialogOpen(true);
   };
 
   const viewTitle = React.useMemo(() => {
@@ -342,13 +320,6 @@ export function CalendarView() {
     { id: "month", label: "Month" },
   ];
 
-  const timeOptions = React.useMemo(() => {
-    return Array.from({ length: 24 }, (_, i) => ({
-      value: i,
-      label: format(setHours(new Date(), i), 'ha'),
-    }));
-  }, []);
-
   const handleEventDrop = React.useCallback(async (eventId: string, newStart: Date) => {
     const eventToUpdate = events.find(e => e.id === eventId);
     if (!eventToUpdate) return;
@@ -356,19 +327,16 @@ export function CalendarView() {
     const duration = eventToUpdate.end.getTime() - eventToUpdate.start.getTime();
     const newEnd = new Date(newStart.getTime() + duration);
     
-    setEvents(prevEvents => prevEvents.map(e => 
-      e.id === eventId ? { ...e, start: newStart, end: newEnd } : e
-    ));
-    toast({ title: "Event Time Updated (Local)" });
+    try {
+      await updateTask(eventId, { start: newStart, end: newEnd });
+      setEvents(prevEvents => prevEvents.map(e => 
+        e.id === eventId ? { ...e, start: newStart, end: newEnd } : e
+      ));
+      toast({ title: "Event Time Updated" });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Failed to update event time', description: error.message });
+    }
   }, [events, toast]);
-
-  const handleHourClick = (hour: number) => {
-    if (!date) return;
-    const selectedDateTime = set(date, { hours: hour, minutes: 0, seconds: 0, milliseconds: 0 });
-    setNewTaskDefaultDate(selectedDateTime);
-    setEventToEdit(null);
-    setIsNewTaskDialogOpen(true);
-  };
   
   const handlePrev = () => {
     if (!date) return;
@@ -405,13 +373,7 @@ export function CalendarView() {
             <div className="pt-4">
               {hours.map(hour => (
                 <div key={`time-gutter-${hour}`} className="relative h-[120px] border-r text-right">
-                  <button 
-                    onClick={() => handleHourClick(hour)}
-                    className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-background px-1 text-xs text-muted-foreground transition-colors hover:font-bold hover:text-primary"
-                  >
-                    <span>{format(setHours(new Date(), hour), 'ha')}</span>
-                    <Edit className="h-3 w-3" />
-                  </button>
+                  <p className="absolute top-0 right-2 -translate-y-1/2 bg-background px-1 text-xs text-muted-foreground">{format(setHours(new Date(), hour), 'ha')}</p>
                 </div>
               ))}
             </div>
@@ -484,44 +446,14 @@ export function CalendarView() {
         </header>
         <div className="flex-1 min-h-0 flex flex-col">
           <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b">
-            
-            <Dialog open={isMonthViewOpen} onOpenChange={setIsMonthViewOpen}>
-                <DialogTrigger asChild>
-                    <h2 className="text-xl font-semibold font-headline cursor-pointer hover:underline">
-                        <span>{viewTitle}</span>
-                    </h2>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-auto w-auto p-0">
-                    <DialogHeader className="sr-only">
-                        <DialogTitle>Select a date</DialogTitle>
-                    </DialogHeader>
-                    <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={(newDate) => {
-                            if (newDate) setDate(newDate);
-                            setIsMonthViewOpen(false);
-                        }}
-                        initialFocus
-                    />
-                </DialogContent>
-            </Dialog>
-
+            <h2 className="text-xl font-semibold font-headline">
+              <span>{viewTitle}</span>
+            </h2>
             <div className="flex items-center gap-2">
               <Button onClick={() => {
-                  setNewTaskDefaultDate(new Date());
                   setEventToEdit(null);
-                  setIsNewTaskDialogOpen(true);
+                  setIsLogEntryDialogOpen(true);
               }}>+New Event</Button>
-              <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => date && setDate(new Date())}
-                  className="h-8 px-3"
-                  disabled={!today || (date ? isSameDay(date, today) : false)}
-              >
-                  Today
-              </Button>
               <div className="flex items-center gap-1 rounded-md bg-muted p-1">
                   {viewOptions.map((option) => (
                   <Button
@@ -543,92 +475,6 @@ export function CalendarView() {
                 <span className="sr-only">Next period</span>
                 <ChevronRight className="h-4 w-4" />
               </Button>
-                <Dialog open={isSettingsOpen} onOpenChange={(open) => {
-                    if (open) {
-                      setTempViewHours({ start: viewStartHour, end: viewEndHour });
-                    }
-                    setIsSettingsOpen(open);
-                  }}
-                >
-                  <DialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" title="Calendar Settings">
-                          <Settings className="h-4 w-4" />
-                          <span className="sr-only">Settings</span>
-                      </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
-                      <DialogHeader>
-                          <DialogTitle>Calendar Settings</DialogTitle>
-                          <DialogDescription>
-                              Customize your calendar hourly view.
-                          </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                          <div className="grid grid-cols-2 items-end gap-4">
-                              <div>
-                                  <Label htmlFor="start-time">Day Start Time</Label>
-                                  <Select
-                                      value={String(tempViewHours.start)}
-                                      onValueChange={(value) => setTempViewHours(prev => ({ ...prev, start: Number(value) }))}
-                                  >
-                                      <SelectTrigger id="start-time" className="mt-2">
-                                          <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                          {timeOptions.map((option) => (
-                                              <SelectItem
-                                                  key={`start-${option.value}`}
-                                                  value={String(option.value)}
-                                                  disabled={option.value >= tempViewHours.end}
-                                              >
-                                                  {option.label}
-                                              </SelectItem>
-                                          ))}
-                                      </SelectContent>
-                                  </Select>
-                              </div>
-                              <div>
-                                  <Label htmlFor="end-time">Day End Time</Label>
-                                  <Select
-                                      value={String(tempViewHours.end)}
-                                      onValueChange={(value) => setTempViewHours(prev => ({ ...prev, end: Number(value) }))}
-                                  >
-                                      <SelectTrigger id="end-time" className="mt-2">
-                                          <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                          {timeOptions.map((option) => (
-                                              <SelectItem
-                                                  key={`end-${option.value}`}
-                                                  value={String(option.value)}
-                                                  disabled={option.value <= tempViewHours.start}
-                                              >
-                                                  {option.label}
-                                              </SelectItem>
-                                          ))}
-                                      </SelectContent>
-                                  </Select>
-                              </div>
-                          </div>
-                      </div>
-                      <DialogFooter>
-                          <Button variant="ghost" onClick={() => setIsSettingsOpen(false)}>Cancel</Button>
-                          <Button onClick={() => {
-                              setViewStartHour(tempViewHours.start);
-                              setViewEndHour(tempViewHours.end);
-                              try {
-                                localStorage.setItem('calendarViewStartHour', String(tempViewHours.start));
-                                localStorage.setItem('calendarViewEndHour', String(tempViewHours.end));
-                              } catch (error) {
-                                console.error("Could not write calendar settings to localStorage", error);
-                              }
-                              setIsSettingsOpen(false);
-                          }}>
-                              Save Changes
-                          </Button>
-                      </DialogFooter>
-                  </DialogContent>
-              </Dialog>
             </div>
           </div>
           
@@ -637,20 +483,17 @@ export function CalendarView() {
           </div>
         </div>
 
-        {isNewTaskDialogOpen && (
-            <NewTaskDialog 
-                isOpen={isNewTaskDialogOpen} 
+        {isLogEntryDialogOpen && (
+            <LogEntryDialog 
+                isOpen={isLogEntryDialogOpen} 
                 onOpenChange={(open) => {
-                    setIsNewTaskDialogOpen(open);
-                    if (!open) {
-                        setEventToEdit(null);
-                    }
+                    setIsLogEntryDialogOpen(open);
+                    if (!open) setEventToEdit(null);
                 }}
-                defaultStartDate={newTaskDefaultDate}
-                eventToEdit={eventToEdit}
                 onTaskCreate={handleTaskCreate}
                 onTaskUpdate={handleTaskUpdate}
-                projectId={eventToEdit?.projectId || null}
+                eventToEdit={eventToEdit}
+                contacts={contacts}
             />
         )}
       </div>
