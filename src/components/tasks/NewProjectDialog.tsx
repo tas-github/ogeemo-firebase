@@ -310,6 +310,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
                   <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
                   <Button type="button" onClick={handleSaveAndDefineSteps} className="bg-orange-500 hover:bg-orange-600 text-white">Add Project Steps</Button>
                   <Button type="submit">Save</Button>
+                  <Button type="button">Save #2</Button>
               </div>
             </DialogFooter>
           </form>
