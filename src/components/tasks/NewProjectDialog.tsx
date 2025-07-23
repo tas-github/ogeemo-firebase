@@ -34,7 +34,7 @@ const projectSchema = z.object({
   description: z.string().optional(),
   clientId: z.string().nullable().optional(),
   ownerId: z.string().nullable().optional(),
-  assigneeIds: z.array(z.string()).optional(),
+  assigneeId: z.string().optional(), // Changed from assigneeIds to handle single selection
   startDate: z.date().nullable(),
   startHour: z.string().optional(),
   startMinute: z.string().optional(),
@@ -66,7 +66,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
-    defaultValues: { name: "", description: "", clientId: null, ownerId: null, assigneeIds: [], startDate: new Date(), startHour: String(new Date().getHours()), startMinute: '0', dueDate: null },
+    defaultValues: { name: "", description: "", clientId: null, ownerId: null, assigneeId: "", startDate: new Date(), startHour: String(new Date().getHours()), startMinute: '0', dueDate: null },
   });
   
   const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
@@ -110,7 +110,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
                 description: projectToEdit.description || "",
                 clientId: projectToEdit.clientId,
                 ownerId: projectToEdit.ownerId,
-                assigneeIds: projectToEdit.assigneeIds || [],
+                assigneeId: projectToEdit.assigneeIds?.[0] || "",
                 startDate: startDate,
                 startHour: startDate ? String(startDate.getHours()) : undefined,
                 startMinute: startDate ? String(startDate.getMinutes()) : undefined,
@@ -122,14 +122,14 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
                 try {
                     const idea = JSON.parse(ideaToProjectRaw);
                     form.reset({
-                        ...form.getValues(),
+                        ...form.form.getValues(),
                         name: idea.title || "",
                         description: idea.description?.replace(/<[^>]+>/g, '') || "", // Strip HTML
                     });
                 } catch { /* ignore parse error */ }
                 sessionStorage.removeItem('ogeemo-idea-to-project');
             } else {
-                form.reset(); // Reset to default for new project
+                form.reset({ name: "", description: "", clientId: null, ownerId: null, assigneeId: "", startDate: new Date(), startHour: String(new Date().getHours()), startMinute: '0', dueDate: null });
             }
         }
     }
@@ -149,11 +149,18 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
       });
     }
 
-    const projectData = { ...values, startDate: finalStartDate, userId: user.uid, reminder: null };
+    const { assigneeId, ...restOfValues } = values;
+    const projectData = { 
+        ...restOfValues, 
+        assigneeIds: assigneeId ? [assigneeId] : [],
+        startDate: finalStartDate, 
+        userId: user.uid, 
+        reminder: null 
+    };
     const tasksData: Omit<TaskEvent, 'id' | 'userId' | 'projectId'>[] = [];
 
     try {
-      if (isEditing) {
+      if (isEditing && projectToEdit) {
         await updateProject(projectToEdit.id, projectData);
         const updatedProject = { ...projectToEdit, ...projectData };
         onProjectUpdated(updatedProject);
@@ -249,7 +256,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
         <DialogHeader className="p-6 pb-4 border-b text-center">
           <DialogTitle className="text-3xl font-bold font-headline text-primary">{isEditing ? 'Edit Project' : 'Create New Project'}</DialogTitle>
           <DialogDescription>
-            {isEditing ? `Editing details for ${projectToEdit.name}` : 'Fill in the details below to create a new project.'}
+            {isEditing && projectToEdit ? `Editing details for ${projectToEdit.name}` : 'Fill in the details below to create a new project.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -277,7 +284,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <FormField control={form.control} name="clientId" render={({ field }) => ( <FormItem><FormLabel>Client</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select a client" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
                         <FormField control={form.control} name="ownerId" render={({ field }) => ( <FormItem><FormLabel>Project Owner</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select an owner" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
-                        <FormField control={form.control} name="assigneeIds" render={({ field }) => ( <FormItem><FormLabel>Assignee</FormLabel><Select onValueChange={(value) => field.onChange([value])} defaultValue={field.value?.[0] || ""}><FormControl><SelectTrigger><SelectValue placeholder="Select an assignee" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="assigneeId" render={({ field }) => ( <FormItem><FormLabel>Assignee</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select an assignee" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
