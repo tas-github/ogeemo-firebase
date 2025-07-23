@@ -13,6 +13,7 @@ export interface Event {
   projectId?: string | null;
   userId: string;
   assigneeIds?: string[];
+  attendees?: string[];
   reminder?: string | null;
   stepId?: string | null; // Link back to the project step
 }
