@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-// import { zodResolver } from '@hookform/resolvers/zod'; // Temporarily removed
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Trash2, Save, Pencil, Mic, Square, HardHat, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -32,13 +32,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 const projectSchema = z.object({
   name: z.string().min(2, { message: "Project name must be at least 2 characters." }),
   description: z.string().optional(),
-  clientId: z.string().nullable(),
-  ownerId: z.string().nullable(),
+  clientId: z.string({ required_error: "Please select a client." }).min(1, { message: "Please select a client." }),
+  ownerId: z.string({ required_error: "Please select a project owner." }).min(1, { message: "Please select a project owner." }),
   assigneeId: z.string().optional(),
-  startDate: z.date().nullable(),
+  startDate: z.date({ required_error: "A start date is required." }),
   startHour: z.string().optional(),
   startMinute: z.string().optional(),
-  dueDate: z.date().nullable(),
+  dueDate: z.date({ required_error: "A due date is required." }),
 });
 
 type ProjectFormData = z.infer<typeof projectSchema>;
@@ -65,8 +65,8 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
   const isEditing = !!projectToEdit;
 
   const form = useForm<ProjectFormData>({
-    // resolver: zodResolver(projectSchema),
-    defaultValues: { name: "", description: "", clientId: null, ownerId: null, assigneeId: "", startDate: new Date(), startHour: String(new Date().getHours()), startMinute: '0', dueDate: null },
+    resolver: zodResolver(projectSchema),
+    defaultValues: { name: "", description: "", clientId: "", ownerId: "", assigneeId: "", startDate: new Date(), startHour: String(new Date().getHours()), startMinute: '0', dueDate: undefined },
   });
   
   const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
@@ -104,17 +104,17 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
   React.useEffect(() => {
     if (isOpen) {
         if (projectToEdit) {
-            const startDate = projectToEdit.startDate ? (typeof projectToEdit.startDate === 'string' ? parseISO(projectToEdit.startDate) : projectToEdit.startDate) : null;
+            const startDate = projectToEdit.startDate ? (typeof projectToEdit.startDate === 'string' ? parseISO(projectToEdit.startDate) : projectToEdit.startDate) : new Date();
             form.reset({
                 name: projectToEdit.name,
                 description: projectToEdit.description || "",
-                clientId: projectToEdit.clientId,
-                ownerId: projectToEdit.ownerId,
+                clientId: projectToEdit.clientId || "",
+                ownerId: projectToEdit.ownerId || "",
                 assigneeId: projectToEdit.assigneeIds?.[0] || "",
                 startDate: startDate,
-                startHour: startDate ? String(startDate.getHours()) : undefined,
-                startMinute: startDate ? String(startDate.getMinutes()) : undefined,
-                dueDate: projectToEdit.dueDate ? (typeof projectToEdit.dueDate === 'string' ? parseISO(projectToEdit.dueDate) : projectToEdit.dueDate) : null,
+                startHour: String(startDate.getHours()),
+                startMinute: String(startDate.getMinutes()),
+                dueDate: projectToEdit.dueDate ? (typeof projectToEdit.dueDate === 'string' ? parseISO(projectToEdit.dueDate) : projectToEdit.dueDate) : undefined,
             });
         } else {
             const ideaToProjectRaw = sessionStorage.getItem('ogeemo-idea-to-project');
@@ -129,7 +129,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
                 } catch { /* ignore parse error */ }
                 sessionStorage.removeItem('ogeemo-idea-to-project');
             } else {
-                form.reset({ name: "", description: "", clientId: null, ownerId: null, assigneeId: "", startDate: new Date(), startHour: String(new Date().getHours()), startMinute: '0', dueDate: null });
+                form.reset({ name: "", description: "", clientId: "", ownerId: "", assigneeId: "", startDate: new Date(), startHour: String(new Date().getHours()), startMinute: '0', dueDate: undefined });
             }
         }
     }
@@ -310,7 +310,6 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
                   <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
                   <Button type="button" onClick={handleSaveAndDefineSteps} className="bg-orange-500 hover:bg-orange-600 text-white">Add Project Steps</Button>
                   <Button type="submit">Save</Button>
-                  <Button type="button">Save #2</Button>
               </div>
             </DialogFooter>
           </form>
