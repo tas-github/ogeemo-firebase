@@ -1,6 +1,8 @@
 
-import { CreateClientEntryView } from '@/components/client-manager/create-client-entry-view';
+import { redirect } from 'next/navigation';
 
-export default function CreateClientEntryPage() {
-  return <CreateClientEntryView />;
+export default function CreateClientEntryRedirectPage() {
+  // This page is now obsolete. The functionality has been centralized
+  // into the Time Manager at /time.
+  redirect('/time');
 }

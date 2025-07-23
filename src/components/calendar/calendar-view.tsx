@@ -30,10 +30,7 @@ import { useAuth } from "@/context/auth-context";
 import { addTask, getTasksForUser, updateTask } from "@/services/project-service";
 import { type Event } from "@/types/calendar";
 import { getContacts, type Contact } from "@/services/contact-service";
-
-const LogEntryDialog = dynamic(() => import('@/components/client-manager/log-entry-dialog').then((mod) => mod.LogEntryDialog), {
-  loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
-});
+import { NewTaskDialog } from "../tasks/NewTaskDialog";
 
 
 type CalendarView = "day" | "5days" | "week" | "month";
@@ -214,7 +211,7 @@ export function CalendarView() {
   const [viewStartHour, setViewStartHour] = React.useState(9);
   const [viewEndHour, setViewEndHour] = React.useState(17);
   
-  const [isLogEntryDialogOpen, setIsLogEntryDialogOpen] = React.useState(false);
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = React.useState(false);
   const [eventToEdit, setEventToEdit] = React.useState<Event | null>(null);
 
   const { toast } = useToast();
@@ -265,7 +262,7 @@ export function CalendarView() {
     }
   };
 
-  const handleTaskUpdate = async (updatedEventData: Omit<Event, 'userId'>) => {
+  const handleTaskUpdate = async (updatedEventData: Event) => {
     try {
       await updateTask(updatedEventData.id, updatedEventData);
       setEvents(prev => prev.map(e => e.id === updatedEventData.id ? { ...e, ...updatedEventData } : e));
@@ -277,7 +274,7 @@ export function CalendarView() {
 
   const handleEventClick = (event: Event) => {
     setEventToEdit(event);
-    setIsLogEntryDialogOpen(true);
+    setIsTaskDialogOpen(true);
   };
 
   const viewTitle = React.useMemo(() => {
@@ -452,7 +449,7 @@ export function CalendarView() {
             <div className="flex items-center gap-2">
               <Button onClick={() => {
                   setEventToEdit(null);
-                  setIsLogEntryDialogOpen(true);
+                  setIsTaskDialogOpen(true);
               }}>+New Event</Button>
               <div className="flex items-center gap-1 rounded-md bg-muted p-1">
                   {viewOptions.map((option) => (
@@ -483,11 +480,11 @@ export function CalendarView() {
           </div>
         </div>
 
-        {isLogEntryDialogOpen && (
-            <LogEntryDialog 
-                isOpen={isLogEntryDialogOpen} 
+        {isTaskDialogOpen && (
+            <NewTaskDialog 
+                isOpen={isTaskDialogOpen} 
                 onOpenChange={(open) => {
-                    setIsLogEntryDialogOpen(open);
+                    setIsTaskDialogOpen(open);
                     if (!open) setEventToEdit(null);
                 }}
                 onTaskCreate={handleTaskCreate}

@@ -180,10 +180,14 @@ export function TimeManagerView() {
             return;
         }
         
-        const accountId = contact.id; // In this context, contact id serves as the account id link
+        const account = projects.find(p => p.id === selectedProjectId);
+        if (!account) {
+            toast({ variant: 'destructive', title: 'Project Required', description: 'Please select a project to log time against.' });
+            return;
+        }
 
         const newEntry: Omit<EventEntry, 'id'> = {
-            accountId: accountId,
+            accountId: contact.id, // The client account is linked via contactId
             contactName: contact.name,
             subject: notes || 'Time Entry',
             startTime: new Date(Date.now() - elapsedSeconds * 1000),
