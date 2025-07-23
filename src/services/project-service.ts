@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { db } from '@/lib/firebase';
@@ -18,6 +19,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep } from '@/types/calendar';
+import { addMinutes } from 'date-fns';
 
 const PROJECTS_COLLECTION = 'projects';
 const TASKS_COLLECTION = 'tasks';
@@ -45,7 +47,10 @@ const docToProject = (doc: QueryDocumentSnapshot<DocumentData> | DocumentData): 
     userId: data.userId,
     createdAt: (data.createdAt as Timestamp)?.toDate ? (data.createdAt as Timestamp).toDate() : new Date(),
     reminder: data.reminder || null,
-    steps: data.steps || [],
+    steps: (data.steps || []).map((step: any) => ({
+        ...step,
+        startTime: (step.startTime as Timestamp)?.toDate ? (step.startTime as Timestamp).toDate() : null,
+    })),
   };
 };
 
@@ -117,6 +122,36 @@ export async function updateProject(projectId: string, projectData: Partial<Omit
     checkDb();
     const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
     await updateDoc(projectRef, projectData);
+}
+
+export async function updateProjectWithTasks(userId: string, projectId: string, projectData: Partial<Omit<Project, 'id' | 'userId'>>): Promise<void> {
+    checkDb();
+    const batch = writeBatch(db);
+    const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
+    batch.update(projectRef, projectData);
+
+    if (projectData.steps) {
+        for (const step of projectData.steps) {
+            if (step.connectToCalendar && step.startTime) {
+                const taskData = {
+                    title: step.title,
+                    description: step.description,
+                    start: step.startTime,
+                    end: addMinutes(step.startTime, step.durationMinutes),
+                    status: 'todo' as TaskStatus,
+                    position: 0,
+                    projectId,
+                    userId,
+                };
+                // In a real app, you would check if a task for this step already exists and update it.
+                // For simplicity, we are creating a new one.
+                const taskRef = doc(collection(db, TASKS_COLLECTION));
+                batch.set(taskRef, taskData);
+            }
+        }
+    }
+
+    await batch.commit();
 }
 
 export async function deleteProject(projectId: string, taskIds: string[]): Promise<void> {

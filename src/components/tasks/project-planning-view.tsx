@@ -10,10 +10,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { LoaderCircle, Plus, Trash2, ArrowLeft } from 'lucide-react';
+import { LoaderCircle, Plus, Trash2, ArrowLeft, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getProjectById, updateProject, type Project, type ProjectStep } from '@/services/project-service';
+import { getProjectById, updateProjectWithTasks, type Project, type ProjectStep } from '@/services/project-service';
+import { format, set } from 'date-fns';
+import { type DateRange } from 'react-day-picker';
+import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Checkbox } from '../ui/checkbox';
 
 const formatDuration = (totalMinutes: number) => {
     if (totalMinutes < 0) totalMinutes = 0;
@@ -35,6 +42,10 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
     const [newStepDescription, setNewStepDescription] = useState("");
     const [newStepHours, setNewStepHours] = useState<number | ''>(1);
     const [newStepMinutes, setNewStepMinutes] = useState<number | ''>(0);
+    const [newStepDate, setNewStepDate] = useState<Date | undefined>(new Date());
+    const [newStepHour, setNewStepHour] = useState<string>(String(new Date().getHours()));
+    const [newStepMinute, setNewStepMinute] = useState<string>("0");
+    const [newStepConnectToCalendar, setNewStepConnectToCalendar] = useState(true);
 
     const { user } = useAuth();
     const { toast } = useToast();
@@ -64,6 +75,16 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
         }
     }, [user, loadProject]);
     
+    const hourOptions = Array.from({ length: 24 }, (_, i) => {
+        const date = set(new Date(), { hours: i });
+        return { value: String(i), label: format(date, 'h a') };
+    });
+
+    const minuteOptions = Array.from({ length: 12 }, (_, i) => {
+        const minutes = i * 5;
+        return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` };
+    });
+    
     const handleAddStep = () => {
         const hours = Number(newStepHours) || 0;
         const minutes = Number(newStepMinutes) || 0;
@@ -73,6 +94,14 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
             toast({ variant: 'destructive', title: 'Missing Information', description: 'Please provide a title and a duration greater than 0.' });
             return;
         }
+
+        let stepStartTime: Date | null = null;
+        if (newStepConnectToCalendar && newStepDate) {
+            stepStartTime = set(newStepDate, {
+                hours: parseInt(newStepHour),
+                minutes: parseInt(newStepMinute)
+            });
+        }
         
         const newStep: Partial<ProjectStep> = {
             id: `temp_${Date.now()}`,
@@ -80,7 +109,8 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
             description: newStepDescription,
             durationMinutes: totalDurationMinutes,
             isBillable: true,
-            connectToCalendar: false,
+            connectToCalendar: newStepConnectToCalendar,
+            startTime: stepStartTime,
             isCompleted: false,
         };
         
@@ -96,16 +126,11 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
     };
     
     const handleSaveSteps = async () => {
-        if (!project) return;
-        
-        const finalSteps = steps.map(step => ({
-            ...step,
-            id: step.id?.startsWith('temp_') ? crypto.randomUUID() : step.id,
-        }));
+        if (!project || !user) return;
         
         try {
-            await updateProject(project.id, { steps: finalSteps as ProjectStep[] });
-            toast({ title: 'Project Steps Saved', description: 'The new steps have been added to your project.' });
+            await updateProjectWithTasks(user.uid, project.id, { steps: steps as ProjectStep[] });
+            toast({ title: 'Project Plan Saved', description: 'Your project steps and any associated calendar events have been saved.' });
             router.push('/projects');
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
@@ -168,6 +193,45 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
                                 </div>
                             </div>
                         </div>
+                        <div className="flex items-center space-x-2 pt-2">
+                            <Checkbox 
+                                id="connect-to-calendar" 
+                                checked={newStepConnectToCalendar}
+                                onCheckedChange={(checked) => setNewStepConnectToCalendar(!!checked)}
+                            />
+                            <div className="grid gap-1.5 leading-none">
+                                <label
+                                htmlFor="connect-to-calendar"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                Add to Calendar
+                                </label>
+                                <p className="text-xs text-muted-foreground">
+                                Schedules this step as a task in the calendar.
+                                </p>
+                            </div>
+                        </div>
+
+                         {newStepConnectToCalendar && (
+                            <div className="space-y-2 animate-in fade-in-50 duration-300">
+                                <Label>Start Date & Time</Label>
+                                <div className="flex gap-2">
+                                     <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !newStepDate && "text-muted-foreground")}>
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {newStepDate ? format(newStepDate, "PPP") : <span>Pick a date</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={newStepDate} onSelect={setNewStepDate} initialFocus /></PopoverContent>
+                                    </Popover>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Select value={newStepHour} onValueChange={setNewStepHour}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+                                    <Select value={newStepMinute} onValueChange={setNewStepMinute}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+                                </div>
+                            </div>
+                         )}
                          <Button onClick={handleAddStep} className="w-full">
                             <Plus className="mr-2 h-4 w-4" /> Add Step to Plan
                         </Button>
@@ -188,6 +252,12 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
                                            <h4 className="font-semibold">{index + 1}. {step.title}</h4>
                                            <p className="text-sm text-muted-foreground">{step.description}</p>
                                            <p className="text-xs text-muted-foreground mt-1">Est. Duration: {formatDuration(step.durationMinutes!)}</p>
+                                           {step.connectToCalendar && step.startTime && (
+                                                <p className="text-xs text-primary mt-1 flex items-center gap-1">
+                                                    <CalendarIcon className="h-3 w-3" />
+                                                    Scheduled for {format(step.startTime as Date, 'PPp')}
+                                                </p>
+                                            )}
                                        </div>
                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteStep(step.id!)}>
                                            <Trash2 className="h-4 w-4 text-destructive" />
@@ -204,7 +274,7 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
                     </CardContent>
                     {steps.length > 0 && (
                         <div className="p-6 pt-0">
-                            <Button onClick={handleSaveSteps} className="w-full">Save Project Steps</Button>
+                            <Button onClick={handleSaveSteps} className="w-full">Save Project Plan</Button>
                         </div>
                     )}
                 </Card>
