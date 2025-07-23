@@ -12,10 +12,11 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { LoaderCircle, CheckCircle2, AlertTriangle, LogOut } from "lucide-react";
+import { LoaderCircle, CheckCircle2, AlertTriangle, LogOut, ExternalLink } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { initializeFirebase } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { Separator } from "../ui/separator";
 
 function GoogleIcon() {
     return (
@@ -24,6 +25,19 @@ function GoogleIcon() {
             <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"/>
             <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.222 0-9.618-3.229-11.303-7.582l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
             <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.447-2.274 4.481-4.244 5.892l6.19 5.238C42.012 35.245 44 30.028 44 24c0-1.341-.138-2.65-.389-3.917z"/>
+        </svg>
+    )
+}
+
+function GoogleDriveIcon() {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+            <path d="M16 16.5l-4-4-4 4"></path>
+            <path d="M16 16.5l4 4 4-4"></path>
+            <path d="M8 8.5l-4 4-4-4"></path>
+            <path d="M16 16.5l-4-4-4 4"></path>
+            <path d="M22 10.5L12 2 2 10.5"></path>
+            <path d="M2 10.5l10 8.5 10-8.5"></path>
         </svg>
     )
 }
@@ -84,31 +98,51 @@ export function GoogleIntegrationView() {
         <CardHeader>
           <CardTitle>Google Integration</CardTitle>
           <CardDescription>
-            Connect your Google account to integrate services like Contacts. This will request read-only access to your Google Contacts list.
+            Connect your Google account to integrate services like Contacts, or quickly access your Google Drive.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-            {isLoading ? (
-                 <div className="flex items-center justify-center p-8">
-                    <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-                 </div>
-            ) : accessToken ? (
-                <div className="flex items-center p-4 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-                    <CheckCircle2 className="h-6 w-6 mr-4 text-green-600 dark:text-green-400" />
-                    <div>
-                        <p className="font-semibold text-green-800 dark:text-green-300">Account Connected</p>
-                        <p className="text-sm text-muted-foreground">{user?.email}</p>
+        <CardContent className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Google Drive</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Open your Google Drive in a new tab to access your documents, spreadsheets, and other files.
+              </p>
+              <Button asChild className="w-full">
+                <a href="https://drive.google.com/" target="_blank" rel="noopener noreferrer">
+                  <GoogleDriveIcon /> Go to Google Drive
+                </a>
+              </Button>
+            </div>
+
+            <Separator />
+
+            <div>
+                <h3 className="text-lg font-semibold mb-2">Google Contacts</h3>
+                 <p className="text-sm text-muted-foreground mb-4">
+                    This will request read-only access to your Google Contacts list for import into Ogeemo.
+                </p>
+                {isLoading ? (
+                    <div className="flex items-center justify-center p-8">
+                        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
                     </div>
-                </div>
-            ) : (
-                 <div className="flex items-center p-4 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                    <AlertTriangle className="h-6 w-6 mr-4 text-amber-600 dark:text-amber-400" />
-                    <div>
-                        <p className="font-semibold text-amber-800 dark:text-amber-300">Not Connected</p>
-                        <p className="text-sm text-muted-foreground">Connect your account to get started.</p>
+                ) : accessToken ? (
+                    <div className="flex items-center p-4 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                        <CheckCircle2 className="h-6 w-6 mr-4 text-green-600 dark:text-green-400" />
+                        <div>
+                            <p className="font-semibold text-green-800 dark:text-green-300">Account Connected</p>
+                            <p className="text-sm text-muted-foreground">{user?.email}</p>
+                        </div>
                     </div>
-                </div>
-            )}
+                ) : (
+                    <div className="flex items-center p-4 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                        <AlertTriangle className="h-6 w-6 mr-4 text-amber-600 dark:text-amber-400" />
+                        <div>
+                            <p className="font-semibold text-amber-800 dark:text-amber-300">Not Connected</p>
+                            <p className="text-sm text-muted-foreground">Connect your account to get started.</p>
+                        </div>
+                    </div>
+                )}
+            </div>
         </CardContent>
         <CardFooter className="flex-col items-start gap-4">
             {accessToken ? (
