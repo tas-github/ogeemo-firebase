@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -18,7 +18,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { type Event } from '@/types/calendar';
 import { type Contact } from '@/services/contact-service';
-import { format, set, parseISO, differenceInSeconds } from 'date-fns';
 import { Play, Pause, Square, Save } from 'lucide-react';
 import { Checkbox } from '../ui/checkbox';
 
@@ -30,12 +29,6 @@ const formatTime = (totalSeconds: number) => {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
-const formatDateForInput = (date: Date) => {
-    const d = new Date(date);
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 16);
-};
-
 interface LogEntryDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -43,6 +36,14 @@ interface LogEntryDialogProps {
   onTaskUpdate?: (taskData: Omit<Event, 'userId'>) => void;
   eventToEdit?: Event | null;
   contacts: Contact[];
+}
+
+const TIMER_STORAGE_KEY = 'logEntryTimerState';
+
+interface StoredTimerState {
+    startTime: number;
+    totalPausedDuration: number;
+    pauseTime: number | null;
 }
 
 export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdate, eventToEdit, contacts }: LogEntryDialogProps) {
@@ -56,10 +57,20 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [isActive, setIsActive] = useState(false);
     const [isPaused, setIsPaused] = useState(true);
+    const [keepRunning, setKeepRunning] = useState(false);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     
     const { toast } = useToast();
     
+    const resetTimerState = useCallback(() => {
+        setIsActive(false);
+        setIsPaused(true);
+        setElapsedSeconds(0);
+        setKeepRunning(false);
+        localStorage.removeItem(TIMER_STORAGE_KEY);
+        if (intervalRef.current) clearInterval(intervalRef.current);
+    }, []);
+
     useEffect(() => {
         if (isOpen) {
             if (eventToEdit) {
@@ -72,17 +83,37 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
                 setIsActive(false);
                 setIsPaused(true);
             } else {
-                setTitle('');
-                setDescription('');
-                setSelectedContactId(null);
-                setBillableRate(100); // Default rate
-                setIsBillable(true);
-                setElapsedSeconds(0);
-                setIsActive(false);
-                setIsPaused(true);
+                // Check for a running timer in localStorage
+                try {
+                    const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+                    if (savedStateRaw) {
+                        const savedState: StoredTimerState = JSON.parse(savedStateRaw);
+                        setIsActive(true);
+                        setIsPaused(savedState.isPaused);
+                        setKeepRunning(true); // Assume if it was saved, user wants it to keep running
+                        
+                        let currentElapsed = 0;
+                        if (savedState.isPaused) {
+                            currentElapsed = Math.floor((savedState.pauseTime! - savedState.startTime) / 1000) - savedState.totalPausedDuration;
+                        } else {
+                            currentElapsed = Math.floor((Date.now() - savedState.startTime) / 1000) - savedState.totalPausedDuration;
+                        }
+                        setElapsedSeconds(currentElapsed > 0 ? currentElapsed : 0);
+                    } else {
+                        setTitle('');
+                        setDescription('');
+                        setSelectedContactId(null);
+                        setBillableRate(100);
+                        setIsBillable(true);
+                        resetTimerState();
+                    }
+                } catch (e) {
+                    console.error("Error loading timer state:", e);
+                    resetTimerState();
+                }
             }
         }
-    }, [isOpen, eventToEdit]);
+    }, [isOpen, eventToEdit, resetTimerState]);
 
     useEffect(() => {
         if (isActive && !isPaused) {
@@ -117,6 +148,8 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
             position: eventToEdit?.position || 0,
             projectId: eventToEdit?.projectId,
         };
+        
+        resetTimerState();
 
         if (eventToEdit && onTaskUpdate) {
             onTaskUpdate({ id: eventToEdit.id, ...eventData });
@@ -126,8 +159,63 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
         onOpenChange(false);
     };
 
+    const handleStart = () => {
+        const state: StoredTimerState = {
+            startTime: Date.now(),
+            totalPausedDuration: 0,
+            pauseTime: null,
+        };
+        localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(state));
+        setIsActive(true);
+        setIsPaused(false);
+        setElapsedSeconds(0);
+    };
+    
+    const handlePauseResume = () => {
+        const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+        if (!savedStateRaw) return;
+        const savedState: StoredTimerState = JSON.parse(savedStateRaw);
+
+        if (isPaused) { // Resuming
+            if (savedState.pauseTime) {
+                const pausedDuration = Math.floor((Date.now() - savedState.pauseTime) / 1000);
+                savedState.totalPausedDuration += pausedDuration;
+            }
+            savedState.isPaused = false;
+            savedState.pauseTime = null;
+        } else { // Pausing
+            savedState.isPaused = true;
+            savedState.pauseTime = Date.now();
+        }
+        localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
+        setIsPaused(!isPaused);
+    };
+    
+    const handleStop = () => {
+        setIsActive(false);
+        setIsPaused(true);
+        toast({ title: 'Timer Stopped', description: `${formatTime(elapsedSeconds)} is ready to be logged.` });
+    }
+
+    const handleOpenChangeWrapper = (open: boolean) => {
+        if (!open) { // Closing
+            if (!keepRunning && isActive) {
+                resetTimerState();
+            } else if (keepRunning && isActive) {
+                 const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+                 if (!savedStateRaw) return;
+                 const savedState: StoredTimerState = JSON.parse(savedStateRaw);
+
+                 const timeSinceStart = Math.floor((Date.now() - savedState.startTime) / 1000);
+                 const effectiveElapsed = timeSinceStart - savedState.totalPausedDuration;
+                 setElapsedSeconds(effectiveElapsed);
+            }
+        }
+        onOpenChange(open);
+    }
+
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <Dialog open={isOpen} onOpenChange={handleOpenChangeWrapper}>
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>{eventToEdit ? 'Edit Log Entry' : 'New Log Entry'}</DialogTitle>
@@ -174,20 +262,24 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
                         </div>
                         <div className="flex justify-center gap-2 pt-2">
                             {!isActive ? (
-                                <Button onClick={() => { setIsActive(true); setIsPaused(false); }} variant="outline" className="w-32"><Play className="mr-2 h-4 w-4" /> Start</Button>
+                                <Button onClick={handleStart} variant="outline" className="w-32"><Play className="mr-2 h-4 w-4" /> Start</Button>
                             ) : (
                                 <>
-                                <Button onClick={() => setIsPaused(!isPaused)} variant="outline" className="w-32">
+                                <Button onClick={handlePauseResume} variant="outline" className="w-32">
                                     {isPaused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
                                     {isPaused ? 'Resume' : 'Pause'}
                                 </Button>
-                                <Button onClick={() => { setIsActive(false); setIsPaused(true); }} variant="secondary" className="w-32">
+                                <Button onClick={handleStop} variant="secondary" className="w-32">
                                     <Square className="mr-2 h-4 w-4" /> Stop
                                 </Button>
                                 </>
                             )}
                         </div>
                     </div>
+                     <div className="flex items-center space-x-2 pt-4">
+                        <Checkbox id="keep-running" checked={keepRunning} onCheckedChange={(checked) => setKeepRunning(!!checked)} />
+                        <Label htmlFor="keep-running" className="text-xs font-normal">Keep timer running in background</Label>
+                     </div>
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
