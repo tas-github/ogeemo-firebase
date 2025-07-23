@@ -32,13 +32,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 const projectSchema = z.object({
   name: z.string().min(2, { message: "Project name must be at least 2 characters." }),
   description: z.string().optional(),
-  clientId: z.string({ required_error: "Please select a client." }).nullable(),
-  ownerId: z.string({ required_error: "Please select a project owner." }).nullable(),
+  clientId: z.string().nullable(),
+  ownerId: z.string().nullable(),
   assigneeId: z.string().optional(),
-  startDate: z.date({ required_error: "A start date is required." }).nullable(),
+  startDate: z.date().nullable(),
   startHour: z.string().optional(),
   startMinute: z.string().optional(),
-  dueDate: z.date({ required_error: "A due date is required." }).nullable(),
+  dueDate: z.date().nullable(),
 });
 
 type ProjectFormData = z.infer<typeof projectSchema>;
@@ -65,7 +65,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
   const isEditing = !!projectToEdit;
 
   const form = useForm<ProjectFormData>({
-    // resolver: zodResolver(projectSchema), // Temporarily removed to fix bug
+    // resolver: zodResolver(projectSchema),
     defaultValues: { name: "", description: "", clientId: null, ownerId: null, assigneeId: "", startDate: new Date(), startHour: String(new Date().getHours()), startMinute: '0', dueDate: null },
   });
   
@@ -309,7 +309,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
               <div className="flex justify-end gap-2 w-full sm:w-auto">
                   <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
                   <Button type="button" onClick={handleSaveAndDefineSteps} className="bg-orange-500 hover:bg-orange-600 text-white">Add Project Steps</Button>
-                  <Button type="submit">{isEditing ? 'Save Changes' : 'Create Project'}</Button>
+                  <Button type="submit">Save</Button>
               </div>
             </DialogFooter>
           </form>
