@@ -12,7 +12,7 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { LoaderCircle, CheckCircle2, AlertTriangle, LogOut, ExternalLink } from "lucide-react";
+import { LoaderCircle, CheckCircle2, AlertTriangle, LogOut, ExternalLink, Mail, FileText, Sheet as SheetIcon } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { initializeFirebase } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
@@ -31,7 +31,7 @@ function GoogleIcon() {
 
 function GoogleDriveIcon() {
     return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2 h-5 w-5">
             <path d="M16 16.5l-4-4-4 4"></path>
             <path d="M16 16.5l4 4 4-4"></path>
             <path d="M8 8.5l-4 4-4-4"></path>
@@ -41,6 +41,13 @@ function GoogleDriveIcon() {
         </svg>
     )
 }
+
+const workspaceLinks = [
+    { name: "Drive", href: "https://drive.google.com/", icon: GoogleDriveIcon },
+    { name: "Gmail", href: "https://mail.google.com/", icon: Mail },
+    { name: "Docs", href: "https://docs.google.com/", icon: FileText },
+    { name: "Sheets", href: "https://sheets.google.com/", icon: SheetIcon },
+];
 
 export function GoogleIntegrationView() {
   const { user, accessToken, isLoading: isAuthLoading } = useAuth();
@@ -98,20 +105,24 @@ export function GoogleIntegrationView() {
         <CardHeader>
           <CardTitle>Google Integration</CardTitle>
           <CardDescription>
-            Connect your Google account to integrate services like Contacts, or quickly access your Google Drive.
+            Connect your Google account to integrate services like Contacts, or quickly access your Google Workspace apps.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Google Drive</h3>
+              <h3 className="text-lg font-semibold mb-2">Google Workspace Shortcuts</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Open your Google Drive in a new tab to access your documents, spreadsheets, and other files.
+                Open your Google apps in a new tab to access your documents, email, and other files.
               </p>
-              <Button asChild className="w-full">
-                <a href="https://drive.google.com/" target="_blank" rel="noopener noreferrer">
-                  <GoogleDriveIcon /> Go to Google Drive
-                </a>
-              </Button>
+              <div className="grid grid-cols-2 gap-4">
+                {workspaceLinks.map(link => (
+                    <Button asChild key={link.name} variant="outline">
+                        <a href={link.href} target="_blank" rel="noopener noreferrer">
+                            <link.icon /> {link.name} <ExternalLink className="ml-auto h-3 w-3" />
+                        </a>
+                    </Button>
+                ))}
+              </div>
             </div>
 
             <Separator />
