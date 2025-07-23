@@ -12,7 +12,7 @@ import {
   CardTitle,
   CardFooter,
 } from "@/components/ui/card";
-import { LoaderCircle, CheckCircle2, AlertTriangle, LogOut, ExternalLink, Mail, FileText, Sheet as SheetIcon, Contact, Presentation, Calendar, MessageSquare, Video, LayoutPanelTop } from "lucide-react";
+import { LoaderCircle, CheckCircle2, AlertTriangle, LogOut, ExternalLink, Mail, FileText, Sheet as SheetIcon, Contact, Presentation, Calendar, MessageSquare, Video, LayoutPanelTop, Map, Sparkles } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { initializeFirebase } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
@@ -53,6 +53,8 @@ const workspaceLinks = [
     { name: "Chat", href: "https://chat.google.com/", icon: MessageSquare },
     { name: "Meet", href: "https://meet.google.com/", icon: Video },
     { name: "Sites", href: "https://sites.google.com/", icon: LayoutPanelTop },
+    { name: "Maps", href: "https://maps.google.com/", icon: Map },
+    { name: "Gemini", href: "https://gemini.google.com/app", icon: Sparkles },
 ];
 
 export function GoogleIntegrationView() {
