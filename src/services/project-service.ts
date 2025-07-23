@@ -130,55 +130,66 @@ export async function updateProjectWithTasks(userId: string, projectId: string, 
     const batch = writeBatch(db);
     const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
 
-    // Ensure temporary IDs are removed before saving
     const stepsToSave = projectData.steps?.map(step => {
-        const { id, ...rest } = step;
-        return { id: id?.startsWith('temp_') ? '' : id, ...rest };
-    });
+        // Assign a new ID if it's a temporary one from the frontend
+        const finalId = (step.id && !step.id.startsWith('temp_')) ? step.id : doc(collection(db, 'projects')).id;
+        return { ...step, id: finalId };
+    }) || [];
 
     batch.update(projectRef, { ...projectData, steps: stepsToSave });
 
-    if (projectData.steps) {
-        const existingTasksQuery = query(collection(db, TASKS_COLLECTION), where("projectId", "==", projectId));
-        const existingTasksSnapshot = await getDocs(existingTasksQuery);
-        const existingTasks = existingTasksSnapshot.docs.map(docToTask);
-        const existingStepIds = existingTasks.map(t => t.stepId).filter(Boolean);
+    const existingTasksQuery = query(collection(db, TASKS_COLLECTION), where("projectId", "==", projectId));
+    const existingTasksSnapshot = await getDocs(existingTasksQuery);
+    const existingTasks = existingTasksSnapshot.docs.map(docToTask);
+    
+    // Map existing tasks by their stepId for quick lookup
+    const tasksByStepId = new Map(existingTasks.map(t => [t.stepId, t]));
+    const stepsInPlan = new Set(stepsToSave.map(s => s.id));
 
-        for (const step of projectData.steps) {
-            const existingTask = existingTasks.find(t => t.stepId === step.id);
-            
-            if (step.connectToCalendar && step.startTime && step.id) {
-                const taskData = {
-                    title: step.title,
-                    description: step.description,
-                    start: step.startTime,
-                    end: addMinutes(step.startTime, step.durationMinutes),
-                    status: 'todo' as TaskStatus,
-                    position: 0,
-                    projectId,
-                    userId,
-                    stepId: step.id,
-                };
-                
-                if (existingTask) {
-                    // Update existing task
-                    const taskRef = doc(db, TASKS_COLLECTION, existingTask.id);
-                    batch.update(taskRef, taskData);
-                } else {
-                    // Create new task
-                    const taskRef = doc(collection(db, TASKS_COLLECTION));
-                    batch.set(taskRef, taskData);
-                }
-            } else if (!step.connectToCalendar && existingTask) {
-                // Delete task if it's no longer connected to calendar
+    // Create or update tasks for each step in the plan
+    for (const step of stepsToSave) {
+        const existingTask = tasksByStepId.get(step.id);
+
+        if (step.connectToCalendar && step.startTime && step.id) {
+            const taskData = {
+                title: step.title,
+                description: step.description,
+                start: step.startTime,
+                end: addMinutes(step.startTime, step.durationMinutes),
+                status: 'todo' as TaskStatus,
+                position: 0,
+                projectId,
+                userId,
+                stepId: step.id,
+            };
+
+            if (existingTask) {
+                // Update existing task
                 const taskRef = doc(db, TASKS_COLLECTION, existingTask.id);
-                batch.delete(taskRef);
+                batch.update(taskRef, taskData);
+            } else {
+                // Create new task for this step
+                const taskRef = doc(collection(db, TASKS_COLLECTION));
+                batch.set(taskRef, taskData);
             }
+        } else if (!step.connectToCalendar && existingTask) {
+            // Delete task if it's no longer connected to calendar
+            const taskRef = doc(db, TASKS_COLLECTION, existingTask.id);
+            batch.delete(taskRef);
         }
     }
 
+    // Delete tasks for steps that are no longer in the plan
+    for (const task of existingTasks) {
+        if (task.stepId && !stepsInPlan.has(task.stepId)) {
+            const taskRef = doc(db, TASKS_COLLECTION, task.id);
+            batch.delete(taskRef);
+        }
+    }
+    
     await batch.commit();
 }
+
 
 export async function deleteProject(projectId: string, taskIds: string[]): Promise<void> {
     checkDb();

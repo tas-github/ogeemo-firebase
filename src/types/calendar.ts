@@ -18,7 +18,7 @@ export interface Event {
 }
 
 export interface ProjectStep {
-    id: string;
+    id?: string;
     title: string;
     description: string;
     durationMinutes: number;
