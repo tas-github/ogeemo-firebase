@@ -8,6 +8,7 @@ import { Sidebar, SidebarContent, SidebarHeader } from '@/components/ui/sidebar'
 import { UserNav } from '@/components/user-nav';
 import { Logo } from '@/components/logo';
 import { ClientLayout } from '@/components/layout/client-layout';
+import { ActiveTimerIndicator } from '@/components/layout/active-timer-indicator';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -24,7 +25,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <UserNav />
           </SidebarHeader>
         </Sidebar>
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 relative">
+          {children}
+          <ActiveTimerIndicator />
+        </main>
       </ClientLayout>
     </DndProvider>
   );

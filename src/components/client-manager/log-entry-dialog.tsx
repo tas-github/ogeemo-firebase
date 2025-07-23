@@ -38,12 +38,13 @@ interface LogEntryDialogProps {
   contacts: Contact[];
 }
 
-const TIMER_STORAGE_KEY = 'logEntryTimerState';
+export const TIMER_STORAGE_KEY = 'activeLogEntryTimer';
 
-interface StoredTimerState {
-    startTime: number;
-    totalPausedDuration: number;
-    pauseTime: number | null;
+export interface StoredTimerState {
+    startTime: number; // Timestamp when started
+    totalPausedDuration: number; // in seconds
+    pauseTime: number | null; // Timestamp when paused
+    title: string;
 }
 
 export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdate, eventToEdit, contacts }: LogEntryDialogProps) {
@@ -57,17 +58,21 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [isActive, setIsActive] = useState(false);
     const [isPaused, setIsPaused] = useState(true);
-    const [keepRunning, setKeepRunning] = useState(false);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     
     const { toast } = useToast();
     
-    const resetTimerState = useCallback(() => {
+    const resetTimerAndForm = useCallback(() => {
         setIsActive(false);
         setIsPaused(true);
         setElapsedSeconds(0);
-        setKeepRunning(false);
+        setTitle('');
+        setDescription('');
+        setSelectedContactId(null);
+        setBillableRate(100);
+        setIsBillable(true);
         localStorage.removeItem(TIMER_STORAGE_KEY);
+        window.dispatchEvent(new Event('storage')); // Notify other components of removal
         if (intervalRef.current) clearInterval(intervalRef.current);
     }, []);
 
@@ -89,42 +94,46 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
                     if (savedStateRaw) {
                         const savedState: StoredTimerState = JSON.parse(savedStateRaw);
                         setIsActive(true);
-                        setIsPaused(savedState.isPaused);
-                        setKeepRunning(true); // Assume if it was saved, user wants it to keep running
-                        
-                        let currentElapsed = 0;
-                        if (savedState.isPaused) {
-                            currentElapsed = Math.floor((savedState.pauseTime! - savedState.startTime) / 1000) - savedState.totalPausedDuration;
-                        } else {
-                            currentElapsed = Math.floor((Date.now() - savedState.startTime) / 1000) - savedState.totalPausedDuration;
-                        }
-                        setElapsedSeconds(currentElapsed > 0 ? currentElapsed : 0);
+                        setIsPaused(!!savedState.pauseTime);
+                        setTitle(savedState.title);
                     } else {
                         setTitle('');
                         setDescription('');
                         setSelectedContactId(null);
                         setBillableRate(100);
                         setIsBillable(true);
-                        resetTimerState();
+                        setElapsedSeconds(0);
                     }
                 } catch (e) {
                     console.error("Error loading timer state:", e);
-                    resetTimerState();
+                    resetTimerAndForm();
                 }
             }
         }
-    }, [isOpen, eventToEdit, resetTimerState]);
+    }, [isOpen, eventToEdit, resetTimerAndForm]);
 
     useEffect(() => {
-        if (isActive && !isPaused) {
-            intervalRef.current = setInterval(() => {
-                setElapsedSeconds(prev => prev + 1);
-            }, 1000);
+        const calculateElapsed = () => {
+            const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+            if (savedStateRaw) {
+                const savedState: StoredTimerState = JSON.parse(savedStateRaw);
+                if (savedState.pauseTime) { // Paused
+                    const elapsed = Math.floor((savedState.pauseTime - savedState.startTime) / 1000) - savedState.totalPausedDuration;
+                    setElapsedSeconds(elapsed > 0 ? elapsed : 0);
+                } else { // Running
+                    const elapsed = Math.floor((Date.now() - savedState.startTime) / 1000) - savedState.totalPausedDuration;
+                    setElapsedSeconds(elapsed > 0 ? elapsed : 0);
+                }
+            }
+        };
+
+        if (isActive) {
+            intervalRef.current = setInterval(calculateElapsed, 1000);
         } else {
             if (intervalRef.current) clearInterval(intervalRef.current);
         }
         return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-    }, [isActive, isPaused]);
+    }, [isActive]);
 
     const handleSave = () => {
         if (!selectedContactId) {
@@ -149,7 +158,7 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
             projectId: eventToEdit?.projectId,
         };
         
-        resetTimerState();
+        resetTimerAndForm();
 
         if (eventToEdit && onTaskUpdate) {
             onTaskUpdate({ id: eventToEdit.id, ...eventData });
@@ -160,12 +169,20 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
     };
 
     const handleStart = () => {
+        if (!title.trim() || !selectedContactId) {
+            toast({ variant: 'destructive', title: 'Missing Info', description: 'Please set a title and select a client before starting.'});
+            return;
+        }
         const state: StoredTimerState = {
             startTime: Date.now(),
             totalPausedDuration: 0,
             pauseTime: null,
+            isActive: true,
+            isPaused: false,
+            title: title || 'Untitled Timer'
         };
         localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(state));
+        window.dispatchEvent(new Event('storage'));
         setIsActive(true);
         setIsPaused(false);
         setElapsedSeconds(0);
@@ -181,41 +198,25 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
                 const pausedDuration = Math.floor((Date.now() - savedState.pauseTime) / 1000);
                 savedState.totalPausedDuration += pausedDuration;
             }
-            savedState.isPaused = false;
             savedState.pauseTime = null;
         } else { // Pausing
-            savedState.isPaused = true;
             savedState.pauseTime = Date.now();
         }
         localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
+        window.dispatchEvent(new Event('storage'));
         setIsPaused(!isPaused);
     };
     
     const handleStop = () => {
         setIsActive(false);
         setIsPaused(true);
+        localStorage.removeItem(TIMER_STORAGE_KEY);
+        window.dispatchEvent(new Event('storage'));
         toast({ title: 'Timer Stopped', description: `${formatTime(elapsedSeconds)} is ready to be logged.` });
     }
 
-    const handleOpenChangeWrapper = (open: boolean) => {
-        if (!open) { // Closing
-            if (!keepRunning && isActive) {
-                resetTimerState();
-            } else if (keepRunning && isActive) {
-                 const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
-                 if (!savedStateRaw) return;
-                 const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-
-                 const timeSinceStart = Math.floor((Date.now() - savedState.startTime) / 1000);
-                 const effectiveElapsed = timeSinceStart - savedState.totalPausedDuration;
-                 setElapsedSeconds(effectiveElapsed);
-            }
-        }
-        onOpenChange(open);
-    }
-
     return (
-        <Dialog open={isOpen} onOpenChange={handleOpenChangeWrapper}>
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle>{eventToEdit ? 'Edit Log Entry' : 'New Log Entry'}</DialogTitle>
@@ -226,12 +227,12 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
                         <Label htmlFor="log-title">Title / Subject</Label>
-                        <Input id="log-title" value={title} onChange={(e) => setTitle(e.target.value)} />
+                        <Input id="log-title" value={title} onChange={(e) => setTitle(e.target.value)} disabled={isActive} />
                     </div>
                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="log-client">Client</Label>
-                            <Select value={selectedContactId || ''} onValueChange={setSelectedContactId}>
+                            <Select value={selectedContactId || ''} onValueChange={setSelectedContactId} disabled={isActive}>
                                 <SelectTrigger id="log-client"><SelectValue placeholder="Select a client..." /></SelectTrigger>
                                 <SelectContent>
                                     {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -276,10 +277,6 @@ export function LogEntryDialog({ isOpen, onOpenChange, onTaskCreate, onTaskUpdat
                             )}
                         </div>
                     </div>
-                     <div className="flex items-center space-x-2 pt-4">
-                        <Checkbox id="keep-running" checked={keepRunning} onCheckedChange={(checked) => setKeepRunning(!!checked)} />
-                        <Label htmlFor="keep-running" className="text-xs font-normal">Keep timer running in background</Label>
-                     </div>
                 </div>
                 <DialogFooter>
                     <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
