@@ -14,6 +14,7 @@ import { getProjects, type Project } from '@/services/project-service';
 import { getContacts, type Contact } from '@/services/contact-service';
 import { addEventEntry, getEventEntries, type EventEntry } from '@/services/client-manager-service';
 import { formatDistanceToNow } from 'date-fns';
+import { Checkbox } from '../ui/checkbox';
 
 const TIMER_STORAGE_KEY = 'activeTimeManagerEntry';
 
@@ -26,6 +27,7 @@ interface StoredTimerState {
     projectId: string | null;
     contactId: string | null;
     notes: string;
+    isBillable: boolean;
     billableRate: number;
 }
 
@@ -45,6 +47,7 @@ export function TimeManagerView() {
     const [notes, setNotes] = useState("");
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+    const [isBillable, setIsBillable] = useState(true);
     const [billableRate, setBillableRate] = useState<number | ''>(100);
 
 
@@ -72,6 +75,7 @@ export function TimeManagerView() {
                         setNotes(savedState.notes);
                         setSelectedProjectId(savedState.projectId);
                         setSelectedContactId(savedState.contactId);
+                        setIsBillable(savedState.isBillable);
                         setBillableRate(savedState.billableRate);
                     } else if (savedState.isActive && savedState.isPaused) {
                         const elapsed = Math.floor((savedState.pauseTime! - savedState.startTime) / 1000) - savedState.totalPausedDuration;
@@ -81,6 +85,7 @@ export function TimeManagerView() {
                         setNotes(savedState.notes);
                         setSelectedProjectId(savedState.projectId);
                         setSelectedContactId(savedState.contactId);
+                        setIsBillable(savedState.isBillable);
                         setBillableRate(savedState.billableRate);
                     } else {
                          setIsActive(false);
@@ -132,7 +137,8 @@ export function TimeManagerView() {
             projectId: selectedProjectId,
             contactId: selectedContactId,
             notes,
-            billableRate: Number(billableRate) || 0,
+            isBillable,
+            billableRate: isBillable ? (Number(billableRate) || 0) : 0,
         };
         localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(state));
         setIsActive(true);
@@ -173,6 +179,7 @@ export function TimeManagerView() {
         setNotes("");
         setSelectedContactId(null);
         setSelectedProjectId(null);
+        setIsBillable(true);
         setBillableRate(100);
         localStorage.removeItem(TIMER_STORAGE_KEY);
         toast({ title: 'Timer Reset', description: 'The timer and fields have been cleared.' });
@@ -193,6 +200,8 @@ export function TimeManagerView() {
             return;
         }
 
+        const finalBillableRate = isBillable ? (Number(billableRate) || 0) : 0;
+
         const newEntry: Omit<EventEntry, 'id'> = {
             accountId: contact.id, // The client account is linked via contactId
             contactName: contact.name,
@@ -200,7 +209,7 @@ export function TimeManagerView() {
             startTime: new Date(Date.now() - elapsedSeconds * 1000),
             endTime: new Date(),
             duration: elapsedSeconds,
-            billableRate: Number(billableRate) || 0,
+            billableRate: finalBillableRate,
             userId: user.uid,
         };
         
@@ -229,6 +238,15 @@ export function TimeManagerView() {
         const newNotes = e.target.value;
         setNotes(newNotes);
         updateStoredState('notes', newNotes);
+    };
+    
+    const handleIsBillableChange = (checked: boolean | 'indeterminate') => {
+        const newIsBillable = !!checked;
+        setIsBillable(newIsBillable);
+        updateStoredState('isBillable', newIsBillable);
+        if (!newIsBillable) {
+            updateStoredState('billableRate', 0);
+        }
     };
 
     const handleBillableRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -300,17 +318,25 @@ export function TimeManagerView() {
                                 </Select>
                             </div>
                         </div>
-                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                             <div className="space-y-2 md:col-span-2">
                                 <Label htmlFor="notes">Notes / Task Description</Label>
                                 <Input id="notes" placeholder="What are you working on?" value={notes} onChange={handleNotesChange} />
                             </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
-                                <div className="relative">
-                                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                                    <Input id="billable-rate" type="number" placeholder="100" value={billableRate} onChange={handleBillableRateChange} className="pl-7" />
+                            <div className="flex items-center gap-4">
+                               <div className="flex items-center space-x-2 pt-6">
+                                    <Checkbox id="is-billable" checked={isBillable} onCheckedChange={handleIsBillableChange} />
+                                    <Label htmlFor="is-billable" className="font-medium">Billable</Label>
                                 </div>
+                                {isBillable && (
+                                     <div className="space-y-2 flex-1">
+                                        <Label htmlFor="billable-rate">Rate</Label>
+                                        <div className="relative">
+                                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                                            <Input id="billable-rate" type="number" placeholder="100" value={billableRate} onChange={handleBillableRateChange} className="pl-7" />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </CardContent>
