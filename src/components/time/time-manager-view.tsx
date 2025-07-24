@@ -261,7 +261,7 @@ export function TimeManagerView() {
             <header className="text-center">
                 <h1 className="text-3xl font-bold font-headline text-primary flex items-center justify-center gap-3">
                     <Clock className="h-8 w-8" />
-                    Time Manager
+                    Event Time Manager
                 </h1>
                 <p className="text-muted-foreground max-w-2xl mx-auto mt-2">
                     Track your time against projects and clients to ensure accurate billing.
