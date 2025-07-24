@@ -1,20 +1,25 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Play, Pause, Square, LoaderCircle } from 'lucide-react';
+import { Clock, Play, Pause, Square, LoaderCircle, Save, Calendar as CalendarIcon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { getProjects, type Project } from '@/services/project-service';
 import { getContacts, type Contact } from '@/services/contact-service';
-import { addEventEntry, getEventEntries, type EventEntry } from '@/services/client-manager-service';
+import { addEventEntry, type EventEntry } from '@/services/client-manager-service';
+import { addTask, type Event as TaskEvent } from '@/services/project-service';
 import { Checkbox } from '../ui/checkbox';
 import { Textarea } from '../ui/textarea';
+import { format, set, differenceInSeconds, addMinutes } from 'date-fns';
+import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { cn } from '@/lib/utils';
 
 const TIMER_STORAGE_KEY = 'activeTimeManagerEntry';
 
@@ -45,13 +50,20 @@ export function TimeManagerView() {
     const [isActive, setIsActive] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     
+    // Form state for both live and scheduled events
     const [subject, setSubject] = useState("");
     const [notes, setNotes] = useState("");
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
     const [isBillable, setIsBillable] = useState(true);
     const [billableRate, setBillableRate] = useState<number | ''>(100);
-
+    
+    // State for scheduling
+    const [startDate, setStartDate] = useState<Date | undefined>(new Date());
+    const [startHour, setStartHour] = useState<string>(String(new Date().getHours()));
+    const [startMinute, setStartMinute] = useState<string>("0");
+    const [durationHours, setDurationHours] = useState<number | ''>(1);
+    const [durationMinutes, setDurationMinutes] = useState<number | ''>(0);
 
     const [projects, setProjects] = useState<Project[]>([]);
     const [contacts, setContacts] = useState<Contact[]>([]);
@@ -60,6 +72,7 @@ export function TimeManagerView() {
     const { user } = useAuth();
     const { toast } = useToast();
 
+    // ... (updateTimerState and useEffect for polling remain the same)
     const updateTimerState = useCallback(() => {
         try {
             const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
@@ -107,6 +120,7 @@ export function TimeManagerView() {
         };
     }, [updateTimerState]);
 
+
     useEffect(() => {
         async function loadData() {
             if (!user) {
@@ -149,6 +163,7 @@ export function TimeManagerView() {
         window.dispatchEvent(new Event('storage')); // Notify other components
     };
 
+    // ... (handlePauseTimer and handleResumeTimer remain the same)
     const handlePauseTimer = () => {
         const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
         if (!savedStateRaw) return;
@@ -174,8 +189,8 @@ export function TimeManagerView() {
         localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
         window.dispatchEvent(new Event('storage'));
     };
-    
-    const handleReset = () => {
+
+    const handleReset = (showToast = true) => {
         setElapsedSeconds(0);
         setSubject("");
         setNotes("");
@@ -185,7 +200,9 @@ export function TimeManagerView() {
         setBillableRate(100);
         localStorage.removeItem(TIMER_STORAGE_KEY);
         window.dispatchEvent(new Event('storage'));
-        toast({ title: 'Timer Reset', description: 'The timer and fields have been cleared.' });
+        if (showToast) {
+            toast({ title: 'Timer Reset', description: 'The timer and fields have been cleared.' });
+        }
     }
 
     const handleLogTime = async () => {
@@ -206,7 +223,7 @@ export function TimeManagerView() {
         const finalBillableRate = isBillable ? (Number(billableRate) || 0) : 0;
 
         const newEntry: Omit<EventEntry, 'id'> = {
-            accountId: contact.id, // The client account is linked via contactId
+            accountId: contact.id,
             contactName: contact.name,
             subject: subject || 'Time Entry',
             detailsHtml: notes.replace(/\n/g, '<br>'),
@@ -220,12 +237,13 @@ export function TimeManagerView() {
         try {
             await addEventEntry(newEntry);
             toast({ title: 'Time Logged', description: `Logged ${formatTime(elapsedSeconds)} for ${contact.name}` });
-            handleReset(); // Reset the form after logging
+            handleReset(false);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Log Failed', description: error.message });
         }
     };
     
+    // ... (updateStoredState and form field handlers remain similar)
     const updateStoredState = (key: keyof StoredTimerState, value: any) => {
         const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
         if (savedStateRaw) {
@@ -239,39 +257,89 @@ export function TimeManagerView() {
     const handleSubjectChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newSubject = e.target.value;
         setSubject(newSubject);
-        updateStoredState('subject', newSubject);
+        if(isActive) updateStoredState('subject', newSubject);
     };
 
     const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const newNotes = e.target.value;
         setNotes(newNotes);
-        updateStoredState('notes', newNotes);
+        if(isActive) updateStoredState('notes', newNotes);
     };
     
     const handleIsBillableChange = (checked: boolean | 'indeterminate') => {
         const newIsBillable = !!checked;
         setIsBillable(newIsBillable);
-        updateStoredState('isBillable', newIsBillable);
-        if (!newIsBillable) {
-            updateStoredState('billableRate', 0);
+        if(isActive) {
+            updateStoredState('isBillable', newIsBillable);
+            if (!newIsBillable) {
+                updateStoredState('billableRate', 0);
+            }
         }
     };
 
     const handleBillableRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newRate = e.target.value === '' ? '' : Number(e.target.value);
         setBillableRate(newRate);
-        updateStoredState('billableRate', Number(newRate) || 0);
+        if(isActive) updateStoredState('billableRate', Number(newRate) || 0);
     };
     
     const handleProjectChange = (projectId: string) => {
         setSelectedProjectId(projectId);
-        updateStoredState('projectId', projectId);
+        if(isActive) updateStoredState('projectId', projectId);
     };
 
     const handleContactChange = (contactId: string) => {
         setSelectedContactId(contactId);
-        updateStoredState('contactId', contactId);
+        if(isActive) updateStoredState('contactId', contactId);
     };
+
+    const handleSaveEvent = async () => {
+        if (!user) return;
+
+        const totalDuration = (Number(durationHours) || 0) * 60 + (Number(durationMinutes) || 0);
+        if (totalDuration <= 0) {
+            toast({ variant: 'destructive', title: 'Invalid Duration', description: 'Please set a duration for the event.' });
+            return;
+        }
+
+        const startDateTime = set(startDate!, {
+            hours: parseInt(startHour),
+            minutes: parseInt(startMinute)
+        });
+
+        const endDateTime = addMinutes(startDateTime, totalDuration);
+
+        const newEventData: Omit<TaskEvent, 'id' | 'userId'> = {
+            title: subject || 'Untitled Event',
+            description: notes,
+            start: startDateTime,
+            end: endDateTime,
+            status: 'todo',
+            position: 0,
+            projectId: selectedProjectId,
+            contactId: selectedContactId,
+            billableRate: isBillable ? Number(billableRate) : 0,
+        };
+        
+        try {
+            await addTask({ ...newEventData, userId: user.uid });
+            toast({ title: "Event Saved", description: `"${newEventData.title}" has been added to your calendar.` });
+            handleReset(false);
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Failed to save event', description: error.message });
+        }
+    }
+    
+    const hourOptions = Array.from({ length: 24 }, (_, i) => {
+        const date = set(new Date(), { hours: i });
+        return { value: String(i), label: format(date, 'h a') };
+    });
+
+    const minuteOptions = Array.from({ length: 12 }, (_, i) => {
+        const minutes = i * 5;
+        return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` };
+    });
+
 
     if (isLoading) {
         return (
@@ -324,6 +392,38 @@ export function TimeManagerView() {
                         <Label htmlFor="subject">Subject</Label>
                         <Input id="subject" placeholder="What is the main task?" value={subject} onChange={handleSubjectChange} />
                     </div>
+                    
+                    {!isActive && (
+                         <div className="space-y-4 pt-4 border-t animate-in fade-in-50 duration-300">
+                             <h3 className="text-sm font-medium text-muted-foreground">Scheduling</h3>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Start Date & Time</Label>
+                                    <div className="flex gap-2">
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button variant={"outline"} className={cn("flex-1 justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                                    {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus /></PopoverContent>
+                                        </Popover>
+                                        <Select value={startHour} onValueChange={setStartHour}><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+                                        <Select value={startMinute} onValueChange={setStartMinute}><SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Duration</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Input type="number" min="0" value={durationHours} onChange={e => setDurationHours(Number(e.target.value))} placeholder="Hours" />
+                                        <Input type="number" min="0" max="59" step="5" value={durationMinutes} onChange={e => setDurationMinutes(Number(e.target.value))} placeholder="Mins" />
+                                    </div>
+                                </div>
+                            </div>
+                         </div>
+                    )}
+                    
                     <div className="space-y-2">
                         <Label htmlFor="notes">Notes / Details</Label>
                         <Textarea id="notes" placeholder="Add more details about the work..." value={notes} onChange={handleNotesChange} rows={8} />
@@ -334,7 +434,7 @@ export function TimeManagerView() {
                             <Label htmlFor="is-billable" className="font-medium">Billable</Label>
                         </div>
                         {isBillable && (
-                             <div className="space-y-2 w-32 animate-in fade-in-50 duration-300">
+                             <div className="space-y-2 w-48 animate-in fade-in-50 duration-300">
                                 <Label htmlFor="billable-rate">Rate ($/hr)</Label>
                                 <div className="relative">
                                     <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
@@ -347,9 +447,14 @@ export function TimeManagerView() {
                 <CardFooter className="flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex gap-2">
                         {!isActive ? (
+                            <>
                             <Button size="lg" onClick={handleStartTimer}>
-                                <Play className="mr-2 h-5 w-5" /> Start Timer
+                                <Play className="mr-2 h-5 w-5" /> Start Timer Now
                             </Button>
+                            <Button size="lg" variant="outline" onClick={handleSaveEvent}>
+                                <Save className="mr-2 h-5 w-5" /> Save Event to Calendar
+                            </Button>
+                            </>
                         ) : (
                             <>
                              <Button size="lg" variant="outline" onClick={isPaused ? handleResumeTimer : handlePauseTimer}>
@@ -362,7 +467,7 @@ export function TimeManagerView() {
                             </>
                         )}
                     </div>
-                    <Button variant="ghost" onClick={handleReset} disabled={!isActive && elapsedSeconds === 0}>Reset Timer</Button>
+                    <Button variant="ghost" onClick={() => handleReset()} disabled={!isActive && elapsedSeconds === 0}>Reset</Button>
                 </CardFooter>
             </Card>
         </div>
