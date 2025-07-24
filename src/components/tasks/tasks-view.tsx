@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getProjects, deleteProject, getTasksForProject, addProject, type Project, type Event as TaskEvent } from '@/services/project-service';
+import { getProjects, deleteProject, getTasksForProject, addProject, updateProject, type Project, type Event as TaskEvent } from '@/services/project-service';
 import { getContacts, type Contact } from '@/services/contact-service';
 import { NewTaskDialog } from './NewTaskDialog';
 import { ProjectListItem } from './ProjectListItem';
@@ -80,8 +80,15 @@ export function TasksView() {
         }
     };
 
-    const handleProjectUpdated = (updatedProject: Project) => {
-        setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+    const handleProjectUpdated = async (updatedProject: Project) => {
+        try {
+            const { id, userId, createdAt, ...dataToUpdate } = updatedProject;
+            await updateProject(id, dataToUpdate);
+            setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
+            toast({ title: "Project Updated" });
+        } catch (error: any) {
+             toast({ variant: "destructive", title: "Failed to update project", description: error.message });
+        }
     };
     
     const handleConfirmDelete = async () => {
@@ -167,9 +174,15 @@ export function TasksView() {
 
                 <NewTaskDialog
                     isOpen={isNewItemDialogOpen}
-                    onOpenChange={setIsNewItemDialogOpen}
+                    onOpenChange={(open) => {
+                        setIsNewItemDialogOpen(open);
+                        if (!open) {
+                            setProjectToEdit(null);
+                            setInitialDialogData({});
+                        }
+                    }}
                     onProjectCreate={handleProjectCreated}
-                    // onProjectUpdated={handleProjectUpdated} // Add this handler to the dialog if needed
+                    onProjectUpdate={handleProjectUpdated}
                     contacts={contacts}
                     projectToEdit={projectToEdit}
                     initialMode="project"

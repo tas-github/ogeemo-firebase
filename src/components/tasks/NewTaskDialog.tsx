@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from '@hookform/resolvers/zod';
-import { format, set, parseISO } from 'date-fns';
+import { format, set } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -59,6 +59,7 @@ interface NewTaskDialogProps {
   onTaskCreate?: (taskData: Omit<Event, 'id' | 'userId'>) => void;
   onTaskUpdate?: (taskData: Event) => void;
   onProjectCreate?: (project: Omit<Project, 'id' | 'createdAt' | 'userId'>, tasks: []) => void;
+  onProjectUpdate?: (project: Project) => void;
   eventToEdit?: Event | null;
   projectToEdit?: Project | null;
   projectId?: string | null;
@@ -73,6 +74,7 @@ export function NewTaskDialog({
     onTaskCreate, 
     onTaskUpdate,
     onProjectCreate,
+    onProjectUpdate,
     eventToEdit, 
     projectToEdit,
     projectId, 
@@ -89,9 +91,13 @@ export function NewTaskDialog({
 
   useEffect(() => {
     if (isOpen) {
-        setIsProjectMode(initialMode === 'project' || !!projectToEdit);
+        const mode = initialMode === 'project' || !!projectToEdit;
+        setIsProjectMode(mode);
+
+        let defaultValues: Partial<EventFormData> = {};
+
         if (projectToEdit) {
-            form.reset({
+            defaultValues = {
                 isProject: true,
                 title: projectToEdit.name,
                 description: projectToEdit.description || "",
@@ -99,9 +105,9 @@ export function NewTaskDialog({
                 ownerId: projectToEdit.ownerId || "",
                 startDate: projectToEdit.startDate || new Date(),
                 endDate: projectToEdit.dueDate || new Date(),
-            });
+            };
         } else if (eventToEdit) {
-            form.reset({
+            defaultValues = {
                 isProject: false,
                 title: eventToEdit.title,
                 description: eventToEdit.description || "",
@@ -112,7 +118,7 @@ export function NewTaskDialog({
                 endDate: eventToEdit.end,
                 endHour: String(eventToEdit.end.getHours()),
                 endMinute: String(eventToEdit.end.getMinutes()),
-            });
+            };
         } else {
             const now = new Date();
             const startOfNextHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() + 1);
@@ -123,20 +129,21 @@ export function NewTaskDialog({
               sessionStorage.removeItem('ogeemo-idea-to-project');
             }
 
-            form.reset({
-                isProject: initialMode === 'project' || !!ideaData,
-                title: initialData?.title || ideaData?.title || "",
-                description: initialData?.description || ideaData?.description || "",
+            defaultValues = {
+                isProject: mode || !!ideaData,
+                title: ideaData?.title || "",
+                description: ideaData?.description || "",
                 contactId: "",
-                startDate: initialData?.startDate || now,
-                startHour: initialData?.startHour || String(now.getHours()),
-                startMinute: initialData?.startMinute || String(now.getMinutes()),
-                endDate: initialData?.endDate || startOfNextHour,
-                endHour: initialData?.endHour || String(startOfNextHour.getHours()),
-                endMinute: initialData?.endMinute || String(startOfNextHour.getMinutes()),
+                startDate: now,
+                startHour: String(now.getHours()),
+                startMinute: String(now.getMinutes()),
+                endDate: startOfNextHour,
+                endHour: String(startOfNextHour.getHours()),
+                endMinute: String(startOfNextHour.getMinutes()),
                 ...initialData,
-            });
+            };
         }
+        form.reset(defaultValues);
     }
   }, [isOpen, eventToEdit, projectToEdit, initialMode, initialData, form.reset]);
 
@@ -152,21 +159,21 @@ export function NewTaskDialog({
 
   async function onSubmit(values: EventFormData) {
     if (isProjectMode) {
-        // Handle Project saving
-        if (onProjectCreate) { // This is simplified, should handle update too
-             const projectData: Omit<Project, 'id' | 'createdAt' | 'userId'> = {
-                name: values.title,
-                description: values.description,
-                clientId: values.clientId || null,
-                ownerId: values.ownerId || null,
-                assigneeIds: [],
-                startDate: values.startDate,
-                dueDate: values.endDate,
-             };
+        const projectData = {
+            name: values.title,
+            description: values.description,
+            clientId: values.clientId || null,
+            ownerId: values.ownerId || null,
+            assigneeIds: [],
+            startDate: values.startDate,
+            dueDate: values.endDate,
+         };
+        if (projectToEdit && onProjectUpdate) {
+            onProjectUpdate({ ...projectToEdit, ...projectData });
+        } else if (onProjectCreate) {
              onProjectCreate(projectData, []);
         }
     } else {
-        // Handle Event/Task saving
         const finalStartDate = set(values.startDate, {
             hours: parseInt(values.startHour!),
             minutes: parseInt(values.startMinute!)
@@ -229,7 +236,7 @@ export function NewTaskDialog({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <FormLabel>{isProjectMode ? 'Start Date' : 'Start Date & Time'}</FormLabel>
+                    <FormLabel>{isProjectMode ? 'Start Date' : 'Start'}</FormLabel>
                     <div className="flex gap-2">
                         <FormField control={form.control} name="startDate" render={({ field }) => ( <FormItem className="flex-1"><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
                         {!isProjectMode && <>
@@ -239,7 +246,7 @@ export function NewTaskDialog({
                     </div>
                 </div>
                 <div className="space-y-2">
-                    <FormLabel>{isProjectMode ? 'Due Date' : 'End Date & Time'}</FormLabel>
+                    <FormLabel>{isProjectMode ? 'Due Date' : 'End'}</FormLabel>
                     <div className="flex gap-2">
                         <FormField control={form.control} name="endDate" render={({ field }) => ( <FormItem className="flex-1"><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
                          {!isProjectMode && <>

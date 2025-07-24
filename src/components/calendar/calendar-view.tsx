@@ -3,28 +3,13 @@
 "use client"
 
 import * as React from "react"
-import dynamic from "next/dynamic"
 import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set, addMinutes, startOfMinute, startOfMonth, endOfMonth, isToday, isSameMonth, addMonths, addWeeks } from "date-fns"
-import { Users, Settings, Plus, Calendar as CalendarIcon, Edit, ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react"
+import { ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react"
 import { useDrag, useDrop } from 'react-dnd';
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { addTask, getTasksForUser, updateTask } from "@/services/project-service";
@@ -208,8 +193,8 @@ export function CalendarView() {
   const [contacts, setContacts] = React.useState<Contact[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   
-  const [viewStartHour, setViewStartHour] = React.useState(9);
-  const [viewEndHour, setViewEndHour] = React.useState(17);
+  const [viewStartHour] = React.useState(9);
+  const [viewEndHour] = React.useState(17);
   
   const [isTaskDialogOpen, setIsTaskDialogOpen] = React.useState(false);
   const [eventToEdit, setEventToEdit] = React.useState<Event | null>(null);

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Play, Pause, Square, LoaderCircle, Save, Calendar as CalendarIcon } from 'lucide-react';
+import { Clock, Play, Pause, Square, LoaderCircle, Save } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { getProjects, type Project } from '@/services/project-service';
@@ -16,10 +16,6 @@ import { addEventEntry, type EventEntry } from '@/services/client-manager-servic
 import { addTask, type Event as TaskEvent } from '@/services/project-service';
 import { Checkbox } from '../ui/checkbox';
 import { Textarea } from '../ui/textarea';
-import { format, set, differenceInSeconds, addMinutes } from 'date-fns';
-import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover';
-import { Calendar } from '../ui/calendar';
-import { cn } from '@/lib/utils';
 import { NewTaskDialog } from '../tasks/NewTaskDialog';
 
 const TIMER_STORAGE_KEY = 'activeTimeManagerEntry';
@@ -70,7 +66,6 @@ export function TimeManagerView() {
     const { user } = useAuth();
     const { toast } = useToast();
 
-    // ... (updateTimerState and useEffect for polling remain the same)
     const updateTimerState = useCallback(() => {
         try {
             const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
@@ -161,7 +156,6 @@ export function TimeManagerView() {
         window.dispatchEvent(new Event('storage')); // Notify other components
     };
 
-    // ... (handlePauseTimer and handleResumeTimer remain the same)
     const handlePauseTimer = () => {
         const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
         if (!savedStateRaw) return;
@@ -296,7 +290,6 @@ export function TimeManagerView() {
             description: notes,
             contactId: selectedContactId,
             projectId: selectedProjectId,
-            billableRate: isBillable ? Number(billableRate) : 0,
         });
         setIsScheduleDialogOpen(true);
     };
