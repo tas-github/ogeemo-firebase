@@ -1,6 +1,6 @@
 
-import { LoggedEntriesView } from '@/components/client-manager/logged-entries-view';
+import { ClientTimeLogReport } from '@/components/client-manager/client-time-log-report';
 
 export default function ClientBillingReportPage() {
-  return <LoggedEntriesView />;
+  return <ClientTimeLogReport />;
 }

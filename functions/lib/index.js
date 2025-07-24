@@ -19,13 +19,14 @@ exports.triggerBackup = functions.https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
-    // Get the project ID from the environment.
-    const projectId = process.env.GCP_PROJECT;
+    // Get the project ID from the FIREBASE_CONFIG environment variable.
+    // This is a more reliable method than relying on GCP_PROJECT.
+    const projectId = JSON.parse(process.env.FIREBASE_CONFIG).projectId;
     if (!projectId) {
-        throw new functions.https.HttpsError("internal", "GCP_PROJECT environment variable not set.");
+        throw new functions.https.HttpsError("internal", "Could not determine the Firebase project ID.");
     }
     // The Google Cloud Storage bucket to export to.
-    // IMPORTANT: The format is 'gs://[YOUR_BUCKET_NAME]'
+    // The format is 'gs://[YOUR_BUCKET_NAME]'
     const bucket = `gs://${projectId}-backups`;
     const request = {
         name: firestoreClient.databasePath(projectId, "(default)"),

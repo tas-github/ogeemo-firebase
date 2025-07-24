@@ -26,6 +26,7 @@ interface StoredTimerState {
     projectId: string | null;
     contactId: string | null;
     notes: string;
+    billableRate: number;
 }
 
 const formatTime = (totalSeconds: number) => {
@@ -44,6 +45,8 @@ export function TimeManagerView() {
     const [notes, setNotes] = useState("");
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+    const [billableRate, setBillableRate] = useState<number | ''>(100);
+
 
     const [projects, setProjects] = useState<Project[]>([]);
     const [contacts, setContacts] = useState<Contact[]>([]);
@@ -69,6 +72,7 @@ export function TimeManagerView() {
                         setNotes(savedState.notes);
                         setSelectedProjectId(savedState.projectId);
                         setSelectedContactId(savedState.contactId);
+                        setBillableRate(savedState.billableRate);
                     } else if (savedState.isActive && savedState.isPaused) {
                         const elapsed = Math.floor((savedState.pauseTime! - savedState.startTime) / 1000) - savedState.totalPausedDuration;
                         setElapsedSeconds(elapsed > 0 ? elapsed : 0);
@@ -77,6 +81,7 @@ export function TimeManagerView() {
                         setNotes(savedState.notes);
                         setSelectedProjectId(savedState.projectId);
                         setSelectedContactId(savedState.contactId);
+                        setBillableRate(savedState.billableRate);
                     } else {
                          setIsActive(false);
                          setIsPaused(false);
@@ -127,6 +132,7 @@ export function TimeManagerView() {
             projectId: selectedProjectId,
             contactId: selectedContactId,
             notes,
+            billableRate: Number(billableRate) || 0,
         };
         localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(state));
         setIsActive(true);
@@ -167,6 +173,7 @@ export function TimeManagerView() {
         setNotes("");
         setSelectedContactId(null);
         setSelectedProjectId(null);
+        setBillableRate(100);
         localStorage.removeItem(TIMER_STORAGE_KEY);
         toast({ title: 'Timer Reset', description: 'The timer and fields have been cleared.' });
     }
@@ -193,7 +200,7 @@ export function TimeManagerView() {
             startTime: new Date(Date.now() - elapsedSeconds * 1000),
             endTime: new Date(),
             duration: elapsedSeconds,
-            billableRate: 0, // Default rate
+            billableRate: Number(billableRate) || 0,
             userId: user.uid,
         };
         
@@ -222,6 +229,12 @@ export function TimeManagerView() {
         const newNotes = e.target.value;
         setNotes(newNotes);
         updateStoredState('notes', newNotes);
+    };
+
+    const handleBillableRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newRate = e.target.value === '' ? '' : Number(e.target.value);
+        setBillableRate(newRate);
+        updateStoredState('billableRate', Number(newRate) || 0);
     };
     
     const handleProjectChange = (projectId: string) => {
@@ -287,9 +300,15 @@ export function TimeManagerView() {
                                 </Select>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="notes">Notes / Task Description</Label>
-                            <Input id="notes" placeholder="What are you working on?" value={notes} onChange={handleNotesChange} />
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-2 md:col-span-2">
+                                <Label htmlFor="notes">Notes / Task Description</Label>
+                                <Input id="notes" placeholder="What are you working on?" value={notes} onChange={handleNotesChange} />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
+                                <Input id="billable-rate" type="number" placeholder="e.g., 100" value={billableRate} onChange={handleBillableRateChange} />
+                            </div>
                         </div>
                     </CardContent>
                     <CardFooter className="flex-col sm:flex-row items-center justify-between gap-4">

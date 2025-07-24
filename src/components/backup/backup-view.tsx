@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import {
   Table,
   TableBody,
@@ -21,7 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { DatabaseBackup, History, LoaderCircle } from "lucide-react";
+import { DatabaseBackup, History, LoaderCircle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import {
@@ -34,6 +33,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { ToastAction } from "@/components/ui/toast";
 
 
 type Backup = {
@@ -45,16 +46,17 @@ type Backup = {
 };
 
 const initialBackups: Backup[] = [
+  // Mock data can be replaced with a real fetch from a 'backups' collection
   {
     id: "bkp_1",
-    createdAt: new Date(Date.now() - 86400000 * 2), // 2 days ago
+    createdAt: new Date(Date.now() - 86400000 * 2),
     status: "Completed",
     size: "256.3 MB",
     description: "Weekly automatic backup",
   },
   {
     id: "bkp_2",
-    createdAt: new Date(Date.now() - 86400000 * 9), // 9 days ago
+    createdAt: new Date(Date.now() - 86400000 * 9),
     status: "Completed",
     size: "251.8 MB",
     description: "Weekly automatic backup",
@@ -64,44 +66,38 @@ const initialBackups: Backup[] = [
 export function BackupView() {
   const [backups, setBackups] = useState<Backup[]>(initialBackups);
   const [backupStatus, setBackupStatus] = useState<"idle" | "running" | "complete">("idle");
-  const [progress, setProgress] = useState(0);
   const [backupToRestore, setBackupToRestore] = useState<Backup | null>(null);
   const [isRestoring, setIsRestoring] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (backupStatus !== "running") return;
-
-    setProgress(0);
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setBackupStatus("complete");
-          const newBackup: Backup = {
-            id: `bkp_${Date.now()}`,
-            createdAt: new Date(),
-            status: "Completed",
-            size: `${(250 + Math.random() * 10).toFixed(1)} MB`,
-            description: "Manual backup",
-          };
-          setBackups((prevBackups) => [newBackup, ...prevBackups]);
-          toast({
-            title: "Backup Complete",
-            description: "Your application data has been successfully backed up.",
-          });
-          return 100;
-        }
-        return prev + 5;
-      });
-    }, 200);
-
-    return () => clearInterval(interval);
-  }, [backupStatus, toast]);
-  
-  const handleCreateBackup = () => {
+  const handleCreateBackup = async () => {
     if (backupStatus === 'running') return;
     setBackupStatus("running");
+
+    try {
+      const functions = getFunctions();
+      const triggerBackup = httpsCallable(functions, 'triggerBackup');
+      
+      const result = await triggerBackup();
+      console.log("Cloud Function result:", result.data);
+
+      setBackupStatus("complete");
+      toast({
+        title: "Backup Initiated",
+        description: "The backup process has started successfully. It may take a few minutes to complete.",
+      });
+
+    } catch (error: any) {
+      console.error("Error calling triggerBackup function:", error);
+      toast({
+        variant: "destructive",
+        title: "Backup Failed",
+        description: error.message || "An unexpected error occurred while starting the backup.",
+        duration: Infinity,
+        action: <ToastAction altText="Close">Close</ToastAction>,
+      });
+      setBackupStatus("idle");
+    }
   };
 
   const handleConfirmRestore = () => {
@@ -110,16 +106,17 @@ export function BackupView() {
     setIsRestoring(true);
     toast({
         title: "Restore Started",
-        description: `Restoring data from backup created on ${format(backupToRestore.createdAt, "MMM d, yyyy")}.`,
+        description: `This is a placeholder. A real restore would be a complex backend process.`,
     });
 
-    // Simulate the restore process
+    // This remains a simulation as the restore logic is highly specific
+    // and requires its own dedicated and secure Cloud Function.
     setTimeout(() => {
         setIsRestoring(false);
         setBackupToRestore(null);
         toast({
-            title: "Restore Complete",
-            description: "Your application data has been successfully restored.",
+            title: "Restore Simulation Complete",
+            description: "No data was actually changed.",
         });
     }, 3000);
   };
@@ -141,20 +138,21 @@ export function BackupView() {
             <CardHeader>
               <CardTitle>Create a New Backup</CardTitle>
               <CardDescription>
-                Create a point-in-time backup of your entire Ogeemo application, including all files and database records.
+                Trigger a server-side process to create a point-in-time backup of your Firestore database.
               </CardDescription>
             </CardHeader>
             <CardContent>
               {backupStatus === "running" ? (
-                <div className="space-y-4 text-center">
-                  <p className="text-sm font-medium">Backup in progress...</p>
-                  <Progress value={progress} className="w-full" />
-                  <p className="text-xs text-muted-foreground">{progress}%</p>
+                <div className="flex items-center justify-center space-x-2 p-4">
+                  <LoaderCircle className="h-5 w-5 animate-spin" />
+                  <p className="text-sm font-medium">Contacting backup service...</p>
                 </div>
               ) : backupStatus === "complete" ? (
-                  <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                      <p className="font-semibold text-green-700 dark:text-green-400">Backup successfully created!</p>
-                      <Button variant="link" onClick={() => setBackupStatus('idle')}>Create another backup</Button>
+                  <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg flex flex-col items-center gap-2">
+                      <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+                      <p className="font-semibold text-green-700 dark:text-green-400">Backup successfully initiated!</p>
+                      <p className="text-xs text-muted-foreground">The process is running on the server. Check your Google Cloud Storage bucket for the results.</p>
+                      <Button variant="link" size="sm" onClick={() => setBackupStatus('idle')}>Create another backup</Button>
                   </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
@@ -163,13 +161,13 @@ export function BackupView() {
               )}
             </CardContent>
             <CardFooter>
-              <Button onClick={handleCreateBackup} disabled={backupStatus === "running"}>
+              <Button onClick={handleCreateBackup} disabled={backupStatus !== "idle"}>
                 {backupStatus === "running" ? (
                   <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <DatabaseBackup className="mr-2 h-4 w-4" />
                 )}
-                {backupStatus === 'running' ? 'Backing Up...' : 'Create Backup'}
+                {backupStatus === 'running' ? 'Initiating...' : 'Create Backup'}
               </Button>
             </CardFooter>
           </Card>
@@ -178,7 +176,7 @@ export function BackupView() {
             <CardHeader>
               <CardTitle>Backup History</CardTitle>
               <CardDescription>
-                A log of all previous backups.
+                A log of all previous backups. (This is currently mock data).
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -233,6 +231,8 @@ export function BackupView() {
                 <AlertDialogTitle>Restore Backup?</AlertDialogTitle>
                 <AlertDialogDescription>
                     This will overwrite all current application data with the data from the backup created on <strong>{backupToRestore ? format(backupToRestore.createdAt, "PPPp") : ""}</strong>. This action cannot be undone.
+                    <br/><br/>
+                    <strong className="text-destructive">Note: The restore functionality is a placeholder and will not alter your data.</strong>
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
