@@ -136,10 +136,10 @@ export function NewTaskDialog({
                 contactId: "",
                 startDate: now,
                 startHour: String(now.getHours()),
-                startMinute: String(now.getMinutes()),
+                startMinute: "0",
                 endDate: startOfNextHour,
                 endHour: String(startOfNextHour.getHours()),
-                endMinute: String(startOfNextHour.getMinutes()),
+                endMinute: "0",
                 ...initialData,
             };
         }
