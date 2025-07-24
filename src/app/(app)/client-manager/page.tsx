@@ -16,7 +16,7 @@ export default function ClientManagerPage() {
   const features = [
     {
       icon: Pencil,
-      title: "Create New Log Entry",
+      title: "Create new Log Event",
       description: "Start the timer and create a detailed log for a new client action or event.",
       href: "/client-manager/create",
       cta: "Create Entry",
