@@ -416,8 +416,14 @@ export function TimeManagerView() {
                                 <div className="space-y-2">
                                     <Label>Duration</Label>
                                     <div className="flex items-center gap-2">
-                                        <Input type="number" min="0" value={durationHours} onChange={e => setDurationHours(Number(e.target.value))} placeholder="Hours" />
-                                        <Input type="number" min="0" max="59" step="5" value={durationMinutes} onChange={e => setDurationMinutes(Number(e.target.value))} placeholder="Mins" />
+                                        <div className="flex-1 space-y-1">
+                                            <Label htmlFor="duration-hours" className="text-xs text-muted-foreground">Hours</Label>
+                                            <Input id="duration-hours" type="number" min="0" value={durationHours} onChange={(e) => setDurationHours(e.target.value === '' ? '' : Number(e.target.value))} />
+                                        </div>
+                                        <div className="flex-1 space-y-1">
+                                            <Label htmlFor="duration-minutes" className="text-xs text-muted-foreground">Minutes</Label>
+                                            <Input id="duration-minutes" type="number" min="0" max="59" step="5" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value === '' ? '' : Number(e.target.value))} />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
