@@ -364,7 +364,7 @@ export function TimeManagerView() {
                     </div>
                     <div className="text-right absolute right-0">
                         <p className="text-muted-foreground text-sm">Time Logged</p>
-                        <p className="text-4xl font-mono font-bold text-primary tracking-tighter">
+                        <p className="text-2xl font-mono font-bold text-primary tracking-tighter">
                             {formatTime(elapsedSeconds)}
                         </p>
                     </div>
