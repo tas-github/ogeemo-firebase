@@ -283,7 +283,7 @@ export function TimeManagerView() {
 
     return (
         <div className="p-4 sm:p-6 space-y-6 flex flex-col items-center">
-            <header className="text-center w-full max-w-2xl">
+            <header className="text-center w-full max-w-4xl">
                 <h1 className="text-3xl font-bold font-headline text-primary flex items-center justify-center gap-3">
                     <Clock className="h-8 w-8" />
                     Event Time Manager
@@ -293,7 +293,7 @@ export function TimeManagerView() {
                 </p>
             </header>
 
-            <Card className="w-full max-w-2xl">
+            <Card className="w-full max-w-4xl">
                 <CardHeader className="text-center">
                     <p className="text-6xl font-mono font-bold text-primary tracking-tighter">
                         {formatTime(elapsedSeconds)}
@@ -326,7 +326,7 @@ export function TimeManagerView() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="notes">Notes / Details</Label>
-                        <Textarea id="notes" placeholder="Add more details about the work..." value={notes} onChange={handleNotesChange} rows={4} />
+                        <Textarea id="notes" placeholder="Add more details about the work..." value={notes} onChange={handleNotesChange} rows={8} />
                     </div>
                     <div className="flex items-center gap-4 pt-2">
                         <div className="flex items-center space-x-2">
