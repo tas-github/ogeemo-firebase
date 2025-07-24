@@ -357,7 +357,7 @@ export function TimeManagerView() {
                     Event Time Manager
                 </h1>
                 <p className="text-muted-foreground max-w-2xl mx-auto mt-2">
-                    Track your time against all events and check the box if the event is billable
+                    Track your time time against all events and check the box if the event is billable
                 </p>
             </header>
 
@@ -467,7 +467,7 @@ export function TimeManagerView() {
                             </>
                         )}
                     </div>
-                    <Button variant="ghost" onClick={() => handleReset()} disabled={!isActive && elapsedSeconds === 0}>Reset</Button>
+                    <Button variant="ghost" onClick={() => handleReset()}>Reset</Button>
                 </CardFooter>
             </Card>
         </div>
