@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -23,7 +22,7 @@ export default function ClientManagerPage() {
     },
     {
       icon: BookOpen,
-      title: "View Client Log",
+      title: "View Client Event Log",
       description: "Review, search, and export your complete history of all client events.",
       href: "/client-manager/logged-events",
       cta: "View Log",
