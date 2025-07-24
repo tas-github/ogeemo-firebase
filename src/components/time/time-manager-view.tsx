@@ -351,18 +351,18 @@ export function TimeManagerView() {
 
     return (
         <div className="p-4 sm:p-6 space-y-6 flex flex-col items-center">
-            <header className="text-center w-full max-w-4xl">
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
+            <header className="relative w-full max-w-4xl">
+                <div className="relative flex justify-center items-center">
+                    <div className="flex items-center gap-3 absolute left-0">
                         <Clock className="h-8 w-8 text-primary" />
-                        <div>
-                            <h1 className="text-3xl font-bold font-headline text-primary text-left">Event Time Manager</h1>
-                            <p className="text-muted-foreground text-left">
-                                Track your time against all events and check the box if the event is billable
-                            </p>
-                        </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-center">
+                        <h1 className="text-3xl font-bold font-headline text-primary">Event Time Manager</h1>
+                        <p className="text-muted-foreground">
+                            Track your time time against all events and check the box if the event is billable
+                        </p>
+                    </div>
+                    <div className="text-right absolute right-0">
                         <p className="text-muted-foreground text-sm">Time Logged</p>
                         <p className="text-4xl font-mono font-bold text-primary tracking-tighter">
                             {formatTime(elapsedSeconds)}
