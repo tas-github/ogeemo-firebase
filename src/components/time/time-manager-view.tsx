@@ -394,14 +394,14 @@ export function TimeManagerView() {
                     </div>
                     
                     {!isActive && (
-                         <div className="space-y-4 pt-4 border-t animate-in fade-in-50 duration-300">
-                            <h3 className="text-sm font-medium text-muted-foreground">Scheduling</h3>
-                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Start Date</Label>
+                         <div className="space-y-2 pt-4 border-t animate-in fade-in-50 duration-300">
+                            <Label>Scheduling</Label>
+                            <div className="flex flex-wrap items-end gap-2">
+                                <div className="space-y-1">
+                                    <Label htmlFor='start-date' className="text-xs text-muted-foreground">Start Date</Label>
                                     <Popover>
                                         <PopoverTrigger asChild>
-                                            <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                                            <Button id='start-date' variant={"outline"} className={cn("w-[180px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
                                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                                 {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
                                             </Button>
@@ -409,24 +409,18 @@ export function TimeManagerView() {
                                         <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus /></PopoverContent>
                                     </Popover>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>Start Time</Label>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Start Time</Label>
                                     <div className="flex gap-2">
-                                        <Select value={startHour} onValueChange={setStartHour}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
-                                        <Select value={startMinute} onValueChange={setStartMinute}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+                                        <Select value={startHour} onValueChange={setStartHour}><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+                                        <Select value={startMinute} onValueChange={setStartMinute}><SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
                                     </div>
                                 </div>
-                                 <div className="space-y-2">
-                                    <Label>Duration</Label>
+                                 <div className="space-y-1">
+                                    <Label className="text-xs text-muted-foreground">Duration</Label>
                                     <div className="flex items-center gap-2">
-                                        <div className="flex-1 space-y-1">
-                                            <Label htmlFor="duration-hours" className="text-xs text-muted-foreground">Hours</Label>
-                                            <Input id="duration-hours" type="number" min="0" value={durationHours} onChange={(e) => setDurationHours(e.target.value === '' ? '' : Number(e.target.value))} />
-                                        </div>
-                                        <div className="flex-1 space-y-1">
-                                            <Label htmlFor="duration-minutes" className="text-xs text-muted-foreground">Minutes</Label>
-                                            <Input id="duration-minutes" type="number" min="0" max="59" step="5" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value === '' ? '' : Number(e.target.value))} />
-                                        </div>
+                                        <Input id="duration-hours" type="number" min="0" value={durationHours} onChange={(e) => setDurationHours(e.target.value === '' ? '' : Number(e.target.value))} className="w-20" placeholder="Hrs" />
+                                        <Input id="duration-minutes" type="number" min="0" max="59" step="5" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value === '' ? '' : Number(e.target.value))} className="w-20" placeholder="Mins" />
                                     </div>
                                 </div>
                              </div>
