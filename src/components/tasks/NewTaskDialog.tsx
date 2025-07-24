@@ -175,13 +175,13 @@ export function NewTaskDialog({
         }
     } else {
         const finalStartDate = set(values.startDate, {
-            hours: parseInt(values.startHour!),
-            minutes: parseInt(values.startMinute!)
+            hours: parseInt(values.startHour || '0'),
+            minutes: parseInt(values.startMinute || '0')
         });
 
         const finalEndDate = set(values.endDate, {
-            hours: parseInt(values.endHour!),
-            minutes: parseInt(values.endMinute!)
+            hours: parseInt(values.endHour || '0'),
+            minutes: parseInt(values.endMinute || '0')
         });
 
         if (finalEndDate <= finalStartDate) {
