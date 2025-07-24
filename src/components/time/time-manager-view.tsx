@@ -20,6 +20,7 @@ import { format, set, differenceInSeconds, addMinutes } from 'date-fns';
 import { Popover, PopoverTrigger, PopoverContent } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
+import { NewTaskDialog } from '../tasks/NewTaskDialog';
 
 const TIMER_STORAGE_KEY = 'activeTimeManagerEntry';
 
@@ -59,11 +60,8 @@ export function TimeManagerView() {
     const [billableRate, setBillableRate] = useState<number | ''>(100);
     
     // State for scheduling
-    const [startDate, setStartDate] = useState<Date | undefined>(new Date());
-    const [startHour, setStartHour] = useState<string>(String(new Date().getHours()));
-    const [startMinute, setStartMinute] = useState<string>("0");
-    const [durationHours, setDurationHours] = useState<number | ''>(1);
-    const [durationMinutes, setDurationMinutes] = useState<number | ''>(0);
+    const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+    const [scheduleInitialData, setScheduleInitialData] = useState({});
 
     const [projects, setProjects] = useState<Project[]>([]);
     const [contacts, setContacts] = useState<Contact[]>([]);
@@ -243,7 +241,6 @@ export function TimeManagerView() {
         }
     };
     
-    // ... (updateStoredState and form field handlers remain similar)
     const updateStoredState = (key: keyof StoredTimerState, value: any) => {
         const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
         if (savedStateRaw) {
@@ -292,53 +289,31 @@ export function TimeManagerView() {
         setSelectedContactId(contactId);
         if(isActive) updateStoredState('contactId', contactId);
     };
-
-    const handleSaveEvent = async () => {
-        if (!user) return;
-
-        const totalDuration = (Number(durationHours) || 0) * 60 + (Number(durationMinutes) || 0);
-        if (totalDuration <= 0) {
-            toast({ variant: 'destructive', title: 'Invalid Duration', description: 'Please set a duration for the event.' });
+    
+    const handleOpenScheduleDialog = () => {
+        setScheduleInitialData({
+            title: subject,
+            description: notes,
+            contactId: selectedContactId,
+            projectId: selectedProjectId,
+            billableRate: isBillable ? Number(billableRate) : 0,
+        });
+        setIsScheduleDialogOpen(true);
+    };
+    
+    const handleTaskCreate = async (taskData: Omit<TaskEvent, 'id' | 'userId'>) => {
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to create events.' });
             return;
         }
-
-        const startDateTime = set(startDate!, {
-            hours: parseInt(startHour),
-            minutes: parseInt(startMinute)
-        });
-
-        const endDateTime = addMinutes(startDateTime, totalDuration);
-
-        const newEventData: Omit<TaskEvent, 'id' | 'userId'> = {
-            title: subject || 'Untitled Event',
-            description: notes,
-            start: startDateTime,
-            end: endDateTime,
-            status: 'todo',
-            position: 0,
-            projectId: selectedProjectId,
-            contactId: selectedContactId,
-            billableRate: isBillable ? Number(billableRate) : 0,
-        };
-        
         try {
-            await addTask({ ...newEventData, userId: user.uid });
-            toast({ title: "Event Saved", description: `"${newEventData.title}" has been added to your calendar.` });
+            await addTask({ ...taskData, userId: user.uid });
+            toast({ title: "Event Scheduled", description: `"${taskData.title}" has been added to your calendar.` });
             handleReset(false);
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Failed to save event', description: error.message });
+             toast({ variant: 'destructive', title: 'Failed to create event', description: error.message });
         }
-    }
-    
-    const hourOptions = Array.from({ length: 24 }, (_, i) => {
-        const date = set(new Date(), { hours: i });
-        return { value: String(i), label: format(date, 'h a') };
-    });
-
-    const minuteOptions = Array.from({ length: 12 }, (_, i) => {
-        const minutes = i * 5;
-        return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` };
-    });
+    };
 
 
     if (isLoading) {
@@ -350,6 +325,7 @@ export function TimeManagerView() {
     }
 
     return (
+        <>
         <div className="p-4 sm:p-6 space-y-6 flex flex-col items-center">
             <header className="relative w-full max-w-4xl">
                 <div className="relative flex justify-center items-center">
@@ -398,40 +374,6 @@ export function TimeManagerView() {
                         <Input id="subject" placeholder="What is the main task?" value={subject} onChange={handleSubjectChange} />
                     </div>
                     
-                    {!isActive && (
-                         <div className="space-y-2 pt-4 border-t animate-in fade-in-50 duration-300">
-                            <Label>Scheduling</Label>
-                             <div className="flex flex-wrap items-end gap-2">
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">Start Date</Label>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button variant={"outline"} className={cn("w-[180px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={startDate} onSelect={setStartDate} initialFocus /></PopoverContent>
-                                    </Popover>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">Start Time</Label>
-                                    <div className="flex gap-2">
-                                        <Select value={startHour} onValueChange={setStartHour}><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
-                                        <Select value={startMinute} onValueChange={setStartMinute}><SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
-                                    </div>
-                                </div>
-                                 <div className="space-y-1">
-                                    <Label className="text-xs text-muted-foreground">Estimate Duration, Hrs. Min.</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Input id="duration-hours" type="number" min="0" value={durationHours} onChange={(e) => setDurationHours(e.target.value === '' ? '' : Number(e.target.value))} className="w-20" placeholder="Hrs" />
-                                        <Input id="duration-minutes" type="number" min="0" max="59" step="5" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value === '' ? '' : Number(e.target.value))} className="w-20" placeholder="Mins" />
-                                    </div>
-                                </div>
-                             </div>
-                         </div>
-                    )}
-                    
                     <div className="space-y-2">
                         <Label htmlFor="notes">Notes / Details</Label>
                         <Textarea id="notes" placeholder="Add more details about the work..." value={notes} onChange={handleNotesChange} rows={8} />
@@ -459,7 +401,7 @@ export function TimeManagerView() {
                             <Button size="lg" onClick={handleStartTimer}>
                                 <Play className="mr-2 h-5 w-5" /> Start Timer Now
                             </Button>
-                            <Button size="lg" variant="outline" onClick={handleSaveEvent}>
+                            <Button size="lg" variant="outline" onClick={handleOpenScheduleDialog}>
                                 <Save className="mr-2 h-5 w-5" /> Save Event to Calendar
                             </Button>
                             </>
@@ -479,5 +421,14 @@ export function TimeManagerView() {
                 </CardFooter>
             </Card>
         </div>
+        <NewTaskDialog
+            isOpen={isScheduleDialogOpen}
+            onOpenChange={setIsScheduleDialogOpen}
+            onTaskCreate={handleTaskCreate}
+            contacts={contacts}
+            initialData={scheduleInitialData}
+            initialMode="event"
+        />
+        </>
     );
 }

@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getProjects, deleteProject, getTasksForProject, type Project, type Event as TaskEvent } from '@/services/project-service';
+import { getProjects, deleteProject, getTasksForProject, addProject, type Project, type Event as TaskEvent } from '@/services/project-service';
 import { getContacts, type Contact } from '@/services/contact-service';
-import { NewProjectDialog } from './NewProjectDialog';
+import { NewTaskDialog } from './NewTaskDialog';
 import { ProjectListItem } from './ProjectListItem';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -30,7 +30,7 @@ export function TasksView() {
     const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
     const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
+    const [isNewItemDialogOpen, setIsNewItemDialogOpen] = useState(false);
     
     const { user } = useAuth();
     const { toast } = useToast();
@@ -53,7 +53,7 @@ export function TasksView() {
 
                 const ideaToProjectRaw = sessionStorage.getItem('ogeemo-idea-to-project');
                 if (ideaToProjectRaw) {
-                    setIsNewProjectDialogOpen(true);
+                    setIsNewItemDialogOpen(true);
                 }
 
             } catch (error: any) {
@@ -65,8 +65,15 @@ export function TasksView() {
         loadInitialData();
     }, [user, toast]);
     
-    const handleProjectCreated = (newProject: Project) => {
-        setProjects(prev => [newProject, ...prev]);
+    const handleProjectCreated = async (projectData: Omit<Project, 'id' | 'createdAt' | 'userId'>, tasks: []) => {
+        if (!user) return;
+        try {
+            const newProject = await addProject({ ...projectData, userId: user.uid, createdAt: new Date() });
+            setProjects(prev => [newProject, ...prev]);
+            toast({ title: "Project Created", description: `"${newProject.name}" has been successfully created.` });
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Failed to create project", description: error.message });
+        }
     };
 
     const handleProjectUpdated = (updatedProject: Project) => {
@@ -103,7 +110,7 @@ export function TasksView() {
     
     const handleEditProject = (project: Project) => {
         setProjectToEdit(project);
-        setIsNewProjectDialogOpen(true);
+        setIsNewItemDialogOpen(true);
     };
 
     return (
@@ -121,7 +128,7 @@ export function TasksView() {
                                 <CardTitle>All Projects</CardTitle>
                                 <CardDescription>Click a project to view its tasks.</CardDescription>
                             </div>
-                            <Button onClick={() => { setProjectToEdit(null); setIsNewProjectDialogOpen(true); }}>
+                            <Button onClick={() => { setProjectToEdit(null); setIsNewItemDialogOpen(true); }}>
                                 <Plus className="mr-2 h-4 w-4" /> New Project
                             </Button>
                         </div>
@@ -154,13 +161,14 @@ export function TasksView() {
                     </CardContent>
                 </Card>
 
-                <NewProjectDialog
-                    isOpen={isNewProjectDialogOpen}
-                    onOpenChange={setIsNewProjectDialogOpen}
-                    onProjectCreated={handleProjectCreated}
-                    onProjectUpdated={handleProjectUpdated}
+                <NewTaskDialog
+                    isOpen={isNewItemDialogOpen}
+                    onOpenChange={setIsNewItemDialogOpen}
+                    onProjectCreate={handleProjectCreated}
+                    // onProjectUpdated={handleProjectUpdated} // Add this handler to the dialog if needed
                     contacts={contacts}
                     projectToEdit={projectToEdit}
+                    initialMode="project"
                 />
             </div>
             <AlertDialog open={!!projectToDelete} onOpenChange={() => setProjectToDelete(null)}>
