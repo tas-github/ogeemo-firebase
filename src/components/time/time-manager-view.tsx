@@ -352,22 +352,27 @@ export function TimeManagerView() {
     return (
         <div className="p-4 sm:p-6 space-y-6 flex flex-col items-center">
             <header className="text-center w-full max-w-4xl">
-                <h1 className="text-3xl font-bold font-headline text-primary flex items-center justify-center gap-3">
-                    <Clock className="h-8 w-8" />
-                    Event Time Manager
-                </h1>
-                <p className="text-muted-foreground max-w-2xl mx-auto mt-2">
-                    Track your time time against all events and check the box if the event is billable
-                </p>
+                <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                        <Clock className="h-8 w-8 text-primary" />
+                        <div>
+                            <h1 className="text-3xl font-bold font-headline text-primary text-left">Event Time Manager</h1>
+                            <p className="text-muted-foreground text-left">
+                                Track your time against all events and check the box if the event is billable
+                            </p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-muted-foreground text-sm">Time Logged</p>
+                        <p className="text-4xl font-mono font-bold text-primary tracking-tighter">
+                            {formatTime(elapsedSeconds)}
+                        </p>
+                    </div>
+                </div>
             </header>
 
             <Card className="w-full max-w-4xl">
-                <CardHeader className="text-center">
-                    <p className="text-6xl font-mono font-bold text-primary tracking-tighter">
-                        {formatTime(elapsedSeconds)}
-                    </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="pt-6 space-y-4">
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="project">Project</Label>
@@ -396,12 +401,12 @@ export function TimeManagerView() {
                     {!isActive && (
                          <div className="space-y-2 pt-4 border-t animate-in fade-in-50 duration-300">
                             <Label>Scheduling</Label>
-                            <div className="flex flex-wrap items-end gap-2">
+                             <div className="flex flex-wrap items-end gap-2">
                                 <div className="space-y-1">
-                                    <Label htmlFor='start-date' className="text-xs text-muted-foreground">Start Date</Label>
+                                    <Label className="text-xs text-muted-foreground">Start Date</Label>
                                     <Popover>
                                         <PopoverTrigger asChild>
-                                            <Button id='start-date' variant={"outline"} className={cn("w-[180px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
+                                            <Button variant={"outline"} className={cn("w-[180px] justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
                                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                                 {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
                                             </Button>
