@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -117,17 +116,24 @@ export function NewTaskDialog({
         } else {
             const now = new Date();
             const startOfNextHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() + 1);
+            const ideaDataRaw = sessionStorage.getItem('ogeemo-idea-to-project');
+            let ideaData = null;
+            if (ideaDataRaw) {
+              ideaData = JSON.parse(ideaDataRaw);
+              sessionStorage.removeItem('ogeemo-idea-to-project');
+            }
+
             form.reset({
-                isProject: initialMode === 'project',
-                title: initialData.title || "",
-                description: initialData.description || "",
+                isProject: initialMode === 'project' || !!ideaData,
+                title: initialData?.title || ideaData?.title || "",
+                description: initialData?.description || ideaData?.description || "",
                 contactId: "",
-                startDate: initialData.startDate || now,
-                startHour: initialData.startHour || String(now.getHours()),
-                startMinute: initialData.startMinute || String(now.getMinutes()),
-                endDate: initialData.endDate || startOfNextHour,
-                endHour: initialData.endHour || String(startOfNextHour.getHours()),
-                endMinute: initialData.endMinute || String(startOfNextHour.getMinutes()),
+                startDate: initialData?.startDate || now,
+                startHour: initialData?.startHour || String(now.getHours()),
+                startMinute: initialData?.startMinute || String(now.getMinutes()),
+                endDate: initialData?.endDate || startOfNextHour,
+                endHour: initialData?.endHour || String(startOfNextHour.getHours()),
+                endMinute: initialData?.endMinute || String(startOfNextHour.getMinutes()),
                 ...initialData,
             });
         }
@@ -223,7 +229,7 @@ export function NewTaskDialog({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <FormLabel>Start Date {isProjectMode ? '' : '& Time'}</FormLabel>
+                    <FormLabel>{isProjectMode ? 'Start Date' : 'Start Date & Time'}</FormLabel>
                     <div className="flex gap-2">
                         <FormField control={form.control} name="startDate" render={({ field }) => ( <FormItem className="flex-1"><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
                         {!isProjectMode && <>
@@ -233,7 +239,7 @@ export function NewTaskDialog({
                     </div>
                 </div>
                 <div className="space-y-2">
-                    <FormLabel>End / Due Date {isProjectMode ? '' : '& Time'}</FormLabel>
+                    <FormLabel>{isProjectMode ? 'Due Date' : 'End Date & Time'}</FormLabel>
                     <div className="flex gap-2">
                         <FormField control={form.control} name="endDate" render={({ field }) => ( <FormItem className="flex-1"><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
                          {!isProjectMode && <>

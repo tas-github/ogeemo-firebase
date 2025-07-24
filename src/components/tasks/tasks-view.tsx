@@ -31,6 +31,7 @@ export function TasksView() {
     const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isNewItemDialogOpen, setIsNewItemDialogOpen] = useState(false);
+    const [initialDialogData, setInitialDialogData] = useState({});
     
     const { user } = useAuth();
     const { toast } = useToast();
@@ -53,7 +54,10 @@ export function TasksView() {
 
                 const ideaToProjectRaw = sessionStorage.getItem('ogeemo-idea-to-project');
                 if (ideaToProjectRaw) {
+                    const ideaData = JSON.parse(ideaToProjectRaw);
+                    setInitialDialogData({ title: ideaData.title, description: ideaData.description });
                     setIsNewItemDialogOpen(true);
+                    // No need to remove item here, dialog useEffect will handle it
                 }
 
             } catch (error: any) {
@@ -128,7 +132,7 @@ export function TasksView() {
                                 <CardTitle>All Projects</CardTitle>
                                 <CardDescription>Click a project to view its tasks.</CardDescription>
                             </div>
-                            <Button onClick={() => { setProjectToEdit(null); setIsNewItemDialogOpen(true); }}>
+                            <Button onClick={() => { setProjectToEdit(null); setInitialDialogData({}); setIsNewItemDialogOpen(true); }}>
                                 <Plus className="mr-2 h-4 w-4" /> New Project
                             </Button>
                         </div>
@@ -169,6 +173,7 @@ export function TasksView() {
                     contacts={contacts}
                     projectToEdit={projectToEdit}
                     initialMode="project"
+                    initialData={initialDialogData}
                 />
             </div>
             <AlertDialog open={!!projectToDelete} onOpenChange={() => setProjectToDelete(null)}>

@@ -15,7 +15,6 @@ import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getProjectById, updateProjectWithTasks, type Project, type ProjectStep } from '@/services/project-service';
 import { format, set } from 'date-fns';
-import { type DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
