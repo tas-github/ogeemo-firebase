@@ -13,8 +13,8 @@ import { useAuth } from '@/context/auth-context';
 import { getProjects, type Project } from '@/services/project-service';
 import { getContacts, type Contact } from '@/services/contact-service';
 import { addEventEntry, getEventEntries, type EventEntry } from '@/services/client-manager-service';
-import { formatDistanceToNow } from 'date-fns';
 import { Checkbox } from '../ui/checkbox';
+import { Textarea } from '../ui/textarea';
 
 const TIMER_STORAGE_KEY = 'activeTimeManagerEntry';
 
@@ -53,7 +53,6 @@ export function TimeManagerView() {
 
     const [projects, setProjects] = useState<Project[]>([]);
     const [contacts, setContacts] = useState<Contact[]>([]);
-    const [recentEntries, setRecentEntries] = useState<EventEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const { user } = useAuth();
@@ -113,14 +112,12 @@ export function TimeManagerView() {
             }
             setIsLoading(true);
             try {
-                const [projectsData, contactsData, entriesData] = await Promise.all([
+                const [projectsData, contactsData] = await Promise.all([
                     getProjects(user.uid),
                     getContacts(user.uid),
-                    getEventEntries(user.uid),
                 ]);
                 setProjects(projectsData);
                 setContacts(contactsData);
-                setRecentEntries(entriesData.slice(0, 5));
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
             } finally {
@@ -215,8 +212,7 @@ export function TimeManagerView() {
         };
         
         try {
-            const addedEntry = await addEventEntry(newEntry);
-            setRecentEntries(prev => [addedEntry, ...prev].slice(0, 5));
+            await addEventEntry(newEntry);
             toast({ title: 'Time Logged', description: `Logged ${formatTime(elapsedSeconds)} for ${contact.name}` });
             handleReset(); // Reset the form after logging
         } catch (error: any) {
@@ -234,7 +230,7 @@ export function TimeManagerView() {
         }
     };
 
-    const handleNotesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const newNotes = e.target.value;
         setNotes(newNotes);
         updateStoredState('notes', newNotes);
@@ -273,10 +269,9 @@ export function TimeManagerView() {
         )
     }
 
-
     return (
-        <div className="p-4 sm:p-6 space-y-6">
-            <header className="text-center">
+        <div className="p-4 sm:p-6 space-y-6 flex flex-col items-center">
+            <header className="text-center w-full max-w-2xl">
                 <h1 className="text-3xl font-bold font-headline text-primary flex items-center justify-center gap-3">
                     <Clock className="h-8 w-8" />
                     Event Time Manager
@@ -286,109 +281,74 @@ export function TimeManagerView() {
                 </p>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                <Card className="lg:col-span-2">
-                    <CardHeader>
-                        <CardTitle>Live Timer</CardTitle>
-                        <CardDescription>Start the timer to begin tracking your work.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="text-center p-8 bg-muted rounded-lg">
-                            <p className="text-7xl font-mono font-bold text-primary tracking-tighter">
-                                {formatTime(elapsedSeconds)}
-                            </p>
+            <Card className="w-full max-w-2xl">
+                <CardHeader className="text-center">
+                    <p className="text-6xl font-mono font-bold text-primary tracking-tighter">
+                        {formatTime(elapsedSeconds)}
+                    </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="project">Project</Label>
+                            <Select value={selectedProjectId || ''} onValueChange={handleProjectChange} disabled={isActive}>
+                                <SelectTrigger id="project"><SelectValue placeholder="Select a project..." /></SelectTrigger>
+                                <SelectContent>
+                                    {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="project">Project</Label>
-                                <Select value={selectedProjectId || ''} onValueChange={handleProjectChange} disabled={isActive}>
-                                    <SelectTrigger id="project"><SelectValue placeholder="Select a project..." /></SelectTrigger>
-                                    <SelectContent>
-                                        {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="client">Client</Label>
-                                <Select value={selectedContactId || ''} onValueChange={handleContactChange} disabled={isActive}>
-                                    <SelectTrigger id="client"><SelectValue placeholder="Select a client..." /></SelectTrigger>
-                                    <SelectContent>
-                                         {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="client">Client</Label>
+                            <Select value={selectedContactId || ''} onValueChange={handleContactChange} disabled={isActive}>
+                                <SelectTrigger id="client"><SelectValue placeholder="Select a client..." /></SelectTrigger>
+                                <SelectContent>
+                                     {contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </div>
-                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                            <div className="space-y-2 md:col-span-2">
-                                <Label htmlFor="notes">Notes / Task Description</Label>
-                                <Input id="notes" placeholder="What are you working on?" value={notes} onChange={handleNotesChange} />
-                            </div>
-                            <div className="flex items-center gap-4">
-                               <div className="flex items-center space-x-2 pt-6">
-                                    <Checkbox id="is-billable" checked={isBillable} onCheckedChange={handleIsBillableChange} />
-                                    <Label htmlFor="is-billable" className="font-medium">Billable</Label>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="notes">Notes / Task Description</Label>
+                        <Textarea id="notes" placeholder="What are you working on?" value={notes} onChange={handleNotesChange} rows={4} />
+                    </div>
+                    <div className="flex items-center gap-4 pt-2">
+                        <div className="flex items-center space-x-2">
+                            <Checkbox id="is-billable" checked={isBillable} onCheckedChange={handleIsBillableChange} />
+                            <Label htmlFor="is-billable" className="font-medium">Billable</Label>
+                        </div>
+                        {isBillable && (
+                             <div className="space-y-2 w-32 animate-in fade-in-50 duration-300">
+                                <Label htmlFor="billable-rate">Rate ($/hr)</Label>
+                                <div className="relative">
+                                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                                    <Input id="billable-rate" type="number" placeholder="100" value={billableRate} onChange={handleBillableRateChange} className="pl-7" />
                                 </div>
-                                {isBillable && (
-                                     <div className="space-y-2 flex-1">
-                                        <Label htmlFor="billable-rate">Rate</Label>
-                                        <div className="relative">
-                                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                                            <Input id="billable-rate" type="number" placeholder="100" value={billableRate} onChange={handleBillableRateChange} className="pl-7" />
-                                        </div>
-                                    </div>
-                                )}
                             </div>
-                        </div>
-                    </CardContent>
-                    <CardFooter className="flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex gap-2">
-                            {!isActive ? (
-                                <Button size="lg" onClick={handleStartTimer}>
-                                    <Play className="mr-2 h-5 w-5" /> Start Timer
-                                </Button>
-                            ) : (
-                                <>
-                                 <Button size="lg" variant="outline" onClick={isPaused ? handleResumeTimer : handlePauseTimer}>
-                                     {isPaused ? <Play className="mr-2 h-5 w-5" /> : <Pause className="mr-2 h-5 w-5" />}
-                                     {isPaused ? 'Resume' : 'Pause'}
-                                 </Button>
-                                 <Button size="lg" variant="destructive" onClick={handleLogTime}>
-                                     <Square className="mr-2 h-5 w-5" /> Stop & Log Time
-                                 </Button>
-                                </>
-                            )}
-                        </div>
-                        <div className='flex items-center gap-2'>
-                          <Button variant="ghost" onClick={handleReset} disabled={!isActive && elapsedSeconds === 0}>Reset</Button>
-                          <p className="text-sm text-muted-foreground">Entries save to Client Manager.</p>
-                        </div>
-                    </CardFooter>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Recent Entries</CardTitle>
-                        <CardDescription>Your last 5 time entries.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {recentEntries.length > 0 ? (
-                            <div className="space-y-4">
-                            {recentEntries.map(entry => (
-                                <div key={entry.id} className="flex justify-between items-center text-sm">
-                                    <div>
-                                        <p className="font-semibold truncate">{entry.subject}</p>
-                                        <p className="text-xs text-muted-foreground">{entry.contactName} - {formatDistanceToNow(entry.startTime, { addSuffix: true })}</p>
-                                    </div>
-                                    <p className="font-mono">{formatTime(entry.duration)}</p>
-                                </div>
-                            ))}
-                            </div>
-                        ) : (
-                             <p className="text-sm text-muted-foreground text-center py-10">No recent time entries found.</p>
                         )}
-                    </CardContent>
-                </Card>
-            </div>
+                    </div>
+                </CardContent>
+                <CardFooter className="flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex gap-2">
+                        {!isActive ? (
+                            <Button size="lg" onClick={handleStartTimer}>
+                                <Play className="mr-2 h-5 w-5" /> Start Timer
+                            </Button>
+                        ) : (
+                            <>
+                             <Button size="lg" variant="outline" onClick={isPaused ? handleResumeTimer : handlePauseTimer}>
+                                 {isPaused ? <Play className="mr-2 h-5 w-5" /> : <Pause className="mr-2 h-5 w-5" />}
+                                 {isPaused ? 'Resume' : 'Pause'}
+                             </Button>
+                             <Button size="lg" variant="destructive" onClick={handleLogTime}>
+                                 <Square className="mr-2 h-5 w-5" /> Stop & Log Time
+                             </Button>
+                            </>
+                        )}
+                    </div>
+                    <Button variant="ghost" onClick={handleReset} disabled={!isActive && elapsedSeconds === 0}>Reset Timer</Button>
+                </CardFooter>
+            </Card>
         </div>
     );
 }
