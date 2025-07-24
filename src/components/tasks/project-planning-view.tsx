@@ -181,7 +181,7 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
                             <Textarea id="step-desc" value={newStepDescription} onChange={(e) => setNewStepDescription(e.target.value)} />
                         </div>
                         <div className="space-y-2">
-                            <Label>Estimated Duration</Label>
+                            <Label>Estimate Duration, Hrs. Min.</Label>
                             <div className="flex items-center gap-2">
                                 <div className="flex-1 space-y-1">
                                     <Label htmlFor="step-hours" className="text-xs text-muted-foreground">Hours</Label>
