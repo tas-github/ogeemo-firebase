@@ -59,47 +59,51 @@ export function TimeManagerView() {
     const { user } = useAuth();
     const { toast } = useToast();
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            try {
-                const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
-                if (savedStateRaw) {
-                    const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-                    if (savedState.isActive && !savedState.isPaused) {
+    const updateTimerState = useCallback(() => {
+        try {
+            const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+            if (savedStateRaw) {
+                const savedState: StoredTimerState = JSON.parse(savedStateRaw);
+                if (savedState.isActive) {
+                    setIsActive(true);
+                    setIsPaused(savedState.isPaused);
+                    setNotes(savedState.notes);
+                    setSelectedProjectId(savedState.projectId);
+                    setSelectedContactId(savedState.contactId);
+                    setIsBillable(savedState.isBillable);
+                    setBillableRate(savedState.billableRate);
+
+                    if (!savedState.isPaused) {
                         const now = Date.now();
                         const elapsed = Math.floor((now - savedState.startTime) / 1000) - savedState.totalPausedDuration;
                         setElapsedSeconds(elapsed > 0 ? elapsed : 0);
-                        
-                        setIsActive(true);
-                        setIsPaused(false);
-                        setNotes(savedState.notes);
-                        setSelectedProjectId(savedState.projectId);
-                        setSelectedContactId(savedState.contactId);
-                        setIsBillable(savedState.isBillable);
-                        setBillableRate(savedState.billableRate);
-                    } else if (savedState.isActive && savedState.isPaused) {
+                    } else {
                         const elapsed = Math.floor((savedState.pauseTime! - savedState.startTime) / 1000) - savedState.totalPausedDuration;
                         setElapsedSeconds(elapsed > 0 ? elapsed : 0);
-                        setIsActive(true);
-                        setIsPaused(true);
-                        setNotes(savedState.notes);
-                        setSelectedProjectId(savedState.projectId);
-                        setSelectedContactId(savedState.contactId);
-                        setIsBillable(savedState.isBillable);
-                        setBillableRate(savedState.billableRate);
-                    } else {
-                         setIsActive(false);
-                         setIsPaused(false);
                     }
                 } else {
                     setIsActive(false);
-                    setIsPaused(false);
                 }
-            } catch (e) { console.error("Error reading timer state", e); }
-        }, 1000);
-
-        return () => clearInterval(interval);
+            } else {
+                setIsActive(false);
+                setElapsedSeconds(0);
+            }
+        } catch (e) {
+            console.error("Error reading timer state", e);
+            setIsActive(false);
+        }
     }, []);
+
+    useEffect(() => {
+        updateTimerState(); // Initial check
+        window.addEventListener('storage', updateTimerState); // Listen for changes from other tabs
+        const interval = setInterval(updateTimerState, 1000); // Poll for time updates
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('storage', updateTimerState);
+        };
+    }, [updateTimerState]);
 
     useEffect(() => {
         async function loadData() {
@@ -141,9 +145,7 @@ export function TimeManagerView() {
             billableRate: isBillable ? (Number(billableRate) || 0) : 0,
         };
         localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(state));
-        setIsActive(true);
-        setIsPaused(false);
-        setElapsedSeconds(0);
+        window.dispatchEvent(new Event('storage')); // Notify other components
     };
 
     const handlePauseTimer = () => {
@@ -154,7 +156,7 @@ export function TimeManagerView() {
         savedState.isPaused = true;
         savedState.pauseTime = Date.now();
         localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
-        setIsPaused(true);
+        window.dispatchEvent(new Event('storage'));
     };
     
     const handleResumeTimer = () => {
@@ -169,12 +171,10 @@ export function TimeManagerView() {
         savedState.isPaused = false;
         savedState.pauseTime = null;
         localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
-        setIsPaused(false);
+        window.dispatchEvent(new Event('storage'));
     };
     
     const handleReset = () => {
-        setIsActive(false);
-        setIsPaused(false);
         setElapsedSeconds(0);
         setNotes("");
         setSelectedContactId(null);
@@ -182,6 +182,7 @@ export function TimeManagerView() {
         setIsBillable(true);
         setBillableRate(100);
         localStorage.removeItem(TIMER_STORAGE_KEY);
+        window.dispatchEvent(new Event('storage'));
         toast({ title: 'Timer Reset', description: 'The timer and fields have been cleared.' });
     }
 
@@ -194,8 +195,8 @@ export function TimeManagerView() {
             return;
         }
         
-        const account = projects.find(p => p.id === selectedProjectId);
-        if (!account) {
+        const project = projects.find(p => p.id === selectedProjectId);
+        if (!project) {
             toast({ variant: 'destructive', title: 'Project Required', description: 'Please select a project to log time against.' });
             return;
         }
@@ -224,13 +225,12 @@ export function TimeManagerView() {
     };
     
     const updateStoredState = (key: keyof StoredTimerState, value: any) => {
-        if (isActive) {
-            const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
-            if (savedStateRaw) {
-                const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-                (savedState as any)[key] = value;
-                localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
-            }
+        const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+        if (savedStateRaw) {
+            const savedState: StoredTimerState = JSON.parse(savedStateRaw);
+            (savedState as any)[key] = value;
+            localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
+            window.dispatchEvent(new Event('storage'));
         }
     };
 

@@ -6,7 +6,17 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Clock, X } from 'lucide-react';
-import { type StoredTimerState, TIMER_STORAGE_KEY } from '@/components/client-manager/log-entry-dialog';
+
+const TIMER_STORAGE_KEY = 'activeTimeManagerEntry';
+
+interface StoredTimerState {
+    startTime: number;
+    isActive: boolean;
+    isPaused: boolean;
+    pauseTime: number | null;
+    totalPausedDuration: number;
+    notes: string;
+}
 
 const formatTime = (totalSeconds: number) => {
     if (totalSeconds < 0) totalSeconds = 0;
@@ -62,7 +72,7 @@ export function ActiveTimerIndicator() {
 
     const handleStopTimer = () => {
         localStorage.removeItem(TIMER_STORAGE_KEY);
-        // Dispatch event to notify other components (like the dialog if it's open)
+        // Dispatch event to notify other components (like the timer page if it's open)
         window.dispatchEvent(new Event('storage')); 
     };
 
@@ -73,10 +83,10 @@ export function ActiveTimerIndicator() {
     return (
         <Card className="fixed bottom-4 right-4 z-50 w-80 shadow-lg animate-in fade-in-50 slide-in-from-bottom-5 duration-300">
             <CardContent className="p-3 flex items-center justify-between">
-                <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push('/client-manager/create')}>
+                <div className="flex items-center gap-3 cursor-pointer flex-1 min-w-0" onClick={() => router.push('/time')}>
                     <Clock className={`h-6 w-6 text-primary ${!timerState.isPaused ? 'animate-pulse' : ''}`} />
-                    <div>
-                        <p className="text-sm font-semibold truncate">{timerState.title}</p>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">{timerState.notes || 'Timer Active'}</p>
                         <p className="font-mono text-lg font-bold">{formatTime(elapsedSeconds)}</p>
                     </div>
                 </div>
