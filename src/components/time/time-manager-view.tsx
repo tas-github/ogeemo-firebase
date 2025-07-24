@@ -26,6 +26,7 @@ interface StoredTimerState {
     totalPausedDuration: number;
     projectId: string | null;
     contactId: string | null;
+    subject: string;
     notes: string;
     isBillable: boolean;
     billableRate: number;
@@ -44,6 +45,7 @@ export function TimeManagerView() {
     const [isActive, setIsActive] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     
+    const [subject, setSubject] = useState("");
     const [notes, setNotes] = useState("");
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
@@ -66,6 +68,7 @@ export function TimeManagerView() {
                 if (savedState.isActive) {
                     setIsActive(true);
                     setIsPaused(savedState.isPaused);
+                    setSubject(savedState.subject);
                     setNotes(savedState.notes);
                     setSelectedProjectId(savedState.projectId);
                     setSelectedContactId(savedState.contactId);
@@ -137,6 +140,7 @@ export function TimeManagerView() {
             totalPausedDuration: 0,
             projectId: selectedProjectId,
             contactId: selectedContactId,
+            subject,
             notes,
             isBillable,
             billableRate: isBillable ? (Number(billableRate) || 0) : 0,
@@ -173,6 +177,7 @@ export function TimeManagerView() {
     
     const handleReset = () => {
         setElapsedSeconds(0);
+        setSubject("");
         setNotes("");
         setSelectedContactId(null);
         setSelectedProjectId(null);
@@ -203,7 +208,8 @@ export function TimeManagerView() {
         const newEntry: Omit<EventEntry, 'id'> = {
             accountId: contact.id, // The client account is linked via contactId
             contactName: contact.name,
-            subject: notes || 'Time Entry',
+            subject: subject || 'Time Entry',
+            detailsHtml: notes.replace(/\n/g, '<br>'),
             startTime: new Date(Date.now() - elapsedSeconds * 1000),
             endTime: new Date(),
             duration: elapsedSeconds,
@@ -228,6 +234,12 @@ export function TimeManagerView() {
             localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
             window.dispatchEvent(new Event('storage'));
         }
+    };
+
+    const handleSubjectChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newSubject = e.target.value;
+        setSubject(newSubject);
+        updateStoredState('subject', newSubject);
     };
 
     const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -308,9 +320,13 @@ export function TimeManagerView() {
                             </Select>
                         </div>
                     </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="subject">Subject</Label>
+                        <Input id="subject" placeholder="What is the main task?" value={subject} onChange={handleSubjectChange} />
+                    </div>
                     <div className="space-y-2">
-                        <Label htmlFor="notes">Notes / Task Description</Label>
-                        <Textarea id="notes" placeholder="What are you working on?" value={notes} onChange={handleNotesChange} rows={4} />
+                        <Label htmlFor="notes">Notes / Details</Label>
+                        <Textarea id="notes" placeholder="Add more details about the work..." value={notes} onChange={handleNotesChange} rows={4} />
                     </div>
                     <div className="flex items-center gap-4 pt-2">
                         <div className="flex items-center space-x-2">
