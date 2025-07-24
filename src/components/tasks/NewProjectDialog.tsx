@@ -286,7 +286,7 @@ export function NewProjectDialog({ isOpen, onOpenChange, onProjectCreated, onPro
                         <FormField control={form.control} name="assigneeId" render={({ field }) => ( <FormItem><FormLabel>Assignee</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select an assignee" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                        <div className="space-y-2">
                            <FormLabel>Start Date & Time</FormLabel>
                            <div className="flex gap-2">
