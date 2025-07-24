@@ -277,7 +277,7 @@ export function TimeManagerView() {
                     Event Time Manager
                 </h1>
                 <p className="text-muted-foreground max-w-2xl mx-auto mt-2">
-                    Track your time against projects and clients to ensure accurate billing.
+                    Track your time against all events and check the box if the event is billable
                 </p>
             </header>
 
