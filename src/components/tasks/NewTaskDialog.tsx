@@ -132,7 +132,7 @@ export function NewTaskDialog({
             });
         }
     }
-  }, [isOpen, eventToEdit, projectToEdit, form, initialMode, initialData]);
+  }, [isOpen, eventToEdit, projectToEdit, initialMode, initialData, form.reset]);
 
   const hourOptions = Array.from({ length: 24 }, (_, i) => {
     const date = set(new Date(), { hours: i });
