@@ -307,7 +307,10 @@ export function TimeManagerView() {
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="billable-rate">Billable Rate ($/hr)</Label>
-                                <Input id="billable-rate" type="number" placeholder="e.g., 100" value={billableRate} onChange={handleBillableRateChange} />
+                                <div className="relative">
+                                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                                    <Input id="billable-rate" type="number" placeholder="100" value={billableRate} onChange={handleBillableRateChange} className="pl-7" />
+                                </div>
                             </div>
                         </div>
                     </CardContent>
