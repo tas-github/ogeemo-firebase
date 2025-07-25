@@ -31,13 +31,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -171,7 +164,8 @@ export function FilesView() {
         finally { setIsNewFolderDialogOpen(false); setNewFolderName(""); }
     };
     
-    const handleStartRename = (folder: FolderItem) => {
+    const handleStartRename = (folder: FolderItem | null) => {
+        if (!folder) return;
         setRenamingFolder(folder);
         setRenameInputValue(folder.name);
     };
@@ -343,17 +337,6 @@ export function FilesView() {
                             <span className="truncate flex-1">{folder.name}</span>
                         )}
                     </Button>
-                    {!isRenaming && (
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onSelect={() => { setNewFolderParentId(folder.id); setIsNewFolderDialogOpen(true); }}><FolderPlus className="mr-2 h-4 w-4" />Create subfolder</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleStartRename(folder)}><Pencil className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive" onSelect={() => setFolderToDelete(folder)}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    )}
                 </div>
                 {isExpanded && allFolders.filter((f: FolderItem) => f.parentId === folder.id).sort((a: FolderItem, b: FolderItem) => a.name.localeCompare(b.name)).map((childFolder: FolderItem) => (
                     <FolderTreeItem key={childFolder.id} folder={childFolder} allFolders={allFolders} level={level + 1} />
@@ -398,11 +381,22 @@ export function FilesView() {
                                 ) : (
                                     <>
                                         <div>
-                                            <h2 className="text-xl font-bold">{selectedFolder?.name || "All Files"}</h2>
+                                            <h2 className="text-xl font-bold">{selectedFolder?.name}</h2>
                                             <p className="text-sm text-muted-foreground">{files.length} item(s)</p>
                                         </div>
-                                        <Button onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId}><UploadCloud className="mr-2 h-4 w-4" /> Upload File</Button>
-                                        <Input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+                                        <div className="flex items-center gap-2">
+                                            <Button variant="outline" onClick={() => { setNewFolderParentId(selectedFolderId); setIsNewFolderDialogOpen(true); }} disabled={!selectedFolderId}>
+                                                <FolderPlus className="mr-2 h-4 w-4" /> Create Subfolder
+                                            </Button>
+                                            <Button variant="outline" onClick={() => handleStartRename(selectedFolder || null)} disabled={!selectedFolderId}>
+                                                <Pencil className="mr-2 h-4 w-4" /> Rename Folder
+                                            </Button>
+                                             <Button variant="destructive" onClick={() => setFolderToDelete(selectedFolder || null)} disabled={!selectedFolderId}>
+                                                <Trash2 className="mr-2 h-4 w-4" /> Delete Folder
+                                            </Button>
+                                            <Button onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId}><UploadCloud className="mr-2 h-4 w-4" /> Upload File</Button>
+                                            <Input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+                                        </div>
                                     </>
                                 )}
                             </div>
@@ -430,7 +424,7 @@ export function FilesView() {
             <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
                 <DialogContent><DialogHeader><DialogTitle>Create New Folder</DialogTitle></DialogHeader><div className="py-4"><Label htmlFor="folder-name">Name</Label><Input id="folder-name" value={newFolderName} onChange={e => setNewFolderName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateFolder()} /></div><DialogFooter><Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button><Button onClick={handleCreateFolder}>Create</Button></DialogFooter></DialogContent>
             </Dialog>
-            <Dialog open={!!folderToDelete} onOpenChange={() => setFolderToDelete(null)}>
+            <Dialog open={folderToDelete !== null} onOpenChange={() => setFolderToDelete(null)}>
                 <DialogContent><DialogHeader><DialogTitle>Delete Folder</DialogTitle><DialogDescription>Are you sure? Deleting "{folderToDelete?.name}" will also delete all its subfolders and files.</DialogDescription></DialogHeader><DialogFooter><Button variant="ghost" onClick={() => setFolderToDelete(null)}>Cancel</Button><Button variant="destructive" onClick={handleConfirmDeleteFolder}>Delete</Button></DialogFooter></DialogContent>
             </Dialog>
         </div>
