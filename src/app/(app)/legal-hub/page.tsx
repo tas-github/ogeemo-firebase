@@ -1,17 +1,8 @@
-
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { FilesView } from '@/components/files/files-view';
 
 export default function LegalHubPage() {
-  return (
-    <div className="p-4 sm:p-6 flex h-full items-center justify-center">
-        <Card className="w-full max-w-lg text-center">
-            <CardHeader>
-                <CardTitle>Legal Hub</CardTitle>
-                <CardDescription>
-                    This page is ready for new instructions.
-                </CardDescription>
-            </CardHeader>
-        </Card>
-    </div>
-  );
+  // The Legal Hub uses the same robust File Manager component,
+  // but in a real-world scenario, it could be configured to point
+  // to a specific, secure root folder like 'legal'.
+  return <FilesView />;
 }

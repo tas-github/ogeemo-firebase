@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server';
 import { getDownloadURL, ref } from 'firebase/storage';
 import { storage } from '@/lib/firebase';

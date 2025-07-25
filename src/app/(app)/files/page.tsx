@@ -1,17 +1,5 @@
-
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { FilesView } from '@/components/files/files-view';
 
 export default function FilesPage() {
-  return (
-    <div className="p-4 sm:p-6 flex h-full items-center justify-center">
-        <Card className="w-full max-w-lg text-center">
-            <CardHeader>
-                <CardTitle>File Manager</CardTitle>
-                <CardDescription>
-                    This page is ready for new instructions.
-                </CardDescription>
-            </CardHeader>
-        </Card>
-    </div>
-  );
+  return <FilesView />;
 }
