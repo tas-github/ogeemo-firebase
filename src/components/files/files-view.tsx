@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import {
   Folder,
@@ -97,7 +97,7 @@ export function FilesView() {
 
     const { toast } = useToast();
     const { user } = useAuth();
-    const fileInputRef = React.useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
     const loadData = useCallback(async (selectFolderId: string | null = null) => {
         if (!user) {
