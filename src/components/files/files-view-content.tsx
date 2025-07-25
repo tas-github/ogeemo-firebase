@@ -513,7 +513,7 @@ export function FilesViewContent({ rootFolderId, headerIcon: HeaderIcon, headerT
               <div
                 ref={drop}
                 className={cn(
-                  "flex items-center gap-2 rounded-md pr-2",
+                  "flex items-center gap-1 rounded-md pr-1 group",
                    isRenaming ? '' : 'hover:bg-accent',
                   (isOver && canDrop) && "bg-primary/20 ring-1 ring-primary",
                   selectedFolderId === folder.id && !isRenaming && 'bg-accent'
@@ -548,7 +548,7 @@ export function FilesViewContent({ rootFolderId, headerIcon: HeaderIcon, headerT
                 </div>
                 {!isRenaming && (
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 text-foreground"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 text-foreground opacity-0 group-hover:opacity-100"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem onSelect={() => handleAddFileClick(folder.id)}><FileUp className="mr-2 h-4 w-4" /> Add File</DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => openNewFolderDialog({ parentId: folder.id })}><FolderPlus className="mr-2 h-4 w-4" /> Add subfolder</DropdownMenuItem>
@@ -646,7 +646,6 @@ export function FilesViewContent({ rootFolderId, headerIcon: HeaderIcon, headerT
                             ) : (
                                 <>
                                     <Button onClick={() => openNewFolderDialog({ parentId: null })} className="bg-orange-500 hover:bg-orange-600 text-white"><FolderPlus className="mr-2 h-4 w-4" /> Create New Folder</Button>
-                                    <Button onClick={() => openNewFolderDialog({ parentId: selectedFolderId })} disabled={!selectedFolderId} className="bg-orange-500 hover:bg-orange-600 text-white"><FolderPlus className="mr-2 h-4 w-4" /> Create Subfolder</Button>
                                     <Button onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId} className="bg-orange-500 hover:bg-orange-600 text-white"><FileUp className="mr-2 h-4 w-4" /> Upload File</Button>
                                 </>
                             )}
