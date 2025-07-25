@@ -5,6 +5,7 @@ import { db, storage } from '@/lib/firebase';
 import {
   collection,
   getDocs,
+  getDoc,
   doc,
   addDoc,
   updateDoc,
@@ -19,9 +20,10 @@ import {
 import { 
     ref, 
     uploadBytes, 
-    getDownloadURL, 
+    getDownloadURL as getClientDownloadURL, 
     deleteObject,
 } from 'firebase/storage';
+import { getStorage as getAdminStorage } from 'firebase-admin/storage';
 import { type FileItem, type FolderItem } from '@/data/files';
 
 const FOLDERS_COLLECTION = 'fileFolders';
@@ -155,30 +157,17 @@ export async function deleteFiles(fileIds: string[]): Promise<void> {
     await batch.commit();
 }
 
-export async function downloadFile(storagePath: string, fileName: string): Promise<void> {
-    // This is a server-side function, so we trigger a client-side download
-    // by sending back the URL. For direct server-to-server, we would stream the bytes.
-    // To solve this in a Next.js app, we create an API route.
-    const response = await fetch('/api/download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storagePath, fileName }),
+export async function getFileDownloadUrl(storagePath: string): Promise<string> {
+    checkServices();
+    const adminStorage = getAdminStorage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+    const file = adminStorage.file(storagePath);
+    
+    const [url] = await file.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + 15 * 60 * 1000, // 15 minutes
     });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to download file.');
-    }
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
+    
+    return url;
 }
 
 // --- Special Function for Saving Emails ---

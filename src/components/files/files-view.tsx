@@ -61,11 +61,11 @@ import {
     addFile,
     updateFile,
     deleteFiles,
-    downloadFile,
+    getFileDownloadUrl,
     type FolderItem,
     type FileItem,
 } from '@/services/file-service';
-import { cn } from '@/lib/utils';
+import { cn, triggerBrowserDownload } from '@/lib/utils';
 import { FileIcon } from './file-icon';
 import { format } from 'date-fns';
 
@@ -248,17 +248,16 @@ export function FilesView() {
     
     const handleDownloadSelectedFiles = async () => {
         if(selectedFileIds.length === 0) return;
-        if(selectedFileIds.length > 1) {
-            toast({ variant: 'destructive', title: 'Multiple Downloads Not Supported', description: 'Please select one file to download.' });
-            return;
-        }
-        const fileToDownload = files.find(f => f.id === selectedFileIds[0]);
-        if(fileToDownload) {
-            try {
-                toast({ title: 'Preparing download...'});
-                await downloadFile(fileToDownload.storagePath, fileToDownload.name);
-            } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Download Failed', description: error.message });
+        toast({ title: `Preparing ${selectedFileIds.length} download(s)...`});
+        for (const fileId of selectedFileIds) {
+            const fileToDownload = files.find(f => f.id === fileId);
+            if(fileToDownload) {
+                try {
+                    const url = await getFileDownloadUrl(fileToDownload.storagePath);
+                    await triggerBrowserDownload(url, fileToDownload.name);
+                } catch (error: any) {
+                    toast({ variant: 'destructive', title: `Download Failed for ${fileToDownload.name}`, description: error.message });
+                }
             }
         }
     };
@@ -267,10 +266,10 @@ export function FilesView() {
         if (file.webViewLink) {
             window.open(file.webViewLink, '_blank');
         } else {
-            // Fallback to download if no webViewLink is available
             try {
                 toast({ title: 'Preparing download...' });
-                await downloadFile(file.storagePath, file.name);
+                const url = await getFileDownloadUrl(file.storagePath);
+                await triggerBrowserDownload(url, file.name);
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Download Failed', description: error.message });
             }
