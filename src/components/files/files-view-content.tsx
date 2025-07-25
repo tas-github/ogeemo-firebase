@@ -439,7 +439,7 @@ export function FilesViewContent({ rootFolderId, headerIcon: HeaderIcon, headerT
     
     // Disallow moving the root legal folder
     if(folder.id === rootFolderId) {
-        toast({ variant: "destructive", title: "Invalid Move", description: "The main Legal Documents folder cannot be moved." });
+        toast({ variant: "destructive", title: "Invalid Move", description: `The main ${headerTitle} folder cannot be moved.` });
         return;
     }
 
@@ -571,7 +571,7 @@ export function FilesViewContent({ rootFolderId, headerIcon: HeaderIcon, headerT
   
   const [{ isOverRoot }, dropToRoot] = useDrop(() => ({
       accept: ItemTypes.FOLDER,
-      drop: (item: FolderItem) => handleFolderDrop(item, null),
+      drop: (item: FolderItem) => handleFolderDrop(item, rootFolderId),
       collect: (monitor) => ({ isOverRoot: monitor.isOver() && monitor.canDrop() }),
   }));
 
@@ -586,7 +586,7 @@ export function FilesViewContent({ rootFolderId, headerIcon: HeaderIcon, headerT
                       <span className="sr-only">New Root Folder</span>
                   </Button>
                 </div>
-                <ScrollArea ref={rootFolderId === null ? dropToRoot : null} className={cn("flex-1 p-2", isOverRoot && 'bg-primary/10 ring-1 ring-primary-foreground')}>
+                <ScrollArea ref={dropToRoot} className={cn("flex-1 p-2", isOverRoot && 'bg-primary/10 ring-1 ring-primary-foreground')}>
                     <FolderTree parentId={rootFolderId} />
                 </ScrollArea>
             </div>
