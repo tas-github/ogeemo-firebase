@@ -205,8 +205,15 @@ export function FilesView() {
         if (!user || !selectedFolderId || !e.target.files || e.target.files.length === 0) return;
         const file = e.target.files[0];
         toast({ title: 'Uploading...', description: file.name });
+
         try {
-            await addFile(user.uid, selectedFolderId, file);
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', user.uid);
+            formData.append('folderId', selectedFolderId);
+
+            await addFile(formData);
+
             toast({ title: 'Upload successful', description: `${file.name} has been uploaded.` });
             const fetchedFiles = await getFilesForFolder(user.uid, selectedFolderId);
             setFiles(fetchedFiles);

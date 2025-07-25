@@ -104,8 +104,17 @@ export async function getFilesForFolder(userId: string, folderId: string): Promi
     return snapshot.docs.map(docToFile);
 }
 
-export async function addFile(userId: string, folderId: string, file: File): Promise<FileItem> {
+export async function addFile(formData: FormData): Promise<FileItem> {
     checkServices();
+    
+    const file = formData.get('file') as File | null;
+    const userId = formData.get('userId') as string | null;
+    const folderId = formData.get('folderId') as string | null;
+
+    if (!file || !userId || !folderId) {
+        throw new Error("Missing required file data for upload.");
+    }
+
     const storagePath = `${userId}/${folderId}/${Date.now()}-${file.name}`;
     const storageRef = ref(storage, storagePath);
     await uploadBytes(storageRef, file);
@@ -190,5 +199,10 @@ export async function saveEmailForContact(userId: string, contactName: string, e
     const fileContent = `<html><body><h1>${emailContent.subject}</h1><div>${emailContent.body}</div></body></html>`;
     const file = new File([fileContent], fileName, { type: 'text/html' });
 
-    await addFile(userId, contactFolder.id, file);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('userId', userId);
+    formData.append('folderId', contactFolder.id);
+
+    await addFile(formData);
 }
