@@ -2,14 +2,13 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { useDrop } from 'react-dnd';
+import { useDrag, useDrop } from 'react-dnd';
 import {
   Folder,
   Plus,
   MoreVertical,
   Trash2,
   Pencil,
-  Users,
   LoaderCircle,
   ChevronRight,
   FolderPlus,
@@ -67,8 +66,6 @@ import {
 } from '@/services/file-service';
 import { cn } from '@/lib/utils';
 import { FileIcon } from './file-icon';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 import { format } from 'date-fns';
 
 const ItemTypes = {
@@ -118,6 +115,21 @@ const FolderTreeItem = ({
     const [{ canDrop, isOver }, drop] = useDrop(() => ({
         accept: [ItemTypes.FILE, ItemTypes.FOLDER],
         drop: (item: any) => {
+            if (item.id === folder.id) return; // Prevent dropping a folder onto itself
+            
+            // Prevent dropping a folder into one of its own descendants
+            if (item.type === ItemTypes.FOLDER) {
+                let currentParentId = folder.id;
+                while(currentParentId) {
+                    if (currentParentId === item.id) {
+                        toast({ variant: "destructive", title: "Invalid Move", description: "You cannot move a folder into one of its own subfolders." });
+                        return;
+                    }
+                    const parent = allFolders.find((f: FolderItem) => f.id === currentParentId);
+                    currentParentId = parent?.parentId || null;
+                }
+            }
+
             if (item.type === ItemTypes.FOLDER) {
                 handleFolderDrop(item, folder.id);
             } else {
@@ -135,6 +147,7 @@ const FolderTreeItem = ({
         try {
             await updateFolder(folder.id, { name: renameValue.trim() });
             toast({ title: "Folder Renamed" });
+            // The parent component will refetch and update the state.
         } catch (error: any) {
             toast({ variant: "destructive", title: "Rename Failed", description: error.message });
         } finally {
@@ -154,7 +167,9 @@ const FolderTreeItem = ({
                 )}
             >
                 <Button variant="ghost" className="flex-1 justify-start gap-2 h-9 p-2 text-left" onClick={() => setSelectedFolderId(folder.id)}>
-                    {hasChildren && <ChevronRight className={cn('h-4 w-4 shrink-0 transition-transform', isExpanded && 'rotate-90')} onClick={(e) => { e.stopPropagation(); setExpandedFolders((p: Set<string>) => { const n = new Set(p); n.has(folder.id) ? n.delete(folder.id) : n.add(folder.id); return n; }); }} />}
+                    {hasChildren ? (
+                       <ChevronRight className={cn('h-4 w-4 shrink-0 transition-transform', isExpanded && 'rotate-90')} onClick={(e) => { e.stopPropagation(); setExpandedFolders((p: Set<string>) => { const n = new Set(p); n.has(folder.id) ? n.delete(folder.id) : n.add(folder.id); return n; }); }} />
+                    ) : <div className="w-4 h-4 shrink-0" />}
                     <Folder className="h-4 w-4 shrink-0 text-primary" />
                     {renamingFolder?.id === folder.id ? (
                         <Input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)} onBlur={handleRename} onKeyDown={e => e.key === 'Enter' && handleRename()} className="h-7" onClick={e => e.stopPropagation()} />
@@ -229,15 +244,22 @@ export function FilesView() {
     }, [user, toast, selectedFolderId]);
 
     useEffect(() => {
-        loadData();
-    }, [user]); // Only run on user change
+        if(user) {
+            loadData();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user]); 
 
     useEffect(() => {
         async function loadFiles() {
             if (user && selectedFolderId) {
+                setIsLoading(true);
                 const fetchedFiles = await getFilesForFolder(user.uid, selectedFolderId);
                 setFiles(fetchedFiles);
                 setSelectedFileIds([]);
+                setIsLoading(false);
+            } else if (!selectedFolderId) {
+                setFiles([]);
             }
         }
         loadFiles();
@@ -277,6 +299,10 @@ export function FilesView() {
             setFiles(fetchedFiles);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
+        } finally {
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
         }
     };
     
@@ -332,70 +358,68 @@ export function FilesView() {
     const selectedFolder = folders.find(f => f.id === selectedFolderId);
     
     return (
-        <DndProvider backend={HTML5Backend}>
-            <div className="flex flex-col h-full p-4 sm:p-6">
-                <header className="text-center pb-4">
-                    <h1 className="text-3xl font-bold font-headline text-primary">File Manager</h1>
-                    <p className="text-muted-foreground">Organize your project and client documents.</p>
-                </header>
-                <div className="flex-1 min-h-0">
-                    <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
-                        <ResizablePanel defaultSize={25} minSize={20}>
-                            <div className="flex h-full flex-col">
-                                <div className="flex items-center justify-between p-2 border-b h-[57px]">
-                                    <h3 className="text-lg font-semibold px-2">Folders</h3>
-                                    <Button variant="ghost" size="icon" onClick={() => { setNewFolderParentId(null); setIsNewFolderDialogOpen(true); }} title="New Root Folder"><FolderPlus className="h-5 w-5" /></Button>
-                                </div>
-                                <ScrollArea className="flex-1 p-2">
-                                    {folders.filter(f => !f.parentId).sort((a,b) => a.name.localeCompare(b.name)).map(folder => (
-                                        <FolderTreeItem key={folder.id} {...{ folder, allFolders: folders, level: 0, expandedFolders, setExpandedFolders, selectedFolderId, setSelectedFolderId, renamingFolder, setRenamingFolder, setFolderToDelete, onNewSubfolder: (parentId: string) => { setNewFolderParentId(parentId); setIsNewFolderDialogOpen(true); }, handleFileDrop, handleFolderDrop }} />
-                                    ))}
-                                </ScrollArea>
+        <div className="flex flex-col h-full p-4 sm:p-6">
+            <header className="text-center pb-4">
+                <h1 className="text-3xl font-bold font-headline text-primary">File Manager</h1>
+                <p className="text-muted-foreground">Organize your project and client documents.</p>
+            </header>
+            <div className="flex-1 min-h-0">
+                <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
+                    <ResizablePanel defaultSize={25} minSize={20}>
+                        <div className="flex h-full flex-col">
+                            <div className="flex items-center justify-between p-2 border-b h-[57px]">
+                                <h3 className="text-lg font-semibold px-2">Folders</h3>
+                                <Button variant="ghost" size="icon" onClick={() => { setNewFolderParentId(null); setIsNewFolderDialogOpen(true); }} title="New Root Folder"><FolderPlus className="h-5 w-5" /></Button>
                             </div>
-                        </ResizablePanel>
-                        <ResizableHandle withHandle />
-                        <ResizablePanel defaultSize={75}>
-                            <div className="flex flex-col h-full">
-                                <div className="flex items-center justify-between p-4 border-b h-20">
-                                    {selectedFileIds.length > 0 ? (
-                                        <>
-                                            <h2 className="text-xl font-bold">{selectedFileIds.length} selected</h2>
-                                            <div className="flex items-center gap-2">
-                                                <Button variant="outline" onClick={handleDownloadSelectedFiles}><Download className="mr-2 h-4 w-4" /> Download</Button>
-                                                <Button variant="destructive" onClick={handleDeleteSelectedFiles}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div>
-                                                <h2 className="text-xl font-bold">{selectedFolder?.name || "All Files"}</h2>
-                                                <p className="text-sm text-muted-foreground">{files.length} item(s)</p>
-                                            </div>
-                                            <Button onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId}><UploadCloud className="mr-2 h-4 w-4" /> Upload File</Button>
-                                            <Input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-                                        </>
-                                    )}
-                                </div>
-                                <ScrollArea className="flex-1">
-                                    <Table>
-                                        <TableHeader><TableRow><TableHead className="w-[50px]"><Checkbox checked={allVisibleSelected} onCheckedChange={() => setSelectedFileIds(allVisibleSelected ? [] : files.map(f => f.id))} /></TableHead><TableHead>Name</TableHead><TableHead>Size</TableHead><TableHead>Modified</TableHead></TableRow></TableHeader>
-                                        <TableBody>
-                                            {isLoading ? <TableRow><TableCell colSpan={4} className="h-24 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
-                                                : files.map((file) => (
-                                                <DraggableTableRow key={file.id} file={file}>
-                                                    <TableCell><Checkbox checked={selectedFileIds.includes(file.id)} onCheckedChange={() => setSelectedFileIds(p => p.includes(file.id) ? p.filter(id => id !== file.id) : [...p, file.id])} /></TableCell>
-                                                    <TableCell className="font-medium flex items-center gap-2"><FileIcon fileType={file.type} /> {file.name}</TableCell>
-                                                    <TableCell>{(file.size / 1024).toFixed(2)} KB</TableCell>
-                                                    <TableCell>{format(new Date(file.modifiedAt), 'PPp')}</TableCell>
-                                                </DraggableTableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </ScrollArea>
+                            <ScrollArea className="flex-1 p-2">
+                                {folders.filter(f => !f.parentId).sort((a,b) => a.name.localeCompare(b.name)).map(folder => (
+                                    <FolderTreeItem key={folder.id} {...{ folder, allFolders: folders, level: 0, expandedFolders, setExpandedFolders, selectedFolderId, setSelectedFolderId, renamingFolder, setRenamingFolder, setFolderToDelete, onNewSubfolder: (parentId: string) => { setNewFolderParentId(parentId); setIsNewFolderDialogOpen(true); }, handleFileDrop, handleFolderDrop }} />
+                                ))}
+                            </ScrollArea>
+                        </div>
+                    </ResizablePanel>
+                    <ResizableHandle withHandle />
+                    <ResizablePanel defaultSize={75}>
+                        <div className="flex flex-col h-full">
+                            <div className="flex items-center justify-between p-4 border-b h-20">
+                                {selectedFileIds.length > 0 ? (
+                                    <>
+                                        <h2 className="text-xl font-bold">{selectedFileIds.length} selected</h2>
+                                        <div className="flex items-center gap-2">
+                                            <Button variant="outline" onClick={handleDownloadSelectedFiles}><Download className="mr-2 h-4 w-4" /> Download</Button>
+                                            <Button variant="destructive" onClick={handleDeleteSelectedFiles}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div>
+                                            <h2 className="text-xl font-bold">{selectedFolder?.name || "All Files"}</h2>
+                                            <p className="text-sm text-muted-foreground">{files.length} item(s)</p>
+                                        </div>
+                                        <Button onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId}><UploadCloud className="mr-2 h-4 w-4" /> Upload File</Button>
+                                        <Input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+                                    </>
+                                )}
                             </div>
-                        </ResizablePanel>
-                    </ResizablePanelGroup>
-                </div>
+                            <ScrollArea className="flex-1">
+                                <Table>
+                                    <TableHeader><TableRow><TableHead className="w-[50px]"><Checkbox checked={allVisibleSelected} onCheckedChange={() => setSelectedFileIds(allVisibleSelected ? [] : files.map(f => f.id))} /></TableHead><TableHead>Name</TableHead><TableHead>Size</TableHead><TableHead>Modified</TableHead></TableRow></TableHeader>
+                                    <TableBody>
+                                        {isLoading ? <TableRow><TableCell colSpan={4} className="h-24 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
+                                            : files.map((file) => (
+                                            <DraggableTableRow key={file.id} file={file}>
+                                                <TableCell><Checkbox checked={selectedFileIds.includes(file.id)} onCheckedChange={() => setSelectedFileIds(p => p.includes(file.id) ? p.filter(id => id !== file.id) : [...p, file.id])} /></TableCell>
+                                                <TableCell className="font-medium flex items-center gap-2"><FileIcon fileType={file.type} /> {file.name}</TableCell>
+                                                <TableCell>{(file.size / 1024).toFixed(2)} KB</TableCell>
+                                                <TableCell>{format(new Date(file.modifiedAt), 'PPp')}</TableCell>
+                                            </DraggableTableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                        </div>
+                    </ResizablePanel>
+                </ResizablePanelGroup>
             </div>
 
             <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
@@ -404,6 +428,6 @@ export function FilesView() {
             <Dialog open={!!folderToDelete} onOpenChange={() => setFolderToDelete(null)}>
                 <DialogContent><DialogHeader><DialogTitle>Delete Folder</DialogTitle><DialogDescription>Are you sure? Deleting "{folderToDelete?.name}" will also delete all its subfolders and files.</DialogDescription></DialogHeader><DialogFooter><Button variant="ghost" onClick={() => setFolderToDelete(null)}>Cancel</Button><Button variant="destructive" onClick={handleConfirmDeleteFolder}>Delete</Button></DialogFooter></DialogContent>
             </Dialog>
-        </DndProvider>
+        </div>
     );
 }
