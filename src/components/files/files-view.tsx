@@ -14,6 +14,7 @@ import {
   FolderPlus,
   UploadCloud,
   Download,
+  BookOpen,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -409,15 +417,36 @@ export function FilesView() {
                             </div>
                             <ScrollArea className="flex-1">
                                 <Table>
-                                    <TableHeader><TableRow><TableHead className="w-[50px]"><Checkbox checked={allVisibleSelected} onCheckedChange={() => setSelectedFileIds(allVisibleSelected ? [] : files.map(f => f.id))} /></TableHead><TableHead>Name</TableHead><TableHead>Size</TableHead><TableHead>Modified</TableHead></TableRow></TableHeader>
+                                    <TableHeader><TableRow><TableHead className="w-[50px]"><Checkbox checked={allVisibleSelected} onCheckedChange={() => setSelectedFileIds(allVisibleSelected ? [] : files.map(f => f.id))} /></TableHead><TableHead>Name</TableHead><TableHead>Size</TableHead><TableHead>Modified</TableHead><TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead></TableRow></TableHeader>
                                     <TableBody>
-                                        {isLoading ? <TableRow><TableCell colSpan={4} className="h-24 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
+                                        {isLoading ? <TableRow><TableCell colSpan={5} className="h-24 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
                                             : files.map((file) => (
                                             <DraggableTableRow key={file.id} file={file}>
                                                 <TableCell><Checkbox checked={selectedFileIds.includes(file.id)} onCheckedChange={() => setSelectedFileIds(p => p.includes(file.id) ? p.filter(id => id !== file.id) : [...p, file.id])} /></TableCell>
                                                 <TableCell className="font-medium flex items-center gap-2"><FileIcon fileType={file.type} /> {file.name}</TableCell>
                                                 <TableCell>{(file.size / 1024).toFixed(2)} KB</TableCell>
                                                 <TableCell>{format(new Date(file.modifiedAt), 'PPp')}</TableCell>
+                                                <TableCell>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                                <MoreVertical className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onSelect={() => { /* Placeholder */ }}>
+                                                                <BookOpen className="mr-2 h-4 w-4" /> Open
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => { /* Placeholder */ }}>
+                                                                <Pencil className="mr-2 h-4 w-4" /> Rename
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem className="text-destructive" onSelect={() => deleteFiles([file.id])}>
+                                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
                                             </DraggableTableRow>
                                         ))}
                                     </TableBody>
