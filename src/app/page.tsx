@@ -1,8 +1,9 @@
-// The marketing site's home page is now at /home
-// This middleware will redirect the root path to the /login page for the app
-// For development, you can navigate directly to /home to see the new website.
+
 import { redirect } from 'next/navigation';
 
 export default function Home() {
+  // The marketing site's home page is at /home
+  // This page will now redirect to the /login page by default.
+  // The AuthProvider will then handle routing to the dashboard if logged in.
   redirect('/home');
 }

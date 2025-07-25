@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { initializeFirebase } from "@/lib/firebase";
+import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +37,7 @@ function GoogleIcon() {
 
 export default function LoginPage() {
   const { toast } = useToast();
+  const { firebaseServices } = useAuth(); // Get services from context
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -46,10 +47,13 @@ export default function LoginPage() {
   });
 
   async function handleEmailSignIn(values: z.infer<typeof loginSchema>) {
+    if (!firebaseServices) {
+        toast({ variant: "destructive", title: "Login Failed", description: "Firebase is not ready. Please try again in a moment." });
+        return;
+    }
     setIsLoading(true);
     try {
-      const { auth } = await initializeFirebase();
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      await signInWithEmailAndPassword(firebaseServices.auth, values.email, values.password);
       // On successful sign-in, the AuthProvider will handle the redirect.
       // The loading modal will stay until the redirect happens.
     } catch (error: any) {
@@ -67,11 +71,14 @@ export default function LoginPage() {
   }
 
   const handleGoogleSignIn = async () => {
+    if (!firebaseServices) {
+        toast({ variant: "destructive", title: "Login Failed", description: "Firebase is not ready. Please try again in a moment." });
+        return;
+    }
     setIsLoading(true);
     try {
-      const { auth } = await initializeFirebase();
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      await signInWithPopup(firebaseServices.auth, provider);
       // On successful sign-in, the AuthProvider will handle the redirect.
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);

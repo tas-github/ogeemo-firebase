@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { initializeFirebase } from '@/lib/firebase';
+import { useAuth } from '@/context/auth-context';
 import { TermsDialog } from '@/components/auth/terms-dialog';
 
 const registerSchema = z.object({
@@ -27,6 +27,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const { toast } = useToast();
+  const { firebaseServices } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isTermsDialogOpen, setIsTermsDialogOpen] = useState(false);
   const [formData, setFormData] = useState<RegisterFormData | null>(null);
@@ -42,12 +43,11 @@ export default function RegisterPage() {
   };
 
   const handleFinalSubmit = async () => {
-    if (!formData) return;
+    if (!formData || !firebaseServices) return;
     
     setIsLoading(true);
     try {
-        const { auth } = await initializeFirebase();
-        const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+        const userCredential = await createUserWithEmailAndPassword(firebaseServices.auth, formData.email, formData.password);
         
         if (userCredential.user) {
             await updateProfile(userCredential.user, {

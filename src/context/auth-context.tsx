@@ -11,11 +11,13 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   accessToken: string | null;
+  firebaseServices: FirebaseServices | null; // Expose services to consumers
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const publicPaths = ['/login', '/register', '/auth/callback'];
+const marketingPaths = ['/home', '/for-small-businesses', '/for-accountants', '/news', '/about', '/contact', '/privacy', '/terms'];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -27,28 +29,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    // This effect handles the entire initialization and auth subscription flow.
     initializeFirebase()
-      .then(setFirebaseServices)
+      .then(services => {
+        setFirebaseServices(services);
+        const unsubscribe = onAuthStateChanged(services.auth, (currentUser) => {
+          setUser(currentUser);
+          if (!currentUser) {
+            setAccessToken(null);
+            sessionStorage.removeItem('google_access_token');
+          }
+          setIsLoading(false);
+        });
+        return unsubscribe; // Return the unsubscribe function for cleanup.
+      })
       .catch(err => {
         console.error("Firebase initialization failed:", err);
         setInitializationError(err.message);
+        setIsLoading(false); // Stop loading on error to show the error message.
       });
   }, []);
-
-  useEffect(() => {
-    if (!firebaseServices) return;
-
-    const unsubscribe = onAuthStateChanged(firebaseServices.auth, (currentUser) => {
-      setUser(currentUser);
-      if (!currentUser) {
-        setAccessToken(null);
-        sessionStorage.removeItem('google_access_token');
-      }
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [firebaseServices]);
   
   // Effect for handling Google Access Token from session storage
   useEffect(() => {
@@ -64,9 +64,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isLoading) {
       const isPublicPath = publicPaths.includes(pathname);
-      if (!user && !isPublicPath) {
+      const isMarketingPath = marketingPaths.some(p => pathname.startsWith(p)) || pathname === '/';
+      
+      // If user is not logged in and not on a public/marketing page, redirect to login.
+      if (!user && !isPublicPath && !isMarketingPath) {
         router.push('/login');
-      } else if (user && isPublicPath) {
+      } 
+      // If user is logged in and on a public login/register page, redirect to dashboard.
+      else if (user && isPublicPath) {
         router.push('/dashboard');
       }
     }
@@ -75,14 +80,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   if (initializationError) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center bg-red-100 text-red-800">
+      <div className="flex h-screen w-screen flex-col items-center justify-center bg-red-100 p-4 text-center text-red-800">
         <h1 className="mb-4 text-2xl font-bold">Firebase Initialization Error</h1>
-        <p className="mb-2 text-center">{initializationError}</p>
-        <p>Please check your Firebase configuration in <code className="rounded bg-red-200 px-2 py-1">.env.local</code> and ensure all required environment variables are set correctly.</p>
+        <p className="mb-2">{initializationError}</p>
+        <p>Please check your Firebase configuration in your project's environment variables and ensure all required values are set correctly.</p>
       </div>
     );
   }
 
+  // Show a loading indicator during the initial auth check.
   if (isLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
@@ -91,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  const value = { user, isLoading, accessToken };
+  const value = { user, isLoading, accessToken, firebaseServices };
 
   return (
     <AuthContext.Provider value={value}>
