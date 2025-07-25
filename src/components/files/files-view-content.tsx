@@ -645,7 +645,7 @@ export function FilesViewContent({ rootFolderId, headerIcon: HeaderIcon, headerT
                                 </>
                             ) : (
                                 <>
-                                    <Button onClick={() => openNewFolderDialog({ parentId: null })} className="bg-orange-500 hover:bg-orange-600 text-white"><FolderPlus className="mr-2 h-4 w-4" /> Create New Folder</Button>
+                                    <Button onClick={() => openNewFolderDialog()} className="bg-orange-500 hover:bg-orange-600 text-white"><FolderPlus className="mr-2 h-4 w-4" /> Create New Folder</Button>
                                     <Button onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId} className="bg-orange-500 hover:bg-orange-600 text-white"><FileUp className="mr-2 h-4 w-4" /> Upload File</Button>
                                 </>
                             )}
