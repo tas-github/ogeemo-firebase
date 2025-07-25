@@ -263,6 +263,20 @@ export function FilesView() {
         }
     };
     
+    const handleOpenFile = async (file: FileItem) => {
+        if (file.webViewLink) {
+            window.open(file.webViewLink, '_blank');
+        } else {
+            // Fallback to download if no webViewLink is available
+            try {
+                toast({ title: 'Preparing download...' });
+                await downloadFile(file.storagePath, file.name);
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Download Failed', description: error.message });
+            }
+        }
+    };
+
     const handleFileDrop = async (file: FileItem, newFolderId: string) => {
         if (file.folderId === newFolderId) return;
         try {
@@ -434,14 +448,23 @@ export function FilesView() {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onSelect={() => { /* Placeholder */ }}>
+                                                            <DropdownMenuItem onSelect={() => handleOpenFile(file)}>
                                                                 <BookOpen className="mr-2 h-4 w-4" /> Open
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem onSelect={() => { /* Placeholder */ }}>
+                                                            <DropdownMenuItem onSelect={() => { /* Placeholder for edit */ }}>
+                                                                <Pencil className="mr-2 h-4 w-4" /> Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => { /* Placeholder for rename */ }}>
                                                                 <Pencil className="mr-2 h-4 w-4" /> Rename
                                                             </DropdownMenuItem>
                                                             <DropdownMenuSeparator />
-                                                            <DropdownMenuItem className="text-destructive" onSelect={() => deleteFiles([file.id])}>
+                                                            <DropdownMenuItem className="text-destructive" onSelect={async () => {
+                                                                if (window.confirm(`Are you sure you want to delete "${file.name}"?`)) {
+                                                                    await deleteFiles([file.id]);
+                                                                    setFiles(prev => prev.filter(f => f.id !== file.id));
+                                                                    toast({ title: "File Deleted" });
+                                                                }
+                                                            }}>
                                                                 <Trash2 className="mr-2 h-4 w-4" /> Delete
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>

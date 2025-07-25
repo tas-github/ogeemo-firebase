@@ -11,6 +11,7 @@ export interface FileItem {
   userId: string;
   storagePath: string;
   content?: string;
+  webViewLink?: string; // Add this line
 }
 
 export interface FolderItem {
