@@ -477,6 +477,10 @@ export function FilesViewContent({ rootFolderId, headerIcon: HeaderIcon, headerT
 
   const FolderTree = ({ parentId, level = 0 }: { parentId: string | null, level?: number }) => {
     const children = folders.filter(f => f.parentId === parentId).sort((a, b) => a.name.localeCompare(b.name));
+    if (children.length === 0 && level === 0 && parentId === rootFolderId) {
+      return <p className="p-4 text-center text-sm text-muted-foreground">No folders yet. Create one to get started.</p>;
+    }
+    
     if (children.length === 0) return null;
 
     return (
@@ -641,6 +645,7 @@ export function FilesViewContent({ rootFolderId, headerIcon: HeaderIcon, headerT
                                 </>
                             ) : (
                                 <>
+                                    <Button onClick={() => openNewFolderDialog({ parentId: null })} className="bg-orange-500 hover:bg-orange-600 text-white"><FolderPlus className="mr-2 h-4 w-4" /> Create New Folder</Button>
                                     <Button onClick={() => openNewFolderDialog({ parentId: selectedFolderId })} disabled={!selectedFolderId} className="bg-orange-500 hover:bg-orange-600 text-white"><FolderPlus className="mr-2 h-4 w-4" /> Create Subfolder</Button>
                                     <Button onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId} className="bg-orange-500 hover:bg-orange-600 text-white"><FileUp className="mr-2 h-4 w-4" /> Upload File</Button>
                                 </>
