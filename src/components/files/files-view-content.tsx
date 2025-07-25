@@ -581,9 +581,9 @@ export function FilesViewContent({ rootFolderId, headerIcon: HeaderIcon, headerT
             <div className="flex h-full flex-col">
                 <div className="flex items-center justify-between p-2 border-b h-[57px]">
                   <h3 className="text-lg font-semibold px-2">Folders</h3>
-                  <Button variant="ghost" size="icon" onClick={() => openNewFolderDialog({ parentId: rootFolderId })} title="New Folder">
+                  <Button variant="ghost" size="icon" onClick={() => openNewFolderDialog({ parentId: rootFolderId })} title="New Root Folder">
                       <FolderPlus className="h-5 w-5" />
-                      <span className="sr-only">New Folder</span>
+                      <span className="sr-only">New Root Folder</span>
                   </Button>
                 </div>
                 <ScrollArea ref={rootFolderId === null ? dropToRoot : null} className={cn("flex-1 p-2", isOverRoot && 'bg-primary/10 ring-1 ring-primary-foreground')}>
