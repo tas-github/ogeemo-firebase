@@ -13,13 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { type FolderItem } from "@/data/files";
 
@@ -39,15 +32,15 @@ export default function NewFolderDialog({
   initialParentId = null,
 }: NewFolderDialogProps) {
   const [newFolderName, setNewFolderName] = useState("");
-  const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  const parentFolder = folders.find(f => f.id === initialParentId);
 
   useEffect(() => {
     if (isOpen) {
       setNewFolderName("");
-      setSelectedParentId(initialParentId);
     }
-  }, [isOpen, initialParentId]);
+  }, [isOpen]);
 
   const handleCreateFolder = () => {
     if (!newFolderName.trim()) {
@@ -56,45 +49,34 @@ export default function NewFolderDialog({
     }
     onFolderCreated({ 
         name: newFolderName.trim(), 
-        parentId: selectedParentId 
+        parentId: initialParentId 
     });
     onOpenChange(false);
   };
+
+  const dialogTitle = initialParentId ? 'Create New Subfolder' : 'Create New Folder';
+  const dialogDescription = initialParentId 
+    ? `This will create a new folder inside "${parentFolder?.name || 'the selected folder'}".`
+    : 'Enter a name for your new top-level folder.';
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{initialParentId ? 'Create New Subfolder' : 'Create New Folder'}</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>
-            Enter a name for your new folder.
+            {dialogDescription}
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
+          {initialParentId && parentFolder && (
+            <div className="space-y-2">
+              <Label>Parent Folder</Label>
+              <Input value={parentFolder.name} readOnly disabled />
+            </div>
+          )}
           <div className="space-y-2">
-            <Label htmlFor="parent-folder">Parent Folder</Label>
-            <Select 
-                value={selectedParentId || 'root'} 
-                onValueChange={(value) => setSelectedParentId(value === 'root' ? null : value)}
-            >
-              <SelectTrigger id="parent-folder">
-                <SelectValue placeholder="Select a parent folder..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={'root'}>
-                  (Root Folder)
-                </SelectItem>
-                {folders.map((folder) => (
-                  <SelectItem key={folder.id} value={folder.id}>
-                    {folder.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="folder-name">Name</Label>
+            <Label htmlFor="folder-name">New Folder Name</Label>
             <Input
               id="folder-name"
               value={newFolderName}
@@ -106,6 +88,7 @@ export default function NewFolderDialog({
                   handleCreateFolder();
                 }
               }}
+              autoFocus
             />
           </div>
         </div>

@@ -572,16 +572,17 @@ export function FilesViewContent({ rootFolderId, headerIcon: HeaderIcon, headerT
   }));
 
   const renderFolderPanel = () => {
-      const topLevelFolders = folders.filter(f => f.parentId === rootFolderId);
-      const allOtherFolders = folders.filter(f => f.parentId !== rootFolderId);
-      const isRoot = rootFolderId === null;
       return (
         <ResizablePanel defaultSize={25} minSize={20}>
             <div className="flex h-full flex-col">
-                <div className="flex items-center justify-center p-2 border-b h-[57px]">
-                  <h3 className="text-lg font-semibold">{isRoot ? 'All Folders' : selectedFolder?.name}</h3>
+                <div className="flex items-center justify-between p-2 border-b h-[57px]">
+                  <h3 className="text-lg font-semibold px-2">Folders</h3>
+                  <Button variant="ghost" size="icon" onClick={() => openNewFolderDialog({ parentId: rootFolderId })} title="New Folder">
+                      <FolderPlus className="h-5 w-5" />
+                      <span className="sr-only">New Folder</span>
+                  </Button>
                 </div>
-                <ScrollArea ref={isRoot ? dropToRoot : null} className={cn("flex-1 p-2", isOverRoot && 'bg-primary/10 ring-1 ring-primary-foreground')}>
+                <ScrollArea ref={rootFolderId === null ? dropToRoot : null} className={cn("flex-1 p-2", isOverRoot && 'bg-primary/10 ring-1 ring-primary-foreground')}>
                     <FolderTree parentId={rootFolderId} />
                 </ScrollArea>
             </div>
@@ -640,7 +641,6 @@ export function FilesViewContent({ rootFolderId, headerIcon: HeaderIcon, headerT
                                 </>
                             ) : (
                                 <>
-                                    <Button onClick={() => openNewFolderDialog({ parentId: rootFolderId })} className="bg-orange-500 hover:bg-orange-600 text-white"><FolderPlus className="mr-2 h-4 w-4" /> Create Folder</Button>
                                     <Button onClick={() => openNewFolderDialog({ parentId: selectedFolderId })} disabled={!selectedFolderId} className="bg-orange-500 hover:bg-orange-600 text-white"><FolderPlus className="mr-2 h-4 w-4" /> Create Subfolder</Button>
                                     <Button onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId} className="bg-orange-500 hover:bg-orange-600 text-white"><FileUp className="mr-2 h-4 w-4" /> Upload File</Button>
                                 </>
