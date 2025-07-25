@@ -2,6 +2,7 @@
 'use server';
 
 import { db, storage } from '@/lib/firebase';
+import { getAdminStorage } from '@/lib/firebase-admin';
 import {
   collection,
   getDocs,
@@ -20,10 +21,8 @@ import {
 import { 
     ref, 
     uploadBytes, 
-    getDownloadURL as getClientDownloadURL, 
     deleteObject,
 } from 'firebase/storage';
-import { getStorage as getAdminStorage } from 'firebase-admin/storage';
 import { type FileItem, type FolderItem } from '@/data/files';
 
 const FOLDERS_COLLECTION = 'fileFolders';
@@ -86,7 +85,12 @@ export async function deleteFolderAndContents(userId: string, folderId: string):
         const fileData = fileDoc.data() as FileItem;
         if (fileData.storagePath) {
             const fileRef = ref(storage, fileData.storagePath);
-            await deleteObject(fileRef);
+            await deleteObject(fileRef).catch(error => {
+                // Log error if file not found, but don't block deletion
+                if (error.code !== 'storage/object-not-found') {
+                    console.error(`Failed to delete file from storage: ${fileData.storagePath}`, error);
+                }
+            });
         }
         batch.delete(fileDoc.ref);
     }
@@ -149,7 +153,11 @@ export async function deleteFiles(fileIds: string[]): Promise<void> {
             const fileData = fileDoc.data() as FileItem;
             if (fileData.storagePath) {
                 const storageRef = ref(storage, fileData.storagePath);
-                await deleteObject(storageRef);
+                await deleteObject(storageRef).catch(error => {
+                    if (error.code !== 'storage/object-not-found') {
+                        console.error(`Failed to delete file from storage: ${fileData.storagePath}`, error);
+                    }
+                });
             }
             batch.delete(fileRef);
         }
@@ -158,7 +166,6 @@ export async function deleteFiles(fileIds: string[]): Promise<void> {
 }
 
 export async function getFileDownloadUrl(storagePath: string): Promise<string> {
-    checkServices();
     const adminStorage = getAdminStorage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
     const file = adminStorage.file(storagePath);
     
@@ -169,6 +176,7 @@ export async function getFileDownloadUrl(storagePath: string): Promise<string> {
     
     return url;
 }
+
 
 // --- Special Function for Saving Emails ---
 export async function saveEmailForContact(userId: string, contactName: string, emailContent: { subject: string; body: string; }) {
