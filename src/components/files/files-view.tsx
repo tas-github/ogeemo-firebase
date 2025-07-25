@@ -1,8 +1,8 @@
 
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { Folder, LoaderCircle } from 'lucide-react';
+import React from 'react';
+import { Folder } from 'lucide-react';
 import { FilesViewContent } from './files-view-content';
 
 export function FilesView() {
