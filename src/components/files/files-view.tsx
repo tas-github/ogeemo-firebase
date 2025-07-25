@@ -62,12 +62,14 @@ import {
     updateFile,
     deleteFiles,
     getFileDownloadUrl,
+    getFileContent,
     type FolderItem,
     type FileItem,
 } from '@/services/file-service';
 import { cn, triggerBrowserDownload } from '@/lib/utils';
 import { FileIcon } from './file-icon';
 import { format } from 'date-fns';
+import FileEditDialog from './file-edit-dialog';
 
 const ItemTypes = {
   FILE: 'file',
@@ -102,6 +104,10 @@ export function FilesView() {
     const [renamingFolder, setRenamingFolder] = useState<FolderItem | null>(null);
     const [renameInputValue, setRenameInputValue] = useState("");
     const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
+
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [fileToEdit, setFileToEdit] = useState<FileItem | null>(null);
+    const [fileContent, setFileContent] = useState<string | null>(null);
 
     const { toast } = useToast();
     const { user } = useAuth();
@@ -276,6 +282,24 @@ export function FilesView() {
         }
     };
 
+    const handleEditFile = async (file: FileItem) => {
+        if (!file.type.startsWith('text/')) {
+            toast({ variant: "destructive", title: "Cannot Edit", description: "Only plain text files can be edited in this view." });
+            return;
+        }
+        setFileToEdit(file);
+        setFileContent(null); // Clear previous content
+        setIsEditDialogOpen(true);
+
+        try {
+            const content = await getFileContent(file.storagePath);
+            setFileContent(content);
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Failed to Load Content", description: error.message });
+            setIsEditDialogOpen(false);
+        }
+    };
+    
     const handleFileDrop = async (file: FileItem, newFolderId: string) => {
         if (file.folderId === newFolderId) return;
         try {
@@ -365,6 +389,17 @@ export function FilesView() {
                             <span className="truncate flex-1">{folder.name}</span>
                         )}
                     </Button>
+                     {!isRenaming && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onSelect={() => { setNewFolderParentId(folder.id); setIsNewFolderDialogOpen(true); }}><FolderPlus className="mr-2 h-4 w-4" />Create subfolder</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => handleStartRename(folder)}><Pencil className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive" onSelect={() => setFolderToDelete(folder)}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
                 </div>
                 {isExpanded && allFolders.filter((f: FolderItem) => f.parentId === folder.id).sort((a: FolderItem, b: FolderItem) => a.name.localeCompare(b.name)).map((childFolder: FolderItem) => (
                     <FolderTreeItem key={childFolder.id} folder={childFolder} allFolders={allFolders} level={level + 1} />
@@ -413,15 +448,6 @@ export function FilesView() {
                                             <p className="text-sm text-muted-foreground">{files.length} item(s)</p>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <Button variant="outline" onClick={() => { setNewFolderParentId(selectedFolderId); setIsNewFolderDialogOpen(true); }} disabled={!selectedFolderId}>
-                                                <FolderPlus className="mr-2 h-4 w-4" /> Create Subfolder
-                                            </Button>
-                                            <Button variant="outline" onClick={() => handleStartRename(selectedFolder || null)} disabled={!selectedFolderId}>
-                                                <Pencil className="mr-2 h-4 w-4" /> Rename Folder
-                                            </Button>
-                                             <Button variant="destructive" onClick={() => setFolderToDelete(selectedFolder || null)} disabled={!selectedFolderId}>
-                                                <Trash2 className="mr-2 h-4 w-4" /> Delete Folder
-                                            </Button>
                                             <Button onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId}><UploadCloud className="mr-2 h-4 w-4" /> Upload File</Button>
                                             <Input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
                                         </div>
@@ -447,15 +473,9 @@ export function FilesView() {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onSelect={() => handleOpenFile(file)}>
-                                                                <BookOpen className="mr-2 h-4 w-4" /> Open
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onSelect={() => { /* Placeholder for edit */ }}>
-                                                                <Pencil className="mr-2 h-4 w-4" /> Edit
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem onSelect={() => { /* Placeholder for rename */ }}>
-                                                                <Pencil className="mr-2 h-4 w-4" /> Rename
-                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => handleOpenFile(file)}><BookOpen className="mr-2 h-4 w-4" /> Open</DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => handleEditFile(file)}><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                                            <DropdownMenuItem onSelect={() => { /* Placeholder for rename */ }}><Pencil className="mr-2 h-4 w-4" /> Rename</DropdownMenuItem>
                                                             <DropdownMenuSeparator />
                                                             <DropdownMenuItem className="text-destructive" onSelect={async () => {
                                                                 if (window.confirm(`Are you sure you want to delete "${file.name}"?`)) {
@@ -485,6 +505,15 @@ export function FilesView() {
             <Dialog open={folderToDelete !== null} onOpenChange={() => setFolderToDelete(null)}>
                 <DialogContent><DialogHeader><DialogTitle>Delete Folder</DialogTitle><DialogDescription>Are you sure? Deleting "{folderToDelete?.name}" will also delete all its subfolders and files.</DialogDescription></DialogHeader><DialogFooter><Button variant="ghost" onClick={() => setFolderToDelete(null)}>Cancel</Button><Button variant="destructive" onClick={handleConfirmDeleteFolder}>Delete</Button></DialogFooter></DialogContent>
             </Dialog>
+            
+            {isEditDialogOpen && (
+                <FileEditDialog
+                    isOpen={isEditDialogOpen}
+                    onOpenChange={setIsEditDialogOpen}
+                    file={fileToEdit}
+                    initialContent={fileContent}
+                />
+            )}
         </div>
     );
 }

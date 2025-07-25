@@ -86,7 +86,6 @@ export async function deleteFolderAndContents(userId: string, folderId: string):
         if (fileData.storagePath) {
             const fileRef = ref(storage, fileData.storagePath);
             await deleteObject(fileRef).catch(error => {
-                // Log error if file not found, but don't block deletion
                 if (error.code !== 'storage/object-not-found') {
                     console.error(`Failed to delete file from storage: ${fileData.storagePath}`, error);
                 }
@@ -175,6 +174,14 @@ export async function getFileDownloadUrl(storagePath: string): Promise<string> {
     });
     
     return url;
+}
+
+export async function getFileContent(storagePath: string): Promise<string> {
+    const adminStorage = getAdminStorage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
+    const file = adminStorage.file(storagePath);
+    
+    const [contents] = await file.download();
+    return contents.toString('utf-8');
 }
 
 
