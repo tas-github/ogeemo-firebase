@@ -86,114 +86,6 @@ const DraggableTableRow = ({ file, children }: { file: FileItem, children: React
     );
 };
 
-const FolderTreeItem = ({
-  folder,
-  allFolders,
-  level = 0,
-  expandedFolders,
-  setExpandedFolders,
-  selectedFolderId,
-  setSelectedFolderId,
-  renamingFolder,
-  setRenamingFolder,
-  setFolderToDelete,
-  onNewSubfolder,
-  handleFileDrop,
-  handleFolderDrop,
-}: any) => {
-    const hasChildren = allFolders.some((f: FolderItem) => f.parentId === folder.id);
-    const isExpanded = expandedFolders.has(folder.id);
-    const [renameValue, setRenameValue] = useState(folder.name);
-    const { toast } = useToast();
-
-    const [{ isDragging }, drag] = useDrag(() => ({
-        type: ItemTypes.FOLDER,
-        item: folder,
-        collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-    }));
-
-    const [{ canDrop, isOver }, drop] = useDrop(() => ({
-        accept: [ItemTypes.FILE, ItemTypes.FOLDER],
-        drop: (item: any) => {
-            if (item.id === folder.id) return; // Prevent dropping a folder onto itself
-            
-            // Prevent dropping a folder into one of its own descendants
-            if (item.type === ItemTypes.FOLDER) {
-                let currentParentId = folder.id;
-                while(currentParentId) {
-                    if (currentParentId === item.id) {
-                        toast({ variant: "destructive", title: "Invalid Move", description: "You cannot move a folder into one of its own subfolders." });
-                        return;
-                    }
-                    const parent = allFolders.find((f: FolderItem) => f.id === currentParentId);
-                    currentParentId = parent?.parentId || null;
-                }
-            }
-
-            if (item.type === ItemTypes.FOLDER) {
-                handleFolderDrop(item, folder.id);
-            } else {
-                handleFileDrop(item, folder.id);
-            }
-        },
-        collect: (monitor) => ({ isOver: monitor.isOver(), canDrop: monitor.canDrop() }),
-    }));
-    
-    const handleRename = async () => {
-        if (!renameValue.trim() || renameValue === folder.name) {
-            setRenamingFolder(null);
-            return;
-        }
-        try {
-            await updateFolder(folder.id, { name: renameValue.trim() });
-            toast({ title: "Folder Renamed" });
-            // The parent component will refetch and update the state.
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Rename Failed", description: error.message });
-        } finally {
-            setRenamingFolder(null);
-        }
-    };
-    
-    return (
-        <div className="my-1 rounded-md" style={{ marginLeft: level > 0 ? '1rem' : '0' }}>
-            <div
-                ref={node => drag(drop(node))}
-                className={cn(
-                    "flex items-center gap-1 rounded-md pr-1 group",
-                    selectedFolderId === folder.id && 'bg-accent',
-                    (isOver && canDrop) && 'bg-primary/20 ring-1 ring-primary',
-                    isDragging && 'opacity-50'
-                )}
-            >
-                <Button variant="ghost" className="flex-1 justify-start gap-2 h-9 p-2 text-left" onClick={() => setSelectedFolderId(folder.id)}>
-                    {hasChildren ? (
-                       <ChevronRight className={cn('h-4 w-4 shrink-0 transition-transform', isExpanded && 'rotate-90')} onClick={(e) => { e.stopPropagation(); setExpandedFolders((p: Set<string>) => { const n = new Set(p); n.has(folder.id) ? n.delete(folder.id) : n.add(folder.id); return n; }); }} />
-                    ) : <div className="w-4 h-4 shrink-0" />}
-                    <Folder className="h-4 w-4 shrink-0 text-primary" />
-                    {renamingFolder?.id === folder.id ? (
-                        <Input autoFocus value={renameValue} onChange={e => setRenameValue(e.target.value)} onBlur={handleRename} onKeyDown={e => e.key === 'Enter' && handleRename()} className="h-7" onClick={e => e.stopPropagation()} />
-                    ) : (
-                        <span className="truncate flex-1">{folder.name}</span>
-                    )}
-                </Button>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => onNewSubfolder(folder.id)}><FolderPlus className="mr-2 h-4 w-4" />Create subfolder</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => setRenamingFolder(folder)}><Pencil className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive" onSelect={() => setFolderToDelete(folder)}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-            {isExpanded && allFolders.filter((f: FolderItem) => f.parentId === folder.id).sort((a: FolderItem, b: FolderItem) => a.name.localeCompare(b.name)).map((childFolder: FolderItem) => (
-                <FolderTreeItem key={childFolder.id} folder={childFolder} allFolders={allFolders} level={level + 1} {...{ expandedFolders, setExpandedFolders, selectedFolderId, setSelectedFolderId, renamingFolder, setRenamingFolder, setFolderToDelete, onNewSubfolder, handleFileDrop, handleFolderDrop }} />
-            ))}
-        </div>
-    );
-};
-
 export function FilesView() {
     const [folders, setFolders] = useState<FolderItem[]>([]);
     const [files, setFiles] = useState<FileItem[]>([]);
@@ -283,7 +175,7 @@ export function FilesView() {
         try {
             await deleteFolderAndContents(user.uid, folderToDelete.id);
             toast({ title: "Folder Deleted" });
-            loadData(null); // Reload all data
+            loadData(null);
         } catch (e: any) { toast({ variant: 'destructive', title: "Delete Failed", description: e.message }); }
         finally { setFolderToDelete(null); }
     };
@@ -339,7 +231,7 @@ export function FilesView() {
         if (file.folderId === newFolderId) return;
         try {
             await updateFile(file.id, { folderId: newFolderId });
-            setFiles(prev => prev.filter(f => f.id !== file.id)); // Optimistically remove from current view
+            setFiles(prev => prev.filter(f => f.id !== file.id));
             toast({ title: "File Moved" });
         } catch (error: any) { toast({ variant: "destructive", title: "Move Failed", description: error.message }); }
     };
@@ -357,6 +249,74 @@ export function FilesView() {
 
     const selectedFolder = folders.find(f => f.id === selectedFolderId);
     
+    const FolderTreeItem = ({
+      folder,
+      allFolders,
+      level = 0,
+    }: {
+      folder: FolderItem;
+      allFolders: FolderItem[];
+      level?: number;
+    }) => {
+        const hasChildren = allFolders.some((f: FolderItem) => f.parentId === folder.id);
+        const isExpanded = expandedFolders.has(folder.id);
+        const [renameValue, setRenameValue] = useState(folder.name);
+
+        const [{ isDragging }, drag] = useDrag(() => ({
+            type: ItemTypes.FOLDER,
+            item: folder,
+            collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+        }));
+
+        const [{ canDrop, isOver }, drop] = useDrop(() => ({
+            accept: [ItemTypes.FILE, ItemTypes.FOLDER],
+            drop: (item: any) => {
+                if (item.id === folder.id) return;
+                
+                if (item.type === ItemTypes.FOLDER) {
+                    handleFolderDrop(item, folder.id);
+                } else {
+                    handleFileDrop(item, folder.id);
+                }
+            },
+            collect: (monitor) => ({ isOver: monitor.isOver(), canDrop: monitor.canDrop() }),
+        }));
+        
+        return (
+            <div className="my-1 rounded-md" style={{ marginLeft: level > 0 ? '1rem' : '0' }}>
+                <div
+                    ref={node => drag(drop(node))}
+                    className={cn(
+                        "flex items-center gap-1 rounded-md pr-1 group",
+                        selectedFolderId === folder.id && 'bg-accent',
+                        (isOver && canDrop) && 'bg-primary/20 ring-1 ring-primary',
+                        isDragging && 'opacity-50'
+                    )}
+                >
+                    <Button variant="ghost" className="flex-1 justify-start gap-2 h-9 p-2 text-left" onClick={() => setSelectedFolderId(folder.id)}>
+                        {hasChildren ? (
+                           <ChevronRight className={cn('h-4 w-4 shrink-0 transition-transform', isExpanded && 'rotate-90')} onClick={(e) => { e.stopPropagation(); setExpandedFolders((p: Set<string>) => { const n = new Set(p); n.has(folder.id) ? n.delete(folder.id) : n.add(folder.id); return n; }); }} />
+                        ) : <div className="w-4 h-4 shrink-0" />}
+                        <Folder className="h-4 w-4 shrink-0 text-primary" />
+                        <span className="truncate flex-1">{folder.name}</span>
+                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => { setNewFolderParentId(folder.id); setIsNewFolderDialogOpen(true); }}><FolderPlus className="mr-2 h-4 w-4" />Create subfolder</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => {/* Placeholder for rename */}}><Pencil className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive" onSelect={() => setFolderToDelete(folder)}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+                {isExpanded && allFolders.filter((f: FolderItem) => f.parentId === folder.id).sort((a: FolderItem, b: FolderItem) => a.name.localeCompare(b.name)).map((childFolder: FolderItem) => (
+                    <FolderTreeItem key={childFolder.id} folder={childFolder} allFolders={allFolders} level={level + 1} />
+                ))}
+            </div>
+        );
+    };
+
     return (
         <div className="flex flex-col h-full p-4 sm:p-6">
             <header className="text-center pb-4">
@@ -373,7 +333,7 @@ export function FilesView() {
                             </div>
                             <ScrollArea className="flex-1 p-2">
                                 {folders.filter(f => !f.parentId).sort((a,b) => a.name.localeCompare(b.name)).map(folder => (
-                                    <FolderTreeItem key={folder.id} {...{ folder, allFolders: folders, level: 0, expandedFolders, setExpandedFolders, selectedFolderId, setSelectedFolderId, renamingFolder, setRenamingFolder, setFolderToDelete, onNewSubfolder: (parentId: string) => { setNewFolderParentId(parentId); setIsNewFolderDialogOpen(true); }, handleFileDrop, handleFolderDrop }} />
+                                    <FolderTreeItem key={folder.id} folder={folder} allFolders={folders} level={0} />
                                 ))}
                             </ScrollArea>
                         </div>
