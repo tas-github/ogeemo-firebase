@@ -8,6 +8,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from '@/components/ui/card';
 import {
   Table,
@@ -19,11 +20,13 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Banknote, Rocket, UserPlus, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { Banknote, Rocket, UserPlus, MoreVertical, Pencil, Trash2, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { AccountingPageHeader } from './page-header';
 import { format } from 'date-fns';
 import { type Employee, type PayrollRun, mockEmployees, mockPayrollRuns } from '@/data/payroll';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { PayrollCraInfo } from './payroll-cra-info';
+import { Separator } from '../ui/separator';
 
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -35,6 +38,13 @@ export function PayrollDashboard() {
 
   const nextPayPeriodStart = new Date('2024-08-01');
   const nextPayPeriodEnd = new Date('2024-08-15');
+  
+  // Mock calculations for demonstration
+  const estimatedGross = 12500.00;
+  const estimatedCpp = 781.25; // Example deduction
+  const estimatedEi = 206.25; // Example deduction
+  const estimatedTax = 2500.00; // Example deduction
+  const estimatedNet = estimatedGross - estimatedCpp - estimatedEi - estimatedTax;
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -58,16 +68,29 @@ export function PayrollDashboard() {
                 Next payroll run is for the period of {format(nextPayPeriodStart, 'PP')} to {format(nextPayPeriodEnd, 'PP')}.
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex items-center justify-between p-6">
-                <div>
-                    <p className="text-sm text-muted-foreground">Estimated Total Payroll</p>
-                    <p className="text-3xl font-bold text-primary">{formatCurrency(12500)}</p>
-                </div>
-              <Button size="lg">
-                <Rocket className="mr-2 h-5 w-5" />
-                Run Payroll
-              </Button>
+            <CardContent className="space-y-4">
+               <div className="grid grid-cols-2 gap-4 text-sm">
+                   <div className="flex justify-between items-center p-3 rounded-lg bg-muted">
+                        <div className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-green-500" /> <span className="font-medium">Gross Payroll</span></div>
+                        <span className="font-mono">{formatCurrency(estimatedGross)}</span>
+                   </div>
+                   <div className="flex justify-between items-center p-3 rounded-lg bg-muted">
+                        <div className="flex items-center gap-2"><TrendingDown className="h-4 w-4 text-red-500" /> <span className="font-medium">Deductions</span></div>
+                        <span className="font-mono text-red-500">({formatCurrency(estimatedCpp + estimatedEi + estimatedTax)})</span>
+                   </div>
+               </div>
+               <Separator />
+               <div className="flex justify-between items-center p-3 rounded-lg bg-primary/10">
+                    <div className="flex items-center gap-2 text-primary font-bold"><DollarSign className="h-5 w-5" /> <span className="text-lg">Estimated Net Payroll</span></div>
+                    <span className="font-mono font-bold text-primary text-2xl">{formatCurrency(estimatedNet)}</span>
+               </div>
             </CardContent>
+            <CardFooter>
+                 <Button size="lg" className="w-full sm:w-auto">
+                    <Rocket className="mr-2 h-5 w-5" />
+                    Run Payroll
+                </Button>
+            </CardFooter>
           </Card>
           
           <Card>
@@ -102,7 +125,7 @@ export function PayrollDashboard() {
           </Card>
         </div>
         
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -138,6 +161,7 @@ export function PayrollDashboard() {
               </div>
             </CardContent>
           </Card>
+          <PayrollCraInfo />
         </div>
       </div>
     </div>
