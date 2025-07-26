@@ -209,7 +209,7 @@ export function PayrollDashboard() {
                                 <Button variant="ghost">Cancel</Button>
                             </DialogTrigger>
                              <DialogTrigger asChild>
-                                <Button onClick={handleRunPayroll}>Confirm & Run Payroll</Button>
+                                <Button onClick={handleRunPayroll}>Confirm &amp; Run Payroll</Button>
                             </DialogTrigger>
                         </DialogFooter>
                     </DialogContent>
