@@ -1,0 +1,1 @@
+"use strict";exports.id=4554,exports.ids=[4554],exports.modules={94554:(e,r,t)=>{t.r(r),t.d(r,{AlertsView:()=>l});var s=t(68570);let o=(0,s.createProxy)(String.raw`/home/user/studio/src/components/alerts/alerts-view.tsx`),{__esModule:i,$$typeof:a}=o;o.default;let l=(0,s.createProxy)(String.raw`/home/user/studio/src/components/alerts/alerts-view.tsx#AlertsView`)}};

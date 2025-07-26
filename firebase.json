@@ -3,5 +3,11 @@
     "source": "functions",
     "runtime": "nodejs18",
     "codebase": "default"
+  },
+  "hosting": {
+    "source": ".",
+    "appHosting": {
+      "backends": ["triggerBackup"]
+    }
   }
 }

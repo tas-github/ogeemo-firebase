@@ -1,0 +1,28 @@
+"use strict";(()=>{var e={};e.id=9305,e.ids=[9305],e.modules={20145:e=>{e.exports=require("next/dist/compiled/next-server/pages-api.runtime.prod.js")},94213:e=>{e.exports=import("@genkit-ai/dotprompt")},9223:e=>{e.exports=import("@genkit-ai/firebase")},66439:e=>{e.exports=import("@genkit-ai/googleai")},95016:e=>{e.exports=import("genkit")},9926:e=>{e.exports=import("zod")},56249:(e,t)=>{Object.defineProperty(t,"l",{enumerable:!0,get:function(){return function e(t,a){return a in t?t[a]:"then"in t&&"function"==typeof t.then?t.then(t=>e(t,a)):"function"==typeof t&&"default"===a?t:void 0}}})},4028:(e,t,a)=>{a.a(e,async(e,o)=>{try{a.r(t),a.d(t,{config:()=>l,default:()=>u,routeModule:()=>p});var r=a(71802),n=a(47153),i=a(56249),s=a(83203),c=e([s]);s=(c.then?(await c)():c)[0];let u=(0,i.l)(s,"default"),l=(0,i.l)(s,"config"),p=new r.PagesAPIRouteModule({definition:{kind:n.x.PAGES_API,page:"/api/genkit/chat",pathname:"/api/genkit/chat",bundlePath:"",filename:""},userland:s});o()}catch(e){o(e)}})},60161:(e,t,a)=>{a.a(e,async(e,o)=>{try{a.d(t,{d:()=>c});var r=a(95016),n=a(9926),i=a(66439),s=e([r,n,i]);[r,n,i]=s.then?(await s)():s;let c=(0,r.onFlow)({name:"aiSearchFlow",inputSchema:n.z.object({query:n.z.string(),dataSources:n.z.array(n.z.string())}),outputSchema:n.z.any()},async({query:e,dataSources:t})=>{let a=i.geminiPro,o=await a.generate({prompt:`
+        You are a search query generator.
+        Based on the user's query, generate a set of conditions and a logic operator (AND/OR) to search a database.
+        The available data sources are: ${t.join(", ")}.
+        The user's query is: "${e}"
+        Respond with a JSON object with two properties: "conditions" (an array of objects with "field", "operator", and "value" properties) and "logic" ("AND" or "OR").
+      `,config:{temperature:.3}});return JSON.parse(o.text())});o()}catch(e){o(e)}})},23798:(e,t,a)=>{a.a(e,async(e,o)=>{try{a.d(t,{S:()=>c});var r=a(95016),n=a(9926),i=a(66439),s=e([r,n,i]);[r,n,i]=s.then?(await s)():s;let c=(0,r.onFlow)({name:"generateFormFlow",inputSchema:n.z.object({topic:n.z.string()}),outputSchema:n.z.any()},async({topic:e})=>{let t=i.geminiPro,a=await t.generate({prompt:`
+        You are a form generator.
+        Based on the user's topic, generate a JSON object representing a form.
+        The JSON object should have two properties: "name" (a string for the form's title) and "fields" (an array of objects).
+        Each field object should have "name", "label", "type" (e.g., "text", "textarea", "select"), and optionally "options" (an array of strings for select fields).
+        The user's topic is: "${e}"
+      `,config:{temperature:.5}});return JSON.parse(a.text())});o()}catch(e){o(e)}})},48781:(e,t,a)=>{a.a(e,async(e,o)=>{try{a.d(t,{Sd:()=>l.S,dg:()=>u.d,wP:()=>c.w,zw:()=>p.z});var r=a(95016),n=a(66439),i=a(9223),s=a(94213),c=a(56548),u=a(60161),l=a(23798),p=a(41674),d=e([r,n,i,s,c,u,l,p]);[r,n,i,s,c,u,l,p]=d.then?(await d)():d,(0,r.configureGenkit)({plugins:[(0,n.googleAI)(),(0,i.firebase)(),(0,s.dotprompt)()],logSinks:["firebase"],enableTracingAndMetrics:!0}),o()}catch(e){o(e)}})},56548:(e,t,a)=>{a.a(e,async(e,o)=>{try{a.d(t,{w:()=>u});var r=a(95016),n=a(9926),i=a(66439),s=e([r,n,i]);[r,n,i]=s.then?(await s)():s;let c=`
+You are Ogeemo, an AI assistant for the Ogeemo platform.
+Your persona is helpful, knowledgeable, and slightly formal.
+You must always respond in markdown format.
+You have access to tools for interacting with the Ogeemo database.
+When a user asks you to perform an action, you should use the available tools.
+If you are not sure what to do, you can ask clarifying questions.
+When a tool returns data, you should present it to the user in a clear and organized way.
+If a tool returns an error, you should inform the user and ask for more information.
+Do not make up information. If you do not know the answer, say so.
+`,u=(0,r.onFlow)({name:"ogeemoChat",inputSchema:n.z.object({message:n.z.string(),history:n.z.array(n.z.any()).optional()}),outputSchema:n.z.object({reply:n.z.string()})},async({message:e,history:t})=>{let a=i.geminiPro;return{reply:(await a.generate({prompt:e,history:t||[],config:{temperature:.7},system:c})).text()}});o()}catch(e){o(e)}})},41674:(e,t,a)=>{a.a(e,async(e,o)=>{try{a.d(t,{z:()=>c});var r=a(95016),n=a(9926),i=a(66439),s=e([r,n,i]);[r,n,i]=s.then?(await s)():s;let c=(0,r.onFlow)({name:"summarizeDatabase",inputSchema:n.z.object({databaseDescription:n.z.string(),collectionsDescription:n.z.string()}),outputSchema:n.z.object({summary:n.z.string()})},async({databaseDescription:e,collectionsDescription:t})=>{let a=i.geminiPro;return{summary:(await a.generate({prompt:`
+        You are a database analyst.
+        Based on the following descriptions, generate a high-level executive summary of the database.
+        Database Description: ${e}
+        Collections Description: ${t}
+      `,config:{temperature:.5}})).text()}});o()}catch(e){o(e)}})},83203:(e,t,a)=>{a.a(e,async(e,o)=>{try{a.r(t),a.d(t,{default:()=>i});var r=a(48781),n=e([r]);async function i(e,t){if("POST"!==e.method){t.status(405).json({error:"Method Not Allowed"});return}let{message:a,history:o}=e.body;try{let e=await r.wP.run({message:a,history:o});t.status(200).json(e)}catch(e){console.error(e),t.status(500).json({error:e.message})}}r=(n.then?(await n)():n)[0],o()}catch(e){o(e)}})},47153:(e,t)=>{var a;Object.defineProperty(t,"x",{enumerable:!0,get:function(){return a}}),function(e){e.PAGES="PAGES",e.PAGES_API="PAGES_API",e.APP_PAGE="APP_PAGE",e.APP_ROUTE="APP_ROUTE"}(a||(a={}))},71802:(e,t,a)=>{e.exports=a(20145)}};var t=require("../../../webpack-api-runtime.js");t.C(e);var a=t(t.s=4028);module.exports=a})();

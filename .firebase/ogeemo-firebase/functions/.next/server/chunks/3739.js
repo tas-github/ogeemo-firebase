@@ -1,0 +1,1 @@
+"use strict";exports.id=3739,exports.ids=[3739],exports.modules={33739:(e,r,o)=>{o.r(r),o.d(r,{PayrollView:()=>l});var t=o(68570);let s=(0,t.createProxy)(String.raw`/home/user/studio/src/components/accounting/payroll-view.tsx`),{__esModule:i,$$typeof:a}=s;s.default;let l=(0,t.createProxy)(String.raw`/home/user/studio/src/components/accounting/payroll-view.tsx#PayrollView`)}};

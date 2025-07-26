@@ -1,0 +1,1 @@
+"use strict";exports.id=2819,exports.ids=[2819],exports.modules={82819:(e,t,r)=>{r.r(t),r.d(t,{TaxView:()=>c});var s=r(68570);let o=(0,s.createProxy)(String.raw`/home/user/studio/src/components/accounting/tax-view.tsx`),{__esModule:i,$$typeof:a}=o;o.default;let c=(0,s.createProxy)(String.raw`/home/user/studio/src/components/accounting/tax-view.tsx#TaxView`)}};

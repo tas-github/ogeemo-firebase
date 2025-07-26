@@ -1,0 +1,1 @@
+"use strict";exports.id=8911,exports.ids=[8911],exports.modules={8911:(e,t,r)=>{r.r(t),r.d(t,{EquityView:()=>c});var i=r(68570);let s=(0,i.createProxy)(String.raw`/home/user/studio/src/components/accounting/equity-view.tsx`),{__esModule:o,$$typeof:u}=s;s.default;let c=(0,i.createProxy)(String.raw`/home/user/studio/src/components/accounting/equity-view.tsx#EquityView`)}};

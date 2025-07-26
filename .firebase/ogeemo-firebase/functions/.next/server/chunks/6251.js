@@ -1,0 +1,1 @@
+"use strict";exports.id=6251,exports.ids=[6251],exports.modules={76251:(r,s,e)=>{e.r(s),e.d(s,{FormsView:()=>c});var o=e(68570);let t=(0,o.createProxy)(String.raw`/home/user/studio/src/components/forms/forms-view.tsx`),{__esModule:i,$$typeof:m}=t;t.default;let c=(0,o.createProxy)(String.raw`/home/user/studio/src/components/forms/forms-view.tsx#FormsView`)}};

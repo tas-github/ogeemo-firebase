@@ -1,0 +1,1 @@
+"use strict";exports.id=8680,exports.ids=[8680],exports.modules={78680:(e,r,s)=>{s.r(r),s.d(r,{LedgersView:()=>d});var t=s(68570);let o=(0,t.createProxy)(String.raw`/home/user/studio/src/components/accounting/ledgers-view.tsx`),{__esModule:i,$$typeof:c}=o;o.default;let d=(0,t.createProxy)(String.raw`/home/user/studio/src/components/accounting/ledgers-view.tsx#LedgersView`)}};

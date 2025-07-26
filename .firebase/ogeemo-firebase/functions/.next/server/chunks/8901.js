@@ -1,0 +1,1 @@
+"use strict";exports.id=8901,exports.ids=[8901],exports.modules={68901:(e,o,r)=>{r.r(o),r.d(o,{OgeeMailInboxView:()=>a});var t=r(68570);let i=(0,t.createProxy)(String.raw`/home/user/studio/src/components/ogeemail/inbox-view.tsx`),{__esModule:s,$$typeof:x}=i;i.default;let a=(0,t.createProxy)(String.raw`/home/user/studio/src/components/ogeemail/inbox-view.tsx#OgeeMailInboxView`)}};

@@ -1,0 +1,1 @@
+"use strict";exports.id=5461,exports.ids=[5461],exports.modules={65461:(e,s,t)=>{t.r(s),t.d(s,{ExpenseView:()=>c});var r=t(68570);let o=(0,r.createProxy)(String.raw`/home/user/studio/src/components/accounting/expense-view.tsx`),{__esModule:n,$$typeof:i}=o;o.default;let c=(0,r.createProxy)(String.raw`/home/user/studio/src/components/accounting/expense-view.tsx#ExpenseView`)}};

@@ -1,0 +1,1 @@
+"use strict";exports.id=9422,exports.ids=[9422],exports.modules={99422:(t,e,a)=>{a.r(e),a.d(e,{DataView:()=>i});var r=a(68570);let s=(0,r.createProxy)(String.raw`/home/user/studio/src/components/data/data-view.tsx`),{__esModule:o,$$typeof:d}=s;s.default;let i=(0,r.createProxy)(String.raw`/home/user/studio/src/components/data/data-view.tsx#DataView`)}};

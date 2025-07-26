@@ -1,0 +1,1 @@
+"use strict";exports.id=7999,exports.ids=[7999],exports.modules={17999:(e,r,t)=>{t.r(r),t.d(r,{ReportsView:()=>n});var s=t(68570);let o=(0,s.createProxy)(String.raw`/home/user/studio/src/components/accounting/reports-view.tsx`),{__esModule:i,$$typeof:c}=o;o.default;let n=(0,s.createProxy)(String.raw`/home/user/studio/src/components/accounting/reports-view.tsx#ReportsView`)}};

@@ -1,0 +1,1 @@
+"use strict";exports.id=5894,exports.ids=[5894],exports.modules={65894:(e,r,t)=>{t.r(r),t.d(r,{BackupView:()=>a});var s=t(68570);let o=(0,s.createProxy)(String.raw`/home/user/studio/src/components/backup/backup-view.tsx`),{__esModule:c,$$typeof:u}=o;o.default;let a=(0,s.createProxy)(String.raw`/home/user/studio/src/components/backup/backup-view.tsx#BackupView`)}};

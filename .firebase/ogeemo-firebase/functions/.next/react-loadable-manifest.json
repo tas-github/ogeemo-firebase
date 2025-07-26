@@ -1,0 +1,71 @@
+{
+  "src/app/(app)/ideas/page.tsx -> @/components/ideas/edit-idea-dialog": {
+    "id": 92909,
+    "files": [
+      "static/chunks/23-594e23b510001730.js",
+      "static/chunks/4216.46167d3285df7e00.js",
+      "static/chunks/2909.0e25f39fe8d6b8dd.js"
+    ]
+  },
+  "src/components/accounting/payroll-view.tsx -> @/components/accounting/payroll-dashboard": {
+    "id": 20419,
+    "files": [
+      "static/chunks/2641-db904a387eef2612.js",
+      "static/chunks/231-33bd609c5179e7ea.js",
+      "static/chunks/7255-c1d590cf9ad5b0d1.js",
+      "static/chunks/4086-74b353fc42dcb903.js",
+      "static/chunks/5510-b33cfb4f562af7bc.js",
+      "static/chunks/6680-cbbee01db07294b8.js",
+      "static/chunks/1792-59c313ccd8284dcb.js",
+      "static/chunks/1313-98789b2b5d84bac3.js",
+      "static/chunks/419.23d0cd5c3f08685d.js"
+    ]
+  },
+  "src/components/contacts/contacts-view.tsx -> @/components/contacts/contact-form-dialog": {
+    "id": 63823,
+    "files": [
+      "static/chunks/1374-cafc971622d00296.js",
+      "static/chunks/3823.7ab106b30e10210d.js"
+    ]
+  },
+  "src/components/contacts/contacts-view.tsx -> @/components/contacts/google-import-instructions-dialog": {
+    "id": 57085,
+    "files": [
+      "static/chunks/7085.69f25670624d802d.js"
+    ]
+  },
+  "src/components/ogeemail/compose-view.tsx -> @/components/ogeemail/ogeemo-chat-dialog": {
+    "id": 59790,
+    "files": [
+      "static/chunks/23-594e23b510001730.js",
+      "static/chunks/9790.11fac149b994d20c.js"
+    ]
+  },
+  "src/components/research/research-hub-view.tsx -> ./assistant-view": {
+    "id": 21230,
+    "files": [
+      "static/chunks/23-594e23b510001730.js",
+      "static/chunks/1107.7a72223cadd28298.js"
+    ]
+  },
+  "src/components/research/research-hub-view.tsx -> ./hub-view": {
+    "id": 54715,
+    "files": [
+      "static/chunks/4715.977051b7e9e7db1b.js"
+    ]
+  },
+  "src/components/research/research-hub-view.tsx -> ./notepad-view": {
+    "id": 97382,
+    "files": [
+      "static/chunks/23-594e23b510001730.js",
+      "static/chunks/8630.43c9ab0ca3b7a2dc.js"
+    ]
+  },
+  "src/components/research/research-hub-view.tsx -> ./sources-view": {
+    "id": 55682,
+    "files": [
+      "static/chunks/23-594e23b510001730.js",
+      "static/chunks/6721.0a7be146d4e26f15.js"
+    ]
+  }
+}

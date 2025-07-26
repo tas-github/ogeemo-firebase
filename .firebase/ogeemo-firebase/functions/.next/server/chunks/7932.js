@@ -1,0 +1,1 @@
+"use strict";exports.id=7932,exports.ids=[7932],exports.modules={97932:(t,s,e)=>{e.r(s),e.d(s,{ContactsView:()=>n});var o=e(68570);let r=(0,o.createProxy)(String.raw`/home/user/studio/src/components/contacts/contacts-view.tsx`),{__esModule:c,$$typeof:a}=r;r.default;let n=(0,o.createProxy)(String.raw`/home/user/studio/src/components/contacts/contacts-view.tsx#ContactsView`)}};
