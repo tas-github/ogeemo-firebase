@@ -44,12 +44,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 };
 
 type PayrollStep = 'period' | 'hours' | 'review';
+type EmployeeFormState = { id: string; name: string; payType: 'Salary' | 'Hourly'; payRate: number | '' };
 
 interface EmployeeHours {
     [employeeId: string]: { hours: number | '' };
@@ -59,7 +61,7 @@ export function PayrollDashboard() {
   const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
   const [payrollHistory, setPayrollHistory] = useState<PayrollRun[]>(mockPayrollRuns);
   
-  // State for the new multi-step dialog
+  // State for the multi-step payroll dialog
   const [isRunPayrollDialogOpen, setIsRunPayrollDialogOpen] = useState(false);
   const [payrollStep, setPayrollStep] = useState<PayrollStep>('period');
   const [employeeHours, setEmployeeHours] = useState<EmployeeHours>(() => {
@@ -72,6 +74,10 @@ export function PayrollDashboard() {
     return initialHours;
   });
   
+  // State for the employee form dialog
+  const [isEmployeeDialogOpen, setIsEmployeeDialogOpen] = useState(false);
+  const [employeeToEdit, setEmployeeToEdit] = useState<EmployeeFormState | null>(null);
+
   const { toast } = useToast();
   
   const defaultPayPeriod: DateRange = {
@@ -129,6 +135,19 @@ export function PayrollDashboard() {
             return hours !== '' && Number(hours) >= 0;
         });
   }, [employees, employeeHours]);
+
+  const handleOpenEmployeeDialog = (employee: Employee) => {
+    setEmployeeToEdit({ ...employee, payRate: employee.payRate });
+    setIsEmployeeDialogOpen(true);
+  };
+
+  const handleSaveEmployee = () => {
+    if (!employeeToEdit) return;
+    // In a real app, you would have validation here.
+    setEmployees(prev => prev.map(emp => emp.id === employeeToEdit.id ? { ...emp, ...employeeToEdit, payRate: Number(employeeToEdit.payRate) } : emp));
+    toast({ title: "Employee Updated", description: `${employeeToEdit.name}'s details have been saved.` });
+    setIsEmployeeDialogOpen(false);
+  };
   
   const renderPayrollDialogContent = () => {
     switch(payrollStep) {
@@ -247,6 +266,7 @@ export function PayrollDashboard() {
 
 
   return (
+    <>
     <div className="p-4 sm:p-6 space-y-6">
       <AccountingPageHeader pageTitle="Payroll" />
       <header className="text-center">
@@ -345,7 +365,7 @@ export function PayrollDashboard() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleOpenEmployeeDialog(employee)}><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
                         <DropdownMenuItem className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -358,5 +378,47 @@ export function PayrollDashboard() {
         </div>
       </div>
     </div>
+
+    <Dialog open={isEmployeeDialogOpen} onOpenChange={setIsEmployeeDialogOpen}>
+      <DialogContent>
+        <DialogHeader>
+            <DialogTitle>Edit Employee</DialogTitle>
+            <DialogDescription>Update the details for {employeeToEdit?.name}.</DialogDescription>
+        </DialogHeader>
+        <div className="py-4 space-y-4">
+            <div className="space-y-2">
+                <Label htmlFor="emp-name">Employee Name</Label>
+                <Input id="emp-name" value={employeeToEdit?.name || ''} onChange={(e) => setEmployeeToEdit(prev => prev ? {...prev, name: e.target.value} : null)} />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="emp-payType">Pay Type</Label>
+                <Select
+                    value={employeeToEdit?.payType}
+                    onValueChange={(value: 'Salary' | 'Hourly') => setEmployeeToEdit(prev => prev ? {...prev, payType: value} : null)}
+                >
+                    <SelectTrigger id="emp-payType">
+                        <SelectValue placeholder="Select pay type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="Salary">Salary</SelectItem>
+                        <SelectItem value="Hourly">Hourly</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="emp-payRate">{employeeToEdit?.payType === 'Salary' ? 'Annual Salary' : 'Hourly Rate'}</Label>
+                <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                    <Input id="emp-payRate" type="number" value={employeeToEdit?.payRate || ''} onChange={(e) => setEmployeeToEdit(prev => prev ? {...prev, payRate: e.target.value === '' ? '' : Number(e.target.value) } : null)} className="pl-7" />
+                </div>
+            </div>
+        </div>
+        <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsEmployeeDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveEmployee}>Save Changes</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
