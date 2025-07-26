@@ -1,9 +1,10 @@
+
 'use client';
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { X, ChevronDown, FileOutput, FileDigit, TrendingUp, TrendingDown, BookText, FileInput, WalletCards, BarChart3, Activity, UserPlus, Info } from 'lucide-react';
+import { X, ChevronDown, FileOutput, FileDigit, TrendingUp, TrendingDown, BookText, FileInput, WalletCards, BarChart3, Activity, UserPlus, Info, Banknote } from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -25,6 +26,7 @@ const accountingLinks = [
     { href: "/accounting/ledgers", icon: BookText, label: "General Ledger" },
     { href: "/accounting/accounts-payable", icon: FileInput, label: "Accounts Payable" },
     { href: "/accounting/bank-statements", icon: WalletCards, label: "Bank Statements" },
+    { href: "/accounting/payroll", icon: Banknote, label: "Payroll" },
     { href: "/accounting/reports", icon: BarChart3, label: "Reporting Hub" },
     { href: "/accounting/vitals", icon: Activity, label: "Financial Vitals" },
     { href: "/accounting/onboarding", icon: UserPlus, label: "Client Onboarding" },
