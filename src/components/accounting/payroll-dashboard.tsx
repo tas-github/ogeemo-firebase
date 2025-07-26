@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Banknote, Rocket, UserPlus, MoreVertical, Pencil, Trash2, TrendingUp, TrendingDown, DollarSign, Calendar as CalendarIcon, ArrowRight } from 'lucide-react';
+import { Banknote, Rocket, UserPlus, MoreVertical, Pencil, Trash2, TrendingUp, TrendingDown, DollarSign, Calendar as CalendarIcon, ArrowRight, User as UserIcon } from 'lucide-react';
 import { AccountingPageHeader } from './page-header';
 import { format, addDays } from 'date-fns';
 import { type Employee, type PayrollRun, mockEmployees, mockPayrollRuns } from '@/data/payroll';
@@ -60,7 +60,8 @@ interface EmployeeHours {
 export function PayrollDashboard() {
   const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
   const [payrollHistory, setPayrollHistory] = useState<PayrollRun[]>(mockPayrollRuns);
-  
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(employees.length > 0 ? employees[0].id : null);
+
   // State for the multi-step payroll dialog
   const [isRunPayrollDialogOpen, setIsRunPayrollDialogOpen] = useState(false);
   const [payrollStep, setPayrollStep] = useState<PayrollStep>('period');
@@ -85,6 +86,8 @@ export function PayrollDashboard() {
     to: new Date(new Date().getFullYear(), new Date().getMonth(), 15),
   };
   const [payPeriod, setPayPeriod] = useState<DateRange | undefined>(defaultPayPeriod);
+
+  const selectedEmployee = useMemo(() => employees.find(e => e.id === selectedEmployeeId), [employees, selectedEmployeeId]);
 
   const payrollSummary = useMemo(() => {
     const summary = employees.map(emp => {
@@ -167,6 +170,7 @@ export function PayrollDashboard() {
             payRate: Number(employeeToEdit.payRate),
         };
         setEmployees(prev => [...prev, newEmployee]);
+        setSelectedEmployeeId(newEmployee.id);
         toast({ title: "Employee Added", description: `${newEmployee.name} has been added to your payroll.` });
     }
 
@@ -374,28 +378,41 @@ export function PayrollDashboard() {
                 Add
               </Button>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {employees.map(employee => (
-                  <div key={employee.id} className="flex items-center justify-between p-3 rounded-md border">
-                    <div>
-                      <p className="font-semibold">{employee.name}</p>
-                      <p className="text-sm text-muted-foreground">{employee.payType === 'Salary' ? formatCurrency(employee.payRate) + '/year' : formatCurrency(employee.payRate) + '/hour'}</p>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={() => handleOpenEmployeeDialog(employee)}><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+            <CardContent className="space-y-4">
+              <Select value={selectedEmployeeId || ''} onValueChange={setSelectedEmployeeId}>
+                  <SelectTrigger>
+                      <SelectValue placeholder="Select an employee..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                      {employees.map(employee => (
+                          <SelectItem key={employee.id} value={employee.id}>{employee.name}</SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
+              {selectedEmployee && (
+                  <div className="p-3 rounded-md border bg-muted/50 space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-3">
+                            <UserIcon className="h-5 w-5 text-muted-foreground" />
+                            <div>
+                                <p className="font-semibold">{selectedEmployee.name}</p>
+                                <p className="text-sm text-muted-foreground">{selectedEmployee.payType === 'Salary' ? formatCurrency(selectedEmployee.payRate) + '/year' : formatCurrency(selectedEmployee.payRate) + '/hour'}</p>
+                            </div>
+                        </div>
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onSelect={() => handleOpenEmployeeDialog(selectedEmployee)}><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                   </div>
-                ))}
-              </div>
+              )}
             </CardContent>
           </Card>
           <PayrollCraInfo />
