@@ -51,7 +51,7 @@ const formatCurrency = (amount: number) => {
 };
 
 type PayrollStep = 'period' | 'hours' | 'review';
-type EmployeeFormState = { id: string; name: string; payType: 'Salary' | 'Hourly'; payRate: number | '' };
+type EmployeeFormState = Omit<Employee, 'id' | 'userId'> & { id?: string };
 
 interface EmployeeHours {
     [employeeId: string]: { hours: number | '' };
@@ -136,16 +136,40 @@ export function PayrollDashboard() {
         });
   }, [employees, employeeHours]);
 
-  const handleOpenEmployeeDialog = (employee: Employee) => {
-    setEmployeeToEdit({ ...employee, payRate: employee.payRate });
+  const handleOpenEmployeeDialog = (employee?: Employee) => {
+    if (employee) {
+        setEmployeeToEdit({ ...employee, payRate: employee.payRate });
+    } else {
+        setEmployeeToEdit({ name: '', payType: 'Hourly', payRate: '' });
+    }
     setIsEmployeeDialogOpen(true);
   };
 
   const handleSaveEmployee = () => {
     if (!employeeToEdit) return;
-    // In a real app, you would have validation here.
-    setEmployees(prev => prev.map(emp => emp.id === employeeToEdit.id ? { ...emp, ...employeeToEdit, payRate: Number(employeeToEdit.payRate) } : emp));
-    toast({ title: "Employee Updated", description: `${employeeToEdit.name}'s details have been saved.` });
+    
+    // In a real app, you would have more robust validation here.
+    if (!employeeToEdit.name.trim() || !employeeToEdit.payRate || Number(employeeToEdit.payRate) <= 0) {
+        toast({ variant: 'destructive', title: 'Invalid Data', description: 'Please provide a valid name and pay rate.' });
+        return;
+    }
+
+    if (employeeToEdit.id) {
+        // Editing existing employee
+        setEmployees(prev => prev.map(emp => emp.id === employeeToEdit.id ? { ...emp, ...employeeToEdit, payRate: Number(employeeToEdit.payRate) } : emp));
+        toast({ title: "Employee Updated", description: `${employeeToEdit.name}'s details have been saved.` });
+    } else {
+        // Adding new employee
+        const newEmployee: Employee = {
+            id: `emp-${Date.now()}`, // Simple unique ID for mock data
+            userId: 'mock-user',
+            ...employeeToEdit,
+            payRate: Number(employeeToEdit.payRate),
+        };
+        setEmployees(prev => [...prev, newEmployee]);
+        toast({ title: "Employee Added", description: `${newEmployee.name} has been added to your payroll.` });
+    }
+
     setIsEmployeeDialogOpen(false);
   };
   
@@ -345,7 +369,7 @@ export function PayrollDashboard() {
                 <CardTitle>Employees</CardTitle>
                 <CardDescription>Your team members for payroll.</CardDescription>
               </div>
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" onClick={() => handleOpenEmployeeDialog()}>
                 <UserPlus className="mr-2 h-4 w-4" />
                 Add
               </Button>
@@ -382,8 +406,10 @@ export function PayrollDashboard() {
     <Dialog open={isEmployeeDialogOpen} onOpenChange={setIsEmployeeDialogOpen}>
       <DialogContent>
         <DialogHeader>
-            <DialogTitle>Edit Employee</DialogTitle>
-            <DialogDescription>Update the details for {employeeToEdit?.name}.</DialogDescription>
+            <DialogTitle>{employeeToEdit?.id ? 'Edit' : 'Add'} Employee</DialogTitle>
+            <DialogDescription>
+                {employeeToEdit?.id ? `Update the details for ${employeeToEdit.name}.` : 'Add a new employee to your payroll.'}
+            </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
             <div className="space-y-2">
@@ -415,7 +441,7 @@ export function PayrollDashboard() {
         </div>
         <DialogFooter>
             <Button variant="ghost" onClick={() => setIsEmployeeDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveEmployee}>Save Changes</Button>
+            <Button onClick={handleSaveEmployee}>Save Employee</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
