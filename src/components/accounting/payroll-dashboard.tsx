@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -17,6 +17,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,24 +28,81 @@ import { type Employee, type PayrollRun, mockEmployees, mockPayrollRuns } from '
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { PayrollCraInfo } from './payroll-cra-info';
 import { Separator } from '../ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 };
 
+interface PayrollDetails {
+    hours?: number;
+    deductions: number;
+}
+
 export function PayrollDashboard() {
   const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
   const [payrollHistory, setPayrollHistory] = useState<PayrollRun[]>(mockPayrollRuns);
+  const [payrollDetails, setPayrollDetails] = useState<Record<string, PayrollDetails>>(() => {
+    const details: Record<string, PayrollDetails> = {};
+    mockEmployees.forEach(emp => {
+        details[emp.id] = {
+            hours: emp.payType === 'Hourly' ? 80 : undefined,
+            deductions: emp.payType === 'Salary' ? (emp.payRate / 26) * 0.25 : (emp.payRate * 80) * 0.22,
+        };
+    });
+    return details;
+  });
+  const { toast } = useToast();
 
   const nextPayPeriodStart = new Date('2024-08-01');
   const nextPayPeriodEnd = new Date('2024-08-15');
   
-  // Mock calculations for demonstration
-  const estimatedGross = 12500.00;
-  const estimatedCpp = 781.25; // Example deduction
-  const estimatedEi = 206.25; // Example deduction
-  const estimatedTax = 2500.00; // Example deduction
-  const estimatedNet = estimatedGross - estimatedCpp - estimatedEi - estimatedTax;
+  const estimatedGross = useMemo(() => {
+    return employees.reduce((total, emp) => {
+        const details = payrollDetails[emp.id];
+        if (emp.payType === 'Salary') {
+            return total + (emp.payRate / 26); // Bi-weekly salary
+        }
+        if (emp.payType === 'Hourly' && details?.hours) {
+            return total + (emp.payRate * details.hours);
+        }
+        return total;
+    }, 0);
+  }, [employees, payrollDetails]);
+
+  const estimatedDeductions = useMemo(() => {
+      return Object.values(payrollDetails).reduce((total, details) => total + details.deductions, 0);
+  }, [payrollDetails]);
+  
+  const estimatedNet = estimatedGross - estimatedDeductions;
+  
+  const handleDetailChange = (employeeId: string, field: keyof PayrollDetails, value: number) => {
+      setPayrollDetails(prev => ({
+          ...prev,
+          [employeeId]: {
+              ...prev[employeeId],
+              [field]: value,
+          }
+      }));
+  };
+  
+  const handleRunPayroll = () => {
+    toast({
+        title: "Payroll Submitted (Simulation)",
+        description: "In a real application, this would trigger backend processing and payments."
+    });
+  }
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -76,7 +134,7 @@ export function PayrollDashboard() {
                    </div>
                    <div className="flex justify-between items-center p-3 rounded-lg bg-muted">
                         <div className="flex items-center gap-2"><TrendingDown className="h-4 w-4 text-red-500" /> <span className="font-medium">Deductions</span></div>
-                        <span className="font-mono text-red-500">({formatCurrency(estimatedCpp + estimatedEi + estimatedTax)})</span>
+                        <span className="font-mono text-red-500">({formatCurrency(estimatedDeductions)})</span>
                    </div>
                </div>
                <Separator />
@@ -86,10 +144,76 @@ export function PayrollDashboard() {
                </div>
             </CardContent>
             <CardFooter>
-                 <Button size="lg" className="w-full sm:w-auto">
-                    <Rocket className="mr-2 h-5 w-5" />
-                    Run Payroll
-                </Button>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Button size="lg" className="w-full sm:w-auto">
+                            <Rocket className="mr-2 h-5 w-5" />
+                            Run Payroll
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl">
+                        <DialogHeader>
+                            <DialogTitle>Run Payroll: {format(nextPayPeriodStart, 'MMM d')} - {format(nextPayPeriodEnd, 'MMM d, yyyy')}</DialogTitle>
+                            <DialogDescription>Confirm hours and amounts before processing. Deductions are pre-filled estimates.</DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Employee</TableHead>
+                                        <TableHead className="w-24">Hours</TableHead>
+                                        <TableHead className="text-right">Gross Pay</TableHead>
+                                        <TableHead className="w-32 text-right">Deductions</TableHead>
+                                        <TableHead className="text-right">Net Pay</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {employees.map(emp => {
+                                        const details = payrollDetails[emp.id];
+                                        const grossPay = emp.payType === 'Salary'
+                                            ? emp.payRate / 26
+                                            : (details?.hours || 0) * emp.payRate;
+                                        const netPay = grossPay - (details?.deductions || 0);
+
+                                        return (
+                                            <TableRow key={emp.id}>
+                                                <TableCell className="font-medium">{emp.name}</TableCell>
+                                                <TableCell>
+                                                    {emp.payType === 'Hourly' ? (
+                                                        <Input type="number" value={details?.hours} onChange={(e) => handleDetailChange(emp.id, 'hours', Number(e.target.value))} className="h-8"/>
+                                                    ) : (
+                                                        <span className="text-sm text-muted-foreground">Salary</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right font-mono">{formatCurrency(grossPay)}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <Input type="number" value={details?.deductions} onChange={(e) => handleDetailChange(emp.id, 'deductions', Number(e.target.value))} className="h-8 text-right"/>
+                                                </TableCell>
+                                                <TableCell className="text-right font-mono font-semibold">{formatCurrency(netPay)}</TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                                <TableFooter>
+                                    <TableRow>
+                                        <TableCell colSpan={2} className="font-bold">Totals</TableCell>
+                                        <TableCell className="text-right font-bold font-mono">{formatCurrency(estimatedGross)}</TableCell>
+                                        <TableCell className="text-right font-bold font-mono">({formatCurrency(estimatedDeductions)})</TableCell>
+                                        <TableCell className="text-right font-bold font-mono">{formatCurrency(estimatedNet)}</TableCell>
+                                    </TableRow>
+                                </TableFooter>
+                            </Table>
+                        </div>
+                        <DialogFooter>
+                            <DialogTrigger asChild>
+                                <Button variant="ghost">Cancel</Button>
+                            </DialogTrigger>
+                             <DialogTrigger asChild>
+                                <Button onClick={handleRunPayroll}>Confirm & Run Payroll</Button>
+                            </DialogTrigger>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </CardFooter>
           </Card>
           
