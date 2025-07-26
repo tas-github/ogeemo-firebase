@@ -21,9 +21,9 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Banknote, Rocket, UserPlus, MoreVertical, Pencil, Trash2, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { Banknote, Rocket, UserPlus, MoreVertical, Pencil, Trash2, TrendingUp, TrendingDown, DollarSign, Calendar as CalendarIcon } from 'lucide-react';
 import { AccountingPageHeader } from './page-header';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import { type Employee, type PayrollRun, mockEmployees, mockPayrollRuns } from '@/data/payroll';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { PayrollCraInfo } from './payroll-cra-info';
@@ -40,6 +40,10 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { cn } from '@/lib/utils';
+import { DateRange } from 'react-day-picker';
 
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
@@ -64,10 +68,13 @@ export function PayrollDashboard() {
     return details;
   });
   const { toast } = useToast();
-
-  const nextPayPeriodStart = new Date('2024-08-01');
-  const nextPayPeriodEnd = new Date('2024-08-15');
   
+  const defaultPayPeriod: DateRange = {
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    to: new Date(new Date().getFullYear(), new Date().getMonth(), 15),
+  };
+  const [payPeriod, setPayPeriod] = useState<DateRange | undefined>(defaultPayPeriod);
+
   const estimatedGross = useMemo(() => {
     return employees.reduce((total, emp) => {
         const details = payrollDetails[emp.id];
@@ -123,10 +130,46 @@ export function PayrollDashboard() {
             <CardHeader>
               <CardTitle>Upcoming Payroll</CardTitle>
               <CardDescription>
-                Next payroll run is for the period of {format(nextPayPeriodStart, 'PP')} to {format(nextPayPeriodEnd, 'PP')}.
+                Set the pay period and review the estimated totals before running payroll.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+               <div className="space-y-2">
+                <Label>Pay Period Timeframe</Label>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            id="date"
+                            variant={"outline"}
+                            className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !payPeriod && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {payPeriod?.from ? (
+                                payPeriod.to ? (
+                                    <>{format(payPeriod.from, "LLL dd, y")} - {format(payPeriod.to, "LLL dd, y")}</>
+                                ) : (
+                                    format(payPeriod.from, "LLL dd, y")
+                                )
+                            ) : (
+                                <span>Pick a date range</span>
+                            )}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                            initialFocus
+                            mode="range"
+                            defaultMonth={payPeriod?.from}
+                            selected={payPeriod}
+                            onSelect={setPayPeriod}
+                            numberOfMonths={2}
+                        />
+                    </PopoverContent>
+                </Popover>
+               </div>
                <div className="grid grid-cols-2 gap-4 text-sm">
                    <div className="flex justify-between items-center p-3 rounded-lg bg-muted">
                         <div className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-green-500" /> <span className="font-medium">Gross Payroll</span></div>
@@ -153,7 +196,7 @@ export function PayrollDashboard() {
                     </DialogTrigger>
                     <DialogContent className="max-w-4xl">
                         <DialogHeader>
-                            <DialogTitle>Run Payroll: {format(nextPayPeriodStart, 'MMM d')} - {format(nextPayPeriodEnd, 'MMM d, yyyy')}</DialogTitle>
+                            <DialogTitle>Run Payroll: {payPeriod?.from && payPeriod?.to ? `${format(payPeriod.from, 'MMM d')} - ${format(payPeriod.to, 'MMM d, yyyy')}` : 'Confirm Payroll'}</DialogTitle>
                             <DialogDescription>Confirm hours and amounts before processing. Deductions are pre-filled estimates.</DialogDescription>
                         </DialogHeader>
                         <div className="py-4">
