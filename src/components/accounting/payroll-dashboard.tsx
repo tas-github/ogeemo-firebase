@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Banknote, Rocket, UserPlus, MoreVertical, Pencil, Trash2, TrendingUp, TrendingDown, DollarSign, Calendar as CalendarIcon, ArrowRight, User as UserIcon } from 'lucide-react';
+import { Banknote, Rocket, UserPlus, MoreVertical, Pencil, Trash2, TrendingUp, TrendingDown, DollarSign, Calendar as CalendarIcon, ArrowRight, User as UserIcon, PlusCircle } from 'lucide-react';
 import { AccountingPageHeader } from './page-header';
 import { format, addDays } from 'date-fns';
 import { type Employee, type PayrollRun, mockEmployees, mockPayrollRuns } from '@/data/payroll';
@@ -53,9 +53,20 @@ const formatCurrency = (amount: number) => {
 type PayrollStep = 'period' | 'hours' | 'review';
 type EmployeeFormState = Omit<Employee, 'id' | 'userId'> & { id?: string };
 
-interface EmployeeHours {
-    [employeeId: string]: { hours: number | '' };
+interface LumpSum {
+    id: number;
+    description: string;
+    amount: number | '';
+    type: 'addition' | 'deduction';
 }
+
+interface EmployeeHours {
+    [employeeId: string]: {
+        hours: number | '';
+        lumpSums: LumpSum[];
+    };
+}
+
 
 export function PayrollDashboard() {
   const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
@@ -68,9 +79,10 @@ export function PayrollDashboard() {
   const [employeeHours, setEmployeeHours] = useState<EmployeeHours>(() => {
     const initialHours: EmployeeHours = {};
     mockEmployees.forEach(emp => {
-        if (emp.payType === 'Hourly') {
-            initialHours[emp.id] = { hours: 80 }; // Default to 80 hours
-        }
+        initialHours[emp.id] = {
+            hours: emp.payType === 'Hourly' ? 80 : '', // Default to 80 hours for hourly
+            lumpSums: [],
+        };
     });
     return initialHours;
   });
@@ -91,13 +103,19 @@ export function PayrollDashboard() {
 
   const payrollSummary = useMemo(() => {
     const summary = employees.map(emp => {
-        let grossPay = 0;
+        let basePay = 0;
         if (emp.payType === 'Salary') {
-            grossPay = emp.payRate / 26; // Bi-weekly salary assumption
+            basePay = emp.payRate / 26; // Bi-weekly salary assumption
         } else {
             const hours = employeeHours[emp.id]?.hours || 0;
-            grossPay = emp.payRate * Number(hours);
+            basePay = emp.payRate * Number(hours);
         }
+        
+        const lumpSums = employeeHours[emp.id]?.lumpSums || [];
+        const totalAdditions = lumpSums.filter(ls => ls.type === 'addition').reduce((sum, ls) => sum + Number(ls.amount || 0), 0);
+        const totalDeductions = lumpSums.filter(ls => ls.type === 'deduction').reduce((sum, ls) => sum + Number(ls.amount || 0), 0);
+        
+        const grossPay = basePay + totalAdditions - totalDeductions;
         
         // Simplified deduction calculation for review purposes
         const deductions = grossPay * 0.22; // 22% flat rate estimate
@@ -126,16 +144,42 @@ export function PayrollDashboard() {
   const handleHoursChange = (employeeId: string, hours: string) => {
     setEmployeeHours(prev => ({
         ...prev,
-        [employeeId]: { hours: hours === '' ? '' : Number(hours) }
+        [employeeId]: { ...prev[employeeId], hours: hours === '' ? '' : Number(hours) }
     }));
+  };
+
+  const handleLumpSumChange = (employeeId: string, lumpSumId: number, field: 'description' | 'amount' | 'type', value: string) => {
+    setEmployeeHours(prev => {
+        const updatedLumpSums = prev[employeeId].lumpSums.map(ls =>
+            ls.id === lumpSumId ? { ...ls, [field]: field === 'amount' ? (value === '' ? '' : Number(value)) : value } : ls
+        );
+        return { ...prev, [employeeId]: { ...prev[employeeId], lumpSums: updatedLumpSums } };
+    });
+  };
+
+  const handleAddLumpSum = (employeeId: string) => {
+    setEmployeeHours(prev => {
+        const newLumpSum: LumpSum = { id: Date.now(), description: '', amount: '', type: 'addition' };
+        const updatedLumpSums = [...prev[employeeId].lumpSums, newLumpSum];
+        return { ...prev, [employeeId]: { ...prev[employeeId], lumpSums: updatedLumpSums } };
+    });
+  };
+
+  const handleDeleteLumpSum = (employeeId: string, lumpSumId: number) => {
+      setEmployeeHours(prev => {
+          const updatedLumpSums = prev[employeeId].lumpSums.filter(ls => ls.id !== lumpSumId);
+          return { ...prev, [employeeId]: { ...prev[employeeId], lumpSums: updatedLumpSums } };
+      });
   };
   
   const canProceedFromHours = useMemo(() => {
     return employees
-        .filter(emp => emp.payType === 'Hourly')
         .every(emp => {
-            const hours = employeeHours[emp.id]?.hours;
-            return hours !== '' && Number(hours) >= 0;
+            const empData = employeeHours[emp.id];
+            if (emp.payType === 'Hourly' && (empData.hours === '' || Number(empData.hours) < 0)) {
+                return false;
+            }
+            return empData.lumpSums.every(ls => ls.description.trim() !== '' && ls.amount !== '' && Number(ls.amount) >= 0);
         });
   }, [employees, employeeHours]);
 
@@ -211,27 +255,47 @@ export function PayrollDashboard() {
             return (
                  <>
                 <DialogHeader>
-                    <DialogTitle>Step 2: Enter Hours Worked</DialogTitle>
+                    <DialogTitle>Step 2: Enter Pay Details</DialogTitle>
                     <DialogDescription>
-                        Enter the total hours worked during the pay period for each hourly employee. Salaried employees are calculated automatically.
+                        Enter hours for hourly employees and add any bonuses, expenses, or other adjustments.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="py-4 space-y-4">
+                <div className="py-4 space-y-6 max-h-[60vh] overflow-y-auto pr-4">
                     {employees.map(emp => (
-                        <div key={emp.id} className="grid grid-cols-3 items-center gap-4">
-                            <Label htmlFor={`hours-${emp.id}`}>{emp.name}</Label>
-                            {emp.payType === 'Hourly' ? (
-                                <Input
-                                    id={`hours-${emp.id}`}
-                                    type="number"
-                                    value={employeeHours[emp.id]?.hours}
-                                    onChange={(e) => handleHoursChange(emp.id, e.target.value)}
-                                    className="col-span-2"
-                                    placeholder="Enter total hours"
-                                />
-                            ) : (
-                                <p className="col-span-2 text-sm text-muted-foreground">Salaried</p>
-                            )}
+                        <div key={emp.id} className="space-y-4 p-4 border rounded-lg">
+                           <div className="flex justify-between items-center">
+                                <Label htmlFor={`hours-${emp.id}`} className="font-semibold">{emp.name}</Label>
+                                {emp.payType === 'Hourly' ? (
+                                    <div className="flex items-center gap-2 w-48">
+                                        <Input
+                                            id={`hours-${emp.id}`}
+                                            type="number"
+                                            value={employeeHours[emp.id]?.hours}
+                                            onChange={(e) => handleHoursChange(emp.id, e.target.value)}
+                                            placeholder="Total hours"
+                                        />
+                                         <Label htmlFor={`hours-${emp.id}`} className="text-sm text-muted-foreground">Hours</Label>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">Salaried</p>
+                                )}
+                           </div>
+                           <Separator />
+                           <div className="space-y-2">
+                                <Label className="text-xs text-muted-foreground">Additional Payments & Deductions</Label>
+                                {employeeHours[emp.id].lumpSums.map((ls, index) => (
+                                    <div key={ls.id} className="grid grid-cols-[1fr_120px_120px_auto] gap-2 items-center">
+                                        <Input placeholder="Description (e.g., Bonus)" value={ls.description} onChange={(e) => handleLumpSumChange(emp.id, ls.id, 'description', e.target.value)} />
+                                        <Input type="number" placeholder="Amount" value={ls.amount} onChange={(e) => handleLumpSumChange(emp.id, ls.id, 'amount', e.target.value)} />
+                                        <Select value={ls.type} onValueChange={(value: 'addition' | 'deduction') => handleLumpSumChange(emp.id, ls.id, 'type', value)}>
+                                            <SelectTrigger><SelectValue/></SelectTrigger>
+                                            <SelectContent><SelectItem value="addition">Addition</SelectItem><SelectItem value="deduction">Deduction</SelectItem></SelectContent>
+                                        </Select>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDeleteLumpSum(emp.id, ls.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                    </div>
+                                ))}
+                                <Button variant="outline" size="sm" onClick={() => handleAddLumpSum(emp.id)}><PlusCircle className="mr-2 h-4 w-4"/>Add Lump Sum</Button>
+                           </div>
                         </div>
                     ))}
                 </div>
