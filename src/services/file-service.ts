@@ -1,36 +1,18 @@
 
 'use server';
 
-import { db, storage } from '@/lib/firebase';
-import { getAdminStorage } from '@/lib/firebase-admin';
+import { adminDb as db, getAdminStorage } from '@/lib/firebase-admin';
 import {
-  collection,
-  getDocs,
-  getDoc,
-  doc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  writeBatch,
-  DocumentData,
-  QueryDocumentSnapshot,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { 
-    ref, 
-    uploadBytes, 
-    deleteObject,
-} from 'firebase/storage';
+  type DocumentData,
+  type QueryDocumentSnapshot,
+} from 'firebase-admin/firestore';
 import { type FileItem, type FolderItem } from '@/data/files';
 
 const FOLDERS_COLLECTION = 'fileFolders';
 const FILES_COLLECTION = 'files';
 
-function checkServices() {
+function checkDb() {
     if (!db) throw new Error("Firestore is not initialized.");
-    if (!storage) throw new Error("Firebase Storage is not initialized.");
 }
 
 // --- Type Converters ---
@@ -46,27 +28,27 @@ const docToFile = (doc: QueryDocumentSnapshot<DocumentData>): FileItem => {
 
 // --- Folder Functions ---
 export async function getFolders(userId: string): Promise<FolderItem[]> {
-    checkServices();
-    const q = query(collection(db, FOLDERS_COLLECTION), where("userId", "==", userId));
-    const snapshot = await getDocs(q);
+    checkDb();
+    const q = db.collection(FOLDERS_COLLECTION).where("userId", "==", userId);
+    const snapshot = await q.get();
     return snapshot.docs.map(docToFolder);
 }
 
 export async function addFolder(folderData: Omit<FolderItem, 'id'>): Promise<FolderItem> {
-    checkServices();
-    const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), { ...folderData, parentId: folderData.parentId || null });
+    checkDb();
+    const docRef = await db.collection(FOLDERS_COLLECTION).add({ ...folderData, parentId: folderData.parentId || null });
     return { id: docRef.id, ...folderData };
 }
 
 export async function updateFolder(folderId: string, folderData: Partial<Omit<FolderItem, 'id' | 'userId'>>): Promise<void> {
-    checkServices();
-    await updateDoc(doc(db, FOLDERS_COLLECTION, folderId), folderData);
+    checkDb();
+    await db.collection(FOLDERS_COLLECTION).doc(folderId).update(folderData);
 }
 
 export async function deleteFolderAndContents(userId: string, folderId: string): Promise<void> {
-    checkServices();
-    const batch = writeBatch(db);
-    const allFoldersSnapshot = await getDocs(query(collection(db, FOLDERS_COLLECTION), where("userId", "==", userId)));
+    checkDb();
+    const batch = db.batch();
+    const allFoldersSnapshot = await db.collection(FOLDERS_COLLECTION).where("userId", "==", userId).get();
     const allFolders = allFoldersSnapshot.docs.map(docToFolder);
     
     const folderIdsToDelete = new Set<string>([folderId]);
@@ -78,15 +60,15 @@ export async function deleteFolderAndContents(userId: string, folderId: string):
     };
     findDescendants(folderId);
 
-    const filesQuery = query(collection(db, FILES_COLLECTION), where('folderId', 'in', Array.from(folderIdsToDelete)));
-    const filesSnapshot = await getDocs(filesQuery);
+    const filesQuery = db.collection(FILES_COLLECTION).where('folderId', 'in', Array.from(folderIdsToDelete));
+    const filesSnapshot = await filesQuery.get();
     
     for (const fileDoc of filesSnapshot.docs) {
         const fileData = fileDoc.data() as FileItem;
         if (fileData.storagePath) {
-            const fileRef = ref(storage, fileData.storagePath);
-            await deleteObject(fileRef).catch(error => {
-                if (error.code !== 'storage/object-not-found') {
+            const fileRef = getAdminStorage().bucket().file(fileData.storagePath);
+            await fileRef.delete().catch(error => {
+                if (error.code !== 404) { // 404 means not found, which is fine
                     console.error(`Failed to delete file from storage: ${fileData.storagePath}`, error);
                 }
             });
@@ -95,7 +77,7 @@ export async function deleteFolderAndContents(userId: string, folderId: string):
     }
 
     folderIdsToDelete.forEach(id => {
-        batch.delete(doc(db, FOLDERS_COLLECTION, id));
+        batch.delete(db.collection(FOLDERS_COLLECTION).doc(id));
     });
 
     await batch.commit();
@@ -103,14 +85,14 @@ export async function deleteFolderAndContents(userId: string, folderId: string):
 
 // --- File Functions ---
 export async function getFilesForFolder(userId: string, folderId: string): Promise<FileItem[]> {
-    checkServices();
-    const q = query(collection(db, FILES_COLLECTION), where("userId", "==", userId), where("folderId", "==", folderId));
-    const snapshot = await getDocs(q);
+    checkDb();
+    const q = db.collection(FILES_COLLECTION).where("userId", "==", userId).where("folderId", "==", folderId);
+    const snapshot = await q.get();
     return snapshot.docs.map(docToFile);
 }
 
 export async function addFile(formData: FormData): Promise<FileItem> {
-    checkServices();
+    checkDb();
     
     const file = formData.get('file') as File | null;
     const userId = formData.get('userId') as string | null;
@@ -121,8 +103,12 @@ export async function addFile(formData: FormData): Promise<FileItem> {
     }
 
     const storagePath = `${userId}/${folderId}/${Date.now()}-${file.name}`;
-    const storageRef = ref(storage, storagePath);
-    await uploadBytes(storageRef, file);
+    const bucket = getAdminStorage().bucket();
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    await bucket.file(storagePath).save(buffer, {
+        contentType: file.type,
+    });
 
     const fileData: Omit<FileItem, 'id'> = {
         name: file.name,
@@ -133,27 +119,27 @@ export async function addFile(formData: FormData): Promise<FileItem> {
         userId,
         storagePath,
     };
-    const docRef = await addDoc(collection(db, FILES_COLLECTION), fileData);
+    const docRef = await db.collection(FILES_COLLECTION).add(fileData);
     return { id: docRef.id, ...fileData };
 }
 
 export async function updateFile(fileId: string, data: Partial<Omit<FileItem, 'id' | 'userId'>>): Promise<void> {
-    checkServices();
-    await updateDoc(doc(db, FILES_COLLECTION, fileId), { ...data, modifiedAt: serverTimestamp() });
+    checkDb();
+    await db.collection(FILES_COLLECTION).doc(fileId).update({ ...data, modifiedAt: new Date() });
 }
 
 export async function deleteFiles(fileIds: string[]): Promise<void> {
-    checkServices();
-    const batch = writeBatch(db);
+    checkDb();
+    const batch = db.batch();
     for (const id of fileIds) {
-        const fileRef = doc(db, FILES_COLLECTION, id);
-        const fileDoc = await getDoc(fileRef);
-        if (fileDoc.exists()) {
+        const fileRef = db.collection(FILES_COLLECTION).doc(id);
+        const fileDoc = await fileRef.get();
+        if (fileDoc.exists) {
             const fileData = fileDoc.data() as FileItem;
             if (fileData.storagePath) {
-                const storageRef = ref(storage, fileData.storagePath);
-                await deleteObject(storageRef).catch(error => {
-                    if (error.code !== 'storage/object-not-found') {
+                const storageFileRef = getAdminStorage().bucket().file(fileData.storagePath);
+                await storageFileRef.delete().catch(error => {
+                   if (error.code !== 404) {
                         console.error(`Failed to delete file from storage: ${fileData.storagePath}`, error);
                     }
                 });
@@ -165,8 +151,8 @@ export async function deleteFiles(fileIds: string[]): Promise<void> {
 }
 
 export async function getFileDownloadUrl(storagePath: string): Promise<string> {
-    const adminStorage = getAdminStorage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
-    const file = adminStorage.file(storagePath);
+    const bucket = getAdminStorage().bucket();
+    const file = bucket.file(storagePath);
     
     const [url] = await file.getSignedUrl({
         action: 'read',
@@ -177,8 +163,8 @@ export async function getFileDownloadUrl(storagePath: string): Promise<string> {
 }
 
 export async function getFileContent(storagePath: string): Promise<string> {
-    const adminStorage = getAdminStorage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
-    const file = adminStorage.file(storagePath);
+    const bucket = getAdminStorage().bucket();
+    const file = bucket.file(storagePath);
     
     const [contents] = await file.download();
     return contents.toString('utf-8');
@@ -187,7 +173,7 @@ export async function getFileContent(storagePath: string): Promise<string> {
 
 // --- Special Function for Saving Emails ---
 export async function saveEmailForContact(userId: string, contactName: string, emailContent: { subject: string; body: string; }) {
-    checkServices();
+    checkDb();
     const filesRoot = await getFolders(userId);
     let contactRootFolder = filesRoot.find(f => f.name === "Client Documents" && !f.parentId);
     if (!contactRootFolder) {

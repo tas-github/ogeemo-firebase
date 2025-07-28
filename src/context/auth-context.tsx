@@ -5,13 +5,14 @@ import type { User } from 'firebase/auth';
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { initializeFirebase, FirebaseServices } from '@/lib/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   accessToken: string | null;
-  firebaseServices: FirebaseServices | null; // Expose services to consumers
+  firebaseServices: FirebaseServices | null;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,7 +30,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // This effect handles the entire initialization and auth subscription flow.
     initializeFirebase()
       .then(services => {
         setFirebaseServices(services);
@@ -41,43 +41,73 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           setIsLoading(false);
         });
-        return unsubscribe; // Return the unsubscribe function for cleanup.
+        return unsubscribe;
       })
       .catch(err => {
         console.error("Firebase initialization failed:", err);
         setInitializationError(err.message);
-        setIsLoading(false); // Stop loading on error to show the error message.
+        setIsLoading(false);
       });
   }, []);
-  
-  // Effect for handling Google Access Token from session storage
-  useEffect(() => {
-    if (user && !accessToken) {
-      const storedToken = sessionStorage.getItem('google_access_token');
-      if (storedToken) {
-        setAccessToken(storedToken);
-      }
-    }
-  }, [user, accessToken]);
 
-  // Effect for handling redirects based on auth state
   useEffect(() => {
-    if (!isLoading) {
+    const handleAuthChange = async (user: User | null) => {
+      console.log('Auth state changed. User:', user ? user.uid : null);
+      if (user) {
+        try {
+          console.log('Getting ID token...');
+          const idToken = await user.getIdToken();
+          console.log('ID token received. Calling session API...');
+          const response = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+          });
+          const responseData = await response.json();
+          console.log('Session API response:', response.status, responseData);
+          console.log('Document cookie after login:', document.cookie);
+
+
+          const storedToken = sessionStorage.getItem('google_access_token');
+          if (storedToken) {
+            setAccessToken(storedToken);
+          }
+        } catch (error) {
+            console.error("Failed to set session cookie", error)
+        }
+      } else {
+        console.log('User logged out. Deleting session cookie...');
+        const response = await fetch('/api/auth/session', { method: 'DELETE' });
+        const responseData = await response.json();
+        console.log('Delete session API response:', response.status, responseData);
+        console.log('Document cookie after logout:', document.cookie);
+      }
+    };
+    handleAuthChange(user);
+  }, [user]);
+
+
+  useEffect(() => {
+    if (!isLoading && pathname) {
       const isPublicPath = publicPaths.includes(pathname);
       const isMarketingPath = marketingPaths.some(p => pathname.startsWith(p)) || pathname === '/';
       
-      // If user is not logged in and not on a public/marketing page, redirect to login.
       if (!user && !isPublicPath && !isMarketingPath) {
         router.push('/login');
       } 
-      // If user is logged in and on a public login/register page, redirect to dashboard.
       else if (user && isPublicPath) {
         router.push('/dashboard');
       }
     }
   }, [user, isLoading, pathname, router]);
 
-
+  const logout = async () => {
+    if (firebaseServices) {
+      await signOut(firebaseServices.auth);
+      router.push('/login');
+    }
+  };
+  
   if (initializationError) {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center bg-red-100 p-4 text-center text-red-800">
@@ -88,7 +118,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // Show a loading indicator during the initial auth check.
   if (isLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
@@ -97,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  const value = { user, isLoading, accessToken, firebaseServices };
+  const value = { user, isLoading, accessToken, firebaseServices, logout };
 
   return (
     <AuthContext.Provider value={value}>

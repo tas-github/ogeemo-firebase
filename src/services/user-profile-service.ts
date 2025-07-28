@@ -1,15 +1,8 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
-import {
-  collection,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  serverTimestamp,
-} from 'firebase/firestore';
+import { adminDb as db } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 
 export interface UserProfile {
     id: string; // This will be the user's UID
@@ -35,10 +28,10 @@ function checkDb() {
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
     checkDb();
-    const docRef = doc(db, PROFILES_COLLECTION, userId);
-    const docSnap = await getDoc(docRef);
+    const docRef = db.collection(PROFILES_COLLECTION).doc(userId);
+    const docSnap = await docRef.get();
 
-    if (docSnap.exists()) {
+    if (docSnap.exists) {
         return { id: docSnap.id, ...docSnap.data() } as UserProfile;
     } else {
         return null;
@@ -51,21 +44,19 @@ export async function updateUserProfile(
     data: Partial<Omit<UserProfile, 'id' | 'email' | 'createdAt' | 'updatedAt'>>
 ): Promise<void> {
     checkDb();
-    const docRef = doc(db, PROFILES_COLLECTION, userId);
-    const docSnap = await getDoc(docRef);
+    const docRef = db.collection(PROFILES_COLLECTION).doc(userId);
+    const docSnap = await docRef.get();
 
-    const dataWithTimestamp = {
+    const dataWithTimestamp: { [key: string]: any } = {
         ...data,
-        updatedAt: serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
     };
 
-    if (docSnap.exists()) {
-        await updateDoc(docRef, dataWithTimestamp);
+    if (docSnap.exists) {
+        await docRef.update(dataWithTimestamp);
     } else {
-        await setDoc(docRef, {
-            ...dataWithTimestamp,
-            email,
-            createdAt: serverTimestamp(),
-        });
+        dataWithTimestamp.email = email;
+        dataWithTimestamp.createdAt = FieldValue.serverTimestamp();
+        await docRef.set(dataWithTimestamp);
     }
 }

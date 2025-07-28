@@ -10,10 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Clock, Play, Pause, Square, LoaderCircle, Save } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
-import { getProjects, type Project } from '@/services/project-service';
-import { getContacts, type Contact } from '@/services/contact-service';
+import { type Project, type Event as TaskEvent } from '@/types/calendar';
+import { type Contact } from '@/data/contacts';
 import { addEventEntry, type EventEntry } from '@/services/client-manager-service';
-import { addTask, type Event as TaskEvent } from '@/services/project-service';
+import { addTask } from '@/services/project-service';
 import { Checkbox } from '../ui/checkbox';
 import { Textarea } from '../ui/textarea';
 import { NewTaskDialog } from '../tasks/NewTaskDialog';
@@ -42,7 +42,12 @@ const formatTime = (totalSeconds: number) => {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
-export function TimeManagerView() {
+interface TimeManagerViewProps {
+    projects: Project[];
+    contacts: Contact[];
+}
+
+export function TimeManagerView({ projects, contacts }: TimeManagerViewProps) {
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [isActive, setIsActive] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
@@ -58,10 +63,6 @@ export function TimeManagerView() {
     // State for scheduling
     const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
     const [scheduleInitialData, setScheduleInitialData] = useState({});
-
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [contacts, setContacts] = useState<Contact[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
 
     const { user } = useAuth();
     const { toast } = useToast();
@@ -112,30 +113,6 @@ export function TimeManagerView() {
             window.removeEventListener('storage', updateTimerState);
         };
     }, [updateTimerState]);
-
-
-    useEffect(() => {
-        async function loadData() {
-            if (!user) {
-                setIsLoading(false);
-                return;
-            }
-            setIsLoading(true);
-            try {
-                const [projectsData, contactsData] = await Promise.all([
-                    getProjects(user.uid),
-                    getContacts(user.uid),
-                ]);
-                setProjects(projectsData);
-                setContacts(contactsData);
-            } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
-            } finally {
-                setIsLoading(false);
-            }
-        }
-        loadData();
-    }, [user, toast]);
 
     const handleStartTimer = () => {
         const now = Date.now();
@@ -300,22 +277,13 @@ export function TimeManagerView() {
             return;
         }
         try {
-            await addTask({ ...taskData, userId: user.uid });
+            await addTask({ ...taskData, userId: user.uid, position: 0 });
             toast({ title: "Event Scheduled", description: `"${taskData.title}" has been added to your calendar.` });
             handleReset(false);
         } catch (error: any) {
              toast({ variant: 'destructive', title: 'Failed to create event', description: error.message });
         }
     };
-
-
-    if (isLoading) {
-        return (
-            <div className="flex h-full w-full items-center justify-center">
-                <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
-            </div>
-        )
-    }
 
     return (
         <>

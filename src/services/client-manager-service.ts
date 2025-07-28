@@ -1,19 +1,8 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
-import {
-  collection,
-  getDocs,
-  doc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  DocumentData,
-  QueryDocumentSnapshot,
-} from 'firebase/firestore';
+import { adminDb as db } from '@/lib/firebase-admin';
+import type { DocumentData, QueryDocumentSnapshot } from 'firebase-admin/firestore';
 
 // --- Interfaces ---
 export interface ClientAccount {
@@ -62,8 +51,8 @@ const docToEventEntry = (doc: QueryDocumentSnapshot<DocumentData>): EventEntry =
 // --- Client Account Functions ---
 export async function getClientAccounts(userId: string): Promise<ClientAccount[]> {
   checkDb();
-  const q = query(collection(db, CLIENT_ACCOUNTS_COLLECTION), where("userId", "==", userId));
-  const snapshot = await getDocs(q);
+  const q = db.collection(CLIENT_ACCOUNTS_COLLECTION).where("userId", "==", userId);
+  const snapshot = await q.get();
   return snapshot.docs.map(docToClientAccount);
 }
 
@@ -73,25 +62,25 @@ export async function getClientAccounts(userId: string): Promise<ClientAccount[]
 // --- Event Entry Functions ---
 export async function getEventEntries(userId: string): Promise<EventEntry[]> {
   checkDb();
-  const q = query(collection(db, EVENT_ENTRIES_COLLECTION), where("userId", "==", userId));
-  const snapshot = await getDocs(q);
+  const q = db.collection(EVENT_ENTRIES_COLLECTION).where("userId", "==", userId);
+  const snapshot = await q.get();
   return snapshot.docs.map(docToEventEntry).sort((a,b) => b.startTime.getTime() - a.startTime.getTime());
 }
 
 export async function addEventEntry(entryData: Omit<EventEntry, 'id'>): Promise<EventEntry> {
   checkDb();
-  const docRef = await addDoc(collection(db, EVENT_ENTRIES_COLLECTION), entryData);
+  const docRef = await db.collection(EVENT_ENTRIES_COLLECTION).add(entryData);
   return { id: docRef.id, ...entryData };
 }
 
 export async function updateEventEntry(entryId: string, entryData: Partial<Omit<EventEntry, 'id' | 'userId' | 'accountId'>>): Promise<void> {
     checkDb();
-    const entryRef = doc(db, EVENT_ENTRIES_COLLECTION, entryId);
-    await updateDoc(entryRef, entryData);
+    const entryRef = db.collection(EVENT_ENTRIES_COLLECTION).doc(entryId);
+    await entryRef.update(entryData);
 }
 
 export async function deleteEventEntry(entryId: string): Promise<void> {
     checkDb();
-    const entryRef = doc(db, EVENT_ENTRIES_COLLECTION, entryId);
-    await deleteDoc(entryRef);
+    const entryRef = db.collection(EVENT_ENTRIES_COLLECTION).doc(entryId);
+    await entryRef.delete();
 }
