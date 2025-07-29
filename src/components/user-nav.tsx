@@ -24,22 +24,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { navLinks } from "@/lib/constants";
 
-function GoogleIcon() {
-    return (
-        <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="mr-2 h-4 w-4"
-          >
-            <path d="M18 14a6 6 0 0 1-6 6h-1a6 6 0 1 1 5-10l-2 2h3" />
-        </svg>
-    )
-}
-
 export function UserNav() {
   const { state: sidebarState } = useSidebar();
   const { user } = useAuth();
@@ -96,12 +80,6 @@ export function UserNav() {
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
           </Link>
-        </DropdownMenuItem>
-         <DropdownMenuItem asChild>
-            <Link href="/google">
-                <GoogleIcon />
-                <span>Google</span>
-            </Link>
         </DropdownMenuItem>
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
