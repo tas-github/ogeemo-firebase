@@ -58,7 +58,7 @@ export default function HomePage() {
     if (user) {
       return (
         <Button asChild size="lg">
-          <Link href="/dashboard">Go to Dashboard</Link>
+          <Link href="/register">Sign up to be a beta tester</Link>
         </Button>
       );
     }
