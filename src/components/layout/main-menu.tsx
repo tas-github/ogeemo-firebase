@@ -80,18 +80,6 @@ export function MainMenu() {
       <SidebarMenuItem>
         <SidebarMenuButton
           asChild
-          isActive={isActive("/action-manager")}
-          tooltip="Action Manager"
-        >
-          <Link href="/action-manager" onClick={(e) => handleClick(e, "/action-manager")}>
-            <Wand2 />
-            <span>Action Manager</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
           isActive={isActive("/ogeemail...")}
           tooltip="OgeeMail"
         >
