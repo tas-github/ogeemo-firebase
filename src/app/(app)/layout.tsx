@@ -9,6 +9,7 @@ import { UserNav } from '@/components/user-nav';
 import { Logo } from '@/components/logo';
 import { ClientLayout } from '@/components/layout/client-layout';
 import { ActiveTimerIndicator } from '@/components/layout/active-timer-indicator';
+import { SiteFooter } from '@/components/landing/footer';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -25,8 +26,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <UserNav />
           </SidebarHeader>
         </Sidebar>
-        <main className="flex-1 relative">
-          {children}
+        <main className="flex-1 relative flex flex-col h-screen overflow-y-auto">
+          <div className="flex-1">
+            {children}
+          </div>
+          <SiteFooter />
           <ActiveTimerIndicator />
         </main>
       </ClientLayout>
