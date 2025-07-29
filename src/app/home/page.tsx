@@ -55,17 +55,11 @@ export default function HomePage() {
       return <Button size="lg" disabled>Loading...</Button>;
     }
 
-    if (user) {
-      return (
-        <Button asChild size="lg">
-          <Link href="/register">Sign up to be a beta tester</Link>
-        </Button>
-      );
-    }
+    const buttonText = user ? "Sign up to be a beta tester" : "Join Beta Program";
 
     return (
       <Button asChild size="lg">
-        <Link href="/register">Join Beta Program</Link>
+        <Link href="/register">{buttonText}</Link>
       </Button>
     );
   };
