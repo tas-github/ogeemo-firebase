@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LogOut, Settings, User as UserIcon, MoreHorizontal, Info, Newspaper, FileText, ShieldCheck } from "lucide-react";
+import { LogOut, Settings, User as UserIcon, MoreHorizontal, Info, Newspaper, FileText, ShieldCheck, MessageSquare } from "lucide-react";
 import { signOut } from "firebase/auth";
 
 import { initializeFirebase } from "@/lib/firebase";
@@ -22,6 +22,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+function GoogleIcon() {
+    return (
+        <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="mr-2 h-4 w-4"
+          >
+            <path d="M18 14a6 6 0 0 1-6 6h-1a6 6 0 1 1 5-10l-2 2h3" />
+        </svg>
+    )
+}
 
 export function UserNav() {
   const { state: sidebarState } = useSidebar();
@@ -80,11 +96,18 @@ export function UserNav() {
             <span>Settings</span>
           </Link>
         </DropdownMenuItem>
+         <DropdownMenuItem asChild>
+            <Link href="/google">
+                <GoogleIcon />
+                <span>Google</span>
+            </Link>
+        </DropdownMenuItem>
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
       <DropdownMenuGroup>
         <DropdownMenuItem asChild><Link href="/about"><Info className="mr-2 h-4 w-4" /><span>About Us</span></Link></DropdownMenuItem>
         <DropdownMenuItem asChild><Link href="/news"><Newspaper className="mr-2 h-4 w-4" /><span>News</span></Link></DropdownMenuItem>
+        <DropdownMenuItem asChild><Link href="/contact"><MessageSquare className="mr-2 h-4 w-4" /><span>Contact Us</span></Link></DropdownMenuItem>
         <DropdownMenuItem asChild><Link href="/privacy"><FileText className="mr-2 h-4 w-4" /><span>Privacy Policy</span></Link></DropdownMenuItem>
         <DropdownMenuItem asChild><Link href="/terms"><ShieldCheck className="mr-2 h-4 w-4" /><span>Terms of Service</span></Link></DropdownMenuItem>
       </DropdownMenuGroup>
