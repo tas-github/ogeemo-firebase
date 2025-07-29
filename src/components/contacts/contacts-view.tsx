@@ -55,8 +55,17 @@ import { type Contact, type FolderData } from '@/data/contacts';
 import { useToast } from '@/hooks/use-toast';
 import { addFolder, getContacts, getFolders, deleteContacts, addContact, updateContact, updateFolder, deleteFoldersAndContents } from '@/services/contact-service';
 import { useAuth } from '@/context/auth-context';
-import { getGoogleContacts, type GoogleContact } from '@/services/google-service';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-form-dialog'), {
   loading: () => (
@@ -65,26 +74,6 @@ const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-fo
     </div>
   ),
 });
-
-const GoogleImportInstructionsDialog = dynamic(() => import('@/components/contacts/google-import-instructions-dialog'), {
-  loading: () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <LoaderCircle className="h-10 w-10 animate-spin text-white" />
-    </div>
-  ),
-});
-
-
-function GoogleIcon() {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-4 w-4 mr-2">
-            <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
-            <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"/>
-            <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.222 0-9.618-3.229-11.303-7.582l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/>
-            <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.447-2.274 4.481-4.244 5.892l6.19 5.238C42.012 35.245 44 30.028 44 24c0-1.341-.138-2.65-.389-3.917z"/>
-        </svg>
-    )
-}
 
 const ItemTypes = {
   CONTACT: 'contact',
@@ -110,19 +99,13 @@ export function ContactsView() {
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [contactToEdit, setContactToEdit] = useState<Contact | null>(null);
   
-  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [isImportLoading, setIsImportLoading] = useState(false);
-  const [googleContacts, setGoogleContacts] = useState<GoogleContact[]>([]);
-  const [selectedGoogleContacts, setSelectedGoogleContacts] = useState<string[]>([]);
   const [folderToDelete, setFolderToDelete] = useState<FolderData | null>(null);
+  const [foldersToDelete, setFoldersToDelete] = useState<string[] | null>(null);
+
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
-  const [showGoogleInstructions, setShowGoogleInstructions] = useState(true);
-  const [isInstructionsDialogOpen, setIsInstructionsDialogOpen] = useState(false);
-
   const { toast } = useToast();
-  const { user, accessToken } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   
   const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
@@ -133,17 +116,6 @@ export function ContactsView() {
           canDropToRoot: monitor.canDrop(),
       }),
   }));
-
-  useEffect(() => {
-    try {
-      const hideInstructions = localStorage.getItem('hideGoogleImportInstructions') === 'true';
-      if (hideInstructions) {
-        setShowGoogleInstructions(false);
-      }
-    } catch (error) {
-      console.error("Could not read from localStorage", error);
-    }
-  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -284,33 +256,29 @@ export function ContactsView() {
   
   const handleDeleteSelectedFolders = () => {
     if (selectedFolderIds.length === 0) return;
-    if (!window.confirm(`Are you sure you want to delete ${selectedFolderIds.length} folder(s)? This will also delete all subfolders and contacts within them. This action cannot be undone.`)) return;
-    
-    handleConfirmDelete(selectedFolderIds);
+    setFoldersToDelete(selectedFolderIds);
   };
 
-  const handleConfirmDelete = async (ids: string[]) => {
+  const handleConfirmDelete = async () => {
     if (!user) return;
+    const idsToDelete = foldersToDelete || (folderToDelete ? [folderToDelete.id] : []);
+    if (idsToDelete.length === 0) return;
+
     try {
-        await deleteFoldersAndContents(user.uid, ids);
+        await deleteFoldersAndContents(user.uid, idsToDelete);
         
-        // Refetch all data to ensure consistency
-        const [refetchedFolders, refetchedContacts] = await Promise.all([
-            getFolders(user.uid),
-            getContacts(user.uid),
-        ]);
-        setFolders(refetchedFolders);
-        setContacts(refetchedContacts);
+        setFolders(prev => prev.filter(f => !idsToDelete.includes(f.id)));
+        setContacts(prev => prev.filter(c => !idsToDelete.includes(c.folderId)));
         
-        // Reset selections
-        if (ids.includes(selectedFolderId)) setSelectedFolderId('all');
+        if (idsToDelete.includes(selectedFolderId)) setSelectedFolderId('all');
         setSelectedFolderIds([]);
         
-        toast({ title: `${ids.length} Folder(s) Deleted` });
+        toast({ title: `${idsToDelete.length} Folder(s) Deleted` });
     } catch (error: any) {
         toast({ variant: "destructive", title: "Delete Failed", description: error.message });
     } finally {
-        setFolderToDelete(null); // Clear single delete state if it was set
+        setFolderToDelete(null);
+        setFoldersToDelete(null);
     }
   };
 
@@ -341,83 +309,6 @@ export function ContactsView() {
       handleCancelRename();
     }
   };
-
-  const startGoogleImportFlow = async () => {
-    if (!accessToken) {
-        setIsAuthDialogOpen(true);
-        return;
-    }
-    setIsImportDialogOpen(true);
-    setIsImportLoading(true);
-    setGoogleContacts([]);
-    setSelectedGoogleContacts([]);
-    
-    try {
-        const result = await getGoogleContacts(accessToken);
-        setGoogleContacts(result.contacts);
-    } catch (error: any) {
-        toast({ variant: "destructive", title: "Failed to fetch Google Contacts", description: error.message });
-        setIsImportDialogOpen(false);
-    } finally {
-        setIsImportLoading(false);
-    }
-  };
-  
-  const handleOpenImportDialog = () => {
-    if (showGoogleInstructions) {
-        setIsInstructionsDialogOpen(true);
-    } else {
-        startGoogleImportFlow();
-    }
-  };
-  
-  const handleProceedFromInstructions = (dontShowAgain: boolean) => {
-    if (dontShowAgain) {
-        try {
-            localStorage.setItem('hideGoogleImportInstructions', 'true');
-            setShowGoogleInstructions(false);
-        } catch (error) {
-            console.error("Could not write to localStorage", error);
-        }
-    }
-    setIsInstructionsDialogOpen(false);
-    startGoogleImportFlow();
-  };
-
-  const handleImportSelected = async () => {
-    if (!user) return;
-    let googleFolder = folders.find(f => f.name === "Google Contacts");
-    if (!googleFolder) {
-        googleFolder = await addFolder({ name: "Google Contacts", userId: user.uid, parentId: null });
-        setFolders(prev => [...prev, googleFolder!]);
-    }
-    
-    const contactsToImport = googleContacts.filter(gc => selectedGoogleContacts.includes(gc.resourceName));
-    
-    let importedCount = 0;
-    const newOgeemoContacts: Contact[] = [];
-    for (const gc of contactsToImport) {
-        try {
-            const newContactData: Omit<Contact, 'id'> = {
-                name: gc.names?.[0]?.displayName || 'Unknown Name',
-                email: gc.emailAddresses?.[0]?.value || '',
-                businessPhone: gc.phoneNumbers?.find(p => p.type === 'work')?.value,
-                cellPhone: gc.phoneNumbers?.find(p => p.type === 'mobile')?.value,
-                homePhone: gc.phoneNumbers?.find(p => p.type === 'home')?.value,
-                folderId: googleFolder.id,
-                userId: user.uid,
-                notes: `Imported from Google Contacts on ${new Date().toLocaleDateString()}`,
-            };
-            const newContact = await addContact(newContactData);
-            newOgeemoContacts.push(newContact);
-            importedCount++;
-        } catch(e) { console.error("Failed to import contact", gc.names?.[0]?.displayName, e); }
-    }
-    
-    setContacts(prev => [...prev, ...newOgeemoContacts]);
-    toast({ title: "Import Complete", description: `Imported ${importedCount} contacts.` });
-    setIsImportDialogOpen(false);
-  }
 
   const handleContactDrop = async (contact: Contact, newFolderId: string) => {
     if (contact.folderId === newFolderId) return;
@@ -622,7 +513,6 @@ export function ContactsView() {
                                 )}
                               </div>
                               <div className="flex items-center gap-2">
-                                  <Button variant="outline" onClick={handleOpenImportDialog} disabled={!user}><GoogleIcon /> Import from Google</Button>
                                   <Button onClick={handleNewContactClick} className="bg-orange-500 hover:bg-orange-600 text-white"><Plus className="mr-2 h-4 w-4" /> Add Contact</Button>
                               </div>
                           </>
@@ -690,28 +580,20 @@ export function ContactsView() {
           </DialogContent>
       </Dialog>
       
-      <Dialog open={folderToDelete !== null} onOpenChange={() => setFolderToDelete(null)}>
-          <DialogContent><DialogHeader><DialogTitle>Delete Folder</DialogTitle><DialogDescription>Are you sure you want to delete the "{folderToDelete?.name}" folder and all contacts within it? This action cannot be undone.</DialogDescription></DialogHeader><DialogFooter><Button variant="ghost" onClick={() => setFolderToDelete(null)}>Cancel</Button><Button variant="destructive" onClick={() => handleConfirmDelete([folderToDelete!.id])}>Delete</Button></DialogFooter></DialogContent>
-      </Dialog>
-      
-      <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
-          <DialogContent><DialogHeader><DialogTitle>Authentication Required</DialogTitle><DialogDescription>To import contacts, you need to connect your Google account and grant permission. Please go to the Google Integration page to sign in.</DialogDescription></DialogHeader><DialogFooter><Button onClick={() => {setIsAuthDialogOpen(false); router.push('/google');}}>Go to Google Integration</Button></DialogFooter></DialogContent>
-      </Dialog>
-      
-      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-          <DialogContent className="sm:max-w-lg h-[80vh] flex flex-col"><DialogHeader><DialogTitle>Import Google Contacts</DialogTitle><DialogDescription>Select contacts to import into a "Google Contacts" folder.</DialogDescription></DialogHeader>
-          {isImportLoading ? <div className="flex-1 flex items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin" /></div> : <ScrollArea className="flex-1 -mx-6 my-4 border-y"><div className="p-4 space-y-1">{googleContacts.map(contact => (<div key={contact.resourceName} className="flex items-center p-2 rounded-md hover:bg-accent space-x-3"><Checkbox id={contact.resourceName} checked={selectedGoogleContacts.includes(contact.resourceName)} onCheckedChange={() => setSelectedGoogleContacts(p => p.includes(contact.resourceName) ? p.filter(rn => rn !== contact.resourceName) : [...p, contact.resourceName])} /><Label htmlFor={contact.resourceName} className="flex-1 cursor-pointer"><p className="font-semibold">{contact.names?.[0]?.displayName || 'N/A'}</p><p className="text-sm text-muted-foreground">{contact.emailAddresses?.[0]?.value || 'No email'}</p></Label></div>))}</div></ScrollArea>}
-          <DialogFooter><Button variant="ghost" onClick={() => setIsImportDialogOpen(false)}>Cancel</Button><Button onClick={handleImportSelected} disabled={isImportLoading || selectedGoogleContacts.length === 0}>Import ({selectedGoogleContacts.length})</Button></DialogFooter>
-          </DialogContent>
-      </Dialog>
-      
-      {isInstructionsDialogOpen && (
-        <GoogleImportInstructionsDialog
-          isOpen={isInstructionsDialogOpen}
-          onOpenChange={setIsInstructionsDialogOpen}
-          onProceed={handleProceedFromInstructions}
-        />
-      )}
+      <AlertDialog open={folderToDelete !== null || foldersToDelete !== null} onOpenChange={() => { setFolderToDelete(null); setFoldersToDelete(null); }}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    {foldersToDelete ? `This will permanently delete ${foldersToDelete.length} folder(s), including all their subfolders and contacts.` : `This will permanently delete the "${folderToDelete?.name}" folder, including all its subfolders and contacts.`} This action cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
