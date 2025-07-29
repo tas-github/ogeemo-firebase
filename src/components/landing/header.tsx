@@ -11,7 +11,7 @@ export function SiteHeader() {
         </div>
         <div className="flex flex-1 items-center justify-end space-x-4">
             <Button asChild>
-                <Link href="/register">Join Beta Program</Link>
+                <Link href="/login">Log In</Link>
             </Button>
         </div>
       </div>
