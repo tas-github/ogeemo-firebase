@@ -1,8 +1,19 @@
 
-'use server';
+'use client';
 
-import { adminDb as db } from '@/lib/firebase-admin';
-import type { DocumentData, QueryDocumentSnapshot, Timestamp } from 'firebase-admin/firestore';
+import { 
+    getFirestore, 
+    collection, 
+    getDocs, 
+    doc, 
+    addDoc, 
+    updateDoc, 
+    deleteDoc, 
+    query, 
+    where, 
+    Timestamp 
+} from 'firebase/firestore';
+import { initializeFirebase } from '@/lib/firebase';
 
 // --- Interfaces ---
 export interface ClientAccount {
@@ -29,15 +40,13 @@ export interface EventEntry {
 const CLIENT_ACCOUNTS_COLLECTION = 'clientAccounts';
 const EVENT_ENTRIES_COLLECTION = 'eventEntries';
 
-
-function checkDb() {
-  if (!db) {
-    throw new Error("Firestore is not initialized. Please check your Firebase configuration.");
-  }
+async function getDb() {
+    const { db } = await initializeFirebase();
+    return db;
 }
 
 // Helper to convert Firestore doc to our types
-const docToClientAccount = (doc: QueryDocumentSnapshot<DocumentData>): ClientAccount => {
+const docToClientAccount = (doc: any): ClientAccount => {
     const data = doc.data();
     return {
         id: doc.id,
@@ -45,7 +54,7 @@ const docToClientAccount = (doc: QueryDocumentSnapshot<DocumentData>): ClientAcc
         createdAt: (data.createdAt as Timestamp)?.toDate ? (data.createdAt as Timestamp).toDate() : new Date(),
     } as ClientAccount;
 };
-const docToEventEntry = (doc: QueryDocumentSnapshot<DocumentData>): EventEntry => {
+const docToEventEntry = (doc: any): EventEntry => {
     const data = doc.data();
     return {
         id: doc.id,
@@ -58,9 +67,9 @@ const docToEventEntry = (doc: QueryDocumentSnapshot<DocumentData>): EventEntry =
 
 // --- Client Account Functions ---
 export async function getClientAccounts(userId: string): Promise<ClientAccount[]> {
-  checkDb();
-  const q = db.collection(CLIENT_ACCOUNTS_COLLECTION).where("userId", "==", userId);
-  const snapshot = await q.get();
+  const db = await getDb();
+  const q = query(collection(db, CLIENT_ACCOUNTS_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
   return snapshot.docs.map(docToClientAccount);
 }
 
@@ -69,26 +78,26 @@ export async function getClientAccounts(userId: string): Promise<ClientAccount[]
 
 // --- Event Entry Functions ---
 export async function getEventEntries(userId: string): Promise<EventEntry[]> {
-  checkDb();
-  const q = db.collection(EVENT_ENTRIES_COLLECTION).where("userId", "==", userId);
-  const snapshot = await q.get();
+  const db = await getDb();
+  const q = query(collection(db, EVENT_ENTRIES_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
   return snapshot.docs.map(docToEventEntry).sort((a,b) => b.startTime.getTime() - a.startTime.getTime());
 }
 
 export async function addEventEntry(entryData: Omit<EventEntry, 'id'>): Promise<EventEntry> {
-  checkDb();
-  const docRef = await db.collection(EVENT_ENTRIES_COLLECTION).add(entryData);
+  const db = await getDb();
+  const docRef = await addDoc(collection(db, EVENT_ENTRIES_COLLECTION), entryData);
   return { id: docRef.id, ...entryData };
 }
 
 export async function updateEventEntry(entryId: string, entryData: Partial<Omit<EventEntry, 'id' | 'userId' | 'accountId'>>): Promise<void> {
-    checkDb();
-    const entryRef = db.collection(EVENT_ENTRIES_COLLECTION).doc(entryId);
-    await entryRef.update(entryData);
+    const db = await getDb();
+    const entryRef = doc(db, EVENT_ENTRIES_COLLECTION, entryId);
+    await updateDoc(entryRef, entryData);
 }
 
 export async function deleteEventEntry(entryId: string): Promise<void> {
-    checkDb();
-    const entryRef = db.collection(EVENT_ENTRIES_COLLECTION).doc(entryId);
-    await entryRef.delete();
+    const db = await getDb();
+    const entryRef = doc(db, EVENT_ENTRIES_COLLECTION, entryId);
+    await deleteDoc(entryRef);
 }

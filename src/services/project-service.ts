@@ -1,12 +1,20 @@
 
-'use server';
+'use client';
 
-import { adminDb as db } from '@/lib/firebase-admin';
 import {
-  type DocumentData,
-  type QueryDocumentSnapshot,
+  getFirestore,
+  collection,
+  getDocs,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  writeBatch,
   Timestamp,
-} from 'firebase-admin/firestore';
+} from 'firebase/firestore';
+import { initializeFirebase } from '@/lib/firebase';
 import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep } from '@/types/calendar';
 import { addMinutes } from 'date-fns';
 
@@ -14,14 +22,13 @@ const PROJECTS_COLLECTION = 'projects';
 const TASKS_COLLECTION = 'tasks';
 const TEMPLATES_COLLECTION = 'projectTemplates';
 
-function checkDb() {
-  if (!db) {
-    throw new Error("Firestore is not initialized. Please check your Firebase configuration.");
-  }
+async function getDb() {
+    const { db } = await initializeFirebase();
+    return db;
 }
 
 // --- Type Converters ---
-const docToProject = (doc: QueryDocumentSnapshot<DocumentData> | DocumentData): Project => {
+const docToProject = (doc: any): Project => {
   const data = doc.data();
   if (!data) throw new Error("Document data is missing.");
   return {
@@ -43,7 +50,7 @@ const docToProject = (doc: QueryDocumentSnapshot<DocumentData> | DocumentData): 
   };
 };
 
-const docToTask = (doc: QueryDocumentSnapshot<DocumentData> | DocumentData): TaskEvent => {
+const docToTask = (doc: any): TaskEvent => {
   const data = doc.data();
   if (!data) throw new Error("Document data is missing.");
   return {
@@ -62,40 +69,47 @@ const docToTask = (doc: QueryDocumentSnapshot<DocumentData> | DocumentData): Tas
   };
 };
 
-const docToTemplate = (doc: QueryDocumentSnapshot<DocumentData>): ProjectTemplate => ({ id: doc.id, ...doc.data() } as ProjectTemplate);
+const docToTemplate = (doc: any): ProjectTemplate => ({ id: doc.id, ...doc.data() } as ProjectTemplate);
 
 // --- Project Functions ---
 
 export async function getProjects(userId: string): Promise<Project[]> {
-  checkDb();
-  const q = db.collection(PROJECTS_COLLECTION).where("userId", "==", userId);
-  const snapshot = await q.get();
+  const db = await getDb();
+  const q = query(collection(db, PROJECTS_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
   return snapshot.docs.map(docToProject).sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function getProjectById(projectId: string): Promise<Project | null> {
-    checkDb();
-    const projectRef = db.collection(PROJECTS_COLLECTION).doc(projectId);
-    const projectSnap = await projectRef.get();
-    if (projectSnap.exists) {
+    const db = await getDb();
+    const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
+    const projectSnap = await getDoc(projectRef);
+    if (projectSnap.exists()) {
         return docToProject(projectSnap);
     }
     return null;
 }
 
+export async function addProject(projectData: Omit<Project, 'id'>): Promise<Project> {
+    const db = await getDb();
+    const docRef = await addDoc(collection(db, PROJECTS_COLLECTION), projectData);
+    return { id: docRef.id, ...projectData };
+}
+
+
 export async function addProjectWithTasks(
   projectData: Omit<Project, 'id' | 'createdAt'>,
   tasksData: Omit<TaskEvent, 'id' | 'userId' | 'projectId'>[]
 ): Promise<Project> {
-  checkDb();
-  const batch = db.batch();
+  const db = await getDb();
+  const batch = writeBatch(db);
 
-  const projectRef = db.collection(PROJECTS_COLLECTION).doc();
+  const projectRef = doc(collection(db, PROJECTS_COLLECTION));
   const newProjectData = { ...projectData, steps: [], createdAt: new Date() };
   batch.set(projectRef, newProjectData);
 
   tasksData.forEach((task, index) => {
-    const taskRef = db.collection(TASKS_COLLECTION).doc();
+    const taskRef = doc(collection(db, TASKS_COLLECTION));
     batch.set(taskRef, {
       ...task,
       projectId: projectRef.id,
@@ -105,29 +119,29 @@ export async function addProjectWithTasks(
   });
 
   await batch.commit();
-  return { id: projectRef.id, ...newProjectData };
+  return { id: projectRef.id, ...newProjectData, createdAt: newProjectData.createdAt };
 }
 
 export async function updateProject(projectId: string, projectData: Partial<Omit<Project, 'id' | 'userId'>>): Promise<void> {
-    checkDb();
-    const projectRef = db.collection(PROJECTS_COLLECTION).doc(projectId);
-    await projectRef.update(projectData);
+    const db = await getDb();
+    const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
+    await updateDoc(projectRef, projectData);
 }
 
 export async function updateProjectWithTasks(userId: string, projectId: string, projectData: Partial<Omit<Project, 'id' | 'userId'>>): Promise<void> {
-    checkDb();
-    const batch = db.batch();
-    const projectRef = db.collection(PROJECTS_COLLECTION).doc(projectId);
+    const db = await getDb();
+    const batch = writeBatch(db);
+    const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
 
     const stepsToSave = (projectData.steps || []).map(step => {
-        const finalId = (step.id && !step.id.startsWith('temp_')) ? step.id : db.collection('projects').doc().id;
+        const finalId = (step.id && !step.id.startsWith('temp_')) ? step.id : doc(collection(db, 'projects')).id;
         return { ...step, id: finalId };
     });
 
     batch.update(projectRef, { ...projectData, steps: stepsToSave });
 
-    const existingTasksQuery = db.collection(TASKS_COLLECTION).where("projectId", "==", projectId);
-    const existingTasksSnapshot = await existingTasksQuery.get();
+    const existingTasksQuery = query(collection(db, TASKS_COLLECTION), where("projectId", "==", projectId));
+    const existingTasksSnapshot = await getDocs(existingTasksQuery);
     const existingTasks = existingTasksSnapshot.docs.map(docToTask);
     
     const tasksByStepId = new Map(existingTasks.filter(t => t.stepId).map(t => [t.stepId, t]));
@@ -142,7 +156,7 @@ export async function updateProjectWithTasks(userId: string, projectId: string, 
                 title: step.title,
                 description: step.description,
                 start: step.startTime,
-                end: addMinutes(step.startTime, step.durationMinutes),
+                end: addMinutes(step.startTime, step.durationMinutes!),
                 status: 'todo',
                 position: 0,
                 projectId,
@@ -150,21 +164,21 @@ export async function updateProjectWithTasks(userId: string, projectId: string, 
             };
 
             if (existingTask) {
-                const taskRef = db.collection(TASKS_COLLECTION).doc(existingTask.id);
+                const taskRef = doc(db, TASKS_COLLECTION, existingTask.id);
                 batch.update(taskRef, taskData);
             } else {
-                const taskRef = db.collection(TASKS_COLLECTION).doc();
+                const taskRef = doc(collection(db, TASKS_COLLECTION));
                 batch.set(taskRef, { ...taskData, userId });
             }
         } else if (!step.connectToCalendar && existingTask) {
-            const taskRef = db.collection(TASKS_COLLECTION).doc(existingTask.id);
+            const taskRef = doc(db, TASKS_COLLECTION, existingTask.id);
             batch.delete(taskRef);
         }
     }
 
     for (const task of existingTasks) {
         if (task.stepId && !stepsInPlan.has(task.stepId)) {
-            const taskRef = db.collection(TASKS_COLLECTION).doc(task.id);
+            const taskRef = doc(db, TASKS_COLLECTION, task.id);
             batch.delete(taskRef);
         }
     }
@@ -174,15 +188,15 @@ export async function updateProjectWithTasks(userId: string, projectId: string, 
 
 
 export async function deleteProject(projectId: string, taskIds: string[]): Promise<void> {
-    checkDb();
-    const batch = db.batch();
+    const db = await getDb();
+    const batch = writeBatch(db);
     
     taskIds.forEach(taskId => {
-        const taskRef = db.collection(TASKS_COLLECTION).doc(taskId);
+        const taskRef = doc(db, TASKS_COLLECTION, taskId);
         batch.delete(taskRef);
     });
     
-    const projectRef = db.collection(PROJECTS_COLLECTION).doc(projectId);
+    const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
     batch.delete(projectRef);
 
     await batch.commit();
@@ -191,36 +205,36 @@ export async function deleteProject(projectId: string, taskIds: string[]): Promi
 // --- Task Functions ---
 
 export async function getTasksForProject(projectId: string): Promise<TaskEvent[]> {
-  checkDb();
-  const q = db.collection(TASKS_COLLECTION).where("projectId", "==", projectId);
-  const snapshot = await q.get();
+  const db = await getDb();
+  const q = query(collection(db, TASKS_COLLECTION), where("projectId", "==", projectId));
+  const snapshot = await getDocs(q);
   return snapshot.docs.map(docToTask);
 }
 
 export async function getTasksForUser(userId: string): Promise<TaskEvent[]> {
-    checkDb();
-    const q = db.collection(TASKS_COLLECTION).where("userId", "==", userId);
-    const snapshot = await q.get();
+    const db = await getDb();
+    const q = query(collection(db, TASKS_COLLECTION), where("userId", "==", userId));
+    const snapshot = await getDocs(q);
     return snapshot.docs.map(docToTask);
 }
 
 export async function addTask(taskData: Omit<TaskEvent, 'id'>): Promise<TaskEvent> {
-  checkDb();
-  const docRef = await db.collection(TASKS_COLLECTION).add(taskData);
+  const db = await getDb();
+  const docRef = await addDoc(collection(db, TASKS_COLLECTION), taskData);
   return { id: docRef.id, ...taskData };
 }
 
 export async function updateTask(taskId: string, taskData: Partial<Omit<TaskEvent, 'id' | 'userId'>>): Promise<void> {
-    checkDb();
-    const taskRef = db.collection(TASKS_COLLECTION).doc(taskId);
-    await taskRef.update(taskData);
+    const db = await getDb();
+    const taskRef = doc(db, TASKS_COLLECTION, taskId);
+    await updateDoc(taskRef, taskData);
 }
 
 export async function updateTaskPositions(tasksToUpdate: { id: string; position: number; status: TaskStatus }[]): Promise<void> {
-    checkDb();
-    const batch = db.batch();
+    const db = await getDb();
+    const batch = writeBatch(db);
     tasksToUpdate.forEach(task => {
-        const taskRef = db.collection(TASKS_COLLECTION).doc(task.id);
+        const taskRef = doc(db, TASKS_COLLECTION, task.id);
         batch.update(taskRef, { position: task.position, status: task.status });
     });
     await batch.commit();
@@ -228,21 +242,21 @@ export async function updateTaskPositions(tasksToUpdate: { id: string; position:
 
 
 export async function deleteTask(taskId: string): Promise<void> {
-    checkDb();
-    await db.collection(TASKS_COLLECTION).doc(taskId).delete();
+    const db = await getDb();
+    await deleteDoc(doc(db, TASKS_COLLECTION, taskId));
 }
 
 // --- Template Functions ---
 
 export async function getProjectTemplates(userId: string): Promise<ProjectTemplate[]> {
-    checkDb();
-    const q = db.collection(TEMPLATES_COLLECTION).where("userId", "==", userId);
-    const snapshot = await q.get();
+    const db = await getDb();
+    const q = query(collection(db, TEMPLATES_COLLECTION), where("userId", "==", userId));
+    const snapshot = await getDocs(q);
     return snapshot.docs.map(docToTemplate);
 }
 
 export async function addProjectTemplate(templateData: Omit<ProjectTemplate, 'id'>): Promise<ProjectTemplate> {
-    checkDb();
-    const docRef = await db.collection(TEMPLATES_COLLECTION).add(templateData);
+    const db = await getDb();
+    const docRef = await addDoc(collection(db, TEMPLATES_COLLECTION), templateData);
     return { id: docRef.id, ...templateData };
 }
