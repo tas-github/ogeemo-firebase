@@ -2,7 +2,7 @@
 'use server';
 
 import { adminDb as db } from '@/lib/firebase-admin';
-import type { DocumentData, QueryDocumentSnapshot } from 'firebase-admin/firestore';
+import type { DocumentData, QueryDocumentSnapshot, Timestamp } from 'firebase-admin/firestore';
 
 // --- Interfaces ---
 export interface ClientAccount {
@@ -10,6 +10,7 @@ export interface ClientAccount {
   name: string;
   contactId: string;
   userId: string;
+  createdAt: Date;
 }
 
 export interface EventEntry {
@@ -36,14 +37,21 @@ function checkDb() {
 }
 
 // Helper to convert Firestore doc to our types
-const docToClientAccount = (doc: QueryDocumentSnapshot<DocumentData>): ClientAccount => ({ id: doc.id, ...doc.data() } as ClientAccount);
+const docToClientAccount = (doc: QueryDocumentSnapshot<DocumentData>): ClientAccount => {
+    const data = doc.data();
+    return {
+        id: doc.id,
+        ...data,
+        createdAt: (data.createdAt as Timestamp)?.toDate ? (data.createdAt as Timestamp).toDate() : new Date(),
+    } as ClientAccount;
+};
 const docToEventEntry = (doc: QueryDocumentSnapshot<DocumentData>): EventEntry => {
     const data = doc.data();
     return {
         id: doc.id,
         ...data,
-        startTime: data.startTime.toDate(),
-        endTime: data.endTime.toDate(),
+        startTime: (data.startTime as Timestamp)?.toDate ? (data.startTime as Timestamp).toDate() : new Date(),
+        endTime: (data.endTime as Timestamp)?.toDate ? (data.endTime as Timestamp).toDate() : new Date(),
     } as EventEntry;
 };
 

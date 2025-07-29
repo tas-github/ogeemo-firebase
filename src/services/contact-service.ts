@@ -2,7 +2,7 @@
 'use server';
 
 import { adminDb as db } from '@/lib/firebase-admin';
-import type { DocumentData, QueryDocumentSnapshot } from 'firebase-admin/firestore';
+import type { DocumentData, QueryDocumentSnapshot, Timestamp } from 'firebase-admin/firestore';
 import type { Contact, FolderData } from '@/data/contacts';
 
 const FOLDERS_COLLECTION = 'contactFolders';
@@ -23,7 +23,7 @@ function checkDb() {
   }
 }
 
-// Helper to convert Firestore doc to our type
+// Helper to convert Firestore doc to our types
 const docToFolder = (doc: QueryDocumentSnapshot<DocumentData>): FolderData => ({ id: doc.id, ...doc.data() } as FolderData);
 const docToContact = (doc: QueryDocumentSnapshot<DocumentData>): Contact => ({ id: doc.id, ...doc.data() } as Contact);
 
