@@ -6,8 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, CheckCircle, Target } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import React, { useState } from 'react';
-import { useAuth } from '@/context/auth-context';
+import React from 'react';
 
 const features = [
   {
@@ -48,22 +47,6 @@ const personas = [
 ]
 
 export default function HomePage() {
-  const { user, isLoading } = useAuth();
-
-  const CtaButton = () => {
-    if (isLoading) {
-      return <Button size="lg" disabled>Loading...</Button>;
-    }
-
-    const buttonText = user ? "Sign up to be a beta tester" : "Join Beta Program";
-
-    return (
-      <Button asChild size="lg">
-        <Link href="/register">{buttonText}</Link>
-      </Button>
-    );
-  };
-
   return (
     <>
       <div className="flex flex-col min-h-screen">
@@ -78,7 +61,9 @@ export default function HomePage() {
                 The intuitive cloud platform designed for your peace of mind, making business management, time tracking, and audit-ready accounting effortless.
               </p>
               <div className="mt-8 flex justify-center gap-4">
-                <CtaButton />
+                 <Button asChild size="lg">
+                    <Link href="/register">Join Beta Program</Link>
+                </Button>
               </div>
             </div>
           </section>
@@ -142,7 +127,9 @@ export default function HomePage() {
               <h2 className="text-3xl md:text-4xl font-bold font-headline">Ready to Simplify Your Business?</h2>
               <p className="mt-4 text-lg text-muted-foreground">Join our beta program and experience the peace of mind Ogeemo provides.</p>
               <div className="mt-8">
-                <CtaButton />
+                <Button asChild size="lg">
+                    <Link href="/register">Join Beta Program</Link>
+                </Button>
               </div>
             </div>
           </section>
