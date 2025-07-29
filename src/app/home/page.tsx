@@ -6,6 +6,7 @@ import { ArrowRight, CheckCircle, Target } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import React, { useState } from 'react';
+import { useAuth } from '@/context/auth-context';
 
 const features = [
   {
@@ -46,6 +47,27 @@ const personas = [
 ]
 
 export default function HomePage() {
+  const { user, isLoading } = useAuth();
+
+  const CtaButton = () => {
+    if (isLoading) {
+      return <Button size="lg" disabled>Loading...</Button>;
+    }
+
+    if (user) {
+      return (
+        <Button asChild size="lg">
+          <Link href="/dashboard">Go to Dashboard</Link>
+        </Button>
+      );
+    }
+
+    return (
+      <Button asChild size="lg">
+        <Link href="/register">Join Beta Program</Link>
+      </Button>
+    );
+  };
 
   return (
     <>
@@ -61,9 +83,7 @@ export default function HomePage() {
                 The intuitive cloud platform designed for your peace of mind, making business management, time tracking, and audit-ready accounting effortless.
               </p>
               <div className="mt-8 flex justify-center gap-4">
-                <Button asChild size="lg">
-                  <Link href="/register">Join Beta Program</Link>
-                </Button>
+                <CtaButton />
               </div>
             </div>
           </section>
@@ -127,9 +147,7 @@ export default function HomePage() {
               <h2 className="text-3xl md:text-4xl font-bold font-headline">Ready to Simplify Your Business?</h2>
               <p className="mt-4 text-lg text-muted-foreground">Join our beta program and experience the peace of mind Ogeemo provides.</p>
               <div className="mt-8">
-                <Button asChild size="lg">
-                  <Link href="/register">Join our Ogeemo Beta Tester Community</Link>
-                </Button>
+                <CtaButton />
               </div>
             </div>
           </section>
