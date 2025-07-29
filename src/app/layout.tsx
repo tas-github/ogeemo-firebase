@@ -6,7 +6,6 @@ import { LoadingProvider } from '@/context/loading-context';
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from '@/lib/utils';
 import { SiteHeader } from "@/components/landing/header";
-import { SiteFooter } from "@/components/landing/footer";
 import "./globals.css";
 
 const fontBody = Inter({
@@ -40,7 +39,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <LoadingProvider>
             {showHeaderFooter && <SiteHeader />}
             {children}
-            {showHeaderFooter && <SiteFooter />}
             <Toaster />
           </LoadingProvider>
         </AuthProvider>
