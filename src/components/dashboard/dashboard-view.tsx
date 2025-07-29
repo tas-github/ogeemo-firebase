@@ -5,7 +5,6 @@ import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Briefcase, ListTodo, Contact, Clock } from 'lucide-react';
 import { mockContacts } from '@/data/contacts';
-import { ActionManagerCard } from './action-manager-card';
 
 export function DashboardView() {
   
@@ -18,10 +17,8 @@ export function DashboardView() {
         </div>
       </header>
       
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Main Content Column */}
-        <div className="md:col-span-2 space-y-6">
-           <div className="grid gap-4 md:grid-cols-2">
+      <div className="space-y-6">
+           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
@@ -75,12 +72,6 @@ export function DashboardView() {
               </CardContent>
           </Card>
         </div>
-        
-        {/* Action Manager Column */}
-        <div className="md:col-span-1">
-           <ActionManagerCard />
-        </div>
-      </div>
     </div>
   );
 }
