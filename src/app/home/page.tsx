@@ -7,6 +7,7 @@ import { ArrowRight, CheckCircle, Target } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
+import { useAuth } from '@/context/auth-context';
 
 const features = [
   {
@@ -47,6 +48,8 @@ const personas = [
 ]
 
 export default function HomePage() {
+  const { user } = useAuth();
+  
   return (
     <>
       <div className="flex flex-col min-h-screen">
@@ -62,7 +65,9 @@ export default function HomePage() {
               </p>
               <div className="mt-8 flex justify-center gap-4">
                  <Button asChild size="lg">
-                    <Link href="/register">Join Beta Program</Link>
+                    <Link href="/register">
+                      {user ? "Sign up to be a beta tester" : "Join Beta Program"}
+                    </Link>
                 </Button>
               </div>
             </div>
