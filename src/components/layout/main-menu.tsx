@@ -66,18 +66,6 @@ export function MainMenu() {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive("/dashboard")}
-          tooltip="Dashboard"
-        >
-          <Link href="/dashboard" onClick={(e) => handleClick(e, "/dashboard")}>
-            <LayoutDashboard />
-            <span>Dashboard</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-      <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/action-manager")} tooltip="Action Manager">
           <Link href="/action-manager" onClick={(e) => handleClick(e, "/action-manager")}>
             <Wand2 />

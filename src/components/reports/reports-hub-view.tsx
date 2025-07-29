@@ -29,6 +29,7 @@ import {
   ArrowRight,
   UserCheck,
   FileSpreadsheet,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +40,13 @@ export function ReportsHubView() {
   });
 
   const features = [
+    {
+      icon: Activity,
+      title: "Activity Report",
+      description: "A high-level overview of your workspace, including key metrics and recent activities.",
+      cta: "View Activity",
+      href: "/reports/activity",
+    },
     {
       icon: FileText,
       title: "Templates",
