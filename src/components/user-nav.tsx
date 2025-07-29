@@ -22,6 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { navLinks } from "@/lib/constants";
 
 function GoogleIcon() {
     return (
@@ -105,11 +106,14 @@ export function UserNav() {
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
       <DropdownMenuGroup>
-        <DropdownMenuItem asChild><Link href="/about"><Info className="mr-2 h-4 w-4" /><span>About Us</span></Link></DropdownMenuItem>
-        <DropdownMenuItem asChild><Link href="/news"><Newspaper className="mr-2 h-4 w-4" /><span>News</span></Link></DropdownMenuItem>
-        <DropdownMenuItem asChild><Link href="/contact"><MessageSquare className="mr-2 h-4 w-4" /><span>Contact Us</span></Link></DropdownMenuItem>
-        <DropdownMenuItem asChild><Link href="/privacy"><FileText className="mr-2 h-4 w-4" /><span>Privacy Policy</span></Link></DropdownMenuItem>
-        <DropdownMenuItem asChild><Link href="/terms"><ShieldCheck className="mr-2 h-4 w-4" /><span>Terms of Service</span></Link></DropdownMenuItem>
+        {navLinks.map((link) => (
+            <DropdownMenuItem key={link.href} asChild>
+                <Link href={link.href}>
+                    <link.icon className="mr-2 h-4 w-4" />
+                    <span>{link.label}</span>
+                </Link>
+            </DropdownMenuItem>
+        ))}
       </DropdownMenuGroup>
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={handleLogout}>
