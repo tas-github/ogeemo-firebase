@@ -1,7 +1,7 @@
 
 'use server';
 
-import { db } from '@/lib/firebase';
+import { adminDb as db } from '@/lib/firebase-admin';
 import {
   collection,
   getDocs,
