@@ -181,8 +181,8 @@ export function ComposeEmailView() {
       const lowerValue = value.toLowerCase();
       const filtered = allContacts.filter(
         (c) =>
-          c.name.toLowerCase().includes(lowerValue) ||
-          c.email.toLowerCase().includes(lowerValue)
+          (c.name && c.name.toLowerCase().includes(lowerValue)) ||
+          (c.email && c.email.toLowerCase().includes(lowerValue))
       );
       setSuggestions(filtered.slice(0, 5));
       setShowSuggestions(true);
