@@ -18,6 +18,7 @@ import { useAuth } from '@/context/auth-context';
 import { TermsDialog } from '@/components/auth/terms-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { findOrCreateFolder, addContact } from '@/services/contact-service';
 
 const registerSchema = z.object({
     name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -52,29 +53,45 @@ export default function RegisterPage() {
     
     setIsLoading(true);
     try {
+        // 1. Create Firebase Auth user
         const userCredential = await createUserWithEmailAndPassword(firebaseServices.auth, formData.email, formData.password);
-        
-        if (userCredential.user) {
-            await updateProfile(userCredential.user, {
-                displayName: formData.name,
-            });
+        const user = userCredential.user;
+
+        if (!user) {
+            throw new Error("User creation failed.");
         }
         
-        // In a real app, you would save formData.businessName, businessType, betaReason to a 'betaApplications' collection in Firestore.
-        console.log("Beta Application Data:", {
+        // 2. Update Auth profile display name
+        await updateProfile(user, { displayName: formData.name });
+        
+        // 3. Find or create the "Beta Testers" folder
+        const betaFolder = await findOrCreateFolder(user.uid, "Beta Testers");
+
+        // 4. Prepare and save the contact details
+        const notes = `
+            **Beta Application**
+            - **Business Type:** ${formData.businessType || 'N/A'}
+            - **Reason for Joining:** ${formData.betaReason}
+        `;
+
+        const newContactData = {
             name: formData.name,
             email: formData.email,
             businessName: formData.businessName,
             businessType: formData.businessType,
-            betaReason: formData.betaReason,
-        });
+            folderId: betaFolder.id,
+            notes: notes.trim(),
+            userId: user.uid,
+        };
+
+        await addContact(newContactData);
 
         toast({
             title: "Welcome to the Beta Program!",
-            description: "Your account has been created successfully.",
+            description: "Your account has been created and your application details saved.",
         });
         
-        // The AuthProvider will handle the redirect to /dashboard
+        // The AuthProvider will handle the redirect to the action manager automatically
 
     } catch (error: any) {
         let description = "An unknown error occurred. Please try again.";

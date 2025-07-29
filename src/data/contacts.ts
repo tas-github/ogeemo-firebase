@@ -3,6 +3,8 @@ export interface Contact {
   id: string;
   name: string;
   email: string;
+  businessName?: string;
+  businessType?: string;
   businessPhone?: string;
   cellPhone?: string;
   homePhone?: string;

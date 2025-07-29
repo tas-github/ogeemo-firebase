@@ -65,6 +65,29 @@ export async function getFolders(userId: string): Promise<FolderData[]> {
   return snapshot.docs.map(docToFolder);
 }
 
+export async function findOrCreateFolder(userId: string, folderName: string, parentId: string | null = null): Promise<FolderData> {
+    const db = await getDb();
+    const q = query(
+        collection(db, FOLDERS_COLLECTION), 
+        where("userId", "==", userId), 
+        where("name", "==", folderName),
+        where("parentId", "==", parentId)
+    );
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+        return docToFolder(snapshot.docs[0]);
+    } else {
+        const newFolderData = {
+            name: folderName,
+            userId,
+            parentId,
+        };
+        const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), newFolderData);
+        return { id: docRef.id, ...newFolderData };
+    }
+}
+
 export async function addFolder(folderData: Omit<FolderData, 'id'>): Promise<FolderData> {
   const db = await getDb();
   const dataToSave = {
