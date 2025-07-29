@@ -12,7 +12,7 @@ import {
     query, 
     where, 
     writeBatch,
-    Timestamp
+    Timestamp 
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
 import type { Contact, FolderData } from '@/data/contacts';
@@ -81,12 +81,13 @@ export async function updateFolder(folderId: string, folderData: Partial<Omit<Fo
     await updateDoc(folderRef, folderData);
 }
 
-export async function deleteFolderAndContents(userId: string, folderId: string): Promise<void> {
+export async function deleteFoldersAndContents(userId: string, folderIds: string[]): Promise<void> {
     const db = await getDb();
     const batch = writeBatch(db);
     const allFolders = await getFolders(userId);
     
-    const folderIdsToDelete = new Set<string>([folderId]);
+    const folderIdsToDelete = new Set<string>(folderIds);
+    
     const findDescendants = (parentId: string) => {
         allFolders
             .filter(f => f.parentId === parentId)
@@ -95,14 +96,21 @@ export async function deleteFolderAndContents(userId: string, folderId: string):
                 findDescendants(child.id);
             });
     };
-    findDescendants(folderId);
+    
+    // Find all descendants for each initially selected folder
+    folderIds.forEach(id => findDescendants(id));
 
     if (folderIdsToDelete.size > 0) {
-        const contactsQuery = query(collection(db, CONTACTS_COLLECTION), where('folderId', 'in', Array.from(folderIdsToDelete)));
-        const contactsSnapshot = await getDocs(contactsQuery);
-        contactsSnapshot.forEach(contactDoc => {
-            batch.delete(contactDoc.ref);
-        });
+        // Firestore 'in' query supports up to 30 elements. For more, chunking is needed.
+        const folderIdArray = Array.from(folderIdsToDelete);
+        for (let i = 0; i < folderIdArray.length; i += 30) {
+            const chunk = folderIdArray.slice(i, i + 30);
+            const contactsQuery = query(collection(db, CONTACTS_COLLECTION), where('folderId', 'in', chunk));
+            const contactsSnapshot = await getDocs(contactsQuery);
+            contactsSnapshot.forEach(contactDoc => {
+                batch.delete(contactDoc.ref);
+            });
+        }
     }
 
     folderIdsToDelete.forEach(id => {
@@ -142,11 +150,15 @@ export async function deleteContacts(contactIds: string[]): Promise<void> {
     if (contactIds.length === 0) return;
     const batch = writeBatch(db);
     
-    const accountsQuery = query(collection(db, CLIENT_ACCOUNTS_COLLECTION), where('contactId', 'in', contactIds));
-    const accountsSnapshot = await getDocs(accountsQuery);
-    accountsSnapshot.forEach(accountDoc => {
-        batch.delete(accountDoc.ref);
-    });
+    // Firestore 'in' query supports up to 30 elements. For more, chunking is needed.
+    for (let i = 0; i < contactIds.length; i += 30) {
+      const chunk = contactIds.slice(i, i + 30);
+      const accountsQuery = query(collection(db, CLIENT_ACCOUNTS_COLLECTION), where('contactId', 'in', chunk));
+      const accountsSnapshot = await getDocs(accountsQuery);
+      accountsSnapshot.forEach(accountDoc => {
+          batch.delete(accountDoc.ref);
+      });
+    }
     
     contactIds.forEach(id => {
         const contactRef = doc(db, CONTACTS_COLLECTION, id);

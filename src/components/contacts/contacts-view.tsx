@@ -33,13 +33,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -47,13 +40,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { type Contact, type FolderData } from '@/data/contacts';
 import { useToast } from '@/hooks/use-toast';
-import { addFolder, getContacts, getFolders, deleteContacts, addContact, updateContact, updateFolder, deleteFolderAndContents } from '@/services/contact-service';
+import { addFolder, getContacts, getFolders, deleteContacts, addContact, updateContact, updateFolder, deleteFoldersAndContents } from '@/services/contact-service';
 import { useAuth } from '@/context/auth-context';
 import { getGoogleContacts, type GoogleContact } from '@/services/google-service';
 import { cn } from '@/lib/utils';
@@ -100,6 +100,7 @@ export function ContactsView() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFolderId, setSelectedFolderId] = useState<string>('all');
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+  const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
   
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderInitialParentId, setNewFolderInitialParentId] = useState<string | null>(null);
@@ -222,6 +223,14 @@ export function ContactsView() {
     setSelectedContactIds(allVisibleSelected ? [] : displayedContacts.map(c => c.id));
   };
   
+  const handleToggleFolderSelection = (folderId: string) => {
+    setSelectedFolderIds(prev =>
+      prev.includes(folderId)
+        ? prev.filter(id => id !== folderId)
+        : [...prev, folderId]
+    );
+  };
+  
   const handleNewContactClick = () => {
     if (selectedFolderId === 'all') {
       toast({ variant: "destructive", title: "Folder Required", description: "Please select a specific folder before adding a new contact." });
@@ -269,24 +278,42 @@ export function ContactsView() {
     setIsNewFolderDialogOpen(true);
   };
   
-  const handleDeleteFolder = async () => {
-    if (!user || !folderToDelete) return;
+  const handleDeleteFolder = async (folder: FolderData) => {
+      setFolderToDelete(folder);
+  };
+  
+  const handleDeleteSelectedFolders = () => {
+    if (selectedFolderIds.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedFolderIds.length} folder(s)? This will also delete all subfolders and contacts within them. This action cannot be undone.`)) return;
+    
+    handleConfirmDelete(selectedFolderIds);
+  };
+
+  const handleConfirmDelete = async (ids: string[]) => {
+    if (!user) return;
     try {
-        await deleteFolderAndContents(user.uid, folderToDelete.id);
+        await deleteFoldersAndContents(user.uid, ids);
+        
+        // Refetch all data to ensure consistency
         const [refetchedFolders, refetchedContacts] = await Promise.all([
             getFolders(user.uid),
             getContacts(user.uid),
         ]);
         setFolders(refetchedFolders);
         setContacts(refetchedContacts);
-        if(selectedFolderId === folderToDelete.id) setSelectedFolderId('all');
-        toast({ title: "Folder Deleted" });
+        
+        // Reset selections
+        if (ids.includes(selectedFolderId)) setSelectedFolderId('all');
+        setSelectedFolderIds([]);
+        
+        toast({ title: `${ids.length} Folder(s) Deleted` });
     } catch (error: any) {
         toast({ variant: "destructive", title: "Delete Failed", description: error.message });
     } finally {
-        setFolderToDelete(null);
+        setFolderToDelete(null); // Clear single delete state if it was set
     }
   };
+
 
   const handleStartRename = (folder: FolderData) => {
     setRenamingFolder(folder);
@@ -489,6 +516,14 @@ export function ContactsView() {
                 )}
                 style={{ backgroundColor: selectedFolderId === folder.id && !isRenaming ? 'hsl(var(--accent))' : 'transparent' }}
               >
+                <div className="flex items-center pl-2">
+                  <Checkbox
+                    checked={selectedFolderIds.includes(folder.id)}
+                    onCheckedChange={() => handleToggleFolderSelection(folder.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`Select folder ${folder.name}`}
+                  />
+                </div>
                 <Button
                   variant="ghost"
                   className="flex-1 justify-start gap-2 h-9 p-2 text-left"
@@ -513,7 +548,7 @@ export function ContactsView() {
                       <DropdownMenuItem onSelect={() => handleOpenNewFolderDialog({ parentId: folder.id })}><FolderPlus className="mr-2 h-4 w-4" />Create subfolder</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleStartRename(folder)}><Pencil className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive" onSelect={() => setFolderToDelete(folder)}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteFolder(folder)}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
@@ -538,11 +573,22 @@ export function ContactsView() {
             <ResizablePanel defaultSize={25} minSize={20}>
               <div className="flex h-full flex-col">
                   <div className="flex items-center justify-between p-2 border-b h-[57px]">
-                      <h3 className="text-lg font-semibold px-2">Folders</h3>
-                      <Button variant="ghost" size="icon" onClick={() => handleOpenNewFolderDialog({ parentId: null })} title="New Root Folder">
-                          <FolderPlus className="h-5 w-5" />
-                          <span className="sr-only">New Root Folder</span>
-                      </Button>
+                      {selectedFolderIds.length > 0 ? (
+                        <>
+                          <h3 className="text-sm font-semibold px-2">{selectedFolderIds.length} folder(s) selected</h3>
+                          <Button variant="destructive" size="sm" onClick={handleDeleteSelectedFolders}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </Button>
+                        </>
+                      ) : (
+                         <>
+                            <h3 className="text-lg font-semibold px-2">Folders</h3>
+                            <Button variant="ghost" size="icon" onClick={() => handleOpenNewFolderDialog({ parentId: null })} title="New Root Folder">
+                                <FolderPlus className="h-5 w-5" />
+                                <span className="sr-only">New Root Folder</span>
+                            </Button>
+                         </>
+                      )}
                   </div>
                   <ScrollArea ref={dropToRoot} className={cn("flex-1 rounded-md p-2", isOverRoot && canDropToRoot && 'bg-primary/10 ring-1 ring-primary-foreground')}>
                       <Button variant={selectedFolderId === 'all' ? "secondary" : "ghost"} className="w-full justify-start gap-3 my-1" onClick={() => setSelectedFolderId('all')}>
@@ -571,7 +617,7 @@ export function ContactsView() {
                                 {selectedFolder && selectedFolderId !== 'all' && (
                                     <div className="flex items-center gap-1">
                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStartRename(selectedFolder)}><Pencil className="h-4 w-4" /></Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setFolderToDelete(selectedFolder)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteFolder(selectedFolder)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                     </div>
                                 )}
                               </div>
@@ -644,12 +690,12 @@ export function ContactsView() {
           </DialogContent>
       </Dialog>
       
-      <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
-          <DialogContent><DialogHeader><DialogTitle>Authentication Required</DialogTitle><DialogDescription>To import contacts, you need to connect your Google account and grant permission. Please go to the Google Integration page to sign in.</DialogDescription></DialogHeader><DialogFooter><Button onClick={() => {setIsAuthDialogOpen(false); router.push('/google');}}>Go to Google Integration</Button></DialogFooter></DialogContent>
+      <Dialog open={folderToDelete !== null} onOpenChange={() => setFolderToDelete(null)}>
+          <DialogContent><DialogHeader><DialogTitle>Delete Folder</DialogTitle><DialogDescription>Are you sure you want to delete the "{folderToDelete?.name}" folder and all contacts within it? This action cannot be undone.</DialogDescription></DialogHeader><DialogFooter><Button variant="ghost" onClick={() => setFolderToDelete(null)}>Cancel</Button><Button variant="destructive" onClick={() => handleConfirmDelete([folderToDelete!.id])}>Delete</Button></DialogFooter></DialogContent>
       </Dialog>
       
-      <Dialog open={folderToDelete !== null} onOpenChange={() => setFolderToDelete(null)}>
-          <DialogContent><DialogHeader><DialogTitle>Delete Folder</DialogTitle><DialogDescription>Are you sure you want to delete the "{folderToDelete?.name}" folder and all contacts within it? This action cannot be undone.</DialogDescription></DialogHeader><DialogFooter><Button variant="ghost" onClick={() => setFolderToDelete(null)}>Cancel</Button><Button variant="destructive" onClick={handleDeleteFolder}>Delete</Button></DialogFooter></DialogContent>
+      <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
+          <DialogContent><DialogHeader><DialogTitle>Authentication Required</DialogTitle><DialogDescription>To import contacts, you need to connect your Google account and grant permission. Please go to the Google Integration page to sign in.</DialogDescription></DialogHeader><DialogFooter><Button onClick={() => {setIsAuthDialogOpen(false); router.push('/google');}}>Go to Google Integration</Button></DialogFooter></DialogContent>
       </Dialog>
       
       <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
