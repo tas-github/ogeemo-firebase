@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Phone, Mic, Square } from 'lucide-react';
+import { Phone, Mic, Square, FolderPlus } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +16,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -25,16 +33,20 @@ import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { useToast } from '@/hooks/use-toast';
 import { type Contact, type FolderData } from '@/data/contacts';
 import { ScrollArea } from '../ui/scroll-area';
+import { addContact, updateContact, addFolder } from '@/services/contact-service';
+import { useAuth } from '@/context/auth-context';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  email: z.string().email({ message: "Please enter a valid email." }),
+  email: z.string().email({ message: "Please enter a valid email." }).optional(),
   businessPhone: z.string().optional(),
   cellPhone: z.string().optional(),
   homePhone: z.string().optional(),
   faxNumber: z.string().optional(),
   primaryPhoneType: z.enum(['businessPhone', 'cellPhone', 'homePhone']).optional(),
   notes: z.string().optional(),
+  folderId: z.string({ required_error: "Please select a folder." }),
 });
 
 type ContactFormData = z.infer<typeof contactSchema>;
@@ -43,33 +55,40 @@ interface ContactFormDialogProps {
     isOpen: boolean;
     onOpenChange: (isOpen: boolean) => void;
     contactToEdit: Contact | null;
-    selectedFolderId: string;
     folders: FolderData[];
-    onSave: (contact: Contact | Omit<Contact, 'id'>, isEditing: boolean) => void;
+    onSave: (contact: Contact, isEditing: boolean) => void;
 }
 
 export default function ContactFormDialog({
     isOpen,
     onOpenChange,
     contactToEdit,
-    selectedFolderId,
     folders,
     onSave,
 }: ContactFormDialogProps) {
     const { toast } = useToast();
+    const { user } = useAuth();
     const [notesBeforeSpeech, setNotesBeforeSpeech] = useState('');
     const notesRef = useRef<HTMLTextAreaElement>(null);
+    const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
+    const [newFolderName, setNewFolderName] = useState("");
+    const [currentFolders, setCurrentFolders] = useState<FolderData[]>(folders);
 
     const form = useForm<ContactFormData>({
         resolver: zodResolver(contactSchema),
-        defaultValues: { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: undefined, notes: "" },
+        defaultValues: { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: undefined, notes: "", folderId: "" },
     });
     
     useEffect(() => {
         if (isOpen) {
-            form.reset(contactToEdit || { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: undefined, notes: "" });
+            setCurrentFolders(folders);
+            const defaultFolderId = folders.find(f => f.name === 'Clients')?.id || folders[0]?.id || '';
+            const initialValues = contactToEdit 
+                ? { ...contactToEdit, folderId: contactToEdit.folderId || defaultFolderId } 
+                : { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: undefined, notes: "", folderId: defaultFolderId };
+            form.reset(initialValues);
         }
-    }, [isOpen, contactToEdit, form]);
+    }, [isOpen]);
 
     const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
         onTranscript: (transcript) => {
@@ -89,20 +108,26 @@ export default function ContactFormDialog({
     };
     
     async function onSubmit(values: ContactFormData) {
+        if (!user) {
+            toast({ variant: "destructive", title: "Authentication Error", description: "You must be logged in to save a contact." });
+            return;
+        }
+
         try {
             if (contactToEdit) {
-                const updatedContact = { ...contactToEdit, ...values };
-                onSave(updatedContact, true);
+                const updatedContactData = { ...contactToEdit, ...values };
+                await updateContact(contactToEdit.id, updatedContactData);
+                onSave(updatedContactData, true);
+                toast({ title: "Contact Updated", description: `Details for ${values.name} have been saved.` });
             } else {
-                if (selectedFolderId === 'all') {
-                    toast({ variant: "destructive", title: "Cannot Add Contact", description: "Please select a specific folder before adding a new contact." });
-                    return;
-                }
                 const newContactData: Omit<Contact, 'id'> = {
                     ...values,
-                    folderId: selectedFolderId
+                    email: values.email || '',
+                    userId: user.uid,
                 };
-                onSave(newContactData, false);
+                const newContact = await addContact(newContactData);
+                onSave(newContact, false);
+                toast({ title: "Contact Created", description: `${newContact.name} has been added.` });
             }
             onOpenChange(false);
         } catch (error: any) {
@@ -114,10 +139,20 @@ export default function ContactFormDialog({
             });
         }
     }
-    
-    const selectedFolder = folders.find(f => f.id === (contactToEdit?.folderId || selectedFolderId));
+
+    const handleCreateFolder = async () => {
+        if (!user || !newFolderName.trim()) return;
+        try {
+            const newFolder = await addFolder({ name: newFolderName, userId: user.uid, parentId: null });
+            setCurrentFolders(prev => [...prev, newFolder]);
+            form.setValue('folderId', newFolder.id);
+            toast({ title: "Folder Created" });
+        } catch(e: any) { toast({ variant: "destructive", title: "Failed", description: e.message }); }
+        finally { setIsNewFolderDialogOpen(false); setNewFolderName(""); }
+    };
 
     return (
+        <>
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
             <SheetContent className="sm:max-w-xl flex flex-col p-0" side="right">
                 <SheetHeader className="p-6 pb-4">
@@ -125,7 +160,7 @@ export default function ContactFormDialog({
                         {contactToEdit ? "Edit Contact" : "New Contact"}
                     </SheetTitle>
                     <SheetDescription>
-                        {contactToEdit ? `Editing details for ${contactToEdit.name}.` : `Create a new contact in the "${selectedFolder?.name || 'Unassigned'}" folder.`}
+                        {contactToEdit ? `Editing details for ${contactToEdit.name}.` : `Create a new contact.`}
                     </SheetDescription>
                 </SheetHeader>
                 <Form {...form}>
@@ -134,6 +169,31 @@ export default function ContactFormDialog({
                             <div className="px-6 pb-4 space-y-4">
                                 <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                 <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                
+                                <FormField
+                                    control={form.control}
+                                    name="folderId"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Folder</FormLabel>
+                                        <div className="flex gap-2">
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger><SelectValue placeholder="Select a folder" /></SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {currentFolders.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                            <Button type="button" variant="outline" size="icon" onClick={() => setIsNewFolderDialogOpen(true)}>
+                                                <FolderPlus className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField control={form.control} name="businessPhone" render={({ field }) => (
                                         <FormItem>
@@ -227,5 +287,19 @@ export default function ContactFormDialog({
                 </Form>
             </SheetContent>
         </Sheet>
+        <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader><DialogTitle>Create New Folder</DialogTitle></DialogHeader>
+            <div className="py-4">
+              <Label htmlFor="folder-name-new">Name</Label>
+              <Input id="folder-name-new" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={async (e) => { if (e.key === 'Enter') handleCreateFolder() }} />
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleCreateFolder}>Create</Button>
+            </DialogFooter>
+          </DialogContent>
+      </Dialog>
+      </>
     );
 }

@@ -1,22 +1,8 @@
 
-import dynamic from 'next/dynamic';
-import { LoaderCircle } from 'lucide-react';
+import { redirect } from 'next/navigation';
 
-const ProjectTasksView = dynamic(
-  () => import('@/components/tasks/project-tasks-view').then((mod) => mod.ProjectTasksView),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-full w-full items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4">
-          <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading Project...</p>
-        </div>
-      </div>
-    ),
-  }
-);
-
-export default function ProjectTasksPage({ params }: { params: { projectId: string } }) {
-  return <ProjectTasksView projectId={params.projectId} />;
+export default function ProjectDetailsRedirectPage({ params }: { params: { projectId: string } }) {
+  // The main view for a project is now the tasks Kanban board.
+  // Redirect users there to avoid confusion.
+  redirect(`/projects/${params.projectId}/tasks`);
 }

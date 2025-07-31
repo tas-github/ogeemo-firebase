@@ -128,8 +128,8 @@ export function TasksView() {
         <>
             <div className="p-4 sm:p-6 flex flex-col h-full items-center">
                 <header className="text-center mb-6">
-                    <h1 className="text-3xl font-bold font-headline text-primary">Project Hub</h1>
-                    <p className="text-muted-foreground">Select a project to view its tasks or create a new one.</p>
+                    <h1 className="text-3xl font-bold font-headline text-primary">Project Manager</h1>
+                    <p className="text-muted-foreground">Manage your projects, view tasks, or create a new project.</p>
                 </header>
 
                 <Card className="w-full max-w-4xl flex-1 flex flex-col">

@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from '@hookform/resolvers/zod';
-import { format, set } from 'date-fns';
+import { format, set, addHours } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -29,123 +29,101 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Calendar as CalendarIcon, Save, Briefcase } from 'lucide-react';
+import { Calendar as CalendarIcon, Save, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { type Event, type Project } from '@/types/calendar';
-import { type Contact } from '@/services/contact-service';
+import { type Event as TaskEvent, type Project } from '@/types/calendar';
+import { type Contact } from '@/data/contacts';
+import { ScrollArea } from '../ui/scroll-area';
+import { getProjects, addProject, updateProject, addTask, updateTask } from '@/services/project-service';
+import { useAuth } from '@/context/auth-context';
+import { Label } from '../ui/label';
+import { Checkbox } from '../ui/checkbox';
 
 const eventSchema = z.object({
   title: z.string().min(2, { message: "Title must be at least 2 characters." }),
   description: z.string().optional(),
   contactId: z.string().optional(),
-  startDate: z.date({ required_error: "A start date is required." }),
+  isScheduled: z.boolean().default(false),
+  startDate: z.date().optional(),
   startHour: z.string().optional(),
   startMinute: z.string().optional(),
-  endDate: z.date({ required_error: "An end date is required." }),
+  endDate: z.date().optional(),
   endHour: z.string().optional(),
   endMinute: z.string().optional(),
-  // Project-specific fields
-  isProject: z.boolean().default(false),
-  clientId: z.string().optional(),
-  ownerId: z.string().optional(),
+  projectId: z.string().optional(),
+}).refine(data => {
+    if (data.isScheduled) {
+        return !!data.startDate;
+    }
+    return true;
+}, {
+    message: "A start date is required when adding to calendar.",
+    path: ["isScheduled"],
 });
 
-type EventFormData = z.infer<typeof eventSchema>;
+export type EventFormData = z.infer<typeof eventSchema>;
 
 interface NewTaskDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onTaskCreate?: (taskData: Omit<Event, 'id' | 'userId'>) => void;
-  onTaskUpdate?: (taskData: Event) => void;
-  onProjectCreate?: (project: Omit<Project, 'id' | 'createdAt' | 'userId'>, tasks: []) => void;
-  onProjectUpdate?: (project: Project) => void;
-  eventToEdit?: Event | null;
-  projectToEdit?: Project | null;
-  projectId?: string | null;
+  onTaskCreate?: (task: TaskEvent) => void;
+  onTaskUpdate?: (task: TaskEvent) => void;
+  eventToEdit?: TaskEvent | null;
   contacts?: Contact[];
-  initialMode?: 'event' | 'project';
-  initialData?: Partial<EventFormData>;
+  defaultValues?: Partial<EventFormData>;
+  projectId?: string | null;
 }
 
 export function NewTaskDialog({ 
     isOpen, 
     onOpenChange, 
-    onTaskCreate, 
+    onTaskCreate,
     onTaskUpdate,
-    onProjectCreate,
-    onProjectUpdate,
     eventToEdit, 
-    projectToEdit,
-    projectId, 
     contacts = [],
-    initialMode = 'event',
-    initialData = {},
+    defaultValues = {},
+    projectId: defaultProjectId,
 }: NewTaskDialogProps) {
   const { toast } = useToast();
-  const [isProjectMode, setIsProjectMode] = useState(initialMode === 'project' || !!projectToEdit);
+  const { user } = useAuth();
+  
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
 
   const form = useForm<EventFormData>({
     resolver: zodResolver(eventSchema),
+    defaultValues,
   });
-
+  
   useEffect(() => {
     if (isOpen) {
-        const mode = initialMode === 'project' || !!projectToEdit;
-        setIsProjectMode(mode);
-
-        let defaultValues: Partial<EventFormData> = {};
-
-        if (projectToEdit) {
-            defaultValues = {
-                isProject: true,
-                title: projectToEdit.name,
-                description: projectToEdit.description || "",
-                clientId: projectToEdit.clientId || "",
-                ownerId: projectToEdit.ownerId || "",
-                startDate: projectToEdit.startDate || new Date(),
-                endDate: projectToEdit.dueDate || new Date(),
-            };
-        } else if (eventToEdit) {
-            defaultValues = {
-                isProject: false,
-                title: eventToEdit.title,
-                description: eventToEdit.description || "",
-                contactId: eventToEdit.contactId || "",
-                startDate: eventToEdit.start,
-                startHour: String(eventToEdit.start.getHours()),
-                startMinute: String(eventToEdit.start.getMinutes()),
-                endDate: eventToEdit.end,
-                endHour: String(eventToEdit.end.getHours()),
-                endMinute: String(eventToEdit.end.getMinutes()),
-            };
-        } else {
-            const now = new Date();
-            const startOfNextHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() + 1);
-            const ideaDataRaw = sessionStorage.getItem('ogeemo-idea-to-project');
-            let ideaData = null;
-            if (ideaDataRaw) {
-              ideaData = JSON.parse(ideaDataRaw);
-              sessionStorage.removeItem('ogeemo-idea-to-project');
-            }
-
-            defaultValues = {
-                isProject: mode || !!ideaData,
-                title: ideaData?.title || "",
-                description: ideaData?.description || "",
-                contactId: "",
-                startDate: now,
-                startHour: String(now.getHours()),
-                startMinute: "0",
-                endDate: startOfNextHour,
-                endHour: String(startOfNextHour.getHours()),
-                endMinute: "0",
-                ...initialData,
-            };
-        }
-        form.reset(defaultValues);
+      const initialValues = {
+        title: eventToEdit?.title || defaultValues.title || '',
+        description: eventToEdit?.description || defaultValues.description || '',
+        projectId: eventToEdit?.projectId || defaultProjectId || defaultValues.projectId,
+        isScheduled: eventToEdit?.start ? true : defaultValues.isScheduled || false,
+        startDate: eventToEdit?.start || defaultValues.startDate,
+        endDate: eventToEdit?.end || defaultValues.endDate,
+        startHour: eventToEdit?.start ? String(eventToEdit.start.getHours()) : defaultValues.startHour,
+        startMinute: eventToEdit?.start ? String(eventToEdit.start.getMinutes()) : defaultValues.startMinute,
+        endHour: eventToEdit?.end ? String(eventToEdit.end.getHours()) : defaultValues.endHour,
+        endMinute: eventToEdit?.end ? String(eventToEdit.end.getMinutes()) : defaultValues.endMinute,
+      };
+      form.reset(initialValues);
     }
-  }, [isOpen, eventToEdit, projectToEdit, initialMode, initialData, form.reset]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    async function loadProjects() {
+        if (isOpen && user) {
+            const fetchedProjects = await getProjects(user.uid);
+            setProjects(fetchedProjects);
+        }
+    }
+    loadProjects();
+  }, [isOpen, user]);
 
   const hourOptions = Array.from({ length: 24 }, (_, i) => {
     const date = set(new Date(), { hours: i });
@@ -158,123 +136,174 @@ export function NewTaskDialog({
   });
 
   async function onSubmit(values: EventFormData) {
-    if (isProjectMode) {
-        const projectData = {
-            name: values.title,
-            description: values.description,
-            clientId: values.clientId || null,
-            ownerId: values.ownerId || null,
-            assigneeIds: [],
-            startDate: values.startDate,
-            dueDate: values.endDate,
-         };
-        if (projectToEdit && onProjectUpdate) {
-            onProjectUpdate({ ...projectToEdit, ...projectData });
-        } else if (onProjectCreate) {
-             onProjectCreate(projectData, []);
-        }
-    } else {
-        const finalStartDate = set(values.startDate, {
-            hours: parseInt(values.startHour || '0'),
-            minutes: parseInt(values.startMinute || '0')
-        });
-
-        const finalEndDate = set(values.endDate, {
-            hours: parseInt(values.endHour || '0'),
-            minutes: parseInt(values.endMinute || '0')
-        });
-
-        if (finalEndDate <= finalStartDate) {
-            toast({ variant: "destructive", title: "Invalid Dates", description: "End date and time must be after the start date and time." });
-            return;
-        }
-
-        const eventData = {
-          title: values.title,
-          description: values.description,
-          start: finalStartDate,
-          end: finalEndDate,
-          contactId: values.contactId,
-          status: eventToEdit?.status || 'todo',
-          position: eventToEdit?.position || 0,
-          projectId: projectId || eventToEdit?.projectId,
-        };
-        
-        if (eventToEdit && onTaskUpdate) {
-            onTaskUpdate({ ...eventToEdit, ...eventData });
-        } else if (onTaskCreate) {
-            onTaskCreate(eventData);
-        }
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Authentication Error' });
+        return;
     }
     
-    onOpenChange(false);
+    try {
+        const startDateTime = values.isScheduled && values.startDate && values.startHour && values.startMinute
+            ? set(values.startDate, { hours: parseInt(values.startHour), minutes: parseInt(values.startMinute) })
+            : new Date();
+        
+        const endDateTime = values.isScheduled && values.endDate && values.endHour && values.endMinute
+            ? set(values.endDate, { hours: parseInt(values.endHour), minutes: parseInt(values.endMinute) })
+            : addHours(startDateTime, 1);
+
+        const taskData = {
+            title: values.title,
+            description: values.description || "",
+            start: startDateTime,
+            end: endDateTime,
+            status: 'todo' as 'todo',
+            position: 0,
+            projectId: values.projectId || defaultProjectId || null,
+            contactId: values.contactId || null,
+            isScheduled: values.isScheduled,
+        };
+
+        if (eventToEdit) {
+            const updatedTask = { ...eventToEdit, ...taskData };
+            await updateTask(eventToEdit.id, taskData);
+            if (onTaskUpdate) {
+                onTaskUpdate(updatedTask);
+            }
+            toast({ title: 'Task Updated' });
+        } else {
+            const newTask = await addTask({ ...taskData, userId: user.uid });
+            if (onTaskCreate) {
+                onTaskCreate(newTask);
+            }
+            toast({ title: 'Task Created' });
+        }
+        
+        onOpenChange(false);
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+    }
+  }
+  
+  const handleProjectSelection = (projectId: string) => {
+      if (projectId === 'new-project') {
+          setIsNewProjectDialogOpen(true);
+      } else {
+          form.setValue('projectId', projectId);
+      }
   }
 
-  const title = isProjectMode ? (projectToEdit ? 'Edit Project' : 'Create Project') : (eventToEdit ? 'Edit Event' : 'Create Event');
-  const description = isProjectMode ? 'Define the details for your new project.' : 'Add a new event to your calendar.';
-
+  const handleCreateProject = async () => {
+    if (!user || !newProjectName.trim()) return;
+    try {
+        const newProjectData = { name: newProjectName, userId: user.uid, createdAt: new Date() };
+        const newProject = await addProject(newProjectData);
+        setProjects(prev => [newProject, ...prev]);
+        form.setValue('projectId', newProject.id);
+        toast({ title: "Project Created", description: `Project "${newProjectName}" is now selected.` });
+    } catch(e: any) { 
+        toast({ variant: "destructive", title: "Failed to create project", description: e.message }); 
+    }
+    finally { 
+        setIsNewProjectDialogOpen(false); 
+        setNewProjectName(""); 
+    }
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-            <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>{isProjectMode ? 'Project Name' : 'Title'}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-            
-            {isProjectMode ? (
-                <>
-                    <FormField control={form.control} name="clientId" render={({ field }) => ( <FormItem><FormLabel>Client</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a client" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
-                    <FormField control={form.control} name="ownerId" render={({ field }) => ( <FormItem><FormLabel>Project Owner</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select an owner" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
-                </>
-            ) : (
-                <FormField control={form.control} name="contactId" render={({ field }) => ( <FormItem><FormLabel>Contact (Optional)</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Link a contact..." /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )} />
-            )}
+    <>
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
+          <DialogHeader className="p-6 pb-4 border-b text-center">
+            <DialogTitle className="text-primary">{eventToEdit ? 'Edit Task' : 'Create Task'}</DialogTitle>
+            <DialogDescription>Add a new task. Check "Add to Calendar" to schedule it.</DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
+              <ScrollArea className="flex-1">
+                <div className="space-y-4 pt-4 px-6">
+                  <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Task Title</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                  
+                   <FormField
+                      control={form.control}
+                      name="projectId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Project</FormLabel>
+                          <Select onValueChange={handleProjectSelection} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Assign to a project (optional)" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="new-project" className="text-primary font-semibold">
+                                <Plus className="inline-block mr-2 h-4 w-4" /> New Project...
+                              </SelectItem>
+                              {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  
+                  <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
+                  
+                  <FormField control={form.control} name="isScheduled" render={({ field }) => ( <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Add to Calendar</FormLabel></div></FormItem> )} />
+                  
+                  {form.watch('isScheduled') && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in-50 duration-300">
+                          <div className="space-y-2">
+                              <FormLabel>From</FormLabel>
+                              <div className="flex gap-2">
+                                  <FormField control={form.control} name="startDate" render={({ field }) => ( <FormItem className="flex-1"><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
+                                  <FormField control={form.control} name="startHour" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
+                                  <FormField control={form.control} name="startMinute" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
+                              </div>
+                          </div>
+                          <div className="space-y-2">
+                              <FormLabel>To</FormLabel>
+                              <div className="flex gap-2">
+                                  <FormField control={form.control} name="endDate" render={({ field }) => ( <FormItem className="flex-1"><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
+                                  <FormField control={form.control} name="endHour" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
+                                  <FormField control={form.control} name="endMinute" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
+                              </div>
+                          </div>
+                      </div>
+                  )}
+                </div>
+              </ScrollArea>
+              <DialogFooter className="p-6 border-t">
+                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                <Button type="submit"><Save className="mr-2 h-4 w-4"/> {eventToEdit ? 'Save Changes' : 'Create'}</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <FormLabel>{isProjectMode ? 'Start Date' : 'Start'}</FormLabel>
-                    <div className="flex gap-2">
-                        <FormField control={form.control} name="startDate" render={({ field }) => ( <FormItem className="flex-1"><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
-                        {!isProjectMode && <>
-                            <FormField control={form.control} name="startHour" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
-                            <FormField control={form.control} name="startMinute" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
-                        </>}
-                    </div>
-                </div>
-                <div className="space-y-2">
-                    <FormLabel>{isProjectMode ? 'Due Date' : 'End'}</FormLabel>
-                    <div className="flex gap-2">
-                        <FormField control={form.control} name="endDate" render={({ field }) => ( <FormItem className="flex-1"><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
-                         {!isProjectMode && <>
-                            <FormField control={form.control} name="endHour" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
-                            <FormField control={form.control} name="endMinute" render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="w-[80px]"><SelectValue /></SelectTrigger></FormControl><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></FormItem> )} />
-                        </>}
-                    </div>
-                </div>
+       <Dialog open={isNewProjectDialogOpen} onOpenChange={setIsNewProjectDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create New Project</DialogTitle>
+              <DialogDescription>
+                This will create a new project and select it for this task.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <Label htmlFor="new-project-name">Project Name</Label>
+              <Input 
+                id="new-project-name" 
+                value={newProjectName} 
+                onChange={(e) => setNewProjectName(e.target.value)} 
+                onKeyDown={(e) => { if (e.key === 'Enter') handleCreateProject() }} 
+              />
             </div>
-
-            <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
-            
-            {!projectToEdit && (
-                 <div className="pt-2">
-                    <Button type="button" variant="link" className="p-0 h-auto" onClick={() => setIsProjectMode(prev => !prev)}>
-                        <Briefcase className="mr-2 h-4 w-4" />
-                        {isProjectMode ? "Switch to simple event" : "Promote to a project"}
-                    </Button>
-                </div>
-            )}
-
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit"><Save className="mr-2 h-4 w-4"/> {eventToEdit || projectToEdit ? 'Save Changes' : 'Create'}</Button>
+              <Button variant="ghost" onClick={() => setIsNewProjectDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleCreateProject}>Create Project</Button>
             </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+          </DialogContent>
+      </Dialog>
+    </>
   );
 }

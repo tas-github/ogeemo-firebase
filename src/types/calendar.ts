@@ -19,10 +19,11 @@ export interface Event {
   contactId?: string | null;
   billableRate?: number;
   duration?: number; // in seconds
+  isScheduled?: boolean;
 }
 
 export interface ProjectStep {
-    id?: string;
+    id: string;
     title: string;
     description: string;
     durationMinutes: number;
@@ -45,6 +46,14 @@ export interface Project {
   createdAt: Date;
   reminder?: string | null;
   steps?: ProjectStep[];
+  folderId?: string | null;
+}
+
+export interface ProjectFolder {
+    id: string;
+    name: string;
+    parentId: string | null;
+    userId: string;
 }
 
 export interface ProjectTemplate {

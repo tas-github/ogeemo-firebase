@@ -59,12 +59,14 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
   });
 
   useEffect(() => {
-    setTitle(idea.title);
-    setContent(idea.content);
-    if (editorRef.current) {
-      editorRef.current.innerHTML = idea.content || "";
+    if (isOpen) {
+        setTitle(idea.title);
+        setContent(idea.content);
+        if (editorRef.current) {
+            editorRef.current.innerHTML = idea.content || "";
+        }
     }
-  }, [idea]);
+  }, [idea, isOpen]);
 
   const handleFormat = (command: string, value?: string) => {
     document.execCommand(command, false, value);
@@ -74,6 +76,7 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
 
   const handleSaveClick = () => {
     onSave({ ...idea, title, content });
+    onOpenChange(false);
   };
   
   const handleEditorInput = (e: React.FormEvent<HTMLDivElement>) => {
@@ -143,7 +146,6 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
               className="prose dark:prose-invert max-w-none p-6 focus:outline-none h-full min-h-[300px]"
               contentEditable={true}
               onInput={handleEditorInput}
-              dangerouslySetInnerHTML={{ __html: content }}
               placeholder="Start developing your idea here..."
             />
           </ScrollArea>

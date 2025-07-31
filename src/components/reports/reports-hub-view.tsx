@@ -101,8 +101,8 @@ export function ReportsHubView() {
           <Card key={feature.title} className="flex flex-col">
             <CardHeader>
                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-orange-500/10 rounded-lg">
-                        <feature.icon className="h-6 w-6 text-orange-500" />
+                    <div className="p-3 bg-primary/10 rounded-lg">
+                        <feature.icon className="h-6 w-6 text-primary" />
                     </div>
                     <CardTitle>{feature.title}</CardTitle>
                 </div>
@@ -111,7 +111,7 @@ export function ReportsHubView() {
                 <CardDescription>{feature.description}</CardDescription>
             </CardContent>
             <CardFooter>
-              <Button asChild className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+              <Button asChild className="w-full">
                 <Link href={feature.href}>
                   {feature.cta}
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -124,8 +124,8 @@ export function ReportsHubView() {
         <Card className="md:col-span-3 lg:col-span-3 flex flex-col sm:flex-row items-start sm:items-center">
             <CardHeader className="flex-1">
                 <div className="flex items-center gap-4">
-                    <div className="p-3 bg-orange-500/10 rounded-lg">
-                        <Users className="h-6 w-6 text-orange-500" />
+                    <div className="p-3 bg-primary/10 rounded-lg">
+                        <Users className="h-6 w-6 text-primary" />
                     </div>
                     <div>
                         <CardTitle>Client Entries Report</CardTitle>
@@ -170,7 +170,7 @@ export function ReportsHubView() {
                     />
                     </PopoverContent>
                 </Popover>
-                <Button asChild className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white">
+                <Button asChild className="w-full sm:w-auto">
                   <Link href="/reports/client-entries">
                     View Report
                     <ArrowRight className="ml-2 h-4 w-4" />

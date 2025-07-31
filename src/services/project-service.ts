@@ -13,14 +13,16 @@ import {
   where,
   writeBatch,
   Timestamp,
+  getDoc,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
-import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep } from '@/types/calendar';
+import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder } from '@/types/calendar';
 import { addMinutes } from 'date-fns';
 
 const PROJECTS_COLLECTION = 'projects';
 const TASKS_COLLECTION = 'tasks';
 const TEMPLATES_COLLECTION = 'projectTemplates';
+const FOLDERS_COLLECTION = 'projectFolders';
 
 async function getDb() {
     const { db } = await initializeFirebase();
@@ -47,6 +49,7 @@ const docToProject = (doc: any): Project => {
         ...step,
         startTime: (step.startTime as Timestamp)?.toDate ? (step.startTime as Timestamp).toDate() : null,
     })),
+    folderId: data.folderId || null,
   };
 };
 
@@ -66,10 +69,33 @@ const docToTask = (doc: any): TaskEvent => {
     assigneeIds: data.assigneeIds || [],
     reminder: data.reminder || null,
     stepId: data.stepId || null,
+    contactId: data.contactId || null,
+    isScheduled: data.isScheduled || false,
   };
 };
 
 const docToTemplate = (doc: any): ProjectTemplate => ({ id: doc.id, ...doc.data() } as ProjectTemplate);
+const docToFolder = (doc: any): ProjectFolder => ({ id: doc.id, ...doc.data() } as ProjectFolder);
+
+
+// --- Folder Functions ---
+export async function getProjectFolders(userId: string): Promise<ProjectFolder[]> {
+  const db = await getDb();
+  const q = query(collection(db, FOLDERS_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docToFolder);
+}
+
+export async function addProjectFolder(folderData: Omit<ProjectFolder, 'id'>): Promise<ProjectFolder> {
+  const db = await getDb();
+  const dataToSave = {
+    ...folderData,
+    parentId: folderData.parentId || null,
+  };
+  const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), dataToSave);
+  return { id: docRef.id, ...dataToSave };
+}
+
 
 // --- Project Functions ---
 
@@ -90,10 +116,11 @@ export async function getProjectById(projectId: string): Promise<Project | null>
     return null;
 }
 
-export async function addProject(projectData: Omit<Project, 'id'>): Promise<Project> {
+export async function addProject(projectData: Omit<Project, 'id' | 'createdAt'>): Promise<Project> {
     const db = await getDb();
-    const docRef = await addDoc(collection(db, PROJECTS_COLLECTION), projectData);
-    return { id: docRef.id, ...projectData };
+    const dataWithTimestamp = { ...projectData, createdAt: new Date() };
+    const docRef = await addDoc(collection(db, PROJECTS_COLLECTION), dataWithTimestamp);
+    return { id: docRef.id, ...dataWithTimestamp };
 }
 
 
@@ -152,7 +179,7 @@ export async function updateProjectWithTasks(userId: string, projectId: string, 
         const existingTask = tasksByStepId.get(step.id);
 
         if (step.connectToCalendar && step.startTime) {
-            const taskData: Omit<TaskEvent, 'id' | 'userId'> = {
+            const taskData: Partial<Omit<TaskEvent, 'id' | 'userId'>> = {
                 title: step.title,
                 description: step.description,
                 start: step.startTime,
@@ -161,6 +188,7 @@ export async function updateProjectWithTasks(userId: string, projectId: string, 
                 position: 0,
                 projectId,
                 stepId: step.id,
+                isScheduled: true,
             };
 
             if (existingTask) {

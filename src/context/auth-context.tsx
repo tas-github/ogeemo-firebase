@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setAccessToken(null);
             sessionStorage.removeItem('google_access_token');
           }
-          setIsLoading(false);
+          // The main loading state will be managed by the routing logic below
         });
         return unsubscribe;
       })
@@ -57,34 +57,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           console.log('Getting ID token...');
           const idToken = await user.getIdToken();
-          console.log('ID token received. Calling session API...');
+          console.log('ID token received. Awaiting session API call...');
+          
+          // CRITICAL FIX: Await the session API call to complete before doing anything else.
           const response = await fetch('/api/auth/session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ idToken }),
           });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Session creation failed');
+          }
+
           const responseData = await response.json();
           console.log('Session API response:', response.status, responseData);
-          console.log('Document cookie after login:', document.cookie);
-
 
           const storedToken = sessionStorage.getItem('google_access_token');
           if (storedToken) {
             setAccessToken(storedToken);
           }
         } catch (error) {
-            console.error("Failed to set session cookie", error)
+            console.error("Failed to set session cookie", error);
+            // If session fails, sign the user out to prevent an inconsistent state
+            if (firebaseServices) {
+                await signOut(firebaseServices.auth);
+            }
         }
       } else {
         console.log('User logged out. Deleting session cookie...');
-        const response = await fetch('/api/auth/session', { method: 'DELETE' });
-        const responseData = await response.json();
-        console.log('Delete session API response:', response.status, responseData);
-        console.log('Document cookie after logout:', document.cookie);
+        await fetch('/api/auth/session', { method: 'DELETE' });
+        console.log('Delete session call complete.');
       }
+      
+      // Now that session management is complete, we can handle routing.
+      setIsLoading(false);
     };
     handleAuthChange(user);
-  }, [user]);
+  }, [user, firebaseServices]);
 
 
   useEffect(() => {
@@ -92,10 +103,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const isPublicPath = publicPaths.includes(pathname);
       const isMarketingPath = marketingPaths.some(p => pathname.startsWith(p)) || pathname === '/';
       
+      console.log(`Routing check: isLoading=${isLoading}, user=${!!user}, pathname=${pathname}, isPublic=${isPublicPath}, isMarketing=${isMarketingPath}`);
+
       if (!user && !isPublicPath && !isMarketingPath) {
+        console.log('Redirecting to /login');
         router.push('/login');
       } 
       else if (user && isPublicPath) {
+        console.log('Redirecting to /action-manager');
         router.push('/action-manager');
       }
     }
@@ -104,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     if (firebaseServices) {
       await signOut(firebaseServices.auth);
-      router.push('/login');
+      // The onAuthStateChanged listener will handle the session deletion and redirect.
     }
   };
   
@@ -118,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  // Use a single loading screen until Firebase is initialized and the first auth check is complete.
   if (isLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">

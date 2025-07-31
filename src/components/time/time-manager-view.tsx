@@ -115,6 +115,14 @@ export function TimeManagerView({ projects, contacts }: TimeManagerViewProps) {
     }, [updateTimerState]);
 
     const handleStartTimer = () => {
+        if (!subject.trim() || !selectedContactId) {
+            toast({
+                variant: 'destructive',
+                title: 'Missing Information',
+                description: 'Please select a client and enter a subject to start the timer.',
+            });
+            return;
+        }
         const now = Date.now();
         const state: StoredTimerState = {
             startTime: now,
@@ -321,7 +329,7 @@ export function TimeManagerView({ projects, contacts }: TimeManagerViewProps) {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="client">Client</Label>
+                            <Label htmlFor="client">Client <span className="text-destructive">*</span></Label>
                             <Select value={selectedContactId || ''} onValueChange={handleContactChange} disabled={isActive}>
                                 <SelectTrigger id="client"><SelectValue placeholder="Select a client..." /></SelectTrigger>
                                 <SelectContent>
@@ -331,8 +339,9 @@ export function TimeManagerView({ projects, contacts }: TimeManagerViewProps) {
                         </div>
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="subject">Subject</Label>
+                        <Label htmlFor="subject">Subject <span className="text-destructive">*</span></Label>
                         <Input id="subject" placeholder="What is the main task?" value={subject} onChange={handleSubjectChange} />
+                        <p className="text-xs text-muted-foreground">A subject is required to start the timer.</p>
                     </div>
                     
                     <div className="space-y-2">
@@ -387,8 +396,8 @@ export function TimeManagerView({ projects, contacts }: TimeManagerViewProps) {
             onOpenChange={setIsScheduleDialogOpen}
             onTaskCreate={handleTaskCreate}
             contacts={contacts}
-            initialData={scheduleInitialData}
-            initialMode="event"
+            defaultValues={scheduleInitialData}
+            isProject={false}
         />
         </>
     );

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { LoaderCircle, Plus, Trash2, ArrowLeft, Calendar as CalendarIcon } from 'lucide-react';
+import { LoaderCircle, Plus, Trash2, ArrowLeft, Calendar as CalendarIcon, ListTodo } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getProjectById, updateProjectWithTasks, type Project, type ProjectStep } from '@/services/project-service';
@@ -130,7 +130,7 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
         try {
             await updateProjectWithTasks(user.uid, project.id, { steps: steps as ProjectStep[] });
             toast({ title: 'Project Plan Saved', description: 'Your project steps and any associated calendar events have been saved.' });
-            router.push('/projects');
+            router.push(`/projects/${project.id}/tasks`);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
         }
@@ -152,11 +152,17 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
     return (
         <div className="p-4 sm:p-6 space-y-6">
             <header className="relative text-center">
-                 <div className="absolute left-0 top-1/2 -translate-y-1/2">
+                 <div className="absolute left-0 top-1/2 -translate-y-1/2 flex items-center gap-2">
                     <Button asChild variant="outline">
                         <Link href="/projects">
                             <ArrowLeft className="mr-2 h-4 w-4" />
                             Back to Projects
+                        </Link>
+                    </Button>
+                     <Button asChild variant="outline">
+                        <Link href={`/projects/${projectId}/tasks`}>
+                            <ListTodo className="mr-2 h-4 w-4" />
+                            View Tasks
                         </Link>
                     </Button>
                 </div>

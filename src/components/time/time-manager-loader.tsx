@@ -1,37 +1,33 @@
 
-import { adminAuth } from '@/lib/firebase-admin';
 import { TimeManagerView } from './time-manager-view';
 import { getProjects } from '@/services/project-service';
 import { getContacts } from '@/services/contact-service';
-import { cookies } from 'next/headers';
+import { getCurrentUserId } from '@/app/actions';
 
 export async function TimeManagerLoader() {
     console.log('TimeManagerLoader rendering on server...');
-    let uid = null;
-    const sessionCookie = cookies().get('session')?.value;
-    console.log('Session cookie found on server:', !!sessionCookie);
-
-    if (sessionCookie) {
-        try {
-            console.log('Verifying session cookie...');
-            const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
-            uid = decodedToken.uid;
-            console.log('Session cookie verified. UID:', uid);
-        } catch (error) {
-            console.error('Error verifying session cookie:', error);
-        }
-    }
+    const uid = await getCurrentUserId();
 
     if (!uid) {
-        console.log('No UID found, displaying login message.');
-        // This case should ideally be handled by middleware redirecting to login
-        return <div>Please log in to view this page.</div>;
+        console.log('No UID found from server action, displaying login message.');
+        // This case should be handled by middleware/AuthProvider, but serves as a fallback.
+        return (
+            <div className="flex h-full w-full items-center justify-center">
+                <div className="text-center p-4 bg-muted rounded-lg">
+                    <p className="font-semibold">Authentication Error</p>
+                    <p className="text-sm text-muted-foreground">Please log in to view this page.</p>
+                </div>
+            </div>
+        );
     }
 
     console.log('Fetching projects and contacts for UID:', uid);
-    const projects = await getProjects(uid);
-    const contacts = await getContacts(uid);
-    console.log('Data fetching complete.');
+    // Fetch data in parallel for better performance
+    const [projects, contacts] = await Promise.all([
+        getProjects(uid),
+        getContacts(uid),
+    ]);
+    console.log('Data fetching complete on server.');
 
     return <TimeManagerView projects={projects} contacts={contacts} />;
 }

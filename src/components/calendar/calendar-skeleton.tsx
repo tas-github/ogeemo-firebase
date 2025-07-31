@@ -1,4 +1,5 @@
 
+
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function CalendarSkeleton() {
@@ -25,10 +26,16 @@ export function CalendarSkeleton() {
           </div>
         </div>
         
-        <div className="flex-1 mt-4 overflow-hidden">
+        <div className="flex items-center gap-4 py-2">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-8 w-32" />
+        </div>
+
+        <div className="flex-1 mt-2 overflow-hidden border-t">
           <div className="h-full w-full flex">
             {/* Time gutter */}
-            <div className="w-24 shrink-0 pt-4">
+            <div className="w-24 shrink-0">
               {Array.from({ length: 9 }).map((_, i) => (
                   <div key={i} className="relative h-[120px] border-r text-right pr-2">
                       <Skeleton className="h-4 w-12 absolute top-0 right-2 -translate-y-1/2" />
@@ -36,7 +43,7 @@ export function CalendarSkeleton() {
               ))}
             </div>
             {/* Day column */}
-            <div className="flex-1 pt-4">
+            <div className="flex-1">
                 <div className="relative h-full">
                   {Array.from({ length: 9 }).map((_, i) => (
                       <div key={i} className="h-[120px] border-b"></div>

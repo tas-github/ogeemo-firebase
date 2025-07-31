@@ -27,10 +27,11 @@ export default function AuthCallbackPage() {
              sessionStorage.removeItem('google_auth_redirect');
              router.push(redirectPath);
           } else {
-             router.push("/dashboard");
+             router.push("/action-manager");
           }
         } else {
-          router.push("/dashboard");
+          // If there's no result, it might be a direct navigation. Send to a safe default.
+          router.push("/action-manager");
         }
       } catch (error: any) {
         console.error("Authentication callback error:", error);

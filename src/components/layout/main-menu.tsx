@@ -36,6 +36,7 @@ import {
   PackageSearch,
   Megaphone,
   Landmark,
+  ListTodo,
 } from "lucide-react";
 
 import {
@@ -118,6 +119,14 @@ export function MainMenu() {
           <Link href="/projects" onClick={(e) => handleClick(e, "/projects")}>
             <Briefcase />
             <span>Projects</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={isActive("/tasks")} tooltip="Tasks">
+          <Link href="/tasks" onClick={(e) => handleClick(e, "/tasks")}>
+            <ListTodo />
+            <span>Tasks</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
