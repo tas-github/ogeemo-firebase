@@ -60,10 +60,10 @@ export default function HomePage() {
               <h1 className="text-4xl md:text-6xl font-bold font-headline text-primary">
                 Simplify Your Business. Empower Your Growth.
               </h1>
-              <p className="mt-4 text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
+              <p className="mt-2 text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
                 The intuitive cloud platform designed for your peace of mind, making business management, time tracking, and audit-ready accounting effortless.
               </p>
-              <div className="mt-8 flex justify-center gap-4">
+              <div className="mt-6 flex justify-center gap-4">
                  <Button asChild size="lg">
                     <Link href="/register">
                       {user ? "Sign up to be a beta tester" : "Join Beta Program"}
@@ -78,7 +78,7 @@ export default function HomePage() {
               <div className="container mx-auto px-4">
                   <div className="text-center mb-12">
                       <h2 className="text-3xl md:text-4xl font-bold font-headline">Stop Juggling Apps. Start Running Your Business.</h2>
-                      <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
+                      <p className="mt-2 text-muted-foreground max-w-2xl mx-auto">
                           Are you tired of confusing software, complex accounting, and audit fears? Ogeemo is the simple, intuitive, all-in-one solution.
                       </p>
                   </div>
