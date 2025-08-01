@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDrag } from 'react-dnd';
+import { useDrag, useDrop, XYCoord } from 'react-dnd';
 import { Button } from '@/components/ui/button';
 import { type ActionChipData } from '@/components/dashboard/dashboard-view';
 import { cn } from '@/lib/utils';
@@ -14,26 +14,43 @@ export const DraggableItemTypes = {
 
 interface ActionChipProps {
   chip: ActionChipData;
+  index: number;
   onDelete?: (chipId: string) => void;
+  onMove: (dragIndex: number, hoverIndex: number) => void;
   isDeletable?: boolean;
 }
 
 export const ActionChip = React.forwardRef<HTMLDivElement, ActionChipProps>(
-  ({ chip, onDelete, isDeletable = true }, ref) => {
+  ({ chip, index, onDelete, onMove, isDeletable = true }, ref) => {
     const router = useRouter();
+    const localRef = useRef<HTMLDivElement>(null);
     const { icon: IconComponent, href, label } = chip;
     const Icon = typeof IconComponent === 'function' ? IconComponent : Wand2;
 
-    const [{ isDragging }, drag] = useDrag(() => ({
+    const [{ isDragging }, drag] = useDrag({
       type: DraggableItemTypes.ACTION_CHIP,
-      item: chip,
+      item: { ...chip, index },
       collect: (monitor) => ({
         isDragging: !!monitor.isDragging(),
       }),
-    }));
+    });
+    
+    const [, drop] = useDrop({
+        accept: DraggableItemTypes.ACTION_CHIP,
+        hover(item: ActionChipData & { index: number }, monitor) {
+            if (!localRef.current) return;
+            
+            const dragIndex = item.index;
+            const hoverIndex = index;
+
+            if (dragIndex === hoverIndex) return;
+            
+            onMove(dragIndex, hoverIndex);
+            item.index = hoverIndex;
+        }
+    });
 
     const handleClick = (e: React.MouseEvent) => {
-      // Prevent navigation if the delete button is clicked
       if ((e.target as HTMLElement).closest('[data-delete-chip]')) {
         return;
       }
@@ -45,18 +62,11 @@ export const ActionChip = React.forwardRef<HTMLDivElement, ActionChipProps>(
       onDelete?.(chip.id);
     };
     
-    const combinedRef = (node: HTMLDivElement) => {
-        drag(node);
-        if (typeof ref === 'function') {
-            ref(node);
-        } else if (ref) {
-            ref.current = node;
-        }
-    };
+    drag(drop(localRef));
 
     return (
       <div
-        ref={combinedRef}
+        ref={localRef}
         className={cn(
           'relative group',
           isDragging && 'opacity-50'

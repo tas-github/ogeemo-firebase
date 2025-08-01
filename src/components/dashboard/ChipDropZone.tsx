@@ -10,12 +10,20 @@ import { cn } from '@/lib/utils';
 interface ChipDropZoneProps {
   children: React.ReactNode;
   onDrop: (item: ActionChipData) => void;
+  chips: ActionChipData[]; // Pass the chips to check if the item is already in this zone
 }
 
-export function ChipDropZone({ children, onDrop }: ChipDropZoneProps) {
+export function ChipDropZone({ children, onDrop, chips }: ChipDropZoneProps) {
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: DraggableItemTypes.ACTION_CHIP,
-    drop: (item: ActionChipData) => onDrop(item),
+    drop: (item: ActionChipData) => {
+        // Only trigger the onDrop (move between lists) if the chip is not already in this list.
+        // Reordering within the list is handled by the hover effect on the ActionChip itself.
+        const isAlreadyInZone = chips.some(c => c.label === item.label);
+        if (!isAlreadyInZone) {
+            onDrop(item);
+        }
+    },
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
       canDrop: !!monitor.canDrop(),

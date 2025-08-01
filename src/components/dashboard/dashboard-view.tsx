@@ -10,6 +10,9 @@ import { ActionChip } from './ActionChip';
 import { ChipDropZone } from './ChipDropZone';
 import { useToast } from '@/hooks/use-toast';
 import type { LucideIcon } from 'lucide-react';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import update from 'immutability-helper';
 
 const OgeemoChatDialog = dynamic(() => import('@/components/ogeemail/ogeemo-chat-dialog'), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
@@ -65,6 +68,7 @@ const allAvailableActions: Omit<ActionChipData, 'id'>[] = [
 export function DashboardView() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [userChips, setUserChips] = useState<ActionChipData[]>([]);
+  const [availableChips, setAvailableChips] = useState<ActionChipData[]>([]);
   const [isClient, setIsClient] = useState(false);
   const { toast } = useToast();
   const [isManageMode, setIsManageMode] = useState(false);
@@ -72,46 +76,62 @@ export function DashboardView() {
   useEffect(() => {
     setIsClient(true);
     const savedChipsRaw = localStorage.getItem(ACTION_CHIPS_STORAGE_KEY);
+    let initialUserChips = defaultChips;
     if (savedChipsRaw) {
         try {
-            const saved = JSON.parse(savedChipsRaw);
-            setUserChips(saved);
+            initialUserChips = JSON.parse(savedChipsRaw);
         } catch (error) {
             console.error("Failed to parse saved chips, reverting to default:", error);
             localStorage.setItem(ACTION_CHIPS_STORAGE_KEY, JSON.stringify(defaultChips));
-            setUserChips(defaultChips);
         }
-    } else {
-        setUserChips(defaultChips);
     }
+    setUserChips(initialUserChips);
   }, []);
 
   useEffect(() => {
+    const available = allAvailableActions
+        .filter(availChip => !userChips.some(userChip => userChip.label === availChip.label))
+        .map(chip => ({ ...chip, id: `avail-${chip.label}` }));
+    setAvailableChips(available);
+
     if (isClient) {
       localStorage.setItem(ACTION_CHIPS_STORAGE_KEY, JSON.stringify(userChips));
     }
   }, [userChips, isClient]);
   
   const handleDeleteChip = useCallback((chipId: string) => {
-    setUserChips(prevChips => prevChips.filter(c => c.id !== chipId));
-  }, []);
-
-  const handleDropOnFavorites = (droppedChip: ActionChipData) => {
-    // If the chip is already in userChips, do nothing (it's just reordering, which we don't handle yet)
-    // If it's not, add it.
-    if (!userChips.some(chip => chip.label === droppedChip.label)) {
-      setUserChips(prevChips => [...prevChips, { ...droppedChip, id: `chip-${Date.now()}` }]);
+    const chipToRemove = userChips.find(c => c.id === chipId);
+    if (chipToRemove) {
+        setUserChips(prevChips => prevChips.filter(c => c.id !== chipId));
     }
-  };
+  }, [userChips]);
 
-  const handleDropOnAvailable = (droppedChip: ActionChipData) => {
-    // If the chip is in userChips, remove it.
-    setUserChips(prevChips => prevChips.filter(chip => chip.label !== droppedChip.label));
-  };
-  
-  const availableChipsForDisplay = allAvailableActions
-    .filter(availChip => !userChips.some(userChip => userChip.label === availChip.label))
-    .map(chip => ({ ...chip, id: `avail-${chip.label}` }));
+  const handleDropOnFavorites = useCallback((droppedChip: ActionChipData) => {
+    if (!userChips.some(c => c.label === droppedChip.label)) {
+        setUserChips(prev => [...prev, { ...droppedChip, id: `user-chip-${Date.now()}` }]);
+    }
+  }, [userChips]);
+
+  const handleDropOnAvailable = useCallback((droppedChip: ActionChipData) => {
+    if (userChips.some(c => c.label === droppedChip.label)) {
+        setUserChips(prev => prev.filter(c => c.label !== droppedChip.label));
+    }
+  }, [userChips]);
+
+  const moveChipInList = useCallback((dragIndex: number, hoverIndex: number, listType: 'user' | 'available') => {
+    const list = listType === 'user' ? userChips : availableChips;
+    const setList = listType === 'user' ? setUserChips : setAvailableChips;
+
+    const draggedChip = list[dragIndex];
+    setList(
+      update(list, {
+        $splice: [
+          [dragIndex, 1],
+          [hoverIndex, 0, draggedChip],
+        ],
+      }),
+    );
+  }, [userChips, availableChips]);
 
   if (!isClient) {
     return (
@@ -130,7 +150,7 @@ export function DashboardView() {
   }
 
   return (
-    <>
+    <DndProvider backend={HTML5Backend}>
       <div className="p-4 sm:p-6 space-y-6">
         <header className="text-center">
             <h1 className="text-3xl font-bold font-headline text-primary">Action Manager</h1>
@@ -149,16 +169,23 @@ export function DashboardView() {
                 <div>
                     <CardTitle className="text-2xl text-primary font-headline">Your Action Dashboard</CardTitle>
                     <CardDescription className="max-w-prose">
-                        {isManageMode ? "Drag actions between 'Your Favorite Actions' and 'Available Actions' to customize." : "Click an action to get started."}
+                        {isManageMode ? "Drag actions to reorder them or move them between lists." : "Click an action to get started."}
                     </CardDescription>
                 </div>
                 <Button onClick={() => setIsManageMode(!isManageMode)}>
                     {isManageMode ? "Done Managing" : "Manage Actions"}
                 </Button>
             </CardHeader>
-            <ChipDropZone onDrop={handleDropOnFavorites}>
-                {userChips.map((chip) => (
-                    <ActionChip key={chip.id} chip={chip} onDelete={handleDeleteChip} isDeletable={isManageMode} />
+            <ChipDropZone onDrop={handleDropOnFavorites} chips={userChips}>
+                {userChips.map((chip, index) => (
+                    <ActionChip
+                        key={chip.id}
+                        chip={chip}
+                        index={index}
+                        onDelete={handleDeleteChip}
+                        onMove={(dragIndex, hoverIndex) => moveChipInList(dragIndex, hoverIndex, 'user')}
+                        isDeletable={isManageMode}
+                    />
                 ))}
             </ChipDropZone>
         </Card>
@@ -169,9 +196,15 @@ export function DashboardView() {
                     <CardTitle>Available Actions</CardTitle>
                     <CardDescription>Drag an action from here to your dashboard to add it. Drag an action from your dashboard here to remove it.</CardDescription>
                 </CardHeader>
-                <ChipDropZone onDrop={handleDropOnAvailable}>
-                    {availableChipsForDisplay.map((chip) => (
-                         <ActionChip key={chip.id} chip={chip} isDeletable={false} />
+                <ChipDropZone onDrop={handleDropOnAvailable} chips={availableChips}>
+                    {availableChips.map((chip, index) => (
+                         <ActionChip
+                            key={chip.id}
+                            chip={chip}
+                            index={index}
+                            onMove={(dragIndex, hoverIndex) => moveChipInList(dragIndex, hoverIndex, 'available')}
+                            isDeletable={false}
+                         />
                     ))}
                 </ChipDropZone>
             </Card>
@@ -179,6 +212,6 @@ export function DashboardView() {
 
       </div>
       {isChatOpen && <OgeemoChatDialog isOpen={isChatOpen} onOpenChange={setIsChatOpen} />}
-    </>
+    </DndProvider>
   );
 }
