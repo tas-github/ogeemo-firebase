@@ -10,20 +10,10 @@ import { useToast } from '@/hooks/use-toast';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import update from 'immutability-helper';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Mic, Lightbulb, SortAsc, UserPlus } from 'lucide-react';
+import { Mic } from 'lucide-react';
 import { type ActionChipData } from '@/types/calendar';
 import { useAuth } from '@/context/auth-context';
-import { getActionChips, updateActionChips, addActionChip, type ManagerOption, getTrashedActionChips, updateTrashedActionChips } from '@/services/project-service';
+import { getActionChips, updateActionChips, getTrashedActionChips, updateTrashedActionChips } from '@/services/project-service';
 import { ActionChip } from './ActionChip';
 import { ChipDropZone } from './ChipDropZone';
 import AddActionDialog from './AddActionDialog';
@@ -175,14 +165,14 @@ export function DashboardView() {
                         {isManaging ? 'Drag actions to reorder them or move them to the trash.' : 'Click an action to get started.'}
                     </CardDescription>
                 </div>
-                {isManaging ? (
+                {isManaging && (
                     <div className="flex items-center gap-2">
                          <Button onClick={() => setIsAddActionDialogOpen(true)}>
                             <Plus className="mr-2 h-4 w-4" /> Add Action
                         </Button>
                         <Button variant="outline" onClick={() => setIsManaging(false)}>Done</Button>
                     </div>
-                ) : null}
+                )}
             </CardHeader>
             <ChipDropZone onDrop={restoreChipFromTrash} chips={userChips}>
                 {userChips.map((chip, index) => (

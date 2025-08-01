@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -19,8 +18,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useSpeechToText, type SpeechRecognitionStatus } from "@/hooks/use-speech-to-text";
 import { useToast } from "@/hooks/use-toast";
 import { ogeemoChatFlow } from "@/ai/flows/ogeemo-chat";
-import { MessageData } from "genkit";
-
 
 type Message = {
   id: string;
@@ -90,8 +87,9 @@ export function SimpleChatView() {
     setIsLoading(true);
 
     try {
-      const history = newMessages.slice(0, -1).map(msg => new MessageData({
-          role: msg.sender === 'user' ? 'user' : 'model',
+      // Correctly map the message history to plain objects.
+      const history = newMessages.slice(0, -1).map(msg => ({
+          role: msg.sender === 'user' ? 'user' as const : 'model' as const,
           content: [{ text: msg.text }]
       }));
 
@@ -210,6 +208,7 @@ export function SimpleChatView() {
                     {message.sender === "user" && (
                       <Avatar className="h-8 w-8">
                         <AvatarFallback><User /></AvatarFallback>
+                      </A_REPO_PATH/src/app/(app)/simple-chat/page.tsx
                       </Avatar>
                     )}
                   </div>
