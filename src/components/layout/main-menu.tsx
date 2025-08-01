@@ -283,6 +283,14 @@ export function MainMenu() {
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
+       <SidebarMenuItem>
+        <SidebarMenuButton asChild isActive={isActive("/simple-chat")} tooltip="Simple Chat">
+          <Link href="/simple-chat" onClick={(e) => handleClick(e, "/simple-chat")}>
+            <MessageSquare />
+            <span>Simple Chat</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton
           asChild

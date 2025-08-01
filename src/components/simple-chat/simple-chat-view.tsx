@@ -18,6 +18,9 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useSpeechToText, type SpeechRecognitionStatus } from "@/hooks/use-speech-to-text";
 import { useToast } from "@/hooks/use-toast";
+import { ogeemoChatFlow } from "@/ai/flows/ogeemo-chat";
+import { MessageData } from "genkit";
+
 
 type Message = {
   id: string;
@@ -87,24 +90,15 @@ export function SimpleChatView() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/genkit/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const history = newMessages.slice(0, -1).map(msg => new MessageData({
+          role: msg.sender === 'user' ? 'user' : 'model',
+          content: [{ text: msg.text }]
+      }));
+
+      const result = await ogeemoChatFlow({
           message: currentInput,
-          history: newMessages.slice(0, -1).map(msg => ({
-              role: msg.sender === 'user' ? 'user' : 'model',
-              content: [{ text: msg.text }]
-          }))
-        })
+          history: history
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'The API returned an error.');
-      }
-
-      const result = await response.json();
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -113,10 +107,10 @@ export function SimpleChatView() {
       };
       setMessages((prev) => [...prev, botMessage]);
     } catch (error: any) {
-      console.error("Error calling chat API:", error);
+      console.error("Error with Ogeemo Chat:", error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: `Sorry, the application encountered an error: ${error.message}`,
+        text: `Sorry, I encountered an error: ${error.message}`,
         sender: "bot",
       };
       setMessages((prev) => [...prev, errorMessage]);
