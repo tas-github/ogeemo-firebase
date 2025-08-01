@@ -87,7 +87,6 @@ export function SimpleChatView() {
     setIsLoading(true);
 
     try {
-      // Correctly map the message history to plain objects.
       const history = newMessages.slice(0, -1).map(msg => ({
           role: msg.sender === 'user' ? 'user' as const : 'model' as const,
           content: [{ text: msg.text }]
@@ -208,7 +207,6 @@ export function SimpleChatView() {
                     {message.sender === "user" && (
                       <Avatar className="h-8 w-8">
                         <AvatarFallback><User /></AvatarFallback>
-                      </A_REPO_PATH/src/app/(app)/simple-chat/page.tsx
                       </Avatar>
                     )}
                   </div>
