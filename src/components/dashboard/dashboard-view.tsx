@@ -8,15 +8,10 @@ import { Button } from '@/components/ui/button';
 import { LoaderCircle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { ActionChip } from './ActionChip';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useToast } from '@/hooks/use-toast';
 import type { LucideIcon } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
+import { Separator } from '../ui/separator';
 
 const OgeemoChatDialog = dynamic(() => import('@/components/ogeemail/ogeemo-chat-dialog'), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
@@ -74,6 +69,7 @@ export function DashboardView() {
   const [userChips, setUserChips] = useState<ActionChipData[]>([]);
   const [isClient, setIsClient] = useState(false);
   const { toast } = useToast();
+  const [isManageMode, setIsManageMode] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -98,17 +94,8 @@ export function DashboardView() {
     }
   }, [userChips, isClient]);
   
-  const addChipFromMenu = (chipToAdd: Omit<ActionChipData, 'id'>) => {
+  const addChip = (chipToAdd: Omit<ActionChipData, 'id'>) => {
     setUserChips(prevChips => {
-        const exists = prevChips.some(c => c.label === chipToAdd.label);
-        if (exists) {
-            toast({
-                variant: 'destructive',
-                title: 'Action already exists',
-                description: `The "${chipToAdd.label}" action is already on your dashboard.`,
-            });
-            return prevChips;
-        }
         const newChip: ActionChipData = {
             id: `chip-${Date.now()}`,
             ...chipToAdd,
@@ -121,7 +108,7 @@ export function DashboardView() {
     setUserChips(prevChips => prevChips.filter(c => c.id !== chipId));
   }, []);
   
-  const availableChipsForMenu = availableActions.filter(
+  const availableChipsForDisplay = availableActions.filter(
     (availChip) => !userChips.some((userChip) => userChip.label === availChip.label)
   );
 
@@ -156,47 +143,47 @@ export function DashboardView() {
             <span className="text-lg">Tell me what to do...</span>
         </Button>
         
-        <div className="grid grid-cols-1 gap-6 items-start">
-            <Card>
-                <CardHeader className="text-center">
-                    <CardTitle className="text-2xl text-primary font-headline">Your Favorite Actions</CardTitle>
-                    <CardDescription className="max-w-prose mx-auto">
-                        Click the 'Add Action' button to add new shortcuts to your dashboard.
+        <Card>
+            <CardHeader className="flex-row justify-between items-center">
+                <div>
+                    <CardTitle className="text-2xl text-primary font-headline">Your Action Dashboard</CardTitle>
+                    <CardDescription className="max-w-prose">
+                        {isManageMode ? "Add or remove actions from your dashboard." : "Click an action to get started."}
                     </CardDescription>
+                </div>
+                <Button onClick={() => setIsManageMode(!isManageMode)}>
+                    {isManageMode ? "Done Managing" : "Manage Actions"}
+                </Button>
+            </CardHeader>
+            <CardContent className="min-h-[100px] flex flex-wrap gap-2 justify-center">
+                {userChips.map((chip) => (
+                    <ActionChip key={chip.id} chip={chip} onDelete={handleDeleteChip} isDeletable={isManageMode} />
+                ))}
+            </CardContent>
+        </Card>
+
+        {isManageMode && (
+            <Card className="animate-in fade-in-50 duration-300">
+                <CardHeader>
+                    <CardTitle>Available Actions</CardTitle>
+                    <CardDescription>Click an action to add it to your dashboard.</CardDescription>
                 </CardHeader>
-                <CardContent
-                    className="min-h-[100px] flex flex-wrap gap-2 justify-center"
-                >
-                    {userChips.map((chip, index) => (
-                        <ActionChip key={chip.id} chip={chip} onDelete={handleDeleteChip} isDeletable={true} />
+                <CardContent className="flex flex-wrap gap-2">
+                    {availableChipsForDisplay.map((chip, index) => (
+                         <Button
+                            key={index}
+                            variant="outline"
+                            className="w-40 justify-start"
+                            onClick={() => addChip(chip)}
+                        >
+                            <chip.icon className="mr-2 h-4 w-4 flex-shrink-0" />
+                            <span className="truncate">{chip.label}</span>
+                        </Button>
                     ))}
                 </CardContent>
-                 <CardFooter className="flex-col sm:flex-row justify-center items-center gap-4">
-                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button>
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add Action
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="max-h-96">
-                            <ScrollArea className="h-full">
-                                {availableChipsForMenu.length > 0 ? (
-                                    availableChipsForMenu.map((chip, index) => (
-                                        <DropdownMenuItem key={index} onSelect={() => addChipFromMenu(chip)}>
-                                            <chip.icon className="mr-2 h-4 w-4" />
-                                            <span>{chip.label}</span>
-                                        </DropdownMenuItem>
-                                    ))
-                                ) : (
-                                    <DropdownMenuItem disabled>All actions have been added</DropdownMenuItem>
-                                )}
-                            </ScrollArea>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </CardFooter>
             </Card>
-        </div>
+        )}
+
       </div>
       {isChatOpen && <OgeemoChatDialog isOpen={isChatOpen} onOpenChange={setIsChatOpen} />}
     </>
