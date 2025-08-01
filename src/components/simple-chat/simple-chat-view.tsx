@@ -30,8 +30,8 @@ export function SimpleChatView() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const baseTextRef = useRef("");
   const { toast } = useToast();
+  const baseTextRef = useRef("");
 
   const {
     status,
@@ -90,11 +90,11 @@ export function SimpleChatView() {
       const response = await fetch('/api/genkit/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           message: currentInput,
-          history: newMessages.slice(0, -1).map(msg => ({ // Send history, excluding the latest user message
-            role: msg.sender === 'user' ? 'user' : 'model',
-            content: [{ text: msg.text }]
+          history: newMessages.slice(0, -1).map(msg => ({
+              role: msg.sender === 'user' ? 'user' : 'model',
+              content: [{ text: msg.text }]
           }))
         })
       });
@@ -103,12 +103,12 @@ export function SimpleChatView() {
         const errorData = await response.json();
         throw new Error(errorData.error || 'The API returned an error.');
       }
-      
-      const responseData = await response.json();
+
+      const result = await response.json();
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: responseData.reply,
+        text: result.reply,
         sender: "bot",
       };
       setMessages((prev) => [...prev, botMessage]);
@@ -184,6 +184,12 @@ export function SimpleChatView() {
           <CardContent className="flex-1 overflow-hidden">
             <ScrollArea className="h-full pr-4" ref={scrollAreaRef}>
               <div className="space-y-4">
+                {messages.length === 0 && (
+                  <div className="flex flex-col items-center text-muted-foreground text-center pt-8">
+                    <p>Start the conversation...</p>
+                    <p className="text-sm mt-2">Click the mic icon to start and stop dictation.</p>
+                  </div>
+                )}
                 {messages.map((message) => (
                   <div
                     key={message.id}

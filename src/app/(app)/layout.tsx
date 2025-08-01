@@ -26,8 +26,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <UserNav />
           </SidebarHeader>
         </Sidebar>
-        <main className="flex-1 relative flex flex-col h-screen overflow-y-auto">
-          <div className="flex-1">
+        <main className="flex-1 relative flex flex-col h-full overflow-y-auto">
+          <div className="flex-1 flex flex-col">
             {children}
           </div>
           <SiteFooter />

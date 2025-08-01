@@ -12,8 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { type Project, type Event as TaskEvent } from '@/types/calendar';
 import { type Contact } from '@/data/contacts';
-import { addEventEntry, type EventEntry } from '@/services/client-manager-service';
-import { addTask } from '@/services/project-service';
+import { addTask, getProjects } from '@/services/project-service';
+import { getContacts } from '@/services/contact-service';
 import { Checkbox } from '../ui/checkbox';
 import { Textarea } from '../ui/textarea';
 import { NewTaskDialog } from '../tasks/NewTaskDialog';
@@ -42,12 +42,11 @@ const formatTime = (totalSeconds: number) => {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
-interface TimeManagerViewProps {
-    projects: Project[];
-    contacts: Contact[];
-}
+export function TimeManagerView() {
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [contacts, setContacts] = useState<Contact[]>([]);
+    const [isLoadingData, setIsLoadingData] = useState(true);
 
-export function TimeManagerView({ projects, contacts }: TimeManagerViewProps) {
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [isActive, setIsActive] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
@@ -66,6 +65,29 @@ export function TimeManagerView({ projects, contacts }: TimeManagerViewProps) {
 
     const { user } = useAuth();
     const { toast } = useToast();
+
+    useEffect(() => {
+        async function loadData() {
+            if (!user) {
+                setIsLoadingData(false);
+                return;
+            }
+            setIsLoadingData(true);
+            try {
+                const [fetchedProjects, fetchedContacts] = await Promise.all([
+                    getProjects(user.uid),
+                    getContacts(user.uid),
+                ]);
+                setProjects(fetchedProjects);
+                setContacts(fetchedContacts);
+            } catch (error: any) {
+                toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
+            } finally {
+                setIsLoadingData(false);
+            }
+        }
+        loadData();
+    }, [user, toast]);
 
     const updateTimerState = useCallback(() => {
         try {
@@ -191,29 +213,25 @@ export function TimeManagerView({ projects, contacts }: TimeManagerViewProps) {
             return;
         }
         
-        const project = projects.find(p => p.id === selectedProjectId);
-        if (!project) {
-            toast({ variant: 'destructive', title: 'Project Required', description: 'Please select a project to log time against.' });
-            return;
-        }
-
         const finalBillableRate = isBillable ? (Number(billableRate) || 0) : 0;
 
-        const newEntry: Omit<EventEntry, 'id'> = {
-            accountId: contact.id,
-            contactName: contact.name,
-            subject: subject || 'Time Entry',
-            detailsHtml: notes.replace(/\n/g, '<br>'),
-            startTime: new Date(Date.now() - elapsedSeconds * 1000),
-            endTime: new Date(),
+        const newTaskData: Omit<TaskEvent, 'id' | 'userId'> = {
+            title: subject || 'Logged Time Entry',
+            description: notes,
+            start: new Date(Date.now() - elapsedSeconds * 1000),
+            end: new Date(),
+            status: 'done',
+            position: 0, // Default position
+            projectId: selectedProjectId,
+            contactId: selectedContactId,
+            isScheduled: false, // This was a live-timed event, not pre-scheduled
             duration: elapsedSeconds,
             billableRate: finalBillableRate,
-            userId: user.uid,
         };
         
         try {
-            await addEventEntry(newEntry);
-            toast({ title: 'Time Logged', description: `Logged ${formatTime(elapsedSeconds)} for ${contact.name}` });
+            await addTask({ ...newTaskData, userId: user.uid });
+            toast({ title: 'Time Logged', description: `Logged ${formatTime(elapsedSeconds)} as a completed task for ${contact.name}` });
             handleReset(false);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Log Failed', description: error.message });
@@ -285,13 +303,21 @@ export function TimeManagerView({ projects, contacts }: TimeManagerViewProps) {
             return;
         }
         try {
-            await addTask({ ...taskData, userId: user.uid, position: 0 });
+            await addTask({ ...taskData, userId: user.uid });
             toast({ title: "Event Scheduled", description: `"${taskData.title}" has been added to your calendar.` });
             handleReset(false);
         } catch (error: any) {
              toast({ variant: 'destructive', title: 'Failed to create event', description: error.message });
         }
     };
+
+    if (isLoadingData) {
+        return (
+            <div className="flex h-full w-full items-center justify-center">
+                <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+            </div>
+        );
+    }
 
     return (
         <>
@@ -302,9 +328,9 @@ export function TimeManagerView({ projects, contacts }: TimeManagerViewProps) {
                         <Clock className="h-8 w-8 text-primary" />
                     </div>
                     <div className="text-center">
-                        <h1 className="text-3xl font-bold font-headline text-primary">Event Time Manager</h1>
+                        <h1 className="text-3xl font-bold font-headline text-primary">Time Manager</h1>
                         <p className="text-muted-foreground">
-                            Track your time time against all events and check the box if the event is billable
+                            Track your time or schedule future events.
                         </p>
                     </div>
                     <div className="text-right absolute right-0">
@@ -397,7 +423,6 @@ export function TimeManagerView({ projects, contacts }: TimeManagerViewProps) {
             onTaskCreate={handleTaskCreate}
             contacts={contacts}
             defaultValues={scheduleInitialData}
-            isProject={false}
         />
         </>
     );

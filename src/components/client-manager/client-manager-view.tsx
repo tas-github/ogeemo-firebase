@@ -10,29 +10,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Pencil, BookOpen, ArrowRight, FileSpreadsheet } from "lucide-react";
+import { ArrowRight, FileSpreadsheet } from "lucide-react";
 
 export function ClientManagerView() {
   const features = [
     {
-      icon: Pencil,
-      title: "Create New Log Entry",
-      description: "Start the timer and create a detailed log for a new client action or event.",
-      href: "/client-manager/create",
-      cta: "Create Entry",
-    },
-    {
-      icon: BookOpen,
-      title: "View Client Log",
-      description: "Review, search, and export your complete history of all client events.",
-      href: "/client-manager/logged-events",
-      cta: "View Log",
-    },
-    {
       icon: FileSpreadsheet,
       title: "Client Time Report",
       description: "Generate a detailed, filterable report of all time logged for a specific client.",
-      href: "/client-manager/report",
+      href: "/reports/client-billing",
       cta: "Generate Report",
     },
   ];
@@ -44,7 +30,7 @@ export function ClientManagerView() {
           Client Manager Hub
         </h1>
         <p className="text-muted-foreground max-w-2xl mx-auto">
-          The purpose of this manager is to have a record of all actions recorded in the event manager, to create a history so that when a client gets an invoice and questions what you did for them, there is a readily available report to print or email to them. It will show both billable and non billable actions performed for the client.
+          This manager is now primarily for reporting. Time is logged via the Time Manager, and contacts are managed in the Contacts app.
         </p>
       </header>
       

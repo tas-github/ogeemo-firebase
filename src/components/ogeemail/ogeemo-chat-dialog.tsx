@@ -20,6 +20,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useSpeechToText, type SpeechRecognitionStatus } from "@/hooks/use-speech-to-text";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
+import { ogeemoChatFlow } from "@/ai/flows/ogeemo-chat";
+import { Card, CardContent } from "../ui/card";
 
 type Message = {
   id: string;
@@ -188,7 +190,7 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
                 <DialogHeader className="p-6 pb-4 border-b text-center relative">
                     <DialogTitle className="text-2xl font-bold font-headline text-primary">Chat with Ogeemo</DialogTitle>
                     <DialogDescription>
-                    Ask me anything or tell me what you would like to do.
+                        Ask me anything or tell me what you would like to do. Click the mic icon to start and stop dictation.
                     </DialogDescription>
                     <DialogClose asChild className="absolute right-4 top-1/2 -translate-y-1/2">
                         <Button variant="ghost" size="icon" className="rounded-full">
@@ -201,10 +203,15 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
                     <ScrollArea className="h-full pr-4" ref={chatScrollAreaRef}>
                     <div className="space-y-4">
                         {messages.length === 0 && (
-                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center">
-                            <p>Start the conversation...</p>
-                            <p className="text-sm mt-2">Click the mic icon to start and stop dictation.</p>
-                        </div>
+                            <div className="flex items-start gap-3 justify-start">
+                                <Avatar className="h-8 w-8">
+                                    <AvatarFallback><Bot /></AvatarFallback>
+                                </Avatar>
+                                <div className="max-w-xs md:max-w-sm rounded-lg px-4 py-2 text-sm bg-muted">
+                                    <p className="font-semibold">Welcome to Ogeemo Assistant</p>
+                                    <p>You can start by asking a question or giving a command in the input field below.</p>
+                                </div>
+                            </div>
                         )}
                         {messages.map((message) => (
                         <div

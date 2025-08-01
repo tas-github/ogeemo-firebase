@@ -1,6 +1,10 @@
+'use client';
 
-import { TimeManagerLoader } from '@/components/time/time-manager-loader';
+import { TimeManagerView } from '@/components/time/time-manager-view';
+import { LoaderCircle } from 'lucide-react';
 
 export default function TimeManagerPage() {
-  return <TimeManagerLoader />;
+  // The TimeManagerView component now handles its own data fetching.
+  // We provide a loading fallback here.
+  return <TimeManagerView />;
 }

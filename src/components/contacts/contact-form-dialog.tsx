@@ -25,8 +25,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from '@/components/ui/textarea';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
@@ -57,6 +57,7 @@ interface ContactFormDialogProps {
     contactToEdit: Contact | null;
     folders: FolderData[];
     onSave: (contact: Contact, isEditing: boolean) => void;
+    selectedFolderId?: string; // Add this to pass the currently selected folder
 }
 
 export default function ContactFormDialog({
@@ -65,6 +66,7 @@ export default function ContactFormDialog({
     contactToEdit,
     folders,
     onSave,
+    selectedFolderId,
 }: ContactFormDialogProps) {
     const { toast } = useToast();
     const { user } = useAuth();
@@ -80,9 +82,10 @@ export default function ContactFormDialog({
     });
     
     useEffect(() => {
+        // Only reset form when dialog opens. Prevents infinite loops.
         if (isOpen) {
             setCurrentFolders(folders);
-            const defaultFolderId = folders.find(f => f.name === 'Clients')?.id || folders[0]?.id || '';
+            const defaultFolderId = selectedFolderId !== 'all' ? selectedFolderId : (folders.find(f => f.name === 'Clients')?.id || folders[0]?.id || '');
             const initialValues = contactToEdit 
                 ? { ...contactToEdit, folderId: contactToEdit.folderId || defaultFolderId } 
                 : { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: undefined, notes: "", folderId: defaultFolderId };

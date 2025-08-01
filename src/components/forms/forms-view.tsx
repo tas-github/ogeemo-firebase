@@ -8,6 +8,7 @@ import { z } from "zod";
 import { PersonStanding, ListTodo, WandSparkles, LoaderCircle, Lightbulb, Calendar as CalendarIcon } from "lucide-react";
 import { format, set } from "date-fns";
 
+import { generateFormFlow } from "@/ai/flows/generate-form-flow";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -535,18 +536,9 @@ export function FormsView() {
       }
       setIsGenerating(true);
       try {
-          const response = await fetch('/api/genkit/generate-form', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ topic: generationDescription })
+          const schema = await generateFormFlow({
+            topic: generationDescription
           });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'The API returned an error.');
-          }
-
-          const schema = await response.json();
           setGeneratedSchema(schema);
           setIsGenerateDialogOpen(false);
           setGenerationDescription("");

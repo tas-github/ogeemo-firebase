@@ -4,6 +4,7 @@
 import { ai } from "@/ai/ai";
 import { z } from "zod";
 import { MessageData } from 'genkit';
+import { googleAI } from "@genkit-ai/googleai";
 
 const systemPrompt = `
 You are Ogeemo, an AI assistant for the Ogeemo platform.
@@ -22,28 +23,21 @@ const ogeemoChatFlowInputSchema = z.object({
   history: z.array(z.any()).optional(),
 });
 
-export const ogeemoChatFlow = ai.defineFlow(
-  {
-    name: "ogeemoChatFlow",
-    inputSchema: ogeemoChatFlowInputSchema,
-    outputSchema: z.object({
-      reply: z.string(),
-    }),
-  },
-  async ({ message, history }) => {
-    const augmentedHistory = (history || []).map(h => new MessageData(h));
-    
-    const result = await ai.generate({
-      prompt: message,
-      history: augmentedHistory,
-      config: {
-        temperature: 0.7,
-      },
-      system: systemPrompt,
-    });
+export async function ogeemoChatFlow(input: z.infer<typeof ogeemoChatFlowInputSchema>): Promise<{ reply: string }> {
+  const { message, history } = input;
+  const augmentedHistory = (history || []).map(h => new MessageData(h));
+  
+  const result = await ai.generate({
+    model: googleAI.model('gemini-1.5-flash'),
+    prompt: message,
+    history: augmentedHistory,
+    config: {
+      temperature: 0.7,
+    },
+    system: systemPrompt,
+  });
 
-    return {
-      reply: result.text,
-    };
-  }
-);
+  return {
+    reply: result.text,
+  };
+}

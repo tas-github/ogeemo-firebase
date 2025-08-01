@@ -1,6 +1,7 @@
+import { redirect } from 'next/navigation';
 
-import { LoggedEntriesView } from '@/components/client-manager/logged-entries-view';
-
-export default function LoggedEventsPage() {
-  return <LoggedEntriesView />;
+export default function LoggedEventsRedirectPage() {
+  // This page is now obsolete. The functionality has been centralized
+  // into the main reports section.
+  redirect('/reports/client-billing');
 }

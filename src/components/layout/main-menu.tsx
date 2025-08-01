@@ -107,14 +107,6 @@ export function MainMenu() {
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isActive("/client-manager...")} tooltip="Client Manager">
-          <Link href="/client-manager" onClick={(e) => handleClick(e, "/client-manager")}>
-            <Users />
-            <span>Client Manager</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-      <SidebarMenuItem>
         <SidebarMenuButton asChild isActive={isActive("/projects...")} tooltip="Projects">
           <Link href="/projects" onClick={(e) => handleClick(e, "/projects")}>
             <Briefcase />

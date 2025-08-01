@@ -18,6 +18,9 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useSpeechToText, type SpeechRecognitionStatus } from "@/hooks/use-speech-to-text";
 import { useToast } from "@/hooks/use-toast";
+import { ogeemoChatFlow } from "@/ai/flows/ogeemo-chat";
+import { MessageData } from "genkit";
+
 
 type Message = {
   id: string;
@@ -87,27 +90,19 @@ export function TestChatView() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/genkit/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: currentInput,
-          history: newMessages.slice(0, -1).map(msg => ({
+        const history = newMessages.slice(0, -1).map(msg => new MessageData({
             role: msg.sender === 'user' ? 'user' : 'model',
             content: [{ text: msg.text }]
-          }))
-        })
-      });
+        }));
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'The API returned an error.');
-      }
+        const result = await ogeemoChatFlow({
+            message: currentInput,
+            history: history
+        });
 
-      const responseData = await response.json();
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: responseData.reply,
+        text: result.reply,
         sender: "bot",
       };
       setMessages((prev) => [...prev, botMessage]);

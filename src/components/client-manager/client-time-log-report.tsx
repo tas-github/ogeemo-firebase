@@ -17,7 +17,8 @@ import { type DateRange } from "react-day-picker";
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { useReactToPrint } from '@/hooks/use-react-to-print';
-import { getClientAccounts, getEventEntries, updateEventEntry, deleteEventEntry, type ClientAccount, type EventEntry } from '@/services/client-manager-service';
+import { getContacts, type Contact } from '@/services/contact-service';
+import { getTasksForUser, updateTask, deleteTask, type Event as TaskEvent } from '@/services/project-service';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -35,12 +36,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { EventDetailsDialog } from "@/components/client-manager/event-details-dialog";
+import { NewTaskDialog } from '@/components/tasks/NewTaskDialog';
 
 const INVOICE_FROM_REPORT_KEY = 'invoiceFromReportData';
 
-
 const formatTime = (totalSeconds: number) => {
+    if (!totalSeconds) return '0h 0m';
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
@@ -54,16 +55,16 @@ const endOfDay = (date: Date) => {
 
 
 export function ClientTimeLogReport() {
-    const [clientAccounts, setClientAccounts] = useState<ClientAccount[]>([]);
-    const [allEntries, setAllEntries] = useState<EventEntry[]>([]);
+    const [contacts, setContacts] = useState<Contact[]>([]);
+    const [allEntries, setAllEntries] = useState<TaskEvent[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     
-    const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+    const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
     const [isContactPopoverOpen, setIsContactPopoverOpen] = useState(false);
     
-    const [selectedEntry, setSelectedEntry] = useState<EventEntry | null>(null);
-    const [entryToDelete, setEntryToDelete] = useState<EventEntry | null>(null);
+    const [selectedEntry, setSelectedEntry] = useState<TaskEvent | null>(null);
+    const [entryToDelete, setEntryToDelete] = useState<TaskEvent | null>(null);
 
     const { user } = useAuth();
     const { toast } = useToast();
@@ -80,10 +81,10 @@ export function ClientTimeLogReport() {
             setIsLoading(true);
             try {
                 const [accounts, entries] = await Promise.all([
-                    getClientAccounts(user.uid),
-                    getEventEntries(user.uid),
+                    getContacts(user.uid),
+                    getTasksForUser(user.uid),
                 ]);
-                setClientAccounts(accounts);
+                setContacts(accounts);
                 setAllEntries(entries);
             } catch (error: any) {
                 toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
@@ -96,28 +97,28 @@ export function ClientTimeLogReport() {
     
 
     const filteredEntries = useMemo(() => {
-        if (!selectedAccountId) return [];
+        if (!selectedContactId) return [];
         
         return allEntries
-            .filter(entry => entry.accountId === selectedAccountId)
+            .filter(entry => entry.contactId === selectedContactId)
             .filter(entry => {
                 if (!dateRange || !dateRange.from) return true;
-                const entryDate = new Date(entry.startTime);
+                const entryDate = new Date(entry.start);
                 const toDate = dateRange.to || dateRange.from;
                 return entryDate >= dateRange.from && entryDate <= endOfDay(toDate);
             });
-    }, [selectedAccountId, allEntries, dateRange]);
+    }, [selectedContactId, allEntries, dateRange]);
 
-    const totalDuration = useMemo(() => filteredEntries.reduce((acc, entry) => acc + entry.duration, 0), [filteredEntries]);
-    const totalBillable = useMemo(() => filteredEntries.reduce((acc, entry) => acc + (entry.duration / 3600) * entry.billableRate, 0), [filteredEntries]);
+    const totalDuration = useMemo(() => filteredEntries.reduce((acc, entry) => acc + (entry.duration || 0), 0), [filteredEntries]);
+    const totalBillable = useMemo(() => filteredEntries.reduce((acc, entry) => acc + ((entry.duration || 0) / 3600) * (entry.billableRate || 0), 0), [filteredEntries]);
     
     const setMonthToDate = () => setDateRange({ from: startOfMonth(new Date()), to: new Date() });
     const setYearToDate = () => setDateRange({ from: startOfYear(new Date()), to: new Date() });
     
-    const handleSaveEntry = async (updatedEntryData: Pick<EventEntry, 'id' | 'subject' | 'detailsHtml' | 'startTime' | 'endTime' | 'duration' | 'billableRate'>) => {
+    const handleSaveEntry = async (updatedEntryData: TaskEvent) => {
         try {
-            await updateEventEntry(updatedEntryData.id, updatedEntryData);
-            setAllEntries(prev => prev.map(e => e.id === updatedEntryData.id ? { ...e, ...updatedEntryData } : e));
+            await updateTask(updatedEntryData.id, updatedEntryData);
+            setAllEntries(prev => prev.map(e => e.id === updatedEntryData.id ? updatedEntryData : e));
             toast({ title: "Entry Updated", description: "Your changes have been saved." });
         } catch (error: any) {
             toast({ variant: "destructive", title: "Update Failed", description: error.message });
@@ -127,9 +128,9 @@ export function ClientTimeLogReport() {
     const handleConfirmDelete = async () => {
         if (!entryToDelete) return;
         try {
-            await deleteEventEntry(entryToDelete.id);
+            await deleteTask(entryToDelete.id);
             setAllEntries(prev => prev.filter(e => e.id !== entryToDelete.id));
-            toast({ title: "Entry Deleted", description: `The log entry "${entryToDelete.subject}" has been removed.` });
+            toast({ title: "Entry Deleted", description: `The log entry "${entryToDelete.title}" has been removed.` });
         } catch (error: any) {
             toast({ variant: "destructive", title: "Delete Failed", description: error.message });
         } finally {
@@ -138,17 +139,17 @@ export function ClientTimeLogReport() {
     };
 
     const handleCreateInvoice = () => {
-        if (!selectedAccount || filteredEntries.length === 0) {
+        if (!selectedContact || filteredEntries.length === 0) {
             toast({ variant: 'destructive', title: 'Cannot Create Invoice', description: 'Please select a client with time log entries in the selected range.'});
             return;
         }
 
         const lineItems = filteredEntries
-            .filter(entry => entry.billableRate > 0 && entry.duration > 0)
+            .filter(entry => (entry.billableRate || 0) > 0 && (entry.duration || 0) > 0)
             .map(entry => {
-                const hours = entry.duration / 3600;
+                const hours = (entry.duration || 0) / 3600;
                 return {
-                    description: `${entry.subject} - ${format(entry.startTime, 'PPP')}`,
+                    description: `${entry.title} - ${format(entry.start, 'PPP')}`,
                     quantity: parseFloat(hours.toFixed(2)),
                     price: entry.billableRate,
                 };
@@ -161,7 +162,7 @@ export function ClientTimeLogReport() {
 
         try {
             const invoiceData = {
-                contactId: selectedAccount.contactId,
+                contactId: selectedContact.id,
                 lineItems: lineItems,
             };
             sessionStorage.setItem(INVOICE_FROM_REPORT_KEY, JSON.stringify(invoiceData));
@@ -172,7 +173,7 @@ export function ClientTimeLogReport() {
         }
     };
 
-    const selectedAccount = clientAccounts.find(c => c.id === selectedAccountId);
+    const selectedContact = contacts.find(c => c.id === selectedContactId);
 
     return (
         <>
@@ -183,18 +184,18 @@ export function ClientTimeLogReport() {
                     <p className="text-muted-foreground">Generate a detailed report of time logged for a client.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={handleCreateInvoice} disabled={!selectedAccountId}>
+                    <Button variant="outline" onClick={handleCreateInvoice} disabled={!selectedContactId}>
                         <FileDigit className="mr-2 h-4 w-4" />
                         Create Invoice
                     </Button>
-                    <Button variant="outline" onClick={handlePrint} disabled={!selectedAccountId}>
+                    <Button variant="outline" onClick={handlePrint} disabled={!selectedContactId}>
                         <Printer className="mr-2 h-4 w-4" />
                         Print Report
                     </Button>
                     <Button asChild>
-                        <Link href="/client-manager">
+                        <Link href="/reports">
                             <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Client Hub
+                            Back to Reports Hub
                         </Link>
                     </Button>
                 </div>
@@ -210,12 +211,12 @@ export function ClientTimeLogReport() {
                         <Popover open={isContactPopoverOpen} onOpenChange={setIsContactPopoverOpen}>
                             <PopoverTrigger asChild>
                                 <Button variant="outline" role="combobox" className="w-full justify-between">
-                                    {selectedAccount?.name || "Select client..."}
+                                    {selectedContact?.name || "Select client..."}
                                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                <Command><CommandInput placeholder="Search clients..." /><CommandList><CommandEmpty>{isLoading ? <LoaderCircle className="h-4 w-4 animate-spin"/> : "No client found."}</CommandEmpty><CommandGroup>{clientAccounts.map(c => (<CommandItem key={c.id} value={c.name} onSelect={() => { setSelectedAccountId(c.id); setIsContactPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", selectedAccountId === c.id ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command>
+                                <Command><CommandInput placeholder="Search clients..." /><CommandList><CommandEmpty>{isLoading ? <LoaderCircle className="h-4 w-4 animate-spin"/> : "No client found."}</CommandEmpty><CommandGroup>{contacts.map(c => (<CommandItem key={c.id} value={c.name} onSelect={() => { setSelectedContactId(c.id); setIsContactPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", selectedContactId === c.id ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command>
                             </PopoverContent>
                         </Popover>
                     </div>
@@ -242,7 +243,7 @@ export function ClientTimeLogReport() {
             <div ref={contentRef}>
                 <Card className="print:border-none print:shadow-none">
                     <CardHeader className="text-center">
-                        <CardTitle className="text-2xl">{selectedAccount?.name || "Client"} - Time Report</CardTitle>
+                        <CardTitle className="text-2xl">{selectedContact?.name || "Client"} - Time Report</CardTitle>
                         <CardDescription>
                             {dateRange?.from ? dateRange.to ? `${format(dateRange.from, "PPP")} to ${format(dateRange.to, "PPP")}` : `On ${format(dateRange.from, "PPP")}` : "All time"}
                         </CardDescription>
@@ -250,7 +251,7 @@ export function ClientTimeLogReport() {
                     <CardContent>
                         {isLoading ? (
                             <div className="h-48 flex items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin"/></div>
-                        ) : selectedAccountId ? (
+                        ) : selectedContactId ? (
                              <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -264,10 +265,10 @@ export function ClientTimeLogReport() {
                                 <TableBody>
                                     {filteredEntries.length > 0 ? filteredEntries.map(entry => (
                                         <TableRow key={entry.id}>
-                                            <TableCell>{format(entry.startTime, 'yyyy-MM-dd')}</TableCell>
-                                            <TableCell>{entry.subject}</TableCell>
-                                            <TableCell className="text-right font-mono">{formatTime(entry.duration)}</TableCell>
-                                            <TableCell className="text-right font-mono">${((entry.duration / 3600) * entry.billableRate).toFixed(2)}</TableCell>
+                                            <TableCell>{format(entry.start, 'yyyy-MM-dd')}</TableCell>
+                                            <TableCell>{entry.title}</TableCell>
+                                            <TableCell className="text-right font-mono">{formatTime(entry.duration || 0)}</TableCell>
+                                            <TableCell className="text-right font-mono">${(((entry.duration || 0) / 3600) * (entry.billableRate || 0)).toFixed(2)}</TableCell>
                                             <TableCell>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger>
@@ -298,17 +299,18 @@ export function ClientTimeLogReport() {
                 </Card>
             </div>
         </div>
-        <EventDetailsDialog 
+        <NewTaskDialog 
             isOpen={!!selectedEntry}
             onOpenChange={() => setSelectedEntry(null)}
-            entry={selectedEntry}
-            onSave={handleSaveEntry}
+            eventToEdit={selectedEntry}
+            onTaskUpdate={handleSaveEntry}
+            contacts={contacts}
         />
         <AlertDialog open={!!entryToDelete} onOpenChange={() => setEntryToDelete(null)}>
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>This action will permanently delete the log entry: "{entryToDelete?.subject}". This cannot be undone.</AlertDialogDescription>
+                    <AlertDialogDescription>This action will permanently delete the log entry: "{entryToDelete?.title}". This cannot be undone.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>

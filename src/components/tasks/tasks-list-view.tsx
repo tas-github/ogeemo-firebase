@@ -145,7 +145,7 @@ export function TasksListView() {
         <>
         <div className="p-4 sm:p-6 flex flex-col h-full items-center">
             <header className="text-center mb-6">
-                <h1 className="text-3xl font-bold font-headline text-primary">My Tasks</h1>
+                <h1 className="text-3xl font-bold font-headline text-primary">Task List</h1>
                 <p className="text-muted-foreground">A unified list of all your tasks and scheduled events.</p>
             </header>
 
