@@ -54,9 +54,9 @@ export default function HomePage() {
       <div className="flex flex-col min-h-screen">
         <main className="flex-1">
           {/* Hero Section */}
-          <section className="py-20 md:py-28">
+          <section className="py-16 md:py-20">
             <div className="container mx-auto px-4 text-center flex flex-col items-center">
-              <div className="space-y-6 max-w-4xl">
+              <div className="space-y-4 max-w-4xl">
                 <h1 className="text-5xl md:text-7xl font-bold font-headline text-primary">
                   Simplify Your Business.
                   <br />
@@ -83,7 +83,7 @@ export default function HomePage() {
           </section>
 
           {/* Personas Section */}
-          <section className="pb-16 md:pb-24">
+          <section className="pb-12 md:pb-16">
               <div className="container mx-auto px-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                       {personas.map((persona) => (
@@ -107,7 +107,7 @@ export default function HomePage() {
           </section>
 
           {/* Features Overview Section */}
-          <section className="py-16 md:py-24 bg-slate-50">
+          <section className="py-12 md:py-16 bg-slate-50">
             <div className="container mx-auto px-4">
               <div className="text-center mb-12 space-y-2">
                 <h2 className="text-3xl md:text-4xl font-bold font-headline">Everything You Need, Nothing You Don't</h2>
@@ -130,7 +130,7 @@ export default function HomePage() {
           </section>
 
           {/* CTA Section */}
-          <section className="py-20 md:py-28">
+          <section className="py-16 md:py-20">
             <div className="container mx-auto px-4 text-center flex flex-col items-center">
               <div className="space-y-4">
                 <h2 className="text-3xl md:text-4xl font-bold font-headline">Ready to Simplify Your Business?</h2>
