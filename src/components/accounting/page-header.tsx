@@ -30,7 +30,7 @@ const accountingLinks = [
     { href: "/accounting/reports", icon: BarChart3, label: "Reporting Hub" },
     { href: "/accounting/vitals", icon: Activity, label: "Financial Vitals" },
     { href: "/accounting/onboarding", icon: UserPlus, label: "Client Onboarding" },
-    { href: "/accounting/bks-info", icon: Info, label: "BKS Info" },
+    { href: "/accounting/bks", icon: Info, label: "BKS" },
 ];
 
 

@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useSpeechToText, type SpeechRecognitionStatus } from "@/hooks/use-speech-to-text";
 import { useToast } from "@/hooks/use-toast";
-import { ogeemoChatFlow } from "@/ai/flows/ogeemo-chat";
+import { experimentalChatFlow } from "@/ai/flows/experimental-chat-flow"; // Use the new experimental flow
 
 type Message = {
   id: string;
@@ -92,7 +92,7 @@ export function SimpleChatView() {
           content: [{ text: msg.text }]
       }));
 
-      const result = await ogeemoChatFlow({
+      const result = await experimentalChatFlow({
           message: currentInput,
           history: history
       });

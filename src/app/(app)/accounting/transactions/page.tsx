@@ -107,7 +107,7 @@ export default function TransactionsHubPage() {
                 <Info className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <CardTitle>BKS Info</CardTitle>
+                <CardTitle>BKS</CardTitle>
                 <CardDescription>
                   Learn how BKS can make your life simple.
                 </CardDescription>
@@ -117,7 +117,7 @@ export default function TransactionsHubPage() {
           <CardContent className="flex-1" />
           <div className="p-6 pt-0">
             <Button asChild className="w-full">
-              <Link href="/accounting/bks-info">
+              <Link href="/accounting/bks">
                 Learn More
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

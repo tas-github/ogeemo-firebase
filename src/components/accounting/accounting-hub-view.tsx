@@ -28,6 +28,7 @@ import {
   User,
   Banknote,
   ChevronDown,
+  Info,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -88,6 +89,7 @@ export function AccountingHubView() {
     { icon: DollarSign, title: "Equity Account", description: "Set up and manage your equity account.", href: "/accounting/equity", cta: "Manage Equity" },
     { icon: Banknote, title: "Payroll", description: "Set up and manage your payroll account.", href: "/accounting/payroll", cta: "Manage Payroll" },
     { icon: Activity, title: "Financial Vitals", description: "A quick glance at your most important financial numbers.", href: "/accounting/vitals", cta: "Check Vitals" },
+    { icon: Info, title: "BKS", description: "Bookkeeping Kept Simple is the must have and do of accounting.", href: "/accounting/bks", cta: "start your accounting" },
   ];
 
   return (

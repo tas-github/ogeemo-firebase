@@ -19,7 +19,7 @@ import {
 import { initializeFirebase } from '@/lib/firebase';
 import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData } from '@/types/calendar';
 import { addMinutes } from 'date-fns';
-import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb } from 'lucide-react';
+import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info } from 'lucide-react';
 
 const PROJECTS_COLLECTION = 'projects';
 const TASKS_COLLECTION = 'tasks';
@@ -303,7 +303,7 @@ export async function addProjectTemplate(templateData: Omit<ProjectTemplate, 'id
 
 // --- Action Chip Functions ---
 
-const iconMap: { [key: string]: LucideIcon } = { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb };
+const iconMap: { [key: string]: LucideIcon } = { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info };
 
 const defaultChips: Omit<ActionChipData, 'id' | 'userId'>[] = [
   { label: 'OgeeMail', icon: Mail, href: '/ogeemail' },
@@ -386,6 +386,7 @@ export const managerOptions: ManagerOption[] = [
     { label: 'Ideas', icon: Lightbulb, href: '/ideas' },
     { label: 'Research', icon: Beaker, href: '/research' },
     { label: 'Accounting', icon: Calculator, href: '/accounting' },
+    { label: 'BKS', icon: Info, href: '/accounting/bks' },
     { label: 'Time', icon: Clock, href: '/time' },
     { label: 'HR Manager', icon: Contact2, href: '/hr-manager' },
     { label: 'Social Media', icon: Share2, href: '/social-media-manager' },
@@ -393,6 +394,7 @@ export const managerOptions: ManagerOption[] = [
     { label: 'Inventory', icon: PackageSearch, href: '/inventory-manager' },
     { label: 'Marketing', icon: Megaphone, href: '/marketing-manager' },
     { label: 'Legal Hub', icon: Landmark, href: '/legal-hub' },
+    { label: 'Google', icon: Wand2, href: '/google' },
     { label: 'Backup', icon: DatabaseBackup, href: '/backup' },
     { label: 'Reports', icon: BarChart3, href: '/reports' },
     { label: 'Hytexercise', icon: HeartPulse, href: '/hytexercise' },
