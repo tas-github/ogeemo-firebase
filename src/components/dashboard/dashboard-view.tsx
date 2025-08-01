@@ -6,12 +6,11 @@ import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { LoaderCircle } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { ActionChip } from './ActionChip';
+import { ChipDropZone } from './ChipDropZone';
 import { useToast } from '@/hooks/use-toast';
 import type { LucideIcon } from 'lucide-react';
-import { ScrollArea } from '../ui/scroll-area';
-import { Separator } from '../ui/separator';
 
 const OgeemoChatDialog = dynamic(() => import('@/components/ogeemail/ogeemo-chat-dialog'), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
@@ -33,7 +32,7 @@ const defaultChips: ActionChipData[] = [
   { id: 'default-chip-4', label: 'Files', icon: Folder, href: '/files' },
 ];
 
-const availableActions: Omit<ActionChipData, 'id'>[] = [
+const allAvailableActions: Omit<ActionChipData, 'id'>[] = [
     { label: 'OgeeMail', icon: Mail, href: '/ogeemail' },
     { label: 'Communications', icon: MessageSquare, href: '/communications' },
     { label: 'Contacts', icon: Contact, href: '/contacts' },
@@ -94,23 +93,26 @@ export function DashboardView() {
     }
   }, [userChips, isClient]);
   
-  const addChip = (chipToAdd: Omit<ActionChipData, 'id'>) => {
-    setUserChips(prevChips => {
-        const newChip: ActionChipData = {
-            id: `chip-${Date.now()}`,
-            ...chipToAdd,
-        };
-        return [...prevChips, newChip];
-    });
-  };
-
   const handleDeleteChip = useCallback((chipId: string) => {
     setUserChips(prevChips => prevChips.filter(c => c.id !== chipId));
   }, []);
+
+  const handleDropOnFavorites = (droppedChip: ActionChipData) => {
+    // If the chip is already in userChips, do nothing (it's just reordering, which we don't handle yet)
+    // If it's not, add it.
+    if (!userChips.some(chip => chip.label === droppedChip.label)) {
+      setUserChips(prevChips => [...prevChips, { ...droppedChip, id: `chip-${Date.now()}` }]);
+    }
+  };
+
+  const handleDropOnAvailable = (droppedChip: ActionChipData) => {
+    // If the chip is in userChips, remove it.
+    setUserChips(prevChips => prevChips.filter(chip => chip.label !== droppedChip.label));
+  };
   
-  const availableChipsForDisplay = availableActions.filter(
-    (availChip) => !userChips.some((userChip) => userChip.label === availChip.label)
-  );
+  const availableChipsForDisplay = allAvailableActions
+    .filter(availChip => !userChips.some(userChip => userChip.label === availChip.label))
+    .map(chip => ({ ...chip, id: `avail-${chip.label}` }));
 
   if (!isClient) {
     return (
@@ -148,39 +150,31 @@ export function DashboardView() {
                 <div>
                     <CardTitle className="text-2xl text-primary font-headline">Your Action Dashboard</CardTitle>
                     <CardDescription className="max-w-prose">
-                        {isManageMode ? "Add or remove actions from your dashboard." : "Click an action to get started."}
+                        {isManageMode ? "Drag actions between 'Your Favorite Actions' and 'Available Actions' to customize." : "Click an action to get started."}
                     </CardDescription>
                 </div>
                 <Button onClick={() => setIsManageMode(!isManageMode)}>
                     {isManageMode ? "Done Managing" : "Manage Actions"}
                 </Button>
             </CardHeader>
-            <CardContent className="min-h-[100px] flex flex-wrap gap-2 justify-center">
+            <ChipDropZone onDrop={handleDropOnFavorites}>
                 {userChips.map((chip) => (
                     <ActionChip key={chip.id} chip={chip} onDelete={handleDeleteChip} isDeletable={isManageMode} />
                 ))}
-            </CardContent>
+            </ChipDropZone>
         </Card>
 
         {isManageMode && (
             <Card className="animate-in fade-in-50 duration-300">
                 <CardHeader>
                     <CardTitle>Available Actions</CardTitle>
-                    <CardDescription>Click an action to add it to your dashboard.</CardDescription>
+                    <CardDescription>Drag an action from here to your dashboard to add it. Drag an action from your dashboard here to remove it.</CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-wrap gap-2">
-                    {availableChipsForDisplay.map((chip, index) => (
-                         <Button
-                            key={index}
-                            variant="outline"
-                            className="w-40 justify-start"
-                            onClick={() => addChip(chip)}
-                        >
-                            <chip.icon className="mr-2 h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">{chip.label}</span>
-                        </Button>
+                <ChipDropZone onDrop={handleDropOnAvailable}>
+                    {availableChipsForDisplay.map((chip) => (
+                         <ActionChip key={chip.id} chip={chip} isDeletable={false} />
                     ))}
-                </CardContent>
+                </ChipDropZone>
             </Card>
         )}
 

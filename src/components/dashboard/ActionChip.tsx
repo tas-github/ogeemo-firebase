@@ -5,7 +5,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useDrag } from 'react-dnd';
 import { Button } from '@/components/ui/button';
-import { type ActionChipData } from '@/data/actions';
+import { type ActionChipData } from '@/components/dashboard/dashboard-view';
 import { cn } from '@/lib/utils';
 import { X, Wand2 } from 'lucide-react';
 
@@ -15,7 +15,7 @@ export const DraggableItemTypes = {
 
 interface ActionChipProps {
   chip: ActionChipData;
-  onDelete: (chipId: string) => void;
+  onDelete?: (chipId: string) => void;
   isDeletable?: boolean;
 }
 
@@ -34,6 +34,7 @@ export const ActionChip = React.forwardRef<HTMLDivElement, ActionChipProps>(
     }));
 
     const handleClick = (e: React.MouseEvent) => {
+      // Prevent navigation if the delete button is clicked
       if ((e.target as HTMLElement).closest('[data-delete-chip]')) {
         return;
       }
@@ -42,7 +43,7 @@ export const ActionChip = React.forwardRef<HTMLDivElement, ActionChipProps>(
 
     const handleDelete = (e: React.MouseEvent) => {
       e.stopPropagation();
-      onDelete(chip.id);
+      onDelete?.(chip.id);
     };
     
     const combinedRef = (node: HTMLDivElement) => {
@@ -70,7 +71,7 @@ export const ActionChip = React.forwardRef<HTMLDivElement, ActionChipProps>(
           <Icon className="mr-2 h-4 w-4 flex-shrink-0" />
           <span className="truncate">{label}</span>
         </Button>
-        {isDeletable && (
+        {isDeletable && onDelete && (
           <button
             data-delete-chip
             onClick={handleDelete}
