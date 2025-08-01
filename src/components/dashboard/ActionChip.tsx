@@ -1,8 +1,9 @@
+
 'use client';
 
 import React, { useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDrag, useDrop, XYCoord } from 'react-dnd';
+import { useDrag, useDrop } from 'react-dnd';
 import { Button } from '@/components/ui/button';
 import { type ActionChipData } from '@/components/dashboard/dashboard-view';
 import { cn } from '@/lib/utils';
@@ -54,7 +55,7 @@ export const ActionChip = React.forwardRef<HTMLDivElement, ActionChipProps>(
       if ((e.target as HTMLElement).closest('[data-delete-chip]')) {
         return;
       }
-      router.push(href);
+      router.push(href as any);
     };
 
     const handleDelete = (e: React.MouseEvent) => {

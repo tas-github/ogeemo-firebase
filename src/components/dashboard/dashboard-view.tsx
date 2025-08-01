@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Plus, Mic, Lightbulb, SortAsc, Trash2 } from 'lucide-react';
+import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Plus, Mic, Lightbulb, SortAsc, Trash2, UserPlus } from 'lucide-react';
 
 const OgeemoChatDialog = dynamic(() => import('@/components/ogeemail/ogeemo-chat-dialog'), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
@@ -33,7 +33,7 @@ export interface ActionChipData {
   id: string;
   label: string;
   icon: LucideIcon;
-  href: string;
+  href: string | { pathname: string; query: { [key: string]: string } };
 }
 
 const ACTION_CHIPS_STORAGE_KEY = 'ogeemo-action-chips';
@@ -49,6 +49,7 @@ const defaultChips: ActionChipData[] = [
 
 const allAvailableActions: Omit<ActionChipData, 'id'>[] = [
     { label: 'OgeeMail', icon: Mail, href: '/ogeemail' },
+    { label: 'Add Contact', icon: UserPlus, href: { pathname: '/contacts', query: { action: 'new' } } },
     { label: 'Communications', icon: MessageSquare, href: '/communications' },
     { label: 'Contacts', icon: Contact, href: '/contacts' },
     { label: 'Projects', icon: Briefcase, href: '/projects' },

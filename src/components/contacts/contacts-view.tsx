@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useDrag, useDrop } from 'react-dnd';
 import {
   Folder,
@@ -107,6 +107,7 @@ export function ContactsView() {
   const { toast } = useToast();
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   
   const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
       accept: ItemTypes.FOLDER,
@@ -135,6 +136,13 @@ export function ContactsView() {
             if(rootFolder) {
               setExpandedFolders(new Set([rootFolder.id]));
             }
+
+            const action = searchParams.get('action');
+            if (action === 'new') {
+                handleNewContactClick();
+                // Clean the URL
+                router.replace('/contacts', { scroll: false });
+            }
         } catch (error: any) {
             console.error("Failed to load contact data:", error);
             toast({
@@ -147,7 +155,7 @@ export function ContactsView() {
         }
     }
     loadData();
-  }, [toast, user]);
+  }, [toast, user, searchParams, router]);
 
   const selectedFolder = useMemo(
     () => folders.find((f) => f && f.id === selectedFolderId),
@@ -203,14 +211,14 @@ export function ContactsView() {
     );
   };
   
-  const handleNewContactClick = () => {
-    if (selectedFolderId === 'all') {
+  const handleNewContactClick = useCallback(() => {
+    if (selectedFolderId === 'all' && folders.length > 0) {
       toast({ variant: "destructive", title: "Folder Required", description: "Please select a specific folder before adding a new contact." });
       return;
     }
     setContactToEdit(null);
     setIsContactFormOpen(true);
-  };
+  }, [selectedFolderId, folders.length, toast]);
   
   const handleSaveContact = async (data: Contact | Omit<Contact, 'id'>, isEditing: boolean) => {
     if (!user) return;
