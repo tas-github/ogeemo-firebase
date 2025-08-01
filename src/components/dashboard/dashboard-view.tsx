@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Plus, Mic, Lightbulb, SortAsc } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { LoaderCircle } from 'lucide-react';
@@ -23,9 +22,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
+import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Plus, Mic, Lightbulb, SortAsc } from 'lucide-react';
 
 const OgeemoChatDialog = dynamic(() => import('@/components/ogeemail/ogeemo-chat-dialog'), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
@@ -85,6 +83,7 @@ export function DashboardView() {
   const [isClient, setIsClient] = useState(false);
   const { toast } = useToast();
   const [isManageMode, setIsManageMode] = useState(false);
+  const [isSortConfirmOpen, setIsSortConfirmOpen] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -147,11 +146,19 @@ export function DashboardView() {
   }, [userChips, availableChips]);
 
   const sortChipsAlphabetically = (listType: 'user' | 'available') => {
+    if (listType === 'user' && !isManageMode) return;
+
     const list = listType === 'user' ? userChips : availableChips;
     const setList = listType === 'user' ? setUserChips : setAvailableChips;
     const sortedList = [...list].sort((a, b) => a.label.localeCompare(b.label));
     setList(sortedList);
     toast({ title: `${listType === 'user' ? 'Favorite' : 'Available'} actions sorted.` });
+  };
+  
+  const handleFavoriteSortClick = () => {
+      if (isManageMode) {
+          setIsSortConfirmOpen(true);
+      }
   };
 
   if (!isClient) {
@@ -193,9 +200,16 @@ export function DashboardView() {
                         {isManageMode ? "Drag actions to reorder them or move them between lists." : "Click an action to get started."}
                     </CardDescription>
                 </div>
-                <Button onClick={() => setIsManageMode(!isManageMode)}>
-                    {isManageMode ? "Done Managing" : "Manage Actions"}
-                </Button>
+                <div className="flex items-center gap-2">
+                    {isManageMode && (
+                        <Button variant="outline" size="sm" onClick={handleFavoriteSortClick}>
+                            <SortAsc className="mr-2 h-4 w-4" /> Sort A-Z
+                        </Button>
+                    )}
+                    <Button onClick={() => setIsManageMode(!isManageMode)}>
+                        {isManageMode ? "Done Managing" : "Manage Actions"}
+                    </Button>
+                </div>
             </CardHeader>
             <ChipDropZone onDrop={handleDropOnFavorites} chips={userChips}>
                 {userChips.map((chip, index) => (
@@ -238,6 +252,24 @@ export function DashboardView() {
 
       </div>
       {isChatOpen && <OgeemoChatDialog isOpen={isChatOpen} onOpenChange={setIsChatOpen} />}
+
+      <AlertDialog open={isSortConfirmOpen} onOpenChange={setIsSortConfirmOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Sorting your favorite actions will override your custom arrangement. This cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => { sortChipsAlphabetically('user'); setIsSortConfirmOpen(false); }}>
+                    Yes, Sort
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </DndProvider>
   );
 }
