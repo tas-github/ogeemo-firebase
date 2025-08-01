@@ -108,15 +108,6 @@ export function ContactsView() {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
-  const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
-      accept: ItemTypes.FOLDER,
-      drop: (item: FolderData) => handleFolderDrop(item, null),
-      collect: (monitor) => ({
-          isOverRoot: monitor.isOver(),
-          canDropToRoot: monitor.canDrop(),
-      }),
-  }));
 
   useEffect(() => {
     async function loadData() {
@@ -180,17 +171,27 @@ export function ContactsView() {
     [contacts, folders, selectedFolderId]
   );
   
+  const handleNewContactClick = useCallback(() => {
+    if (selectedFolderId === 'all' && folders.length > 0) {
+      toast({ variant: "destructive", title: "Folder Required", description: "Please select a specific folder before adding a new contact." });
+      return;
+    }
+    setContactToEdit(null);
+    setIsContactFormOpen(true);
+  }, [selectedFolderId, folders.length, toast]);
+  
+  const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
+      accept: ItemTypes.FOLDER,
+      drop: (item: FolderData) => handleFolderDrop(item, null),
+      collect: (monitor) => ({
+          isOverRoot: monitor.isOver(),
+          canDropToRoot: monitor.canDrop(),
+      }),
+  }));
+
   const allVisibleSelected = displayedContacts.length > 0 && selectedContactIds.length === displayedContacts.length;
   const someVisibleSelected = selectedContactIds.length > 0 && selectedContactIds.length < displayedContacts.length;
-  
-  if (isLoading) {
-    return (
-      <div className="flex h-full w-full items-center justify-center p-4">
-        <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
-  
+
   const handleToggleSelect = (contactId: string) => {
     setSelectedContactIds((prev) =>
       prev.includes(contactId)
@@ -210,16 +211,7 @@ export function ContactsView() {
         : [...prev, folderId]
     );
   };
-  
-  const handleNewContactClick = useCallback(() => {
-    if (selectedFolderId === 'all' && folders.length > 0) {
-      toast({ variant: "destructive", title: "Folder Required", description: "Please select a specific folder before adding a new contact." });
-      return;
-    }
-    setContactToEdit(null);
-    setIsContactFormOpen(true);
-  }, [selectedFolderId, folders.length, toast]);
-  
+
   const handleSaveContact = async (data: Contact | Omit<Contact, 'id'>, isEditing: boolean) => {
     if (!user) return;
     try {
@@ -459,6 +451,14 @@ export function ContactsView() {
       </div>
     );
   };
+  
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center p-4">
+        <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <>
