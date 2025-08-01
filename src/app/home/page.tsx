@@ -55,21 +55,23 @@ export default function HomePage() {
         <main className="flex-1">
           {/* Hero Section */}
           <section className="py-20 md:py-32">
-            <div className="container mx-auto px-4 text-center flex flex-col items-center space-y-4">
-              <h1 className="text-5xl md:text-7xl font-bold font-headline text-primary">
-                Simplify Your Business.
-                <br />
-                Empower Your Growth.
-              </h1>
-              <p className="text-lg md:text-xl text-muted-foreground max-w-3xl">
-                The intuitive cloud platform designed for your peace of mind, making business management, time tracking, and audit-ready accounting effortless.
-              </p>
-              <div className="pt-2">
-                 <Button asChild size="lg">
-                    <Link href="/register">
-                      {user ? "Go to Your Dashboard" : "Join Beta Program"}
-                    </Link>
-                </Button>
+            <div className="container mx-auto px-4 text-center flex flex-col items-center">
+              <div className="space-y-4">
+                <h1 className="text-5xl md:text-7xl font-bold font-headline text-primary">
+                  Simplify Your Business.
+                  <br />
+                  Empower Your Growth.
+                </h1>
+                <p className="text-lg md:text-xl text-muted-foreground max-w-3xl">
+                  The intuitive cloud platform designed for your peace of mind, making business management, time tracking, and audit-ready accounting effortless.
+                </p>
+                <div className="pt-2">
+                   <Button asChild size="lg">
+                      <Link href="/register">
+                        {user ? "Go to Your Dashboard" : "Join Beta Program"}
+                      </Link>
+                  </Button>
+                </div>
               </div>
             </div>
           </section>
@@ -129,13 +131,15 @@ export default function HomePage() {
 
           {/* CTA Section */}
           <section className="py-20 md:py-28 bg-slate-50">
-            <div className="container mx-auto px-4 text-center flex flex-col items-center space-y-4">
-              <h2 className="text-3xl md:text-4xl font-bold font-headline">Ready to Simplify Your Business?</h2>
-              <p className="mt-2 text-lg text-muted-foreground">Join our beta program and experience the peace of mind Ogeemo provides.</p>
-              <div className="pt-2">
-                <Button asChild size="lg">
-                    <Link href="/register">Join Beta Program</Link>
-                </Button>
+            <div className="container mx-auto px-4 text-center flex flex-col items-center">
+              <div className="space-y-4">
+                <h2 className="text-3xl md:text-4xl font-bold font-headline">Ready to Simplify Your Business?</h2>
+                <p className="mt-2 text-lg text-muted-foreground">Join our beta program and experience the peace of mind Ogeemo provides.</p>
+                <div className="pt-2">
+                  <Button asChild size="lg">
+                      <Link href="/register">Join Beta Program</Link>
+                  </Button>
+                </div>
               </div>
             </div>
           </section>
