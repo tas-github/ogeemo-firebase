@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Plus, Mic, Lightbulb } from 'lucide-react';
+import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Plus, Mic, Lightbulb, SortAsc } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { LoaderCircle } from 'lucide-react';
@@ -13,6 +14,18 @@ import type { LucideIcon } from 'lucide-react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import update from 'immutability-helper';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
 
 const OgeemoChatDialog = dynamic(() => import('@/components/ogeemail/ogeemo-chat-dialog'), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
@@ -94,10 +107,10 @@ export function DashboardView() {
         .map(chip => ({ ...chip, id: `avail-${chip.label}` }));
     setAvailableChips(available);
 
-    if (isClient) {
+    if (isClient && isManageMode) {
       localStorage.setItem(ACTION_CHIPS_STORAGE_KEY, JSON.stringify(userChips));
     }
-  }, [userChips, isClient]);
+  }, [userChips, isClient, isManageMode]);
   
   const handleDeleteChip = useCallback((chipId: string) => {
     const chipToRemove = userChips.find(c => c.id === chipId);
@@ -132,6 +145,14 @@ export function DashboardView() {
       }),
     );
   }, [userChips, availableChips]);
+
+  const sortChipsAlphabetically = (listType: 'user' | 'available') => {
+    const list = listType === 'user' ? userChips : availableChips;
+    const setList = listType === 'user' ? setUserChips : setAvailableChips;
+    const sortedList = [...list].sort((a, b) => a.label.localeCompare(b.label));
+    setList(sortedList);
+    toast({ title: `${listType === 'user' ? 'Favorite' : 'Available'} actions sorted.` });
+  };
 
   if (!isClient) {
     return (
@@ -192,9 +213,14 @@ export function DashboardView() {
 
         {isManageMode && (
             <Card className="animate-in fade-in-50 duration-300">
-                <CardHeader>
-                    <CardTitle>Available Actions</CardTitle>
-                    <CardDescription>Drag an action from here to your dashboard to add it. Drag an action from your dashboard here to remove it.</CardDescription>
+                <CardHeader className="flex-row justify-between items-center">
+                    <div>
+                        <CardTitle>Available Actions</CardTitle>
+                        <CardDescription>Drag an action from here to your dashboard to add it. Drag an action from your dashboard here to remove it.</CardDescription>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => sortChipsAlphabetically('available')}>
+                        <SortAsc className="mr-2 h-4 w-4" /> Sort A-Z
+                    </Button>
                 </CardHeader>
                 <ChipDropZone onDrop={handleDropOnAvailable} chips={availableChips}>
                     {availableChips.map((chip, index) => (
