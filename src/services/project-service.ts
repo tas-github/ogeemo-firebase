@@ -14,11 +14,12 @@ import {
   writeBatch,
   Timestamp,
   getDoc,
+  setDoc,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
 import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData } from '@/types/calendar';
 import { addMinutes } from 'date-fns';
-import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, LucideIcon, Lightbulb } from 'lucide-react';
+import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb } from 'lucide-react';
 
 const PROJECTS_COLLECTION = 'projects';
 const TASKS_COLLECTION = 'tasks';
@@ -311,52 +312,66 @@ const defaultChips: Omit<ActionChipData, 'id' | 'userId'>[] = [
   { label: 'Files', icon: Folder, href: '/files' },
 ];
 
-export async function getActionChips(userId: string): Promise<ActionChipData[]> {
+async function getChipsFromCollection(userId: string, collectionName: string): Promise<ActionChipData[]> {
     const db = await getDb();
-    const q = query(collection(db, ACTION_CHIPS_COLLECTION), where("userId", "==", userId));
-    const snapshot = await getDocs(q);
-
-    if (snapshot.empty) {
-        // First time user, create default chips
-        const batch = writeBatch(db);
-        const createdChips: ActionChipData[] = [];
-        defaultChips.forEach((chip, index) => {
-            const docRef = doc(collection(db, ACTION_CHIPS_COLLECTION));
-            const iconName = Object.keys(iconMap).find(key => iconMap[key] === chip.icon);
-            const dataToSave = { ...chip, userId, position: index, iconName };
-            delete (dataToSave as any).icon;
-            batch.set(docRef, dataToSave);
-            createdChips.push({ ...chip, id: docRef.id, userId });
-        });
-        await batch.commit();
-        return createdChips.sort((a,b) => (a as any).position - (b as any).position);
+    const docRef = doc(db, collectionName, userId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        const data = docSnap.data();
+        // Ensure chips is an array before mapping
+        return (data.chips || []).map((chip: any) => ({
+            ...chip,
+            icon: iconMap[chip.iconName as keyof typeof iconMap] || Wand2,
+        }));
     }
-    
-    return snapshot.docs.map(docToActionChip).sort((a, b) => (a as any).position - (b as any).position);
+    return [];
+}
+
+async function updateChipsInCollection(userId: string, collectionName: string, chips: ActionChipData[]): Promise<void> {
+    const db = await getDb();
+    const docRef = doc(db, collectionName, userId);
+    const chipsToSave = chips.map((chip, index) => {
+        const iconName = Object.keys(iconMap).find(key => iconMap[key] === chip.icon);
+        const { icon, ...rest } = chip; // remove icon component before saving
+        return { ...rest, position: index, iconName };
+    });
+    await setDoc(docRef, { chips: chipsToSave }, { merge: true });
+}
+
+
+export async function getActionChips(userId: string): Promise<ActionChipData[]> {
+    const chips = await getChipsFromCollection(userId, ACTION_CHIPS_COLLECTION);
+    if (chips.length === 0) {
+        // First time user, create default chips
+        await updateActionChips(userId, defaultChips);
+        return defaultChips.map(c => ({...c, id: `default-${c.label}`, userId}));
+    }
+    return chips;
 }
 
 export async function updateActionChips(userId: string, chips: ActionChipData[]): Promise<void> {
-    const db = await getDb();
-    const batch = writeBatch(db);
-    chips.forEach((chip, index) => {
-        const docRef = doc(db, ACTION_CHIPS_COLLECTION, chip.id);
-        const iconName = Object.keys(iconMap).find(key => iconMap[key] === chip.icon);
-        const dataToSave = { ...chip, position: index, iconName };
-        delete (dataToSave as any).icon;
-        delete (dataToSave as any).id;
-        batch.update(docRef, dataToSave);
-    });
-    await batch.commit();
+    await updateChipsInCollection(userId, ACTION_CHIPS_COLLECTION, chips);
 }
 
 export async function addActionChip(chipData: Omit<ActionChipData, 'id'>): Promise<ActionChipData> {
   const db = await getDb();
-  const iconName = Object.keys(iconMap).find(key => iconMap[key] === chipData.icon);
-  const dataToSave = { ...chipData, iconName };
-  delete (dataToSave as any).icon;
-  const docRef = await addDoc(collection(db, ACTION_CHIPS_COLLECTION), dataToSave);
-  return { id: docRef.id, ...chipData };
+  // Since we are now storing chips in an array within a single document,
+  // we need to fetch the existing array, add to it, and then save it back.
+  const existingChips = await getActionChips(chipData.userId);
+  const newChip = { ...chipData, id: `chip_${Date.now()}` };
+  const updatedChips = [...existingChips, newChip];
+  await updateActionChips(chipData.userId, updatedChips);
+  return newChip;
 }
+
+export async function getTrashedActionChips(userId: string): Promise<ActionChipData[]> {
+    return await getChipsFromCollection(userId, 'trashedActionChips');
+}
+
+export async function updateTrashedActionChips(userId: string, chips: ActionChipData[]): Promise<void> {
+    await updateChipsInCollection(userId, 'trashedActionChips', chips);
+}
+
 
 // --- Data for Dialogs ---
 export type ManagerOption = { label: string; href: string; icon: LucideIcon };
@@ -383,5 +398,3 @@ export const managerOptions: ManagerOption[] = [
     { label: 'Hytexercise', icon: HeartPulse, href: '/hytexercise' },
     { label: 'Alerts', icon: Bell, href: '/alerts' },
 ];
-
-    

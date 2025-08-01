@@ -4,7 +4,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
-import { LoaderCircle, Plus } from 'lucide-react';
+import { LoaderCircle, Plus, Settings, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { DndProvider } from 'react-dnd';
@@ -20,10 +20,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Mic, Lightbulb, SortAsc, Trash2, UserPlus } from 'lucide-react';
+import { Mic, Lightbulb, SortAsc, UserPlus } from 'lucide-react';
 import { type ActionChipData } from '@/types/calendar';
 import { useAuth } from '@/context/auth-context';
-import { getActionChips, updateActionChips, addActionChip, type ManagerOption } from '@/services/project-service';
+import { getActionChips, updateActionChips, addActionChip, type ManagerOption, getTrashedActionChips, updateTrashedActionChips } from '@/services/project-service';
 import { ActionChip } from './ActionChip';
 import { ChipDropZone } from './ChipDropZone';
 import AddActionDialog from './AddActionDialog';
@@ -35,30 +35,37 @@ const OgeemoChatDialog = dynamic(() => import('@/components/ogeemail/ogeemo-chat
 export function DashboardView() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [userChips, setUserChips] = useState<ActionChipData[]>([]);
+  const [trashedChips, setTrashedChips] = useState<ActionChipData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
 
   const [isAddActionDialogOpen, setIsAddActionDialogOpen] = useState(false);
+  const [isManaging, setIsManaging] = useState(false);
 
-  useEffect(() => {
-    async function loadChips() {
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
-      setIsLoading(true);
-      try {
-        const chips = await getActionChips(user.uid);
-        setUserChips(chips);
-      } catch (error: any) {
-        toast({ variant: "destructive", title: "Could not load actions", description: error.message });
-      } finally {
-        setIsLoading(false);
-      }
+  const loadChipData = useCallback(async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
     }
-    loadChips();
+    setIsLoading(true);
+    try {
+      const [chips, trashed] = await Promise.all([
+        getActionChips(user.uid),
+        getTrashedActionChips(user.uid),
+      ]);
+      setUserChips(chips);
+      setTrashedChips(trashed);
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Could not load actions", description: error.message });
+    } finally {
+      setIsLoading(false);
+    }
   }, [user, toast]);
+  
+  useEffect(() => {
+    loadChipData();
+  }, [loadChipData]);
   
   const moveChipInList = useCallback(async (dragIndex: number, hoverIndex: number) => {
     const draggedChip = userChips[dragIndex];
@@ -76,7 +83,6 @@ export function DashboardView() {
             await updateActionChips(user.uid, reorderedChips);
         } catch(e) {
             toast({ variant: 'destructive', title: 'Failed to save order' });
-            // Revert optimistic update
             setUserChips(userChips);
         }
     }
@@ -85,6 +91,48 @@ export function DashboardView() {
   const handleActionAdded = (newChip: ActionChipData) => {
     setUserChips(prev => [...prev, newChip]);
   };
+  
+  const moveChipToTrash = useCallback(async (chip: ActionChipData) => {
+    if (!user) return;
+    
+    const newActiveChips = userChips.filter(c => c.id !== chip.id);
+    const newTrashedChips = [...trashedChips, chip];
+
+    setUserChips(newActiveChips);
+    setTrashedChips(newTrashedChips);
+
+    try {
+        await Promise.all([
+            updateActionChips(user.uid, newActiveChips),
+            updateTrashedActionChips(user.uid, newTrashedChips),
+        ]);
+        toast({ title: `Moved "${chip.label}" to trash` });
+    } catch(e) {
+        toast({ variant: 'destructive', title: 'Failed to move to trash' });
+        loadChipData(); // Revert on failure
+    }
+  }, [user, userChips, trashedChips, toast, loadChipData]);
+
+  const restoreChipFromTrash = useCallback(async (chip: ActionChipData) => {
+    if (!user) return;
+
+    const newTrashedChips = trashedChips.filter(c => c.id !== chip.id);
+    const newActiveChips = [...userChips, chip];
+    
+    setTrashedChips(newTrashedChips);
+    setUserChips(newActiveChips);
+    
+    try {
+        await Promise.all([
+            updateTrashedActionChips(user.uid, newTrashedChips),
+            updateActionChips(user.uid, newActiveChips),
+        ]);
+        toast({ title: `Restored "${chip.label}"` });
+    } catch (e) {
+         toast({ variant: 'destructive', title: 'Failed to restore' });
+         loadChipData(); // Revert on failure
+    }
+  }, [user, userChips, trashedChips, toast, loadChipData]);
   
   if (isLoading) {
     return (
@@ -120,28 +168,69 @@ export function DashboardView() {
         <Card>
             <CardHeader className="flex-row justify-between items-center">
                 <div>
-                    <CardTitle className="text-2xl text-primary font-headline">Your Action Dashboard</CardTitle>
+                    <CardTitle className="text-2xl text-primary font-headline">
+                        {isManaging ? 'Manage Actions' : 'Your Action Dashboard'}
+                    </CardTitle>
                     <CardDescription className="max-w-prose">
-                        Click an action to get started or add a new one.
+                        {isManaging ? 'Drag actions to reorder them or move them to the trash.' : 'Click an action to get started.'}
                     </CardDescription>
                 </div>
-                <Button onClick={() => setIsAddActionDialogOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Action
-                </Button>
+                {isManaging ? (
+                    <div className="flex items-center gap-2">
+                         <Button onClick={() => setIsAddActionDialogOpen(true)}>
+                            <Plus className="mr-2 h-4 w-4" /> Add Action
+                        </Button>
+                        <Button variant="outline" onClick={() => setIsManaging(false)}>Done</Button>
+                    </div>
+                ) : null}
             </CardHeader>
-            <ChipDropZone onDrop={() => {}} chips={userChips}>
+            <ChipDropZone onDrop={restoreChipFromTrash} chips={userChips}>
                 {userChips.map((chip, index) => (
                     <ActionChip
                         key={chip.id}
                         chip={chip}
                         index={index}
-                        onMove={(dragIndex, hoverIndex) => moveChipInList(dragIndex, hoverIndex)}
-                        isDeletable={false}
+                        onMove={moveChipInList}
                     />
                 ))}
+                {!isManaging && (
+                     <Button variant="outline" className="w-40 justify-start" onClick={() => setIsManaging(true)}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        Manage Actions
+                    </Button>
+                )}
             </ChipDropZone>
         </Card>
+        
+        {isManaging && (
+            <Card className="animate-in fade-in-50 duration-300">
+                 <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Trash2 className="h-5 w-5"/>
+                        Trash
+                    </CardTitle>
+                    <CardDescription>
+                        Drag actions here to delete them. Drag them back to "Your Actions" to restore them.
+                    </CardDescription>
+                </CardHeader>
+                 <ChipDropZone onDrop={moveChipToTrash} chips={trashedChips}>
+                    {trashedChips.length > 0 ? (
+                        trashedChips.map((chip, index) => (
+                           <ActionChip
+                                key={chip.id}
+                                chip={chip}
+                                index={index}
+                                onMove={() => {}} // No reordering in trash
+                            />
+                        ))
+                    ) : (
+                        <div className="flex items-center justify-center w-full h-full text-sm text-muted-foreground p-4">
+                            Trash is empty.
+                        </div>
+                    )}
+                </ChipDropZone>
+            </Card>
+        )}
 
       </div>
       {isChatOpen && <OgeemoChatDialog isOpen={isChatOpen} onOpenChange={setIsChatOpen} />}
