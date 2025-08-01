@@ -23,7 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Plus, Mic, Lightbulb, SortAsc } from 'lucide-react';
+import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Plus, Mic, Lightbulb, SortAsc, Trash2 } from 'lucide-react';
 
 const OgeemoChatDialog = dynamic(() => import('@/components/ogeemail/ogeemo-chat-dialog'), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
@@ -37,6 +37,8 @@ export interface ActionChipData {
 }
 
 const ACTION_CHIPS_STORAGE_KEY = 'ogeemo-action-chips';
+const TRASHED_CHIPS_STORAGE_KEY = 'ogeemo-trashed-chips';
+
 
 const defaultChips: ActionChipData[] = [
   { id: 'default-chip-1', label: 'OgeeMail', icon: Mail, href: '/ogeemail' },
@@ -80,6 +82,7 @@ export function DashboardView() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [userChips, setUserChips] = useState<ActionChipData[]>([]);
   const [availableChips, setAvailableChips] = useState<ActionChipData[]>([]);
+  const [trashedChips, setTrashedChips] = useState<ActionChipData[]>([]);
   const [isClient, setIsClient] = useState(false);
   const { toast } = useToast();
   const [isManageMode, setIsManageMode] = useState(false);
@@ -98,43 +101,65 @@ export function DashboardView() {
         }
     }
     setUserChips(initialUserChips);
+
+    const savedTrashedChipsRaw = localStorage.getItem(TRASHED_CHIPS_STORAGE_KEY);
+    if (savedTrashedChipsRaw) {
+        try {
+            setTrashedChips(JSON.parse(savedTrashedChipsRaw));
+        } catch (error) {
+            console.error("Failed to parse trashed chips:", error);
+        }
+    }
   }, []);
 
   useEffect(() => {
+    const allKnownChipLabels = new Set([...userChips.map(c => c.label), ...trashedChips.map(c => c.label)]);
     const available = allAvailableActions
-        .filter(availChip => !userChips.some(userChip => userChip.label === availChip.label))
+        .filter(availChip => !allKnownChipLabels.has(availChip.label))
         .map(chip => ({ ...chip, id: `avail-${chip.label}` }));
     setAvailableChips(available);
 
     if (isClient && isManageMode) {
       localStorage.setItem(ACTION_CHIPS_STORAGE_KEY, JSON.stringify(userChips));
+      localStorage.setItem(TRASHED_CHIPS_STORAGE_KEY, JSON.stringify(trashedChips));
     }
-  }, [userChips, isClient, isManageMode]);
+  }, [userChips, trashedChips, isClient, isManageMode]);
   
-  const handleDeleteChip = useCallback((chipId: string) => {
-    const chipToRemove = userChips.find(c => c.id === chipId);
-    if (chipToRemove) {
-        setUserChips(prevChips => prevChips.filter(c => c.id !== chipId));
-    }
-  }, [userChips]);
-
   const handleDropOnFavorites = useCallback((droppedChip: ActionChipData) => {
     if (!userChips.some(c => c.label === droppedChip.label)) {
         setUserChips(prev => [...prev, { ...droppedChip, id: `user-chip-${Date.now()}` }]);
+        setTrashedChips(prev => prev.filter(c => c.label !== droppedChip.label));
     }
   }, [userChips]);
 
   const handleDropOnAvailable = useCallback((droppedChip: ActionChipData) => {
-    if (userChips.some(c => c.label === droppedChip.label)) {
+    setUserChips(prev => prev.filter(c => c.label !== droppedChip.label));
+    setTrashedChips(prev => prev.filter(c => c.label !== droppedChip.label));
+  }, []);
+  
+  const handleDropOnTrash = useCallback((droppedChip: ActionChipData) => {
+    if (!trashedChips.some(c => c.label === droppedChip.label)) {
+        setTrashedChips(prev => [...prev, { ...droppedChip, id: `trash-chip-${Date.now()}` }]);
         setUserChips(prev => prev.filter(c => c.label !== droppedChip.label));
     }
-  }, [userChips]);
+  }, [trashedChips]);
 
-  const moveChipInList = useCallback((dragIndex: number, hoverIndex: number, listType: 'user' | 'available') => {
-    const list = listType === 'user' ? userChips : availableChips;
-    const setList = listType === 'user' ? setUserChips : setAvailableChips;
+  const moveChipInList = useCallback((dragIndex: number, hoverIndex: number, listType: 'user' | 'available' | 'trash') => {
+    const listMap = {
+        user: userChips,
+        available: availableChips,
+        trash: trashedChips
+    };
+    const setListMap = {
+        user: setUserChips,
+        available: setAvailableChips,
+        trash: setTrashedChips
+    };
 
+    const list = listMap[listType];
+    const setList = setListMap[listType];
     const draggedChip = list[dragIndex];
+
     setList(
       update(list, {
         $splice: [
@@ -143,16 +168,19 @@ export function DashboardView() {
         ],
       }),
     );
-  }, [userChips, availableChips]);
+  }, [userChips, availableChips, trashedChips]);
 
-  const sortChipsAlphabetically = (listType: 'user' | 'available') => {
+  const sortChipsAlphabetically = (listType: 'user' | 'available' | 'trash') => {
     if (listType === 'user' && !isManageMode) return;
+    
+    const listMap = { user: userChips, available: availableChips, trash: trashedChips };
+    const setListMap = { user: setUserChips, available: setAvailableChips, trash: setTrashedChips };
 
-    const list = listType === 'user' ? userChips : availableChips;
-    const setList = listType === 'user' ? setUserChips : setAvailableChips;
+    const list = listMap[listType];
+    const setList = setListMap[listType];
     const sortedList = [...list].sort((a, b) => a.label.localeCompare(b.label));
     setList(sortedList);
-    toast({ title: `${listType === 'user' ? 'Favorite' : 'Available'} actions sorted.` });
+    toast({ title: `${listType.charAt(0).toUpperCase() + listType.slice(1)} actions sorted.` });
   };
   
   const handleFavoriteSortClick = () => {
@@ -217,20 +245,20 @@ export function DashboardView() {
                         key={chip.id}
                         chip={chip}
                         index={index}
-                        onDelete={handleDeleteChip}
                         onMove={(dragIndex, hoverIndex) => moveChipInList(dragIndex, hoverIndex, 'user')}
-                        isDeletable={isManageMode}
+                        isDeletable={false}
                     />
                 ))}
             </ChipDropZone>
         </Card>
 
         {isManageMode && (
+            <>
             <Card className="animate-in fade-in-50 duration-300">
                 <CardHeader className="flex-row justify-between items-center">
                     <div>
                         <CardTitle>Available Actions</CardTitle>
-                        <CardDescription>Drag an action from here to your dashboard to add it. Drag an action from your dashboard here to remove it.</CardDescription>
+                        <CardDescription>Drag an action from here to your dashboard to add it.</CardDescription>
                     </div>
                     <Button variant="outline" size="sm" onClick={() => sortChipsAlphabetically('available')}>
                         <SortAsc className="mr-2 h-4 w-4" /> Sort A-Z
@@ -248,6 +276,27 @@ export function DashboardView() {
                     ))}
                 </ChipDropZone>
             </Card>
+
+             <Card className="animate-in fade-in-50 duration-300">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Trash2 className="h-5 w-5"/> Trash</CardTitle>
+                    <CardDescription>Drag actions here to remove them. Drag them out to restore.</CardDescription>
+                </CardHeader>
+                <ChipDropZone onDrop={handleDropOnTrash} chips={trashedChips}>
+                    {trashedChips.map((chip, index) => (
+                        <div key={chip.id} className="opacity-70">
+                         <ActionChip
+                            key={chip.id}
+                            chip={chip}
+                            index={index}
+                            onMove={(dragIndex, hoverIndex) => moveChipInList(dragIndex, hoverIndex, 'trash')}
+                            isDeletable={false}
+                         />
+                        </div>
+                    ))}
+                </ChipDropZone>
+            </Card>
+            </>
         )}
 
       </div>
