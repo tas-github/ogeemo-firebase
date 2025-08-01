@@ -124,6 +124,36 @@ export function DashboardView() {
     }
   }, [user, userChips, trashedChips, toast, loadChipData]);
   
+  const handleAddPredefinedAction = async (managerOption: (typeof managerOptions)[0]) => {
+    if (!user) return;
+    
+    // Check if a chip with the same href already exists
+    if (userChips.some(chip => chip.href === managerOption.href)) {
+        toast({
+            variant: "default",
+            title: "Action Already Exists",
+            description: `A shortcut for "${managerOption.label}" is already on your dashboard.`,
+        });
+        return;
+    }
+
+    try {
+      const newActionData: Omit<ActionChipData, 'id'> = {
+        label: managerOption.label,
+        icon: managerOption.icon,
+        href: managerOption.href,
+        userId: user.uid,
+      };
+
+      const newAction = await addActionChip(newActionData);
+      handleActionAdded(newAction);
+      
+      toast({ title: "Action Added", description: `"${managerOption.label}" has been added.` });
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Failed to add action", description: error.message });
+    }
+  };
+  
   if (isLoading) {
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -150,15 +180,10 @@ export function DashboardView() {
             </p>
         </header>
 
-        <Button onClick={() => setIsChatOpen(true)} className="w-full text-left p-6 h-auto bg-primary/10 text-primary hover:bg-primary/20 border-2 border-primary/20">
-            <Mic className="h-5 w-5 mr-3" />
-            <span className="text-lg">Tell me what to do...</span>
-        </Button>
-        
         {isManaging ? (
             // MANAGEMENT VIEW
             <div className="space-y-6">
-                <Card>
+                 <Card>
                     <CardHeader className="flex-row justify-between items-center">
                         <div>
                             <CardTitle className="text-2xl text-primary font-headline">Manage Actions</CardTitle>
@@ -166,12 +191,7 @@ export function DashboardView() {
                                 Drag actions to reorder them or move them to the trash.
                             </CardDescription>
                         </div>
-                        <div className="flex items-center gap-2">
-                             <Button onClick={() => setIsAddActionDialogOpen(true)}>
-                                <Plus className="mr-2 h-4 w-4" /> Add Action
-                            </Button>
-                            <Button variant="outline" onClick={() => setIsManaging(false)}>Done</Button>
-                        </div>
+                        <Button variant="outline" onClick={() => setIsManaging(false)}>Done</Button>
                     </CardHeader>
                     <ChipDropZone onDrop={restoreChipFromTrash} chips={userChips}>
                         {userChips.map((chip, index) => (
@@ -185,53 +205,87 @@ export function DashboardView() {
                         ))}
                     </ChipDropZone>
                 </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Trash2 className="h-5 w-5"/>Trash</CardTitle>
-                        <CardDescription>Drag actions here to delete them. Drag them back to restore.</CardDescription>
-                    </CardHeader>
-                    <ChipDropZone onDrop={moveChipToTrash} chips={trashedChips}>
-                        {trashedChips.length > 0 ? (
-                            trashedChips.map((chip, index) => (
-                               <ActionChip
-                                    key={chip.id}
-                                    chip={chip}
-                                    index={index}
-                                    onMove={() => {}}
-                                    isDeletable={false}
-                                />
-                            ))
-                        ) : (
-                            <div className="flex items-center justify-center w-full h-full text-sm text-muted-foreground p-4">
-                                Trash is empty.
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Available Actions</CardTitle>
+                            <CardDescription>Add predefined actions to your dashboard.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          {managerOptions.map(option => (
+                              <div key={option.href} className="flex items-center justify-between p-2 rounded-md border">
+                                <div className="flex items-center gap-2">
+                                  <option.icon className="h-4 w-4 text-muted-foreground" />
+                                  <span className="text-sm font-medium">{option.label}</span>
+                                </div>
+                                <Button size="sm" variant="ghost" onClick={() => handleAddPredefinedAction(option)}>
+                                  <Plus className="mr-2 h-4 w-4" /> Add
+                                </Button>
+                              </div>
+                          ))}
+                            <div className="pt-4">
+                                <Button variant="outline" className="w-full" onClick={() => setIsAddActionDialogOpen(true)}>
+                                    <Plus className="mr-2 h-4 w-4" /> Add Custom Action...
+                                </Button>
                             </div>
-                        )}
-                    </ChipDropZone>
-                </Card>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><Trash2 className="h-5 w-5"/>Trash</CardTitle>
+                            <CardDescription>Drag actions here to delete them. Drag them back to restore.</CardDescription>
+                        </CardHeader>
+                        <ChipDropZone onDrop={moveChipToTrash} chips={trashedChips}>
+                            {trashedChips.length > 0 ? (
+                                trashedChips.map((chip, index) => (
+                                <ActionChip
+                                        key={chip.id}
+                                        chip={chip}
+                                        index={index}
+                                        onMove={() => {}}
+                                        isDeletable={false}
+                                    />
+                                ))
+                            ) : (
+                                <div className="flex items-center justify-center w-full h-full text-sm text-muted-foreground p-4">
+                                    Trash is empty.
+                                </div>
+                            )}
+                        </ChipDropZone>
+                    </Card>
+                </div>
             </div>
         ) : (
             // DEFAULT VIEW
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-2xl text-primary font-headline">Your Action Dashboard</CardTitle>
-                    <CardDescription className="max-w-prose">Click an action to get started.</CardDescription>
-                </CardHeader>
-                <CardContent className="min-h-[100px] flex flex-wrap gap-2 p-4">
-                    {userChips.map((chip, index) => (
-                        <ActionChip
-                            key={chip.id}
-                            chip={chip}
-                            index={index}
-                            onMove={() => {}} // No moving in this view
-                            isDeletable={false}
-                        />
-                    ))}
-                    <Button variant="outline" className="w-40 justify-start" onClick={() => setIsManaging(true)}>
-                        <Settings className="mr-2 h-4 w-4" />
-                        Manage Actions
-                    </Button>
-                </CardContent>
-            </Card>
+            <>
+                <Button onClick={() => setIsChatOpen(true)} className="w-full text-left p-6 h-auto bg-primary/10 text-primary hover:bg-primary/20 border-2 border-primary/20">
+                    <Mic className="h-5 w-5 mr-3" />
+                    <span className="text-lg">Tell me what to do...</span>
+                </Button>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-2xl text-primary font-headline">Your Action Dashboard</CardTitle>
+                        <CardDescription className="max-w-prose">Click an action to get started.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="min-h-[100px] flex flex-wrap gap-2 p-4">
+                        {userChips.map((chip, index) => (
+                            <ActionChip
+                                key={chip.id}
+                                chip={chip}
+                                index={index}
+                                onMove={() => {}} // No moving in this view
+                                isDeletable={false}
+                            />
+                        ))}
+                        <Button variant="outline" className="w-40 justify-start" onClick={() => setIsManaging(true)}>
+                            <Settings className="mr-2 h-4 w-4" />
+                            Manage Actions
+                        </Button>
+                    </CardContent>
+                </Card>
+            </>
         )}
       </div>
       {isChatOpen && <OgeemoChatDialog isOpen={isChatOpen} onOpenChange={setIsChatOpen} />}
