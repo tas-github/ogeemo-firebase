@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { type ActionChipData } from '@/components/dashboard/dashboard-view';
 import { cn } from '@/lib/utils';
 import { X, Wand2 } from 'lucide-react';
+import type { UrlObject } from 'url';
 
 export const DraggableItemTypes = {
   ACTION_CHIP: 'actionChip',
@@ -55,7 +56,8 @@ export const ActionChip = React.forwardRef<HTMLDivElement, ActionChipProps>(
       if ((e.target as HTMLElement).closest('[data-delete-chip]')) {
         return;
       }
-      router.push(href as any);
+      // Explicitly handle both string and object href types
+      router.push(href);
     };
 
     const handleDelete = (e: React.MouseEvent) => {
