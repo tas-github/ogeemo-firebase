@@ -4,7 +4,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, CheckCircle, Target } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
 import React from 'react';
 import { useAuth } from '@/context/auth-context';
@@ -13,7 +12,7 @@ const features = [
   {
     icon: <CheckCircle className="h-6 w-6 text-primary" />,
     title: 'Audit-Ready Accounting',
-    description: 'Simplify your finances with a system built for peace of mind. Designed for non-accountants, Ogeemo ensures your books are audit-ready by default, taking the fear and complexity out of financial management.',
+    description: 'Simplify your finances with a system built for peace of mind. Designed for non-accountants, Ogeemo ensures your books are audit-ready by default.',
   },
   {
     icon: <CheckCircle className="h-6 w-6 text-primary" />,
@@ -23,25 +22,25 @@ const features = [
   {
     icon: <CheckCircle className="h-6 w-6 text-primary" />,
     title: 'Seamless Google Integration',
-    description: 'Built on powerful Google technology, a Google account is all you need to get started. Ogeemo integrates with your workflow, removing the common nuances of workspace management.',
+    description: 'Built on powerful Google technology, a Google account is all you need to get started. Ogeemo integrates with your workflow, removing friction.',
   },
   {
     icon: <CheckCircle className="h-6 w-6 text-primary" />,
     title: 'Powerful Action Manager',
-    description: 'The heart of Ogeemo. The Action Manager is your central hub to begin any task. It\'s where you can start your journey without needing to know a lot to accomplish a lot.',
+    description: 'The heart of Ogeemo. The Action Manager is your central hub to begin any task, empowering you to accomplish a lot without needing to know a lot.',
   },
 ];
 
 const personas = [
     {
         title: "For Small Businesses",
-        description: "Tired of confusing software and audit fears? Ogeemo simplifies your operations so you can focus on growth. Capitalize on your accountant's or consultant's services by sharing your Ogeemo workspace to obtain ongoing support for your business.",
+        description: "Tired of confusing software and audit fears? Ogeemo simplifies your operations so you can focus on growth. Share your workspace with your accountant to get ongoing support.",
         href: "/for-small-businesses",
         cta: "Learn More for Your Business"
     },
     {
         title: "For Accountants and Bookkeepers",
-        description: "Unlock a significant financial opportunity in high-value consulting. By sharing your client's Ogeemo workspace, you can provide ongoing advisory services and increase your billable hours—all while using Ogeemo itself to track your time and bill for it.",
+        description: "Unlock high-value consulting opportunities. By sharing your client's workspace, you can provide ongoing advisory services, all while using Ogeemo to track and bill for your time.",
         href: "/for-accountants",
         cta: "Reinvent Your Practice"
     }
@@ -55,41 +54,43 @@ export default function HomePage() {
       <div className="flex flex-col min-h-screen">
         <main className="flex-1">
           {/* Hero Section */}
-          <section className="py-20 md:py-32 bg-slate-50">
-            <div className="container mx-auto px-4 text-center">
-              <h1 className="text-4xl md:text-6xl font-bold font-headline text-primary">
-                Simplify Your Business. Empower Your Growth.
+          <section className="py-20 md:py-32">
+            <div className="container mx-auto px-4 text-center flex flex-col items-center space-y-4">
+              <h1 className="text-5xl md:text-7xl font-bold font-headline text-primary">
+                Simplify Your Business.
+                <br />
+                Empower Your Growth.
               </h1>
-              <p className="mt-2 text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
+              <p className="text-lg md:text-xl text-muted-foreground max-w-3xl">
                 The intuitive cloud platform designed for your peace of mind, making business management, time tracking, and audit-ready accounting effortless.
               </p>
-              <div className="mt-6 flex justify-center gap-4">
+              <div className="pt-2">
                  <Button asChild size="lg">
                     <Link href="/register">
-                      {user ? "Sign up to be a beta tester" : "Join Beta Program"}
+                      {user ? "Go to Your Dashboard" : "Join Beta Program"}
                     </Link>
                 </Button>
               </div>
             </div>
           </section>
 
-          {/* Problem/Solution Section */}
-          <section className="py-16 md:py-24">
+          {/* Personas Section */}
+          <section className="py-16 md:py-24 bg-slate-50">
               <div className="container mx-auto px-4">
-                  <div className="text-center mb-12">
-                      <h2 className="text-3xl md:text-4xl font-bold font-headline">Stop Juggling Apps. Start Running Your Business.</h2>
-                      <p className="mt-2 text-muted-foreground max-w-2xl mx-auto">
-                          Are you tired of confusing software, complex accounting, and audit fears? Ogeemo is the simple, intuitive, all-in-one solution.
+                  <div className="text-center mb-12 space-y-2">
+                      <h2 className="text-3xl md:text-4xl font-bold font-headline">Built for a New Way of Working</h2>
+                      <p className="text-muted-foreground max-w-2xl mx-auto">
+                          Whether you're running your own business or advising others, Ogeemo is your collaborative platform for success.
                       </p>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                       {personas.map((persona) => (
-                          <Card key={persona.title} className="text-center">
+                          <Card key={persona.title} className="text-center flex flex-col">
                               <CardHeader>
                                   <Target className="h-10 w-10 mx-auto text-primary" />
-                                  <CardTitle className="mt-4">{persona.title}</CardTitle>
+                                  <CardTitle className="mt-4 text-2xl">{persona.title}</CardTitle>
                               </CardHeader>
-                              <CardContent>
+                              <CardContent className="flex-1">
                                   <p className="text-muted-foreground">{persona.description}</p>
                               </CardContent>
                               <CardContent>
@@ -104,21 +105,21 @@ export default function HomePage() {
           </section>
 
           {/* Features Overview Section */}
-          <section className="py-16 md:py-24 bg-slate-50">
+          <section className="py-16 md:py-24">
             <div className="container mx-auto px-4">
-              <div className="text-center mb-12">
+              <div className="text-center mb-12 space-y-2">
                 <h2 className="text-3xl md:text-4xl font-bold font-headline">Everything You Need, Nothing You Don't</h2>
-                <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
+                <p className="text-muted-foreground max-w-2xl mx-auto">
                   Ogeemo replaces multiple subscriptions with one simple, powerful platform.
                 </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                 {features.map((feature) => (
                   <div key={feature.title} className="flex items-start gap-4">
-                    <div className="flex-shrink-0">{feature.icon}</div>
+                    <div className="flex-shrink-0 mt-1">{feature.icon}</div>
                     <div>
-                      <h3 className="font-semibold">{feature.title}</h3>
-                      <p className="text-muted-foreground text-sm">{feature.description}</p>
+                      <h3 className="font-semibold text-lg">{feature.title}</h3>
+                      <p className="text-muted-foreground">{feature.description}</p>
                     </div>
                   </div>
                 ))}
@@ -127,11 +128,11 @@ export default function HomePage() {
           </section>
 
           {/* CTA Section */}
-          <section className="py-20 md:py-28">
-            <div className="container mx-auto px-4 text-center">
+          <section className="py-20 md:py-28 bg-slate-50">
+            <div className="container mx-auto px-4 text-center flex flex-col items-center space-y-4">
               <h2 className="text-3xl md:text-4xl font-bold font-headline">Ready to Simplify Your Business?</h2>
-              <p className="mt-4 text-lg text-muted-foreground">Join our beta program and experience the peace of mind Ogeemo provides.</p>
-              <div className="mt-8">
+              <p className="mt-2 text-lg text-muted-foreground">Join our beta program and experience the peace of mind Ogeemo provides.</p>
+              <div className="pt-2">
                 <Button asChild size="lg">
                     <Link href="/register">Join Beta Program</Link>
                 </Button>
