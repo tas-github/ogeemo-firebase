@@ -4,12 +4,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
-import { LoaderCircle } from 'lucide-react';
+import { LoaderCircle, Plus } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { ActionChip } from './ActionChip';
-import { ChipDropZone } from './ChipDropZone';
 import { useToast } from '@/hooks/use-toast';
-import type { LucideIcon } from 'lucide-react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import update from 'immutability-helper';
@@ -23,174 +20,73 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Plus, Mic, Lightbulb, SortAsc, Trash2, UserPlus } from 'lucide-react';
+import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Mic, Lightbulb, SortAsc, Trash2, UserPlus } from 'lucide-react';
+import { type ActionChipData } from '@/types/calendar';
+import { useAuth } from '@/context/auth-context';
+import { getActionChips, updateActionChips, addActionChip, type ManagerOption } from '@/services/project-service';
+import { ActionChip } from './ActionChip';
+import { ChipDropZone } from './ChipDropZone';
+import AddActionDialog from './AddActionDialog';
 
 const OgeemoChatDialog = dynamic(() => import('@/components/ogeemail/ogeemo-chat-dialog'), {
   loading: () => <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-white" /></div>,
 });
 
-export interface ActionChipData {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-  href: string | { pathname: string; query: { [key: string]: string } };
-}
-
-const ACTION_CHIPS_STORAGE_KEY = 'ogeemo-action-chips';
-const TRASHED_CHIPS_STORAGE_KEY = 'ogeemo-trashed-chips';
-
-
-const defaultChips: ActionChipData[] = [
-  { id: 'default-chip-1', label: 'OgeeMail', icon: Mail, href: '/ogeemail' },
-  { id: 'default-chip-2', label: 'Contacts', icon: Contact, href: '/contacts' },
-  { id: 'default-chip-3', label: 'Projects', icon: Briefcase, href: '/projects' },
-  { id: 'default-chip-4', label: 'Files', icon: Folder, href: '/files' },
-];
-
-const allAvailableActions: Omit<ActionChipData, 'id'>[] = [
-    { label: 'OgeeMail', icon: Mail, href: '/ogeemail' },
-    { label: 'Add Contact', icon: UserPlus, href: { pathname: '/contacts', query: { action: 'new' } } },
-    { label: 'Communications', icon: MessageSquare, href: '/communications' },
-    { label: 'Contacts', icon: Contact, href: '/contacts' },
-    { label: 'Projects', icon: Briefcase, href: '/projects' },
-    { label: 'Tasks', icon: ListTodo, href: '/tasks' },
-    { label: 'Calendar', icon: Calendar, href: '/calendar' },
-    { label: 'Files', icon: Folder, href: '/files' },
-    { label: 'Ideas', icon: Lightbulb, href: '/ideas' },
-    { label: 'Research', icon: Beaker, href: '/research' },
-    { label: 'Accounting', icon: Calculator, href: '/accounting' },
-    { label: 'Time', icon: Clock, href: '/time' },
-    { label: 'HR Manager', icon: Contact2, href: '/hr-manager' },
-    { label: 'Social Media', icon: Share2, href: '/social-media-manager' },
-    { label: 'CRM', icon: Users2, href: '/crm' },
-    { label: 'Inventory', icon: PackageSearch, href: '/inventory-manager' },
-    { label: 'Marketing', icon: Megaphone, href: '/marketing-manager' },
-    { label: 'Legal Hub', icon: Landmark, href: '/legal-hub' },
-    { label: 'Google', icon: Wand2, href: '/google' },
-    { label: 'Backup', icon: DatabaseBackup, href: '/backup' },
-    { label: 'Reports', icon: BarChart3, href: '/reports' },
-    { label: 'Hytexercise', icon: HeartPulse, href: '/hytexercise' },
-    { label: 'Alerts', icon: Bell, href: '/alerts' },
-    { label: 'My Worker', icon: HardHat, href: '/my-worker' },
-    { label: 'Test Chat', icon: Bug, href: '/test-chat' },
-    { label: 'Sandbox', icon: Beaker, href: '/sandbox' },
-    { label: 'Debug', icon: HardHat, href: '/debug' },
-    { label: 'Data', icon: Database, href: '/data' },
-    { label: 'Forms', icon: FilePlus2, href: '/forms' },
-];
-
 export function DashboardView() {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [userChips, setUserChips] = useState<ActionChipData[]>([]);
-  const [availableChips, setAvailableChips] = useState<ActionChipData[]>([]);
-  const [trashedChips, setTrashedChips] = useState<ActionChipData[]>([]);
-  const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [isManageMode, setIsManageMode] = useState(false);
-  const [isSortConfirmOpen, setIsSortConfirmOpen] = useState(false);
+
+  const [isAddActionDialogOpen, setIsAddActionDialogOpen] = useState(false);
 
   useEffect(() => {
-    setIsClient(true);
-    const savedChipsRaw = localStorage.getItem(ACTION_CHIPS_STORAGE_KEY);
-    let initialUserChips = defaultChips;
-    if (savedChipsRaw) {
-        try {
-            initialUserChips = JSON.parse(savedChipsRaw);
-        } catch (error) {
-            console.error("Failed to parse saved chips, reverting to default:", error);
-            localStorage.setItem(ACTION_CHIPS_STORAGE_KEY, JSON.stringify(defaultChips));
-        }
-    }
-    setUserChips(initialUserChips);
-
-    const savedTrashedChipsRaw = localStorage.getItem(TRASHED_CHIPS_STORAGE_KEY);
-    if (savedTrashedChipsRaw) {
-        try {
-            setTrashedChips(JSON.parse(savedTrashedChipsRaw));
-        } catch (error) {
-            console.error("Failed to parse trashed chips:", error);
-        }
-    }
-  }, []);
-
-  useEffect(() => {
-    const allKnownChipLabels = new Set([...userChips.map(c => c.label), ...trashedChips.map(c => c.label)]);
-    const available = allAvailableActions
-        .filter(availChip => !allKnownChipLabels.has(availChip.label))
-        .map(chip => ({ ...chip, id: `avail-${chip.label}` }));
-    setAvailableChips(available);
-
-    if (isClient && isManageMode) {
-      localStorage.setItem(ACTION_CHIPS_STORAGE_KEY, JSON.stringify(userChips));
-      localStorage.setItem(TRASHED_CHIPS_STORAGE_KEY, JSON.stringify(trashedChips));
-    }
-  }, [userChips, trashedChips, isClient, isManageMode]);
-  
-  const handleDropOnFavorites = useCallback((droppedChip: ActionChipData) => {
-    if (!userChips.some(c => c.label === droppedChip.label)) {
-        setUserChips(prev => [...prev, { ...droppedChip, id: `user-chip-${Date.now()}` }]);
-        setTrashedChips(prev => prev.filter(c => c.label !== droppedChip.label));
-    }
-  }, [userChips]);
-
-  const handleDropOnAvailable = useCallback((droppedChip: ActionChipData) => {
-    setUserChips(prev => prev.filter(c => c.label !== droppedChip.label));
-    setTrashedChips(prev => prev.filter(c => c.label !== droppedChip.label));
-  }, []);
-  
-  const handleDropOnTrash = useCallback((droppedChip: ActionChipData) => {
-    if (!trashedChips.some(c => c.label === droppedChip.label)) {
-        setTrashedChips(prev => [...prev, { ...droppedChip, id: `trash-chip-${Date.now()}` }]);
-        setUserChips(prev => prev.filter(c => c.label !== droppedChip.label));
-    }
-  }, [trashedChips]);
-
-  const moveChipInList = useCallback((dragIndex: number, hoverIndex: number, listType: 'user' | 'available' | 'trash') => {
-    const listMap = {
-        user: userChips,
-        available: availableChips,
-        trash: trashedChips
-    };
-    const setListMap = {
-        user: setUserChips,
-        available: setAvailableChips,
-        trash: setTrashedChips
-    };
-
-    const list = listMap[listType];
-    const setList = setListMap[listType];
-    const draggedChip = list[dragIndex];
-
-    setList(
-      update(list, {
-        $splice: [
-          [dragIndex, 1],
-          [hoverIndex, 0, draggedChip],
-        ],
-      }),
-    );
-  }, [userChips, availableChips, trashedChips]);
-
-  const sortChipsAlphabetically = (listType: 'user' | 'available' | 'trash') => {
-    if (listType === 'user' && !isManageMode) return;
-    
-    const listMap = { user: userChips, available: availableChips, trash: trashedChips };
-    const setListMap = { user: setUserChips, available: setAvailableChips, trash: setTrashedChips };
-
-    const list = listMap[listType];
-    const setList = setListMap[listType];
-    const sortedList = [...list].sort((a, b) => a.label.localeCompare(b.label));
-    setList(sortedList);
-    toast({ title: `${listType.charAt(0).toUpperCase() + listType.slice(1)} actions sorted.` });
-  };
-  
-  const handleFavoriteSortClick = () => {
-      if (isManageMode) {
-          setIsSortConfirmOpen(true);
+    async function loadChips() {
+      if (!user) {
+        setIsLoading(false);
+        return;
       }
-  };
+      setIsLoading(true);
+      try {
+        const chips = await getActionChips(user.uid);
+        setUserChips(chips);
+      } catch (error: any) {
+        toast({ variant: "destructive", title: "Could not load actions", description: error.message });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadChips();
+  }, [user, toast]);
+  
+  const moveChipInList = useCallback(async (dragIndex: number, hoverIndex: number) => {
+    const draggedChip = userChips[dragIndex];
+    const reorderedChips = update(userChips, {
+      $splice: [
+        [dragIndex, 1],
+        [hoverIndex, 0, draggedChip],
+      ],
+    });
+    
+    setUserChips(reorderedChips);
 
-  if (!isClient) {
+    if (user) {
+        try {
+            await updateActionChips(user.uid, reorderedChips);
+        } catch(e) {
+            toast({ variant: 'destructive', title: 'Failed to save order' });
+            // Revert optimistic update
+            setUserChips(userChips);
+        }
+    }
+  }, [userChips, user, toast]);
+
+  const handleActionAdded = (newChip: ActionChipData) => {
+    setUserChips(prev => [...prev, newChip]);
+  };
+  
+  if (isLoading) {
     return (
         <div className="p-4 sm:p-6 space-y-6">
              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -226,100 +122,35 @@ export function DashboardView() {
                 <div>
                     <CardTitle className="text-2xl text-primary font-headline">Your Action Dashboard</CardTitle>
                     <CardDescription className="max-w-prose">
-                        {isManageMode ? "Drag actions to reorder them or move them between lists." : "Click an action to get started."}
+                        Click an action to get started or add a new one.
                     </CardDescription>
                 </div>
-                <div className="flex items-center gap-2">
-                    {isManageMode && (
-                        <Button variant="outline" size="sm" onClick={handleFavoriteSortClick}>
-                            <SortAsc className="mr-2 h-4 w-4" /> Sort A-Z
-                        </Button>
-                    )}
-                    <Button onClick={() => setIsManageMode(!isManageMode)}>
-                        {isManageMode ? "Done Managing" : "Manage Actions"}
-                    </Button>
-                </div>
+                <Button onClick={() => setIsAddActionDialogOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Action
+                </Button>
             </CardHeader>
-            <ChipDropZone onDrop={handleDropOnFavorites} chips={userChips}>
+            <ChipDropZone onDrop={() => {}} chips={userChips}>
                 {userChips.map((chip, index) => (
                     <ActionChip
                         key={chip.id}
                         chip={chip}
                         index={index}
-                        onMove={(dragIndex, hoverIndex) => moveChipInList(dragIndex, hoverIndex, 'user')}
+                        onMove={(dragIndex, hoverIndex) => moveChipInList(dragIndex, hoverIndex)}
                         isDeletable={false}
                     />
                 ))}
             </ChipDropZone>
         </Card>
 
-        {isManageMode && (
-            <>
-            <Card className="animate-in fade-in-50 duration-300">
-                <CardHeader className="flex-row justify-between items-center">
-                    <div>
-                        <CardTitle>Available Actions</CardTitle>
-                        <CardDescription>Drag an action from here to your dashboard to add it.</CardDescription>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => sortChipsAlphabetically('available')}>
-                        <SortAsc className="mr-2 h-4 w-4" /> Sort A-Z
-                    </Button>
-                </CardHeader>
-                <ChipDropZone onDrop={handleDropOnAvailable} chips={availableChips}>
-                    {availableChips.map((chip, index) => (
-                         <ActionChip
-                            key={chip.id}
-                            chip={chip}
-                            index={index}
-                            onMove={(dragIndex, hoverIndex) => moveChipInList(dragIndex, hoverIndex, 'available')}
-                            isDeletable={false}
-                         />
-                    ))}
-                </ChipDropZone>
-            </Card>
-
-             <Card className="animate-in fade-in-50 duration-300">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Trash2 className="h-5 w-5"/> Trash</CardTitle>
-                    <CardDescription>Drag actions here to remove them. Drag them out to restore.</CardDescription>
-                </CardHeader>
-                <ChipDropZone onDrop={handleDropOnTrash} chips={trashedChips}>
-                    {trashedChips.map((chip, index) => (
-                        <div key={chip.id} className="opacity-70">
-                         <ActionChip
-                            key={chip.id}
-                            chip={chip}
-                            index={index}
-                            onMove={(dragIndex, hoverIndex) => moveChipInList(dragIndex, hoverIndex, 'trash')}
-                            isDeletable={false}
-                         />
-                        </div>
-                    ))}
-                </ChipDropZone>
-            </Card>
-            </>
-        )}
-
       </div>
       {isChatOpen && <OgeemoChatDialog isOpen={isChatOpen} onOpenChange={setIsChatOpen} />}
-
-      <AlertDialog open={isSortConfirmOpen} onOpenChange={setIsSortConfirmOpen}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Sorting your favorite actions will override your custom arrangement. This cannot be undone.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => { sortChipsAlphabetically('user'); setIsSortConfirmOpen(false); }}>
-                    Yes, Sort
-                </AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
+      
+      <AddActionDialog
+        isOpen={isAddActionDialogOpen}
+        onOpenChange={setIsAddActionDialogOpen}
+        onActionAdded={handleActionAdded}
+      />
     </DndProvider>
   );
 }

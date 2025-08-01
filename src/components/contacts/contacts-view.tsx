@@ -3,7 +3,6 @@
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useDrag, useDrop } from 'react-dnd';
 import {
   Folder,
@@ -106,9 +105,7 @@ export function ContactsView() {
 
   const { toast } = useToast();
   const { user } = useAuth();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
+  
   useEffect(() => {
     async function loadData() {
         if (!user) {
@@ -127,13 +124,6 @@ export function ContactsView() {
             if(rootFolder) {
               setExpandedFolders(new Set([rootFolder.id]));
             }
-
-            const action = searchParams.get('action');
-            if (action === 'new') {
-                handleNewContactClick();
-                // Clean the URL
-                router.replace('/contacts', { scroll: false });
-            }
         } catch (error: any) {
             console.error("Failed to load contact data:", error);
             toast({
@@ -146,7 +136,7 @@ export function ContactsView() {
         }
     }
     loadData();
-  }, [toast, user, searchParams, router]);
+  }, [toast, user]);
 
   const selectedFolder = useMemo(
     () => folders.find((f) => f && f.id === selectedFolderId),
@@ -212,23 +202,12 @@ export function ContactsView() {
     );
   };
 
-  const handleSaveContact = async (data: Contact | Omit<Contact, 'id'>, isEditing: boolean) => {
-    if (!user) return;
-    try {
-        if (isEditing) {
-            const contact = data as Contact;
-            await updateContact(contact.id, contact);
-            setContacts(prev => prev.map(c => c.id === contact.id ? contact : c));
-            toast({ title: "Contact Updated", description: `Details for ${contact.name} have been saved.` });
-        } else {
-            const newContactData = { ...data, userId: user.uid } as Omit<Contact, 'id'>;
-            const newContact = await addContact(newContactData);
-            setContacts(prev => [...prev, newContact]);
-            toast({ title: "Contact Created", description: `${newContact.name} has been added.` });
-        }
-    } catch(error: any) {
-        toast({ variant: "destructive", title: "Save failed", description: error.message });
-    }
+  const handleSaveContact = async (data: Contact, isEditing: boolean) => {
+      if (isEditing) {
+          setContacts(prev => prev.map(c => c.id === data.id ? data : c));
+      } else {
+          setContacts(prev => [...prev, data]);
+      }
   };
 
   const handleDeleteSelected = async () => {

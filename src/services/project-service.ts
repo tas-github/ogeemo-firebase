@@ -16,13 +16,15 @@ import {
   getDoc,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
-import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder } from '@/types/calendar';
+import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData } from '@/types/calendar';
 import { addMinutes } from 'date-fns';
+import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, LucideIcon } from 'lucide-react';
 
 const PROJECTS_COLLECTION = 'projects';
 const TASKS_COLLECTION = 'tasks';
 const TEMPLATES_COLLECTION = 'projectTemplates';
 const FOLDERS_COLLECTION = 'projectFolders';
+const ACTION_CHIPS_COLLECTION = 'actionChips';
 
 async function getDb() {
     const { db } = await initializeFirebase();
@@ -76,6 +78,15 @@ const docToTask = (doc: any): TaskEvent => {
 
 const docToTemplate = (doc: any): ProjectTemplate => ({ id: doc.id, ...doc.data() } as ProjectTemplate);
 const docToFolder = (doc: any): ProjectFolder => ({ id: doc.id, ...doc.data() } as ProjectFolder);
+const docToActionChip = (doc: any): ActionChipData => {
+    const data = doc.data();
+    const iconName = data.iconName as keyof typeof iconMap;
+    return { 
+        id: doc.id, 
+        ...data,
+        icon: iconMap[iconName] || Wand2, // Fallback icon
+    } as ActionChipData;
+};
 
 
 // --- Folder Functions ---
@@ -288,3 +299,87 @@ export async function addProjectTemplate(templateData: Omit<ProjectTemplate, 'id
     const docRef = await addDoc(collection(db, TEMPLATES_COLLECTION), templateData);
     return { id: docRef.id, ...templateData };
 }
+
+// --- Action Chip Functions ---
+
+const iconMap: { [key: string]: LucideIcon } = { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings };
+
+const defaultChips: Omit<ActionChipData, 'id' | 'userId'>[] = [
+  { label: 'OgeeMail', icon: Mail, href: '/ogeemail' },
+  { label: 'Contacts', icon: Contact, href: '/contacts' },
+  { label: 'Projects', icon: Briefcase, href: '/projects' },
+  { label: 'Files', icon: Folder, href: '/files' },
+];
+
+export async function getActionChips(userId: string): Promise<ActionChipData[]> {
+    const db = await getDb();
+    const q = query(collection(db, ACTION_CHIPS_COLLECTION), where("userId", "==", userId));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+        // First time user, create default chips
+        const batch = writeBatch(db);
+        const createdChips: ActionChipData[] = [];
+        defaultChips.forEach((chip, index) => {
+            const docRef = doc(collection(db, ACTION_CHIPS_COLLECTION));
+            const iconName = Object.keys(iconMap).find(key => iconMap[key] === chip.icon);
+            const dataToSave = { ...chip, userId, position: index, iconName };
+            delete (dataToSave as any).icon;
+            batch.set(docRef, dataToSave);
+            createdChips.push({ ...chip, id: docRef.id, userId });
+        });
+        await batch.commit();
+        return createdChips.sort((a,b) => (a as any).position - (b as any).position);
+    }
+    
+    return snapshot.docs.map(docToActionChip).sort((a, b) => (a as any).position - (b as any).position);
+}
+
+export async function updateActionChips(userId: string, chips: ActionChipData[]): Promise<void> {
+    const db = await getDb();
+    const batch = writeBatch(db);
+    chips.forEach((chip, index) => {
+        const docRef = doc(db, ACTION_CHIPS_COLLECTION, chip.id);
+        const iconName = Object.keys(iconMap).find(key => iconMap[key] === chip.icon);
+        const dataToSave = { ...chip, position: index, iconName };
+        delete (dataToSave as any).icon;
+        delete (dataToSave as any).id;
+        batch.update(docRef, dataToSave);
+    });
+    await batch.commit();
+}
+
+export async function addActionChip(chipData: Omit<ActionChipData, 'id'>): Promise<ActionChipData> {
+  const db = await getDb();
+  const iconName = Object.keys(iconMap).find(key => iconMap[key] === chipData.icon);
+  const dataToSave = { ...chipData, iconName };
+  delete (dataToSave as any).icon;
+  const docRef = await addDoc(collection(db, ACTION_CHIPS_COLLECTION), dataToSave);
+  return { id: docRef.id, ...chipData };
+}
+
+// --- Data for Dialogs ---
+export type ManagerOption = { label: string; href: string; icon: LucideIcon };
+export const managerOptions: ManagerOption[] = [
+    { label: 'OgeeMail', icon: Mail, href: '/ogeemail' },
+    { label: 'Communications', icon: MessageSquare, href: '/communications' },
+    { label: 'Contacts', icon: Contact, href: '/contacts' },
+    { label: 'Projects', icon: Briefcase, href: '/projects' },
+    { label: 'Tasks', icon: ListTodo, href: '/tasks' },
+    { label: 'Calendar', icon: Calendar, href: '/calendar' },
+    { label: 'Files', icon: Folder, href: '/files' },
+    { label: 'Ideas', icon: Lightbulb, href: '/ideas' },
+    { label: 'Research', icon: Beaker, href: '/research' },
+    { label: 'Accounting', icon: Calculator, href: '/accounting' },
+    { label: 'Time', icon: Clock, href: '/time' },
+    { label: 'HR Manager', icon: Contact2, href: '/hr-manager' },
+    { label: 'Social Media', icon: Share2, href: '/social-media-manager' },
+    { label: 'CRM', icon: Users2, href: '/crm' },
+    { label: 'Inventory', icon: PackageSearch, href: '/inventory-manager' },
+    { label: 'Marketing', icon: Megaphone, href: '/marketing-manager' },
+    { label: 'Legal Hub', icon: Landmark, href: '/legal-hub' },
+    { label: 'Backup', icon: DatabaseBackup, href: '/backup' },
+    { label: 'Reports', icon: BarChart3, href: '/reports' },
+    { label: 'Hytexercise', icon: HeartPulse, href: '/hytexercise' },
+    { label: 'Alerts', icon: Bell, href: '/alerts' },
+];

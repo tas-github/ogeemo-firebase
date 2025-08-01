@@ -1,8 +1,5 @@
 
-
-
-
-
+import type { LucideIcon } from 'lucide-react';
 
 export type TaskStatus = 'todo' | 'inProgress' | 'done';
 
@@ -65,4 +62,12 @@ export interface ProjectTemplate {
     name: string;
     steps: { title: string; defaultDurationHours: number; }[];
     userId: string;
+}
+
+export interface ActionChipData {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  href: string | { pathname: string; query?: { [key: string]: string } };
+  userId: string;
 }

@@ -5,7 +5,7 @@ import React, { useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDrag, useDrop } from 'react-dnd';
 import { Button } from '@/components/ui/button';
-import { type ActionChipData } from '@/components/dashboard/dashboard-view';
+import { type ActionChipData } from '@/types/calendar';
 import { cn } from '@/lib/utils';
 import { X, Wand2 } from 'lucide-react';
 import type { UrlObject } from 'url';
@@ -62,7 +62,7 @@ export const ActionChip = React.forwardRef<HTMLDivElement, ActionChipProps>(
         router.push(href);
       } else if (typeof href === 'object' && href.pathname) {
         // Manually construct the URL with query parameters
-        const query = new URLSearchParams(href.query).toString();
+        const query = new URLSearchParams(href.query as Record<string, string>).toString();
         const url = query ? `${href.pathname}?${query}` : href.pathname;
         router.push(url);
       }
