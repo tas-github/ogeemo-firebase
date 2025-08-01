@@ -18,7 +18,7 @@ import {
 import { initializeFirebase } from '@/lib/firebase';
 import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData } from '@/types/calendar';
 import { addMinutes } from 'date-fns';
-import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, LucideIcon } from 'lucide-react';
+import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, LucideIcon, Lightbulb } from 'lucide-react';
 
 const PROJECTS_COLLECTION = 'projects';
 const TASKS_COLLECTION = 'tasks';
@@ -302,7 +302,7 @@ export async function addProjectTemplate(templateData: Omit<ProjectTemplate, 'id
 
 // --- Action Chip Functions ---
 
-const iconMap: { [key: string]: LucideIcon } = { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings };
+const iconMap: { [key: string]: LucideIcon } = { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb };
 
 const defaultChips: Omit<ActionChipData, 'id' | 'userId'>[] = [
   { label: 'OgeeMail', icon: Mail, href: '/ogeemail' },
@@ -383,3 +383,5 @@ export const managerOptions: ManagerOption[] = [
     { label: 'Hytexercise', icon: HeartPulse, href: '/hytexercise' },
     { label: 'Alerts', icon: Bell, href: '/alerts' },
 ];
+
+    
