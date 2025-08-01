@@ -56,8 +56,16 @@ export const ActionChip = React.forwardRef<HTMLDivElement, ActionChipProps>(
       if ((e.target as HTMLElement).closest('[data-delete-chip]')) {
         return;
       }
-      // Explicitly handle both string and object href types
-      router.push(href);
+      
+      // Explicitly handle both string and object href types to prevent router errors.
+      if (typeof href === 'string') {
+        router.push(href);
+      } else if (typeof href === 'object' && href.pathname) {
+        // Manually construct the URL with query parameters
+        const query = new URLSearchParams(href.query).toString();
+        const url = query ? `${href.pathname}?${query}` : href.pathname;
+        router.push(url);
+      }
     };
 
     const handleDelete = (e: React.MouseEvent) => {
