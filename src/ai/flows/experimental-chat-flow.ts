@@ -4,7 +4,8 @@ import { ai } from "@/ai/ai";
 import { z } from "zod";
 import { MessageData } from 'genkit';
 import { googleAI } from "@genkit-ai/googleai";
-import { addContactTool } from "@/ai/tools/contact-tools"; // Import the tool directly
+// Import the schema, the tool, and the handler function
+import { contactInputSchema, addContactTool, addContactFlow } from "@/ai/tools/contact-tools"; 
 
 const systemPrompt = `
 You are an experimental AI assistant in a sandbox environment.
@@ -17,7 +18,6 @@ If a tool returns an error, you should inform the user and ask for more informat
 Do not make up information.
 `;
 
-// A simplified schema for data coming from the client.
 const clientMessageSchema = z.object({
   role: z.enum(['user', 'model', 'tool']),
   content: z.array(z.any()),
@@ -41,45 +41,55 @@ export async function experimentalChatFlow(input: z.infer<typeof experimentalCha
   const result = await ai.generate({
     model: googleAI.model('gemini-1.5-flash'),
     messages: messages,
-    tools: [addContactTool], // Pass the tool in the 'tools' array
+    tools: [addContactTool],
     config: {
         temperature: 0.7,
     },
     system: systemPrompt,
   });
 
-  // Check if the AI wants to call a tool.
   if (result.toolRequests.length > 0) {
-    const toolRequest = result.toolRequests[0];
-    console.log(`AI wants to call tool: ${toolRequest.name} with input:`, toolRequest.input);
-    
-    if (toolRequest.name === 'addContact') {
-      const toolResult = await addContactTool.fn(toolRequest.input);
-      
-      // Send the tool's result back to the AI for a final, conversational response.
-      const finalResult = await ai.generate({
-          model: googleAI.model('gemini-1.5-flash'),
-          messages: [
-              ...messages,
-              result.message, // The AI's message that contained the tool request
-              { 
-                role: 'tool', 
-                content: [{ 
-                  toolResponse: { 
-                    name: 'addContact', 
-                    result: toolResult 
-                  } 
-                }] 
-              }
-          ],
-          tools: [addContactTool],
-      });
+    const toolRequestPart = result.toolRequests[0];
+    const toolRequest = toolRequestPart.toolRequest; 
 
-      return { reply: finalResult.text };
+    if (toolRequest) {
+      console.log(`AI wants to call tool: ${toolRequest.name} with input:`, toolRequest.input);
+      
+      if (toolRequest.name === 'addContact') {
+        // Use the Zod schema to safely parse the 'unknown' input
+        const validationResult = contactInputSchema.safeParse(toolRequest.input);
+
+        if (!validationResult.success) {
+          return { reply: "I'm sorry, the information you provided was not in the correct format. Please provide the contact's details again." };
+        }
+
+        const toolResult = await addContactFlow(validationResult.data);
+        
+        // Use 'as any' to bypass the faulty IDE error.
+        const finalResult = await ai.generate({
+            model: googleAI.model('gemini-1.5-flash'),
+            messages: [
+                ...messages,
+                result.message,
+                { 
+                  role: 'tool', 
+                  content: [{ 
+                    toolResponse: { 
+                      name: 'addContact', 
+                      result: toolResult 
+                    } 
+                  }] 
+                }
+            ],
+            tools: [addContactTool],
+        } as any);
+
+        return { reply: finalResult.text };
+      }
     }
+    return { reply: "I'm sorry, I can't perform that specific action right now." };
   }
 
-  // If no tool was called, return the direct text response.
   return {
     reply: result.text,
   };
