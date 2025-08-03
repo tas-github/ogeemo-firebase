@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Bot, LoaderCircle, Send, User, Mic, Square, X } from "lucide-react";
+import { Bot, LoaderCircle, Send, User, Mic, Square, X, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,7 +11,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -76,6 +75,14 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
         });
         }
     }, [messages]);
+    
+    const handleNewChat = () => {
+        setMessages([]);
+        toast({
+            title: "New Chat Started",
+            description: "Your previous conversation has been cleared.",
+        });
+    };
 
     const submitChatMessage = useCallback(async () => {
         const currentInput = chatInput.trim();
@@ -192,12 +199,12 @@ export default function OgeemoChatDialog({ isOpen, onOpenChange }: OgeemoChatDia
                     <DialogDescription>
                         Ask me anything or tell me what you would like to do. Click the mic icon to start and stop dictation.
                     </DialogDescription>
-                    <DialogClose asChild className="absolute right-4 top-1/2 -translate-y-1/2">
-                        <Button variant="ghost" size="icon" className="rounded-full">
-                            <X className="h-5 w-5" />
-                            <span className="sr-only">Close</span>
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                        <Button variant="outline" size="icon" onClick={handleNewChat} title="Start New Chat">
+                            <RefreshCw className="h-5 w-5" />
+                            <span className="sr-only">New Chat</span>
                         </Button>
-                    </DialogClose>
+                    </div>
                 </DialogHeader>
                 <div className="flex-1 p-6 overflow-hidden">
                     <ScrollArea className="h-full pr-4" ref={chatScrollAreaRef}>

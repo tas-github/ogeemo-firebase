@@ -3,12 +3,11 @@
 
 import React, { useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDrag, useDrop } from 'react-dnd';
+import { useDrag, useDrop, XYCoord } from 'react-dnd';
 import { Button } from '@/components/ui/button';
 import { type ActionChipData } from '@/types/calendar';
 import { cn } from '@/lib/utils';
-import { X, Wand2 } from 'lucide-react';
-import type { UrlObject } from 'url';
+import { Wand2, X } from 'lucide-react';
 
 export const DraggableItemTypes = {
   ACTION_CHIP: 'actionChip',
@@ -17,13 +16,12 @@ export const DraggableItemTypes = {
 interface ActionChipProps {
   chip: ActionChipData;
   index: number;
-  onDelete?: (chipId: string) => void;
-  onMove: (dragIndex: number, hoverIndex: number) => void;
-  isDeletable?: boolean;
+  onDelete?: () => void;
+  onMove?: (dragIndex: number, hoverIndex: number) => void;
 }
 
 export const ActionChip = React.forwardRef<HTMLDivElement, ActionChipProps>(
-  ({ chip, index, onDelete, onMove, isDeletable = true }, ref) => {
+  ({ chip, index, onDelete, onMove }, ref) => {
     const router = useRouter();
     const localRef = useRef<HTMLDivElement>(null);
     const { icon: IconComponent, href, label } = chip;
@@ -36,44 +34,60 @@ export const ActionChip = React.forwardRef<HTMLDivElement, ActionChipProps>(
         isDragging: !!monitor.isDragging(),
       }),
     });
-    
+
     const [, drop] = useDrop({
-        accept: DraggableItemTypes.ACTION_CHIP,
-        hover(item: ActionChipData & { index: number }, monitor) {
-            if (!localRef.current) return;
-            
-            const dragIndex = item.index;
-            const hoverIndex = index;
-
-            if (dragIndex === hoverIndex) return;
-            
-            onMove(dragIndex, hoverIndex);
-            item.index = hoverIndex;
+      accept: DraggableItemTypes.ACTION_CHIP,
+      hover(item: ActionChipData & { index: number }, monitor) {
+        if (!localRef.current || !onMove) {
+          return;
         }
-    });
+        const dragIndex = item.index;
+        const hoverIndex = index;
 
+        if (dragIndex === hoverIndex) {
+          return;
+        }
+
+        const hoverBoundingRect = localRef.current.getBoundingClientRect();
+        const clientOffset = monitor.getClientOffset();
+        if (!clientOffset) return;
+
+        // You might need more sophisticated logic here depending on layout (e.g., grid)
+        const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+        if (dragIndex < hoverIndex && hoverClientY < hoverBoundingRect.height / 2) {
+          return;
+        }
+        if (dragIndex > hoverIndex && hoverClientY > hoverBoundingRect.height / 2) {
+          return;
+        }
+        
+        onMove(dragIndex, hoverIndex);
+        item.index = hoverIndex;
+      },
+    });
+    
+    drag(drop(localRef));
+    
     const handleClick = (e: React.MouseEvent) => {
-      if ((e.target as HTMLElement).closest('[data-delete-chip]')) {
-        return;
-      }
+      if (!href) return;
       
-      // Explicitly handle both string and object href types to prevent router errors.
-      if (typeof href === 'string') {
+      const hrefValue = typeof href === 'string' ? href : href.pathname;
+
+      if (hrefValue && (hrefValue.startsWith('http://') || hrefValue.startsWith('https://'))) {
+        window.open(hrefValue, '_blank', 'noopener,noreferrer');
+      } else if (typeof href === 'string') {
         router.push(href);
       } else if (typeof href === 'object' && href.pathname) {
-        // Manually construct the URL with query parameters
         const query = new URLSearchParams(href.query as Record<string, string>).toString();
         const url = query ? `${href.pathname}?${query}` : href.pathname;
         router.push(url);
       }
     };
-
-    const handleDelete = (e: React.MouseEvent) => {
-      e.stopPropagation();
-      onDelete?.(chip.id);
-    };
     
-    drag(drop(localRef));
+    const handleDelete = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onDelete?.();
+    }
 
     return (
       <div
@@ -84,22 +98,28 @@ export const ActionChip = React.forwardRef<HTMLDivElement, ActionChipProps>(
         )}
       >
         <Button
-          variant="secondary"
-          className="w-40 justify-start cursor-move"
           onClick={handleClick}
+          className={cn(
+            "w-48 justify-start border-b-4 border-primary/70 bg-primary text-primary-foreground",
+            "hover:bg-primary/90",
+            "active:mt-1 active:border-b-2 active:border-primary/90",
+            !href && "cursor-default active:mt-0 active:border-b-4",
+            "border-blue-800"
+          )}
         >
           <Icon className="mr-2 h-4 w-4 flex-shrink-0" />
           <span className="truncate">{label}</span>
         </Button>
-        {isDeletable && onDelete && (
-          <button
-            data-delete-chip
-            onClick={handleDelete}
-            className="absolute -top-1 -right-1 h-5 w-5 bg-muted-foreground text-muted rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            aria-label={`Delete ${label} chip`}
-          >
-            <X className="h-3 w-3" />
-          </button>
+        {onDelete && (
+             <Button
+                variant="destructive"
+                size="icon"
+                className="absolute -top-2 -right-2 h-5 w-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={handleDelete}
+            >
+                <X className="h-3 w-3" />
+                <span className="sr-only">Delete {label}</span>
+            </Button>
         )}
       </div>
     );

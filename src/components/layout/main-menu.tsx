@@ -283,14 +283,6 @@ export function MainMenu() {
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
-       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isActive("/simple-chat")} tooltip="Simple Chat">
-          <Link href="/simple-chat" onClick={(e) => handleClick(e, "/simple-chat")}>
-            <MessageSquare />
-            <span>Simple Chat</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
       <SidebarMenuItem>
         <SidebarMenuButton
           asChild
@@ -300,18 +292,6 @@ export function MainMenu() {
           <Link href="/test-chat" onClick={(e) => handleClick(e, "/test-chat")}>
             <Bug />
             <span>Test Chat</span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-       <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          isActive={isActive("/sandbox")}
-          tooltip="Sandbox"
-        >
-          <Link href="/sandbox" onClick={(e) => handleClick(e, "/sandbox")}>
-            <Beaker />
-            <span>Sandbox</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>

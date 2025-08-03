@@ -65,10 +65,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-form-dialog'), {
   loading: () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg/50">
       <LoaderCircle className="h-10 w-10 animate-spin text-white" />
     </div>
   ),
@@ -413,8 +414,8 @@ export function ContactsView() {
                 </Button>
                 {!isRenaming && (
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 shrink-0"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}><Button variant="ghost" size="icon" className="h-8 w-8 shrink-0"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenuItem onSelect={() => handleOpenNewFolderDialog({ parentId: folder.id })}><FolderPlus className="mr-2 h-4 w-4" />Create subfolder</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleStartRename(folder)}><Pencil className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
                       <DropdownMenuSeparator />
@@ -470,7 +471,7 @@ export function ContactsView() {
                   </div>
                   <ScrollArea ref={dropToRoot} className={cn("flex-1 rounded-md p-2", isOverRoot && canDropToRoot && 'bg-primary/10 ring-1 ring-primary-foreground')}>
                       <Button variant={selectedFolderId === 'all' ? "secondary" : "ghost"} className="w-full justify-start gap-3 my-1" onClick={() => setSelectedFolderId('all')}>
-                          <Users className="h-4 w-4" /> <span>All Contacts</span>
+                          <Users className="h-4 w-4" /> <span>All Folders</span>
                       </Button>
                       <FolderTree />
                   </ScrollArea>
@@ -500,7 +501,13 @@ export function ContactsView() {
                                 )}
                               </div>
                               <div className="flex items-center gap-2">
-                                  <Button onClick={handleNewContactClick} className="bg-orange-500 hover:bg-orange-600 text-white"><Plus className="mr-2 h-4 w-4" /> Add Contact</Button>
+                                {selectedFolderId === 'all' ? (
+                                    <Button disabled className="cursor-not-allowed bg-orange-500 hover:bg-orange-500 text-white">Select a folder to add contact</Button>
+                                ) : (
+                                    <Button onClick={handleNewContactClick} className="bg-orange-500 hover:bg-orange-600 text-white">
+                                        <Plus className="mr-2 h-4 w-4" /> Add Contact
+                                    </Button>
+                                )}
                               </div>
                           </>
                       )}

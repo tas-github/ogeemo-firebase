@@ -9,14 +9,6 @@ import { Phone, Mic, Square, FolderPlus } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -36,6 +28,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { addContact, updateContact, addFolder } from '@/services/contact-service';
 import { useAuth } from '@/context/auth-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { useUserPreferences } from '@/hooks/use-user-preferences';
 
 const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -75,6 +68,7 @@ export default function ContactFormDialog({
     const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
     const [newFolderName, setNewFolderName] = useState("");
     const [currentFolders, setCurrentFolders] = useState<FolderData[]>(folders);
+    const { preferences } = useUserPreferences();
 
     const form = useForm<ContactFormData>({
         resolver: zodResolver(contactSchema),
@@ -91,7 +85,7 @@ export default function ContactFormDialog({
                 : { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: undefined, notes: "", folderId: defaultFolderId };
             form.reset(initialValues);
         }
-    }, [isOpen]);
+    }, [isOpen, contactToEdit, folders, selectedFolderId, form]);
 
     const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
         onTranscript: (transcript) => {
@@ -150,22 +144,22 @@ export default function ContactFormDialog({
             setCurrentFolders(prev => [...prev, newFolder]);
             form.setValue('folderId', newFolder.id);
             toast({ title: "Folder Created" });
-        } catch(e: any) { toast({ variant: "destructive", title: "Failed", description: e.message }); }
+        } catch(e: any) { toast({ variant: "destructive", title: "Failed", description: (e as Error).message }); }
         finally { setIsNewFolderDialogOpen(false); setNewFolderName(""); }
     };
 
     return (
         <>
-        <Sheet open={isOpen} onOpenChange={onOpenChange}>
-            <SheetContent className="sm:max-w-xl flex flex-col p-0" side="right">
-                <SheetHeader className="p-6 pb-4">
-                    <SheetTitle className="text-2xl font-bold font-headline text-primary">
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
+                <DialogHeader className="p-6 pb-4 border-b text-center sm:text-center">
+                    <DialogTitle className="text-2xl font-bold font-headline text-primary">
                         {contactToEdit ? "Edit Contact" : "New Contact"}
-                    </SheetTitle>
-                    <SheetDescription>
+                    </DialogTitle>
+                    <DialogDescription>
                         {contactToEdit ? `Editing details for ${contactToEdit.name}.` : `Create a new contact.`}
-                    </SheetDescription>
-                </SheetHeader>
+                    </DialogDescription>
+                </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
                         <ScrollArea className="flex-1">
@@ -271,10 +265,12 @@ export default function ContactFormDialog({
                                                     {...field}
                                                     ref={notesRef}
                                                 /></FormControl>
-                                                <Button type="button" variant={isListening ? 'destructive' : 'ghost'} size="icon" className="absolute bottom-2 right-2 h-8 w-8" onClick={handleDictateNotes} disabled={isSupported === false} title={isSupported === false ? "Voice not supported" : (isListening ? "Stop dictation" : "Dictate notes")}>
-                                                    {isListening ? <Square className="h-4 w-4 animate-pulse" /> : <Mic className="h-4 w-4" />}
-                                                    <span className="sr-only">{isListening ? "Stop dictation" : "Dictate notes"}</span>
-                                                </Button>
+                                                {preferences?.showDictationButton && (
+                                                    <Button type="button" variant={isListening ? 'destructive' : 'ghost'} size="icon" className="absolute bottom-2 right-2 h-8 w-8" onClick={handleDictateNotes} disabled={isSupported === false} title={isSupported === false ? "Voice not supported" : (isListening ? "Stop dictation" : "Dictate notes")}>
+                                                        {isListening ? <Square className="h-4 w-4 animate-pulse" /> : <Mic className="h-4 w-4" />}
+                                                        <span className="sr-only">{isListening ? "Stop dictation" : "Dictate notes"}</span>
+                                                    </Button>
+                                                )}
                                             </div>
                                             <FormMessage />
                                         </FormItem>
@@ -282,14 +278,14 @@ export default function ContactFormDialog({
                                 />
                             </div>
                         </ScrollArea>
-                        <SheetFooter className="p-6 border-t">
+                        <DialogFooter className="p-6 border-t">
                             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
                             <Button type="submit">{contactToEdit ? "Save Changes" : "Create Contact"}</Button>
-                        </SheetFooter>
+                        </DialogFooter>
                     </form>
                 </Form>
-            </SheetContent>
-        </Sheet>
+            </DialogContent>
+        </Dialog>
         <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader><DialogTitle>Create New Folder</DialogTitle></DialogHeader>

@@ -34,15 +34,23 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { addActionChip, managerOptions } from '@/services/project-service';
 import type { ActionChipData } from '@/types/calendar';
-import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, LucideIcon } from 'lucide-react';
-
-const iconMap: { [key: string]: LucideIcon } = { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings };
+import { Wand2 } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 const addActionSchema = z.object({
-  label: z.string().min(2, { message: "Label must be at least 2 characters." }),
-  actionType: z.enum(['openManager']),
-  target: z.string({ required_error: "Please select a target." }),
+  label: z.string().min(1, { message: "Label is required." }),
+  linkType: z.enum(['page', 'url', 'none']).default('page'),
+  targetPage: z.string().optional(),
+  targetUrl: z.string().optional(),
+}).refine(data => {
+    if (data.linkType === 'page') return !!data.targetPage;
+    if (data.linkType === 'url') return !!data.targetUrl;
+    return true; // 'none' is always valid
+}, {
+    message: "A target is required for this link type.",
+    path: ['targetPage'], // You can point the error to one of the fields
 });
+
 
 type AddActionFormData = z.infer<typeof addActionSchema>;
 
@@ -59,10 +67,13 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded }:
     resolver: zodResolver(addActionSchema),
     defaultValues: {
       label: "",
-      actionType: "openManager",
-      target: undefined,
+      linkType: 'page',
+      targetPage: undefined,
+      targetUrl: "",
     },
   });
+
+  const linkType = form.watch('linkType');
 
   async function onSubmit(values: AddActionFormData) {
     if (!user) {
@@ -70,17 +81,24 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded }:
       return;
     }
     
-    const selectedManager = managerOptions.find(m => m.href === values.target);
-    if (!selectedManager) {
-        toast({ variant: "destructive", title: "Invalid target selected." });
-        return;
+    let href: ActionChipData['href'] = '';
+    let icon = Wand2;
+
+    if (values.linkType === 'page' && values.targetPage) {
+        href = values.targetPage;
+        const selectedManager = managerOptions.find(m => m.href === values.targetPage);
+        if (selectedManager) {
+            icon = selectedManager.icon;
+        }
+    } else if (values.linkType === 'url' && values.targetUrl) {
+        href = values.targetUrl;
     }
 
     try {
       const newActionData: Omit<ActionChipData, 'id'> = {
         label: values.label,
-        icon: selectedManager.icon,
-        href: selectedManager.href,
+        icon,
+        href,
         userId: user.uid,
       };
 
@@ -113,59 +131,88 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded }:
                 <FormItem>
                   <FormLabel>Label</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., View Projects" {...field} />
+                    <Input placeholder="e.g., Accounts Receivable" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="actionType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Action Type</FormLabel>
-                   <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="openManager">Open a Manager</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+             <FormField
+                control={form.control}
+                name="linkType"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                        <FormLabel>Link Type</FormLabel>
+                        <FormControl>
+                            <RadioGroup
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            className="flex space-x-4"
+                            >
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="page" /></FormControl>
+                                    <FormLabel className="font-normal">Select a Page</FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="url" /></FormControl>
+                                    <FormLabel className="font-normal">Enter a URL</FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                    <FormControl><RadioGroupItem value="none" /></FormControl>
+                                    <FormLabel className="font-normal">No Link</FormLabel>
+                                </FormItem>
+                            </RadioGroup>
+                        </FormControl>
+                    </FormItem>
+                )}
             />
-            <FormField
-              control={form.control}
-              name="target"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Target</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a manager to open..." />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {managerOptions.map((option) => (
-                        <SelectItem key={option.href} value={option.href}>
-                            <div className="flex items-center gap-2">
-                                <option.icon className="h-4 w-4" />
-                                <span>{option.label}</span>
-                            </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+
+            {linkType === 'page' && (
+                <FormField
+                    control={form.control}
+                    name="targetPage"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Target Page</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a page to open..." />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            {managerOptions.map((option) => (
+                                <SelectItem key={option.href} value={option.href}>
+                                    <div className="flex items-center gap-2">
+                                        <option.icon className="h-4 w-4" />
+                                        <span>{option.label}</span>
+                                    </div>
+                                </SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            )}
+
+            {linkType === 'url' && (
+                 <FormField
+                    control={form.control}
+                    name="targetUrl"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Target Page or URL</FormLabel>
+                        <FormControl>
+                            <Input placeholder="/accounting/accounts-receivable or https://example.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            )}
+
              <DialogFooter className="pt-4">
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
                 <Button type="submit">Add Action</Button>

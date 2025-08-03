@@ -1,5 +1,5 @@
-import { SandboxView } from "@/components/sandbox/sandbox-view";
+// This page has been cleared as requested.
 
 export default function SandboxPage() {
-  return <SandboxView />;
+  return null;
 }

@@ -236,13 +236,22 @@ export function NewTaskDialog({
   };
   
   const isProjectMode = mode === 'project';
+  const isCalendarMode = defaultValues.isScheduled === true;
+
+  const getDialogTitle = () => {
+    if (projectToEdit) return 'Edit Project';
+    if (eventToEdit) return 'Edit Task';
+    if (isProjectMode) return 'Create Project';
+    if (isCalendarMode) return 'Create Calendar Event';
+    return 'Create Task';
+  };
 
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
           <DialogHeader className="p-6 pb-4 border-b text-center">
-            <DialogTitle className="text-primary">{projectToEdit ? 'Edit Project' : eventToEdit ? 'Edit Task' : isProjectMode ? 'Create Project' : 'Create Task'}</DialogTitle>
+            <DialogTitle className="text-primary">{getDialogTitle()}</DialogTitle>
             <DialogDescription>{isProjectMode ? "Define your new project." : 'Add a new task. Check "Add to Calendar" to schedule it.'}</DialogDescription>
           </DialogHeader>
           <Form {...form}>

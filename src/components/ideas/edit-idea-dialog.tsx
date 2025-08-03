@@ -19,6 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bold, Italic, Underline, List, ListOrdered, Quote, Strikethrough, Link as LinkIcon, Mic, Square } from "lucide-react";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { cn } from "@/lib/utils";
+import { useUserPreferences } from "@/hooks/use-user-preferences";
 
 interface Idea {
   id: number;
@@ -39,6 +40,7 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
   const editorRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const [contentBeforeSpeech, setContentBeforeSpeech] = useState('');
+  const { preferences } = useUserPreferences();
 
   const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
     onTranscript: (transcript) => {
@@ -134,10 +136,14 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
               <Button variant="ghost" size="icon" title="Blockquote" onMouseDown={preventDefault} onClick={() => handleFormat('formatBlock', 'blockquote')}><Quote className="h-4 w-4" /></Button>
               <Separator orientation="vertical" className="h-6 mx-1" />
               <Button variant="ghost" size="icon" title="Insert Link" onMouseDown={preventDefault} onClick={() => { const url = prompt('Enter a URL:'); if (url) handleFormat('createLink', url); }}><LinkIcon className="h-4 w-4" /></Button>
-              <Separator orientation="vertical" className="h-6 mx-1" />
-              <Button variant="ghost" size="icon" title={isListening ? "Stop dictation" : "Dictate notes"} onMouseDown={preventDefault} onClick={handleDictateNotes} disabled={isSupported === false} className={cn(isListening && "text-destructive")}>
-                  {isListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-              </Button>
+              {preferences?.showDictationButton && (
+                <>
+                  <Separator orientation="vertical" className="h-6 mx-1" />
+                  <Button variant="ghost" size="icon" title={isListening ? "Stop dictation" : "Dictate notes"} onMouseDown={preventDefault} onClick={handleDictateNotes} disabled={isSupported === false} className={cn(isListening && "text-destructive")}>
+                      {isListening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                  </Button>
+                </>
+              )}
           </div>
 
           <ScrollArea className="flex-1">

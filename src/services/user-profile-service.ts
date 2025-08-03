@@ -16,6 +16,11 @@ export interface UserProfile {
     alternateContactPhone?: string;
     createdAt?: any;
     updatedAt?: any;
+    preferences?: {
+        showDictationButton?: boolean;
+        showCommandFrame?: boolean;
+        showDashboardFrame?: boolean;
+    };
 }
 
 const PROFILES_COLLECTION = 'userProfiles';
@@ -25,15 +30,29 @@ async function getDb() {
     return db;
 }
 
+const defaultPreferences = {
+    showDictationButton: true,
+    showCommandFrame: true,
+    showDashboardFrame: true,
+};
+
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
     const db = await getDb();
     const docRef = doc(db, PROFILES_COLLECTION, userId);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() } as UserProfile;
+        const data = docSnap.data();
+        // Merge fetched preferences with defaults to ensure all keys are present
+        const preferences = { ...defaultPreferences, ...(data.preferences || {}) };
+        return { id: docSnap.id, ...data, preferences } as UserProfile;
     } else {
-        return null;
+        // Return a default profile for a new user
+        return {
+            id: userId,
+            email: '', // This should be populated on creation
+            preferences: defaultPreferences,
+        };
     }
 }
 
@@ -56,6 +75,8 @@ export async function updateUserProfile(
     } else {
         dataWithTimestamp.email = email;
         dataWithTimestamp.createdAt = serverTimestamp();
+        // Ensure preferences field is created for new users, merging with any provided data
+        dataWithTimestamp.preferences = { ...defaultPreferences, ...(data.preferences || {}) };
         await setDoc(docRef, dataWithTimestamp);
     }
 }

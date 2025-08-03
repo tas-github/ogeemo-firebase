@@ -20,12 +20,16 @@ import { initializeFirebase } from '@/lib/firebase';
 import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData } from '@/types/calendar';
 import { addMinutes } from 'date-fns';
 import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 const PROJECTS_COLLECTION = 'projects';
 const TASKS_COLLECTION = 'tasks';
 const TEMPLATES_COLLECTION = 'projectTemplates';
 const FOLDERS_COLLECTION = 'projectFolders';
-const ACTION_CHIPS_COLLECTION = 'actionChips';
+const ACTION_CHIPS_COLLECTION = 'userActionChips';
+const AVAILABLE_ACTION_CHIPS_COLLECTION = 'availableActionChips';
+const TRASHED_ACTION_CHIPS_COLLECTION = 'trashedActionChips';
+
 
 async function getDb() {
     const { db } = await initializeFirebase();
@@ -318,7 +322,6 @@ async function getChipsFromCollection(userId: string, collectionName: string): P
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
         const data = docSnap.data();
-        // Ensure chips is an array before mapping
         return (data.chips || []).map((chip: any) => ({
             ...chip,
             icon: iconMap[chip.iconName as keyof typeof iconMap] || Wand2,
@@ -332,51 +335,111 @@ async function updateChipsInCollection(userId: string, collectionName: string, c
     const docRef = doc(db, collectionName, userId);
     const chipsToSave = chips.map((chip, index) => {
         const iconName = Object.keys(iconMap).find(key => iconMap[key] === chip.icon);
-        const { icon, ...rest } = chip; // remove icon component before saving
+        const { icon, ...rest } = chip;
         return { ...rest, position: index, iconName };
     });
     await setDoc(docRef, { chips: chipsToSave }, { merge: true });
 }
 
-
 export async function getActionChips(userId: string): Promise<ActionChipData[]> {
     const chips = await getChipsFromCollection(userId, ACTION_CHIPS_COLLECTION);
     if (chips.length === 0) {
-        // First time user, create default chips
-        await updateActionChips(userId, defaultChips);
-        return defaultChips.map(c => ({...c, id: `default-${c.label}`, userId}));
+        const db = await getDb();
+        const docRef = doc(db, ACTION_CHIPS_COLLECTION, userId);
+        const docSnap = await getDoc(docRef);
+        if (!docSnap.exists()) {
+            await updateActionChips(userId, defaultChips);
+            return defaultChips.map(c => ({...c, id: `default-${c.label}`, userId}));
+        }
     }
     return chips;
+}
+
+export async function getAvailableActionChips(userId: string): Promise<ActionChipData[]> {
+    return getChipsFromCollection(userId, AVAILABLE_ACTION_CHIPS_COLLECTION);
+}
+
+export async function getTrashedActionChips(userId: string): Promise<ActionChipData[]> {
+    return getChipsFromCollection(userId, TRASHED_ACTION_CHIPS_COLLECTION);
 }
 
 export async function updateActionChips(userId: string, chips: ActionChipData[]): Promise<void> {
     await updateChipsInCollection(userId, ACTION_CHIPS_COLLECTION, chips);
 }
 
+export async function updateAvailableActionChips(userId: string, chips: ActionChipData[]): Promise<void> {
+    await updateChipsInCollection(userId, AVAILABLE_ACTION_CHIPS_COLLECTION, chips);
+}
+
+export async function trashActionChips(userId: string, chipsToTrash: ActionChipData[]): Promise<void> {
+    const db = await getDb();
+    const userChips = await getActionChips(userId);
+    const availableChips = await getAvailableActionChips(userId);
+    const trashedChips = await getTrashedActionChips(userId);
+
+    const chipIdsToTrash = new Set(chipsToTrash.map(c => c.id));
+    
+    const newUserChips = userChips.filter(c => !chipIdsToTrash.has(c.id));
+    const newAvailableChips = availableChips.filter(c => !chipIdsToTrash.has(c.id));
+    const newTrashedChips = [...trashedChips, ...chipsToTrash];
+
+    await Promise.all([
+        updateActionChips(userId, newUserChips),
+        updateAvailableActionChips(userId, newAvailableChips),
+        updateChipsInCollection(userId, TRASHED_ACTION_CHIPS_COLLECTION, newTrashedChips)
+    ]);
+}
+
+export async function restoreActionChips(userId: string, chipsToRestore: ActionChipData[]): Promise<void> {
+    const db = await getDb();
+    const availableChips = await getAvailableActionChips(userId);
+    const trashedChips = await getTrashedActionChips(userId);
+    
+    const chipIdsToRestore = new Set(chipsToRestore.map(c => c.id));
+
+    const newAvailableChips = [...availableChips, ...chipsToRestore];
+    const newTrashedChips = trashedChips.filter(c => !chipIdsToRestore.has(c.id));
+    
+    await Promise.all([
+        updateAvailableActionChips(userId, newAvailableChips),
+        updateChipsInCollection(userId, TRASHED_ACTION_CHIPS_COLLECTION, newTrashedChips)
+    ]);
+}
+
+export async function deleteActionChips(userId: string, chipIdsToDelete: string[]): Promise<void> {
+  const db = await getDb();
+  const docRef = doc(db, TRASHED_ACTION_CHIPS_COLLECTION, userId);
+  const docSnap = await getDoc(docRef);
+
+  if (docSnap.exists()) {
+    const currentChips = (docSnap.data().chips || []) as ActionChipData[];
+    const updatedChips = currentChips.filter(chip => !chipIdsToDelete.includes(chip.id));
+    await setDoc(docRef, { chips: updatedChips }, { merge: true });
+  }
+}
+
 export async function addActionChip(chipData: Omit<ActionChipData, 'id'>): Promise<ActionChipData> {
   const db = await getDb();
-  // Since we are now storing chips in an array within a single document,
-  // we need to fetch the existing array, add to it, and then save it back.
-  const existingChips = await getActionChips(chipData.userId);
-  const newChip = { ...chipData, id: `chip_${Date.now()}` };
-  const updatedChips = [...existingChips, newChip];
-  await updateActionChips(chipData.userId, updatedChips);
-  return newChip;
+  const docRef = doc(db, AVAILABLE_ACTION_CHIPS_COLLECTION, chipData.userId);
+  const docSnap = await getDoc(docRef);
+  
+  const existingChips = docSnap.exists() ? (docSnap.data().chips || []) : [];
+  
+  const iconName = Object.keys(iconMap).find(key => iconMap[key] === chipData.icon);
+  const { icon, ...rest } = chipData;
+  const newChipData = { ...rest, id: `chip_${Date.now()}`, iconName };
+  
+  const updatedChips = [...existingChips, newChipData];
+  await setDoc(docRef, { chips: updatedChips }, { merge: true });
+  
+  return { ...chipData, id: newChipData.id };
 }
-
-export async function getTrashedActionChips(userId: string): Promise<ActionChipData[]> {
-    return await getChipsFromCollection(userId, 'trashedActionChips');
-}
-
-export async function updateTrashedActionChips(userId: string, chips: ActionChipData[]): Promise<void> {
-    await updateChipsInCollection(userId, 'trashedActionChips', chips);
-}
-
 
 // --- Data for Dialogs ---
 export type ManagerOption = { label: string; href: string; icon: LucideIcon };
 export const managerOptions: ManagerOption[] = [
     { label: 'OgeeMail', icon: Mail, href: '/ogeemail' },
+    { label: 'Compose Email', icon: Mail, href: '/ogeemail/compose' },
     { label: 'Communications', icon: MessageSquare, href: '/communications' },
     { label: 'Contacts', icon: Contact, href: '/contacts' },
     { label: 'Projects', icon: Briefcase, href: '/projects' },
