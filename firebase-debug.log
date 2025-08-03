@@ -1,0 +1,65 @@
+[debug] [2025-08-03T20:23:19.968Z] ----------------------------------------------------------------------
+[debug] [2025-08-03T20:23:19.971Z] Command:       /nix/store/ws50yvm6vzlzf7jzz6n7xh4szddrack1-nodejs-20.19.1/bin/node /nix/store/fsdlxfaxdgx27856x49qycgdsyx5jxd3-firebase-tools-14.11.2/lib/node_modules/firebase-tools/lib/bin/firebase.js deploy
+[debug] [2025-08-03T20:23:19.971Z] CLI Version:   14.11.2
+[debug] [2025-08-03T20:23:19.971Z] Platform:      linux
+[debug] [2025-08-03T20:23:19.972Z] Node Version:  v20.19.1
+[debug] [2025-08-03T20:23:19.972Z] Time:          Sun Aug 03 2025 20:23:19 GMT+0000 (Coordinated Universal Time)
+[debug] [2025-08-03T20:23:19.972Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-08-03T20:23:20.465Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-08-03T20:23:20.465Z] > authorizing via signed-in user (nick@taxauditsolutions.com)
+[debug] [2025-08-03T20:23:20.466Z] [iam] checking project ogeemo-firebase for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2025-08-03T20:23:20.467Z] Checked if tokens are valid: true, expires at: 1754255347270
+[debug] [2025-08-03T20:23:20.467Z] Checked if tokens are valid: true, expires at: 1754255347270
+[debug] [2025-08-03T20:23:20.469Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/ogeemo-firebase:testIamPermissions [none]
+[debug] [2025-08-03T20:23:20.469Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/ogeemo-firebase:testIamPermissions x-goog-quota-user=projects/ogeemo-firebase
+[debug] [2025-08-03T20:23:20.469Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/ogeemo-firebase:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2025-08-03T20:23:20.693Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/ogeemo-firebase:testIamPermissions 200
+[debug] [2025-08-03T20:23:20.695Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/ogeemo-firebase:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2025-08-03T20:23:20.698Z] Checked if tokens are valid: true, expires at: 1754255347270
+[debug] [2025-08-03T20:23:20.699Z] Checked if tokens are valid: true, expires at: 1754255347270
+[debug] [2025-08-03T20:23:20.701Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/ogeemo-firebase/serviceAccounts/ogeemo-firebase@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2025-08-03T20:23:20.701Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/ogeemo-firebase/serviceAccounts/ogeemo-firebase@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2025-08-03T20:23:20.853Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/ogeemo-firebase/serviceAccounts/ogeemo-firebase@appspot.gserviceaccount.com:testIamPermissions 200
+[debug] [2025-08-03T20:23:20.854Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/ogeemo-firebase/serviceAccounts/ogeemo-firebase@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2025-08-03T20:23:20.855Z] Checked if tokens are valid: true, expires at: 1754255347270
+[debug] [2025-08-03T20:23:20.855Z] Checked if tokens are valid: true, expires at: 1754255347270
+[debug] [2025-08-03T20:23:20.855Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/ogeemo-firebase [none]
+[debug] [2025-08-03T20:23:21.168Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/ogeemo-firebase 200
+[debug] [2025-08-03T20:23:21.168Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/ogeemo-firebase {"projectId":"ogeemo-firebase","projectNumber":"241358627360","displayName":"ogeemo-firebase","name":"projects/ogeemo-firebase","resources":{"hostingSite":"ogeemo-firebase"},"state":"ACTIVE","etag":"1_042ab1dc-d081-43ce-a045-d55bbd40953c"}
+[debug] [2025-08-03T20:23:25.845Z] defaultcredentials: writing to file /home/user/.config/firebase/nick_taxauditsolutions_com_application_default_credentials.json
+[debug] [2025-08-03T20:23:25.854Z] Checked if tokens are valid: true, expires at: 1754255347270
+[debug] [2025-08-03T20:23:25.855Z] Checked if tokens are valid: true, expires at: 1754255347270
+[debug] [2025-08-03T20:23:25.860Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/ogeemo-firebase/sites pageToken=&pageSize=10
+[debug] [2025-08-03T20:23:26.213Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/ogeemo-firebase/sites 200
+[debug] [2025-08-03T20:23:26.215Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/ogeemo-firebase/sites {"sites":[{"name":"projects/ogeemo-firebase/sites/ogeemo-firebase","defaultUrl":"https://ogeemo-firebase.web.app","appId":"1:241358627360:web:707d6680c97f1ce9b89245","type":"DEFAULT_SITE"}]}
+[debug] [2025-08-03T20:23:26.216Z] Checked if tokens are valid: true, expires at: 1754255347270
+[debug] [2025-08-03T20:23:26.216Z] Checked if tokens are valid: true, expires at: 1754255347270
+[debug] [2025-08-03T20:23:26.217Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:241358627360:web:707d6680c97f1ce9b89245/config [none]
+[debug] [2025-08-03T20:23:26.627Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:241358627360:web:707d6680c97f1ce9b89245/config 200
+[debug] [2025-08-03T20:23:26.627Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/-/webApps/1:241358627360:web:707d6680c97f1ce9b89245/config {"projectId":"ogeemo-firebase","appId":"1:241358627360:web:707d6680c97f1ce9b89245","storageBucket":"ogeemo-firebase.firebasestorage.app","apiKey":"AIzaSyDE4HuVPmnKoADRr6tW4BcaBV3R7_FPeJc","authDomain":"ogeemo-firebase.firebaseapp.com","messagingSenderId":"241358627360","measurementId":"G-FB63C5BYYV"}
+[info] 
+   Thank you for trying our early preview of Next.js support on Firebase Hosting.
+   During the preview, support is best-effort and breaking changes can be expected. Proceed with caution.
+
+   Documentation: https://firebase.google.com/docs/hosting/frameworks/nextjs
+   File a bug: https://github.com/firebase/firebase-tools/issues/new?template=bug_report.md
+   Submit a feature request: https://github.com/firebase/firebase-tools/issues/new?template=feature_request.md
+
+   We'd love to learn from you. Express your interest in helping us shape the future of Firebase Hosting: https://goo.gle/41enW5X
+
+[debug] [2025-08-03T20:23:35.227Z] Checked if tokens are valid: true, expires at: 1754255347270
+[debug] [2025-08-03T20:23:35.230Z] Checked if tokens are valid: true, expires at: 1754255347270
+[debug] [2025-08-03T20:23:35.230Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/ogeemo-firebase/sites/ogeemo-firebase [none]
+[debug] [2025-08-03T20:23:35.613Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/ogeemo-firebase/sites/ogeemo-firebase 200
+[debug] [2025-08-03T20:23:35.613Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/ogeemo-firebase/sites/ogeemo-firebase {"name":"projects/ogeemo-firebase/sites/ogeemo-firebase","defaultUrl":"https://ogeemo-firebase.web.app","appId":"1:241358627360:web:707d6680c97f1ce9b89245","type":"DEFAULT_SITE"}
+[info]   ▲ Next.js 14.2.4
+
+[info]   - Environments: .env.local, .env
+
+
+[info]    Creating an optimized production build ...
+
+[debug] [2025-08-03T20:26:57.985Z] Error: ENOENT: no such file or directory, open '/home/user/studio/.next/server/middleware-manifest.json'
+[error] 
+[error] Error: An unexpected error has occurred.
