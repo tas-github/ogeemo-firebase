@@ -16,6 +16,8 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
+import { mockIncome, mockExpenses } from '@/data/accounting';
+
 
 async function getDb() {
     const { db } = await initializeFirebase();
@@ -197,7 +199,20 @@ export async function getIncomeTransactions(userId: string): Promise<IncomeTrans
     const db = await getDb();
     const q = query(collection(db, INCOME_COLLECTION), where("userId", "==", userId));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(docToIncome);
+    
+    if (snapshot.empty) {
+        const batch = writeBatch(db);
+        const newEntries: IncomeTransaction[] = [];
+        mockIncome.forEach(item => {
+            const docRef = doc(collection(db, INCOME_COLLECTION));
+            batch.set(docRef, { ...item, userId });
+            newEntries.push({ ...item, id: docRef.id, userId });
+        });
+        await batch.commit();
+        return newEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+    
+    return snapshot.docs.map(docToIncome).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 export async function addIncomeTransaction(data: Omit<IncomeTransaction, 'id'>): Promise<IncomeTransaction> {
@@ -229,7 +244,20 @@ export async function getExpenseTransactions(userId: string): Promise<ExpenseTra
     const db = await getDb();
     const q = query(collection(db, EXPENSE_COLLECTION), where("userId", "==", userId));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(docToExpense);
+
+    if (snapshot.empty) {
+        const batch = writeBatch(db);
+        const newEntries: ExpenseTransaction[] = [];
+        mockExpenses.forEach(item => {
+            const docRef = doc(collection(db, EXPENSE_COLLECTION));
+            batch.set(docRef, { ...item, userId });
+            newEntries.push({ ...item, id: docRef.id, userId });
+        });
+        await batch.commit();
+        return newEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+    
+    return snapshot.docs.map(docToExpense).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 export async function addExpenseTransaction(data: Omit<ExpenseTransaction, 'id'>): Promise<ExpenseTransaction> {

@@ -45,6 +45,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Separator } from "../ui/separator";
+import { Textarea } from "../ui/textarea";
 
 type TaxType = "Personal" | "Business" | "Corporate" | "Sales Tax";
 type PaymentType = "Federal" | "Provincial" | "Local" | "Other";
@@ -337,7 +338,7 @@ export function TaxView() {
       </div>
 
        <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader><DialogTitle>{paymentToEdit ? 'Edit Payment' : (activeTab === 'Sales Tax' ? 'Record Remittance' : 'Add New Payment')}</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
@@ -419,7 +420,7 @@ export function TaxView() {
             </div>
              <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>
-                <Input id="notes" placeholder="e.g., Q2 Estimated Payment" value={newPayment.notes} onChange={(e) => setNewPayment(p => ({...p, notes: e.target.value}))}/>
+                <Textarea id="notes" placeholder="e.g., Q2 Estimated Payment" value={newPayment.notes} onChange={(e) => setNewPayment(p => ({...p, notes: e.target.value}))}/>
             </div>
           </div>
           <DialogFooter>

@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { X, ChevronDown, FileOutput, FileDigit, TrendingUp, TrendingDown, BookText, FileInput, WalletCards, BarChart3, Activity, UserPlus, Info, Banknote } from 'lucide-react';
+import { ArrowLeft, ChevronDown, FileOutput, FileDigit, TrendingUp, TrendingDown, BookText, FileInput, WalletCards, BarChart3, Activity, UserPlus, Info, Banknote } from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -16,13 +16,14 @@ import {
 
 interface AccountingPageHeaderProps {
   pageTitle: string;
+  hubPath?: '/accounting' | '/accounting/bks';
 }
 
 const accountingLinks = [
-    { href: "/accounting/invoices/payments", icon: FileOutput, label: "Accounts Receivable" },
+    { href: "/accounting/accounts-receivable", icon: FileOutput, label: "Accounts Receivable" },
     { href: "/accounting/invoices/create", icon: FileDigit, label: "Invoice Generator" },
-    { href: "/accounting/transactions/income", icon: TrendingUp, label: "Manage Income" },
-    { href: "/accounting/transactions/expenses", icon: TrendingDown, label: "Manage Expenses" },
+    { href: "/accounting/ledgers?tab=income", icon: TrendingUp, label: "Manage Income" },
+    { href: "/accounting/ledgers?tab=expenses", icon: TrendingDown, label: "Manage Expenses" },
     { href: "/accounting/ledgers", icon: BookText, label: "General Ledger" },
     { href: "/accounting/accounts-payable", icon: FileInput, label: "Accounts Payable" },
     { href: "/accounting/bank-statements", icon: WalletCards, label: "Bank Statements" },
@@ -30,18 +31,20 @@ const accountingLinks = [
     { href: "/accounting/reports", icon: BarChart3, label: "Reporting Hub" },
     { href: "/accounting/vitals", icon: Activity, label: "Financial Vitals" },
     { href: "/accounting/onboarding", icon: UserPlus, label: "Client Onboarding" },
-    { href: "/accounting/bks", icon: Info, label: "BKS" },
+    { href: "/accounting/bks", icon: Info, label: "BKS Welcome" },
 ];
 
 
-export function AccountingPageHeader({ pageTitle }: AccountingPageHeaderProps) {
+export function AccountingPageHeader({ pageTitle, hubPath = '/accounting' }: AccountingPageHeaderProps) {
+  const hubLabel = hubPath === '/accounting/bks' ? 'BKS Welcome' : 'Advanced Tools Hub';
+  
   return (
     <div className="flex items-center justify-between">
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link href="/accounting">Accounting Hub</Link>
+              <Link href={hubPath}>{hubLabel}</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
@@ -51,6 +54,12 @@ export function AccountingPageHeader({ pageTitle }: AccountingPageHeaderProps) {
         </BreadcrumbList>
       </Breadcrumb>
       <div className="flex items-center gap-2">
+         <Button asChild>
+            <Link href={hubPath}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Hub
+            </Link>
+         </Button>
          <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="outline">
@@ -68,11 +77,6 @@ export function AccountingPageHeader({ pageTitle }: AccountingPageHeaderProps) {
                 ))}
             </DropdownMenuContent>
         </DropdownMenu>
-        <Button asChild variant="ghost" size="icon" className="rounded-full">
-            <Link href="/accounting" aria-label="Return to Accounting Hub">
-            <X className="h-5 w-5" />
-            </Link>
-        </Button>
       </div>
     </div>
   );

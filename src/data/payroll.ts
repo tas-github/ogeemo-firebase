@@ -1,45 +1,58 @@
 
 export interface Employee {
-  id: string;
-  name: string;
-  payType: 'Salary' | 'Hourly';
-  payRate: number; // Annual salary or hourly rate
-  userId: string;
+    id: string;
+    name: string;
+    email: string;
+    payType: 'hourly' | 'salary';
+    payRate: number;
+    address?: string;
+    homePhone?: string;
+    cellPhone?: string;
+    hireDate?: Date | null;
+    startDate?: Date | null;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+    hasContract?: boolean;
+    specialNeeds?: string;
+    notes?: string;
+    userId: string;
 }
 
-export interface PayrollRun {
-  id: string;
-  periodStart: Date;
-  periodEnd: Date;
-  payDate: Date;
-  totalPayroll: number;
-  status: 'Paid';
-  userId: string;
-}
-
-export const mockEmployees: Employee[] = [
-  { id: 'emp-1', name: 'Alice Johnson', payType: 'Salary', payRate: 80000, userId: 'mock-user' },
-  { id: 'emp-2', name: 'Bob Williams', payType: 'Hourly', payRate: 45, userId: 'mock-user' },
-  { id: 'emp-3', name: 'Charlie Brown', payType: 'Hourly', payRate: 55, userId: 'mock-user' },
-];
-
-export const mockPayrollRuns: PayrollRun[] = [
+export const mockEmployees: Omit<Employee, 'id' | 'userId'>[] = [
     {
-        id: 'run-1',
-        periodStart: new Date('2024-07-16'),
-        periodEnd: new Date('2024-07-31'),
-        payDate: new Date('2024-08-05'),
-        totalPayroll: 12350.50,
-        status: 'Paid',
-        userId: 'mock-user'
+        name: "Alice Johnson",
+        email: "alice.j@example.com",
+        payType: "salary",
+        payRate: 75000,
+        address: "123 Maple St, Springfield, USA",
+        cellPhone: "555-0101",
+        hireDate: new Date("2022-08-15"),
+        startDate: new Date("2022-08-22"),
+        hasContract: true,
+        notes: "Senior Developer on the Phoenix Project."
     },
     {
-        id: 'run-2',
-        periodStart: new Date('2024-07-01'),
-        periodEnd: new Date('2024-07-15'),
-        payDate: new Date('2024-07-20'),
-        totalPayroll: 12175.00,
-        status: 'Paid',
-        userId: 'mock-user'
+        name: "Bob Williams",
+        email: "bob.w@example.com",
+        payType: "hourly",
+        payRate: 25.50,
+        address: "456 Oak Ave, Springfield, USA",
+        cellPhone: "555-0102",
+        hireDate: new Date("2023-01-20"),
+        startDate: new Date("2023-02-01"),
+        hasContract: false,
+        notes: "Part-time graphic designer."
+    },
+    {
+        name: "Charlie Brown",
+        email: "charlie.b@example.com",
+        payType: "hourly",
+        payRate: 22.00,
+        address: "789 Pine Ln, Springfield, USA",
+        cellPhone: "555-0103",
+        hireDate: new Date("2023-05-10"),
+        startDate: new Date("2023-05-15"),
+        hasContract: true,
+        notes: "Junior support specialist."
     }
 ];

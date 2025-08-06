@@ -43,7 +43,7 @@ export default function BksWelcomePage() {
             </CardContent>
             <CardContent>
                  <Button asChild className="w-full text-lg py-6">
-                    <Link href="/accounting/transactions/income">Go to Income <ArrowRight className="ml-2 h-4 w-4"/></Link>
+                    <Link href="/accounting/ledgers?tab=income">Go to Income <ArrowRight className="ml-2 h-4 w-4"/></Link>
                 </Button>
             </CardContent>
         </Card>
@@ -59,7 +59,7 @@ export default function BksWelcomePage() {
             </CardContent>
             <CardContent>
                  <Button asChild className="w-full text-lg py-6">
-                    <Link href="/accounting/transactions/expenses">Go to Expenses <ArrowRight className="ml-2 h-4 w-4"/></Link>
+                    <Link href="/accounting/ledgers?tab=expenses">Go to Expenses <ArrowRight className="ml-2 h-4 w-4"/></Link>
                 </Button>
             </CardContent>
         </Card>
