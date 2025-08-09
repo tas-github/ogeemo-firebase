@@ -72,6 +72,12 @@ const config: Config = {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
+        'soft-green': {
+          '500': '#73c68c',
+          '600': '#63b87b',
+          '700': '#469e60',
+          '900': '#308347',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

@@ -67,7 +67,7 @@ export function PayrollHubView() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <AccountingPageHeader pageTitle="Payroll Hub" />
+      <AccountingPageHeader pageTitle="Payroll Hub" hubLabel="Accounting Tools" />
       <header className="text-center mb-6">
         <div className="flex justify-center items-center gap-4 mb-2">
             <Banknote className="h-10 w-10 text-primary" />

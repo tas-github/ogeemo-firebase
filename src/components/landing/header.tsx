@@ -10,8 +10,11 @@ export function SiteHeader() {
           <Logo />
         </div>
         <div className="flex flex-1 items-center justify-end space-x-4">
+           <Button asChild variant="outline">
+                <Link href="/login">Log in</Link>
+            </Button>
             <Button asChild>
-                <Link href="/login">Log In</Link>
+                <Link href="/register">Become a Beta Tester</Link>
             </Button>
         </div>
       </div>

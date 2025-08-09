@@ -55,6 +55,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth } from "@/context/auth-context";
 import { getIncomeTransactions, addIncomeTransaction, updateIncomeTransaction, deleteIncomeTransaction, type IncomeTransaction, getExpenseTransactions, addExpenseTransaction, updateExpenseTransaction, deleteExpenseTransaction, type ExpenseTransaction } from "@/services/accounting-service";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { InvoicePaymentsView } from "./invoice-payments-view";
+import { AccountsPayableView } from "./accounts-payable-view";
 
 
 type GeneralTransaction = (IncomeTransaction | ExpenseTransaction) & { transactionType: 'income' | 'expense' };
@@ -81,7 +83,7 @@ export function LedgersView() {
   const [showTotals, setShowTotals] = React.useState(false);
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get('tab') || 'general';
+  const initialTab = searchParams.get('tab') || 'bks';
 
   React.useEffect(() => {
     if (!user) {
@@ -203,27 +205,29 @@ export function LedgersView() {
   return (
     <>
       <div className="p-4 sm:p-6 space-y-6">
-        <AccountingPageHeader pageTitle="BKS" hubPath="/accounting/bks" />
+        <AccountingPageHeader pageTitle="Ledgers" hubPath="/accounting" hubLabel="Accounting Tools" />
         <div className="flex flex-col">
           <header className="text-center mb-6 w-full mx-auto">
-            <h1 className="text-3xl font-bold font-headline text-primary">BKS</h1>
+            <h1 className="text-3xl font-bold font-headline text-primary">BKS Ledgers</h1>
             <p className="text-muted-foreground">A unified view of your income and expenses.</p>
           </header>
 
             <Tabs defaultValue={initialTab} className="w-full">
               <div className="flex justify-center items-center mb-4">
-                <TabsList className="grid w-full max-w-lg grid-cols-3">
-                  <TabsTrigger value="general">General Ledger</TabsTrigger>
+                <TabsList className="grid w-full max-w-2xl grid-cols-5">
+                  <TabsTrigger value="bks">BKS (General Ledger)</TabsTrigger>
                   <TabsTrigger value="income">Income</TabsTrigger>
                   <TabsTrigger value="expenses">Expenses</TabsTrigger>
+                  <TabsTrigger value="receivables">Receivables</TabsTrigger>
+                  <TabsTrigger value="payables">Payables</TabsTrigger>
                 </TabsList>
               </div>
               
-              <TabsContent value="general">
+              <TabsContent value="bks">
                 <Card>
                   <CardHeader className="flex flex-row items-start justify-between">
                     <div>
-                      <CardTitle>General Ledger (All Transactions)</CardTitle>
+                      <CardTitle>BKS General Ledger</CardTitle>
                       <CardDescription>A combined view of all income and expense transactions.</CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
@@ -299,6 +303,14 @@ export function LedgersView() {
                     </CardContent>
                 </Card>
                </TabsContent>
+
+               <TabsContent value="receivables">
+                    <InvoicePaymentsView />
+               </TabsContent>
+               <TabsContent value="payables">
+                    <AccountsPayableView />
+               </TabsContent>
+
             </Tabs>
         </div>
       </div>

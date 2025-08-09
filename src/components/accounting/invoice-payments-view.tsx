@@ -40,7 +40,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Edit, Trash2, HandCoins, FileText, LoaderCircle } from 'lucide-react';
-import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { useToast } from '@/hooks/use-toast';
 import { format as formatDate } from "date-fns";
 import { useAuth } from '@/context/auth-context';
@@ -190,8 +189,7 @@ export function InvoicePaymentsView() {
 
     return (
         <>
-            <div className="p-4 sm:p-6 space-y-6">
-                <AccountingPageHeader pageTitle="Accounts Receivable" />
+            <div className="space-y-6">
                 <header className="text-center">
                     <h1 className="text-3xl font-bold font-headline text-primary">Accounts Receivable</h1>
                     <p className="text-muted-foreground max-w-2xl mx-auto">

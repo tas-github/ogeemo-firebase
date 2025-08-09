@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useDrop } from 'react-dnd';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { LoaderCircle, Plus, ArrowLeft, Trash2, ArrowUpDown } from 'lucide-react';
+import { LoaderCircle, Plus, ArrowLeft, Trash2, ArrowDownAZ } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -15,7 +15,6 @@ import {
   updateActionChips,
   updateAvailableActionChips,
   trashActionChips,
-  deleteActionChips,
   type ActionChipData,
 } from '@/services/project-service';
 import { ActionChip, DraggableItemTypes } from './ActionChip';
@@ -26,13 +25,6 @@ import { cn } from '@/lib/utils';
 const TrashDropZone = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [chipsState, setChipsState] = React.useState<{
-    userChips: ActionChipData[];
-    availableChips: ActionChipData[];
-  }>({
-    userChips: [],
-    availableChips: [],
-  });
 
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: DraggableItemTypes.ACTION_CHIP,
@@ -45,7 +37,6 @@ const TrashDropZone = () => {
           description: `"${item.label}" has been moved to the trash.`,
           action: <Button variant="link" asChild><Link href="/action-manager/trash">View Trash</Link></Button>,
         });
-        // This is a simplified way to trigger a refresh. A more robust solution might involve a shared state manager.
         window.dispatchEvent(new Event('chipsUpdated'));
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Failed to trash action', description: error.message });
@@ -128,10 +119,8 @@ export function ManageDashboardView() {
   ) => {
     setChipsState({ userChips: newUserChips, availableChips: newAvailableChips });
     if (user) {
-      await Promise.all([
-        updateActionChips(user.uid, newUserChips),
-        updateAvailableActionChips(user.uid, newAvailableChips)
-      ]);
+      await updateActionChips(user.uid, newUserChips);
+      await updateAvailableActionChips(user.uid, newAvailableChips);
     }
   }, [user]);
 
@@ -140,7 +129,7 @@ export function ManageDashboardView() {
       const newUserChips = [...prevState.userChips];
       const [draggedItem] = newUserChips.splice(dragIndex, 1);
       newUserChips.splice(hoverIndex, 0, draggedItem);
-      // Persist the new order immediately after reordering
+      
       if (user) {
         updateActionChips(user.uid, newUserChips);
       }
@@ -153,7 +142,6 @@ export function ManageDashboardView() {
       const sourceListKey = prevState.userChips.some(c => c.id === item.id) ? 'userChips' : 'availableChips';
       const targetListKey = target === 'user' ? 'userChips' : 'availableChips';
 
-      // If moving within the same list, the onMove handler already updated the state optimistically.
       if (sourceListKey === targetListKey) {
         return prevState;
       }
@@ -195,23 +183,10 @@ export function ManageDashboardView() {
         description: `"${chipToTrash.label}" has been moved to the trash.`,
         action: <Button variant="link" asChild><Link href="/action-manager/trash">View Trash</Link></Button>,
       });
-      loadChips(); // Refresh the lists
+      loadChips();
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Failed to trash action', description: error.message });
     }
-  };
-
-  const handleSortAlphabetically = () => {
-    if (!user) return;
-    const sortedChips = [...chipsState.userChips].sort((a, b) =>
-      a.label.localeCompare(b.label)
-    );
-    // Use handleStateUpdate to ensure both local state and DB are updated
-    handleStateUpdate(sortedChips, chipsState.availableChips);
-    toast({
-      title: "Actions Sorted",
-      description: "Your selected actions have been sorted alphabetically.",
-    });
   };
   
   if (isLoading) {
@@ -247,11 +222,6 @@ export function ManageDashboardView() {
                 <CardHeader className="text-center">
                     <CardTitle>Selected Actions</CardTitle>
                     <CardDescription>Actions currently on your dashboard. Drag to reorder or add from "Available".</CardDescription>
-                    <div className="flex justify-center pt-2">
-                        <Button variant="outline" size="sm" onClick={handleSortAlphabetically}>
-                            <ArrowUpDown className="mr-2 h-4 w-4" /> Sort A-Z
-                        </Button>
-                    </div>
                 </CardHeader>
                 <ChipDropZone onDrop={(item) => handleDrop(item, 'user')} onMove={handleMoveUserChip} className="min-h-[150px]">
                     {chipsState.userChips.map((chip, index) => (

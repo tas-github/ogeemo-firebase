@@ -10,8 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { format, addDays, isValid, parseISO } from 'date-fns';
-import { Plus, Trash2, Printer, Save, Mail, Info, LoaderCircle, FileUp, FileText, Pencil } from 'lucide-react';
+import { format, addDays } from 'date-fns';
+import { Plus, Trash2, Printer, Save, Mail, Info, LoaderCircle, FileText, Pencil } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { AccountingPageHeader } from './page-header';
@@ -38,6 +38,12 @@ interface CustomLineItem {
   description: string;
   quantity: number;
   price: number;
+}
+
+interface TaxItem {
+    id: number;
+    name: string;
+    rate: number;
 }
 
 interface InvoiceTemplate {
@@ -77,8 +83,7 @@ export function InvoiceGeneratorView() {
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dueDate, setDueDate] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
   
-  const [taxType, setTaxType] = useState('none');
-  const [taxRate, setTaxRate] = useState(0);
+  const [taxes, setTaxes] = useState<TaxItem[]>([]);
   const [invoiceNotes, setInvoiceNotes] = useState('Thank you for your business!');
 
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
@@ -90,8 +95,7 @@ export function InvoiceGeneratorView() {
   const clearInvoice = useCallback(() => {
     setCustomItems([]);
     setSelectedContactId('');
-    setTaxType('none');
-    setTaxRate(0);
+    setTaxes([]);
     setInvoiceNumber(`INV-${nextInvoiceNumber}`);
     setInvoiceDate(format(new Date(), 'yyyy-MM-dd'));
     setDueDate(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
@@ -142,11 +146,14 @@ export function InvoiceGeneratorView() {
                     setSelectedContactId(invoiceToLoad.contactId);
                     setInvoiceDate(format(invoiceToLoad.invoiceDate, 'yyyy-MM-dd'));
                     setDueDate(format(invoiceToLoad.dueDate, 'yyyy-MM-dd'));
-                    setTaxType(invoiceToLoad.taxType || 'none');
-                    setTaxRate(invoiceToLoad.taxRate || 0);
+                    if (invoiceToLoad.taxType && invoiceToLoad.taxRate) {
+                        setTaxes([{ id: 1, name: invoiceToLoad.taxType, rate: invoiceToLoad.taxRate }]);
+                    } else {
+                        setTaxes([]);
+                    }
                     setInvoiceNotes(invoiceToLoad.notes || '');
                     setCustomItems(itemsToLoad.map((item, index) => ({
-                        id: Date.now() + index, // Assign temporary unique ID for the UI
+                        id: Date.now() + index,
                         description: item.description,
                         quantity: item.quantity,
                         price: item.price
@@ -164,7 +171,7 @@ export function InvoiceGeneratorView() {
             }, 0);
             const nextNum = maxInvoiceNum > 0 ? maxInvoiceNum + 1 : 101;
             setNextInvoiceNumber(nextNum);
-            // Only set invoice number if not editing or loading from report
+
             if (!editId && !reportDataRaw) {
                  setInvoiceNumber(`INV-${nextNum}`);
             }
@@ -179,18 +186,11 @@ export function InvoiceGeneratorView() {
     loadInitialData();
   }, [user, toast, clearInvoice]);
 
-  // Effect to clear edit ID when component unmounts
   useEffect(() => {
     return () => {
       localStorage.removeItem(EDIT_INVOICE_ID_KEY);
     }
   }, []);
-  
-  useEffect(() => {
-    if (taxType === 'none') {
-        setTaxRate(0);
-    }
-  }, [taxType]);
 
   const addCustomItem = () => {
     setCustomItems([...customItems, { id: Date.now(), description: '', quantity: 1, price: 0 }]);
@@ -224,6 +224,13 @@ export function InvoiceGeneratorView() {
       description: `Added ${newItems.length} items from "${template.name}".`
     })
   };
+  
+  const addTax = () => setTaxes(prev => [...prev, { id: Date.now(), name: '', rate: 0 }]);
+  const removeTax = (id: number) => setTaxes(prev => prev.filter(tax => tax.id !== id));
+  const updateTax = (id: number, field: keyof Omit<TaxItem, 'id'>, value: string | number) => {
+    setTaxes(prev => prev.map(tax => tax.id === id ? {...tax, [field]: value} : tax));
+  };
+
 
   const selectedContact = useMemo(() => contacts.find(c => c.id === selectedContactId), [contacts, selectedContactId]);
 
@@ -232,9 +239,13 @@ export function InvoiceGeneratorView() {
   }, [customItems]);
 
   const taxAmount = useMemo(() => {
-    if (taxRate <= 0) return 0;
-    return subtotal * (taxRate / 100);
-  }, [subtotal, taxRate]);
+    return taxes.reduce((acc, tax) => {
+        if (tax.rate > 0) {
+            return acc + (subtotal * (tax.rate / 100));
+        }
+        return acc;
+    }, 0);
+  }, [subtotal, taxes]);
 
   const total = useMemo(() => {
     return subtotal + taxAmount;
@@ -251,9 +262,10 @@ export function InvoiceGeneratorView() {
     
     const lineItemsToSave: Omit<InvoiceLineItem, 'id' | 'invoiceId'>[] = customItems.map(({ id, ...item }) => item);
     
+    const primaryTax = taxes[0] || { name: 'none', rate: 0 };
+
     try {
         if (invoiceToEditId) {
-            // Update existing invoice
             const invoiceDataToUpdate = {
                 invoiceNumber,
                 clientName: selectedContact.name,
@@ -263,13 +275,12 @@ export function InvoiceGeneratorView() {
                 invoiceDate: new Date(invoiceDate),
                 status: 'outstanding' as 'outstanding',
                 notes: invoiceNotes,
-                taxRate,
-                taxType: taxType || 'none',
+                taxRate: primaryTax.rate,
+                taxType: primaryTax.name,
             };
             await updateInvoiceWithLineItems(invoiceToEditId, invoiceDataToUpdate, lineItemsToSave);
             toast({ title: "Invoice Updated", description: `Invoice ${invoiceNumber} has been saved.` });
         } else {
-            // Create new invoice
             const newInvoiceData: Omit<Invoice, 'id' | 'createdAt'> = {
                 invoiceNumber,
                 clientName: selectedContact.name,
@@ -280,15 +291,15 @@ export function InvoiceGeneratorView() {
                 invoiceDate: new Date(invoiceDate),
                 status: 'outstanding',
                 notes: invoiceNotes,
-                taxRate,
-                taxType: taxType || 'none',
+                taxRate: primaryTax.rate,
+                taxType: primaryTax.name,
                 userId: user.uid,
             };
             await addInvoiceWithLineItems(newInvoiceData, lineItemsToSave);
             toast({ title: "Invoice Saved", description: `Invoice ${invoiceNumber} has been saved.` });
         }
         
-        router.push('/accounting/invoices/payments');
+        router.push('/accounting/accounts-receivable');
         clearInvoice();
 
     } catch (error) {
@@ -337,7 +348,7 @@ export function InvoiceGeneratorView() {
   }
 
   return (
-    <>
+    <ScrollArea className="h-full">
       <div className="p-4 sm:p-6 space-y-6">
         <AccountingPageHeader pageTitle={invoiceToEditId ? "Edit Invoice" : "Create Invoice"} />
         <header className="text-center">
@@ -355,22 +366,12 @@ export function InvoiceGeneratorView() {
               </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="space-y-2 lg:col-span-2">
-                      <Label htmlFor="client-select">Client</Label>
-                      <Select value={selectedContactId} onValueChange={setSelectedContactId} disabled={isDataLoading}>
-                          <SelectTrigger id="client-select"><SelectValue placeholder={isDataLoading ? "Loading contacts..." : "Select a client..."} /></SelectTrigger>
-                          <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                      </Select>
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="tax-type">Tax Type</Label>
-                      <Select value={taxType} onValueChange={setTaxType} id="tax-type"><SelectTrigger><SelectValue placeholder="Select tax type" /></SelectTrigger><SelectContent><SelectItem value="none">No Tax</SelectItem><SelectItem value="vat">VAT</SelectItem><SelectItem value="gst">GST</SelectItem><SelectItem value="hst">HST</SelectItem><SelectItem value="dst">DST</SelectItem></SelectContent></Select>
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="tax-rate">Tax Rate (%)</Label>
-                      <Input id="tax-rate" type="number" placeholder="e.g., 20" value={taxRate || ''} onChange={(e) => setTaxRate(Number(e.target.value))} disabled={taxType === 'none'}/>
-                  </div>
+              <div className="space-y-2">
+                  <Label htmlFor="client-select">Client</Label>
+                  <Select value={selectedContactId} onValueChange={setSelectedContactId} disabled={isDataLoading}>
+                      <SelectTrigger id="client-select"><SelectValue placeholder={isDataLoading ? "Loading contacts..." : "Select a client..."} /></SelectTrigger>
+                      <SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                  </Select>
               </div>
               <Separator />
               <div>
@@ -388,21 +389,32 @@ export function InvoiceGeneratorView() {
                       </div>
                   )}
               </div>
+              <Separator />
+              <div>
+                  <h4 className="font-semibold text-base mb-2">Taxes</h4>
+                  <div className="space-y-2">
+                      {taxes.map(tax => (
+                          <div key={tax.id} className="flex items-end gap-2">
+                              <div className="flex-1 space-y-1">
+                                  <Label htmlFor={`tax-name-${tax.id}`} className="text-xs">Tax Name</Label>
+                                  <Input id={`tax-name-${tax.id}`} placeholder="e.g., GST" value={tax.name} onChange={e => updateTax(tax.id, 'name', e.target.value)} />
+                              </div>
+                              <div className="w-32 space-y-1">
+                                  <Label htmlFor={`tax-rate-${tax.id}`} className="text-xs">Rate (%)</Label>
+                                  <Input id={`tax-rate-${tax.id}`} type="number" placeholder="5" value={tax.rate || ''} onChange={e => updateTax(tax.id, 'rate', Number(e.target.value))} />
+                              </div>
+                              <Button variant="ghost" size="icon" onClick={() => removeTax(tax.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                          </div>
+                      ))}
+                      <Button variant="outline" size="sm" onClick={addTax}><Plus className="mr-2 h-4 w-4" /> Add Tax</Button>
+                  </div>
+              </div>
                {templates.length > 0 && (
                 <>
                     <Separator />
                     <div className="space-y-2">
                         <Label>Apply a Template</Label>
-                        <Select onValueChange={applyTemplate}>
-                            <SelectTrigger><SelectValue placeholder="Select a template to apply..." /></SelectTrigger>
-                            <SelectContent>
-                                {templates.map((template, index) => (
-                                    <SelectItem key={index} value={template.name}>
-                                        {template.name} ({template.items.length} items)
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <Select onValueChange={applyTemplate}><SelectTrigger><SelectValue placeholder="Select a template to apply..." /></SelectTrigger><SelectContent>{templates.map((template, index) => (<SelectItem key={index} value={template.name}>{template.name} ({template.items.length} items)</SelectItem>))}</SelectContent></Select>
                     </div>
                 </>
                )}
@@ -421,8 +433,12 @@ export function InvoiceGeneratorView() {
                 <div id="invoice-preview" ref={printRef} className="bg-white text-black p-8 border rounded-lg shadow-sm w-full font-sans">
                     <header className="flex justify-between items-start pb-6 border-b"><Logo className="text-primary"/><div className="text-right"><h1 className="text-4xl font-bold uppercase text-gray-700">Invoice</h1><div className="flex items-center justify-end gap-1"><p className="text-gray-500">#</p><Input type="text" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className="w-32 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /><Pencil className="h-3 w-3 text-gray-400" /></div></div></header>
                     <section className="flex justify-between mt-6"><div><h2 className="font-bold text-gray-500 uppercase mb-2">Bill To</h2>{selectedContact ? (<><p className="font-bold text-lg">{selectedContact.name}</p><p>{selectedContact.email}</p><p>{selectedContact.cellPhone || selectedContact.businessPhone}</p></>) : (<p className="text-gray-500">Select a client</p>)}</div><div className="text-right"><p><span className="font-bold text-gray-500">Invoice Date:</span> <Input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} className="inline-block w-40 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p><p><span className="font-bold text-gray-500">Due Date:</span> <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="inline-block w-40 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p></div></section>
-                    <section className="mt-8"><Table className="text-sm"><TableHeader className="bg-gray-100"><TableRow><TableHead className="w-1/2 text-gray-600">Description</TableHead><TableHead className="text-center text-gray-600">Rate / Price</TableHead><TableHead className="text-center text-gray-600">Qty</TableHead><TableHead className="text-right text-gray-600">Total</TableHead></TableRow></TableHeader><TableBody>{customItems.map((item, index) => (<TableRow key={item.id}><TableCell className="whitespace-pre-wrap">{item.description}</TableCell><TableCell className="text-center">{item.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell><TableCell className="text-center">{item.quantity}</TableCell><TableCell className="text-right">{(item.quantity * item.price).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell></TableRow>))}</TableBody></Table></section>
-                    <section className="flex justify-end mt-6"><div className="w-full max-w-sm space-y-2"><div className="flex justify-between"><span className="text-gray-500">Subtotal:</span><span>{subtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span></div><Separator /><div className="flex justify-between"><span className="text-gray-500">{taxType !== 'none' ? `Tax (${(taxType || '').toUpperCase()} @ ${taxRate || 0}%)` : 'Tax:'}</span><span>{taxAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span></div><Separator /><div className="flex justify-between font-bold text-lg"><span className="text-gray-600">Total Due:</span><span>{total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span></div></div></section>
+                    <section className="mt-8"><Table className="text-sm"><TableHeader className="bg-gray-100"><TableRow><TableHead className="w-1/2 text-gray-600">Description</TableHead><TableHead className="text-center text-gray-600">Rate / Price</TableHead><TableHead className="text-center text-gray-600">Qty</TableHead><TableHead className="text-right text-gray-600">Total</TableHead></TableRow></TableHeader><TableBody>{customItems.map((item) => (<TableRow key={item.id}><TableCell className="whitespace-pre-wrap">{item.description}</TableCell><TableCell className="text-center">{item.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell><TableCell className="text-center">{item.quantity}</TableCell><TableCell className="text-right">{(item.quantity * item.price).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell></TableRow>))}</TableBody></Table></section>
+                    <section className="flex justify-end mt-6"><div className="w-full max-w-sm space-y-2"><div className="flex justify-between"><span className="text-gray-500">Subtotal:</span><span>{subtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span></div>
+                    {taxes.map(tax => (
+                        <div key={tax.id} className="flex justify-between"><span className="text-gray-500">{tax.name} ({tax.rate}%)</span><span>{(subtotal * tax.rate / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span></div>
+                    ))}
+                    <Separator /><div className="flex justify-between font-bold text-lg"><span className="text-gray-600">Total Due:</span><span>{total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span></div></div></section>
                     <footer className="mt-12 pt-6 border-t"><Label htmlFor="invoice-notes" className="text-xs text-gray-500">Notes / Terms</Label><Textarea id="invoice-notes" placeholder="e.g., Thank you for your business!" value={invoiceNotes} onChange={(e) => setInvoiceNotes(e.target.value)} className="mt-1 text-xs text-gray-600 border-none p-0 focus-visible:ring-0 shadow-none bg-transparent resize-none text-center"/></footer>
                 </div>
             </CardContent>
@@ -440,6 +456,6 @@ export function InvoiceGeneratorView() {
             </CardFooter>
         </Card>
       </div>
-    </>
+    </ScrollArea>
   );
 }

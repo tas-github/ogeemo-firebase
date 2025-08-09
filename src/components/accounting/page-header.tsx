@@ -17,6 +17,7 @@ import {
 interface AccountingPageHeaderProps {
   pageTitle: string;
   hubPath?: '/accounting' | '/accounting/bks';
+  hubLabel?: string;
 }
 
 const accountingLinks = [
@@ -35,8 +36,9 @@ const accountingLinks = [
 ];
 
 
-export function AccountingPageHeader({ pageTitle, hubPath = '/accounting' }: AccountingPageHeaderProps) {
-  const hubLabel = hubPath === '/accounting/bks' ? 'BKS Welcome' : 'Advanced Tools Hub';
+export function AccountingPageHeader({ pageTitle, hubPath = '/accounting', hubLabel: hubLabelProp }: AccountingPageHeaderProps) {
+  const defaultHubLabel = hubPath === '/accounting/bks' ? 'BKS Welcome' : 'Accounting Tools';
+  const hubLabel = hubLabelProp || defaultHubLabel;
   
   return (
     <div className="flex items-center justify-between">
@@ -57,7 +59,7 @@ export function AccountingPageHeader({ pageTitle, hubPath = '/accounting' }: Acc
          <Button asChild>
             <Link href={hubPath}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Hub
+                Back to {hubLabel}
             </Link>
          </Button>
          <DropdownMenu>

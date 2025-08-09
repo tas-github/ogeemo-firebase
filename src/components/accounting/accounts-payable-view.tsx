@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, MoreVertical, Pencil, Trash2, HandCoins, LoaderCircle } from "lucide-react";
-import { AccountingPageHeader } from "@/components/accounting/page-header";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +30,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
     AlertDialog,
@@ -180,8 +180,7 @@ export function AccountsPayableView() {
   
   return (
     <>
-      <div className="p-4 sm:p-6 space-y-6">
-        <AccountingPageHeader pageTitle="Accounts Payable" />
+      <div className="space-y-6">
         <header className="text-center">
           <h1 className="text-3xl font-bold font-headline text-primary">Accounts Payable</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">

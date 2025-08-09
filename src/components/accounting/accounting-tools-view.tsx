@@ -29,6 +29,8 @@ import {
   Banknote,
   ChevronDown,
   Info,
+  BarChart3,
+  FileInput,
 } from 'lucide-react';
 
 interface FeatureCardProps {
@@ -66,12 +68,13 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon: Icon, title, descriptio
 
 export function AccountingToolsView() {
   const features = [
-    { icon: FileOutput, title: "Accounts Receivable", description: "Manage all outstanding invoices and payments due from clients.", href: "/accounting/accounts-receivable", cta: "Go to A/R" },
+    { icon: FileOutput, title: "Receivables & Payables", description: "Manage all outstanding invoices, client payments, and outgoing vendor bills.", href: "/accounting/ledgers?tab=receivables", cta: "Manage Transactions" },
+    { icon: FileDigit, title: "Invoicing", description: "Create, send, and manage professional invoices for your clients.", href: "/accounting/invoices/create", cta: "Create Invoice" },
     { icon: Banknote, title: "Manage Payroll", description: "Handle employee compensation, deductions, and CRA remittances.", href: "/accounting/payroll", cta: "Go to payroll hub." },
-    { icon: User, title: "Owner's View", description: "Key questions a business owner needs answered at a glance.", href: "/accounting/reports", cta: "Go to Reports" },
-    { icon: BookText, title: "General Ledger", description: "View a unified list of all income and expense transactions.", href: "/accounting/ledgers", cta: "Go to Ledger" },
-    { icon: ShieldCheck, title: "Tax Auditor's View", description: "Detailed records required for tax preparation and audits.", href: "/accounting/tax", cta: "Go to Tax Center" },
-    { icon: Landmark, title: "Banker's View", description: "The essential financial statements for credit analysis and loans.", href: "/accounting/bank-statements", cta: "Go to Bank Statements" },
+    { icon: BarChart3, title: "Accounting Reports", description: "Generate reports for owners, bankers, and tax auditors.", href: "/accounting/reports", cta: "Go to Reports" },
+    { icon: BookText, title: "Ledgers", description: "The BKS has two ways to manage your income and expenses; One way is to just record in the GL and the other way is to enter your income and expenses in separate ledgers.", href: "/accounting/ledgers", cta: "Go to Ledgers" },
+    { icon: ShieldCheck, title: "Tax Center", description: "Detailed records required for tax preparation and audits.", href: "/accounting/tax", cta: "Go to Tax Center" },
+    { icon: Landmark, title: "Bank Statements", description: "The essential financial statements for credit analysis and loans.", href: "/accounting/bank-statements", cta: "Go to Bank Statements" },
     { icon: WalletCards, title: "Capital Assets", description: "Track your business's capital assets, manage depreciation, and record disposals.", href: "/accounting/asset-management", cta: "Manage Assets" },
     { icon: DollarSign, title: "Equity Account", description: "Set up and manage your equity account.", href: "/accounting/equity", cta: "Manage Equity" },
     { icon: Activity, title: "Financial Vitals", description: "A quick glance at your most important financial numbers.", href: "/accounting/vitals", cta: "Check Vitals" },
@@ -84,16 +87,16 @@ export function AccountingToolsView() {
         <div className="flex justify-center items-center gap-4 mb-2">
             <Calculator className="h-10 w-10 text-primary" />
             <h1 className="text-4xl font-bold font-headline text-primary">
-            Advanced Accounting Tools
+            Accounting Tools
             </h1>
         </div>
         <p className="text-muted-foreground max-w-2xl mx-auto">
           Your central command for managing finances, from invoicing and payments to reporting and tax preparation.
         </p>
          <div className="mt-4">
-            <Button asChild variant="link">
+            <Button asChild>
                 <Link href="/accounting/bks">
-                    Return to Bookkeeping Kept Simple
+                    Go to BKS
                 </Link>
             </Button>
         </div>

@@ -1,6 +1,6 @@
+
 import Link from "next/link";
 import { Logo } from "../logo";
-import { navLinks } from "@/lib/constants";
 
 export function SiteFooter() {
     return (

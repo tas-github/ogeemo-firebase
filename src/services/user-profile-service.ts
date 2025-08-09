@@ -20,6 +20,7 @@ export interface UserProfile {
         showDictationButton?: boolean;
         showCommandFrame?: boolean;
         showDashboardFrame?: boolean;
+        menuOrder?: string[];
     };
 }
 
@@ -34,6 +35,7 @@ const defaultPreferences = {
     showDictationButton: true,
     showCommandFrame: true,
     showDashboardFrame: true,
+    menuOrder: [],
 };
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
