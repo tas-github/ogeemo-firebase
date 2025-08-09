@@ -24,6 +24,11 @@ export default function HomePage() {
                 <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
                   Tired of juggling multiple apps for accounting, projects, and CRM? Ogeemo is the all-in-one platform that unifies every part of your business, so you can stop managing software and start building your empire.
                 </p>
+                <div className="mt-8">
+                  <Button asChild size="lg">
+                    <Link href="/login">Login</Link>
+                  </Button>
+                </div>
               </div>
             </section>
 
