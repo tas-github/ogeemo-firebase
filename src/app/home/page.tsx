@@ -6,6 +6,8 @@ import Link from 'next/link';
 import React, { useState } from 'react';
 import VisionariesDialog from '@/components/landing/visionaries-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { SiteHeader } from '@/components/landing/header';
+import { SiteFooter } from '@/components/landing/footer';
 
 export default function HomePage() {
   const [isVisionariesDialogOpen, setIsVisionariesDialogOpen] = useState(false);
@@ -13,6 +15,7 @@ export default function HomePage() {
   return (
     <>
       <div className="flex flex-col min-h-screen">
+        <SiteHeader />
         <main className="flex-1">
           <div className="container px-4 py-16 space-y-16">
             {/* Hero Section */}
@@ -24,9 +27,12 @@ export default function HomePage() {
                 <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
                   Tired of juggling multiple apps for accounting, projects, and CRM? Ogeemo is the all-in-one platform that unifies every part of your business, so you can stop managing software and start building your empire.
                 </p>
-                <div className="mt-8">
+                <div className="mt-8 flex justify-center gap-4">
                   <Button asChild size="lg">
                     <Link href="/login">Login</Link>
+                  </Button>
+                  <Button asChild size="lg" variant="outline">
+                    <Link href="/explore">Explore Ogeemo</Link>
                   </Button>
                 </div>
               </div>
@@ -77,6 +83,7 @@ export default function HomePage() {
             </section>
           </div>
         </main>
+        <SiteFooter />
       </div>
       <VisionariesDialog isOpen={isVisionariesDialogOpen} onOpenChange={setIsVisionariesDialogOpen} />
     </>
