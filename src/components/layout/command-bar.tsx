@@ -24,7 +24,7 @@ export function CommandBar() {
                 <Card>
                     <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="command-input" className="text-center block text-lg text-orange-600">
+                            <Label htmlFor="command-input" className="text-center block text-lg text-[#3B2F4A]">
                                 <div className="flex items-center justify-center gap-2">
                                     <Mic className="h-5 w-5" />
                                     Give a Command
@@ -32,11 +32,11 @@ export function CommandBar() {
                             </Label>
                             <Textarea id="command-input" placeholder="e.g., 'Create an invoice for Client X for $500'" rows={3} />
                             <div className="text-center">
-                                <Button className="bg-orange-500 hover:bg-orange-600 text-white">Execute Command</Button>
+                                <Button className="bg-[#3B2F4A] hover:bg-[#3B2F4A]/90 text-white">Execute Command</Button>
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="question-input" className="text-center block text-lg text-orange-600">
+                            <Label htmlFor="question-input" className="text-center block text-lg text-[#3B2F4A]">
                                 <div className="flex items-center justify-center gap-2">
                                     <Mic className="h-5 w-5" />
                                     Ask a Question
@@ -44,7 +44,7 @@ export function CommandBar() {
                             </Label>
                             <Textarea id="question-input" placeholder="e.g., 'How do I add a new contact?'" rows={3} />
                             <div className="text-center">
-                                <Button onClick={() => setIsChatOpen(true)} className="bg-orange-500 hover:bg-orange-600 text-white">Ask Ogeemo</Button>
+                                <Button onClick={() => setIsChatOpen(true)} className="bg-[#3B2F4A] hover:bg-[#3B2F4A]/90 text-white">Ask Ogeemo</Button>
                             </div>
                         </div>
                     </CardContent>

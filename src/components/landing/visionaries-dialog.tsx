@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { BarChart, Braces, BrainCircuit, UploadCloud, LoaderCircle, X, Save } from "lucide-react";
+import { BarChart, Braces, BrainCircuit, UploadCloud, LoaderCircle, X, Save, FileText } from "lucide-react";
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
@@ -189,7 +190,7 @@ export default function VisionariesDialog({ isOpen, onOpenChange }: VisionariesD
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={50}>
               <ScrollArea className="h-full">
-                <div className="space-y-6 p-6 pt-32">
+                <div className="space-y-6 py-12 px-6">
                     <div className="flex items-start gap-4">
                         <div className="p-3 bg-primary/10 rounded-lg mt-1">
                             <BarChart className="h-5 w-5 text-primary"/>
@@ -220,6 +221,20 @@ export default function VisionariesDialog({ isOpen, onOpenChange }: VisionariesD
                             <h4 className="font-semibold">A Truly Intelligent AI Core</h4>
                             <p className="text-sm text-muted-foreground">
                                 In an era of simple chatbots, Ogeemo's AI acts as a central nervous system. It connects the dots across all modules—linking a client email to a project task, which then automatically informs an invoice. This is true intelligence that understands the context of your work to automate workflows and empower your decisions.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-4">
+                        <div className="p-3 bg-primary/10 rounded-lg mt-1">
+                            <FileText className="h-5 w-5 text-primary"/>
+                        </div>
+                        <div>
+                            <h4 className="font-semibold">Technology Summary</h4>
+                            <p className="text-sm text-muted-foreground">
+                                To build such a sophisticated application has to have a strategic summary. 
+                                <Button variant="link" asChild className="p-1 h-auto text-sm">
+                                    <Link href="/ogeemo-summary">Read the summary...</Link>
+                                </Button>
                             </p>
                         </div>
                     </div>

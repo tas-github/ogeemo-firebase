@@ -1,9 +1,10 @@
+
 import Link from "next/link";
-import Image from "next/image";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 
 const mockPosts = [
   {
@@ -12,7 +13,6 @@ const mockPosts = [
     date: "August 5, 2024",
     category: "Productivity",
     excerpt: "Discover why consolidating your tools into a single, intelligent platform like Ogeemo is no longer a luxury—it's a necessity for growth and efficiency in today's competitive landscape.",
-    imageUrl: "https://placehold.co/600x400.png",
     imageHint: "business strategy",
   },
   {
@@ -21,7 +21,6 @@ const mockPosts = [
     date: "July 28, 2024",
     category: "Company News",
     excerpt: "As we welcome our first beta testers, we want to share our long-term vision for Ogeemo and how your feedback is shaping the future of business management.",
-    imageUrl: "https://placehold.co/600x400.png",
     imageHint: "team collaboration",
   },
   {
@@ -30,7 +29,6 @@ const mockPosts = [
     date: "July 19, 2024",
     category: "AI & Automation",
     excerpt: "Manual data entry and complex spreadsheets are a thing of the past. Learn how Ogeemo's AI-powered features are making audit-ready bookkeeping accessible to everyone.",
-    imageUrl: "https://placehold.co/600x400.png",
     imageHint: "artificial intelligence",
   },
 ];
@@ -51,13 +49,7 @@ export default function NewsPage() {
         {mockPosts.map((post) => (
           <Card key={post.id} className="flex flex-col overflow-hidden">
             <div className="relative h-48 w-full">
-              <Image
-                src={post.imageUrl}
-                alt={post.title}
-                layout="fill"
-                objectFit="cover"
-                data-ai-hint={post.imageHint}
-              />
+              <ImagePlaceholder data-ai-hint={post.imageHint} className="h-full w-full" />
             </div>
             <CardHeader>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">

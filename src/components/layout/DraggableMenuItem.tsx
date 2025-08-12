@@ -62,7 +62,7 @@ export function DraggableMenuItem({ item, index, isActive, moveMenuItem }: Dragg
           variant={isActive ? "secondary" : "ghost"}
           className={cn(
             "w-full justify-start gap-3 pl-8",
-            "h-10 text-base text-white bg-primary border-b-4 border-black hover:bg-primary/90 active:mt-1 active:border-b-2"
+            "h-10 text-base border-b-4 border-black hover:bg-sidebar-accent/90 active:mt-1 active:border-b-2"
           )}
         >
           <Link href={item.href}>
@@ -71,7 +71,7 @@ export function DraggableMenuItem({ item, index, isActive, moveMenuItem }: Dragg
           </Link>
         </Button>
         <GripVertical
-          className="absolute left-2 top-1/2 -translate-y-1/2 h-5 w-5 text-white/50 cursor-grab"
+          className="absolute left-2 top-1/2 -translate-y-1/2 h-5 w-5 text-sidebar-foreground/50 cursor-grab"
         />
       </div>
     </div>

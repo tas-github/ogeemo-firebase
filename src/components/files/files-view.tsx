@@ -1,22 +1,22 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useDrag, useDrop } from 'react-dnd';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import Script from 'next/script';
 import {
   Folder,
   Plus,
-  MoreVertical,
-  Trash2,
-  Pencil,
   LoaderCircle,
   ChevronRight,
   FolderPlus,
+  Users,
   UploadCloud,
-  Download,
-  BookOpen,
+  FileText,
+  Trash2,
+  MoreVertical,
+  Pencil,
+  RefreshCw,
 } from 'lucide-react';
-
 import { Button } from '@/components/ui/button';
 import {
   ResizableHandle,
@@ -24,79 +24,58 @@ import {
   ResizablePanelGroup,
 } from '@/components/ui/resizable';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '../ui/separator';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from "@/components/ui/checkbox";
+import { FileIcon } from './file-icon';
+import { format } from 'date-fns';
+import { useAuth } from '@/context/auth-context';
+import { useToast } from '@/hooks/use-toast';
+import { getFolders, addFolder, getFiles, getUploadUrl, addFileRecord, type FolderItem, type FileItem, updateFolder, deleteFolderAndContents, getFileDownloadUrl, getFileContent } from '@/services/file-service';
+import { downloadFromGoogleDriveAndUpload, getGoogleAuthUrl } from '@/services/google-service';
+import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/context/auth-context';
 import {
-    getFolders,
-    getFilesForFolder,
-    addFolder,
-    updateFolder,
-    deleteFolderAndContents,
-    addFile,
-    updateFile,
-    deleteFiles,
-    getFileDownloadUrl,
-    getFileContent,
-    type FolderItem,
-    type FileItem,
-} from '@/services/file-service';
-import { cn, triggerBrowserDownload } from '@/lib/utils';
-import { FileIcon } from './file-icon';
-import { format } from 'date-fns';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { triggerBrowserDownload } from '@/lib/utils';
 import FileEditDialog from './file-edit-dialog';
 
-const ItemTypes = {
-  FILE: 'file',
-  FOLDER: 'folder',
-};
-
-const DraggableTableRow = ({ file, children }: { file: FileItem, children: React.ReactNode }) => {
-    const [{ isDragging }, drag] = useDrag(() => ({
-        type: ItemTypes.FILE,
-        item: file,
-        collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-    }));
-    return (
-      <TableRow ref={drag} className={cn(isDragging && "opacity-50")}>
-        {children}
-      </TableRow>
-    );
-};
+const GoogleDriveIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}>
+      <path d="M7.71 5.42L12 12.25l4.29-6.83a.996.996 0 00-.85-1.42H8.56c-.5 0-.89.37-.85.86z" fill="#34A853"/>
+      <path d="M16.29 18.58l4.29-6.83h-8.58L7.71 18.58c.28.45.81.71 1.35.71h5.88c.54 0 1.07-.26 1.35-.71z" fill="#FFC107"/>
+      <path d="M3.42 11.75l4.29 6.83 4.29-6.83H3.42z" fill="#4285F4"/>
+    </svg>
+);
 
 export function FilesView() {
     const [folders, setFolders] = useState<FolderItem[]>([]);
     const [files, setFiles] = useState<FileItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-    const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
-    const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-
+    const [selectedFolderId, setSelectedFolderId] = useState<string>('all');
+    
     const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
     const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
     const [newFolderName, setNewFolderName] = useState("");
@@ -105,81 +84,220 @@ export function FilesView() {
     const [renameInputValue, setRenameInputValue] = useState("");
     const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
 
-    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
+
+    const [isGapiLoaded, setIsGapiLoaded] = useState(false);
+    const [isGisLoaded, setIsGisLoaded] = useState(false);
+    const gisInited = useRef(false);
+    
     const [fileToEdit, setFileToEdit] = useState<FileItem | null>(null);
     const [fileContent, setFileContent] = useState<string | null>(null);
 
-    const { toast } = useToast();
-    const { user } = useAuth();
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    
-    const loadData = useCallback(async (selectFolderId: string | null = null) => {
+
+    const loadData = useCallback(async () => {
         if (!user) {
             setIsLoading(false);
             return;
         }
         setIsLoading(true);
         try {
-            const fetchedFolders = await getFolders(user.uid);
+            const [fetchedFolders, fetchedFiles] = await Promise.all([
+                getFolders(user.uid),
+                getFiles(user.uid),
+            ]);
             setFolders(fetchedFolders);
-            const rootFolders = fetchedFolders.filter(f => !f.parentId);
-            if (rootFolders.length > 0) {
-              setExpandedFolders(prev => new Set([...prev, ...rootFolders.map(f => f.id)]));
-            }
-
-            const folderToLoad = selectFolderId || selectedFolderId || (fetchedFolders.length > 0 ? fetchedFolders[0].id : null);
-            setSelectedFolderId(folderToLoad);
-            
-            if (folderToLoad) {
-                const fetchedFiles = await getFilesForFolder(user.uid, folderToLoad);
-                setFiles(fetchedFiles);
-            } else {
-                setFiles([]);
+            setFiles(fetchedFiles);
+            const rootFolder = fetchedFolders.find(f => !f.parentId);
+            if (rootFolder) {
+                setExpandedFolders(new Set([rootFolder.id]));
             }
         } catch (error: any) {
-            toast({ variant: "destructive", title: "Failed to load data", description: error.message });
+            console.error("Failed to load file manager data:", error);
+            toast({
+                variant: "destructive",
+                title: "Failed to load data",
+                description: error.message,
+            });
         } finally {
             setIsLoading(false);
         }
-    }, [user, toast, selectedFolderId]);
+    }, [user, toast]);
 
     useEffect(() => {
-        if(user) {
-            loadData();
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user]); 
+        loadData();
+    }, [loadData]);
+    
+    const handlePickerCallback = useCallback(async (response: any) => {
+        if (response.action === google.picker.Action.PICKED && user) {
+            const doc = response.docs[0];
+            const fileId = doc.id;
+            const fileName = doc.name;
+            const mimeType = doc.mimeType;
+            
+            toast({ title: "Importing...", description: `Starting import for "${fileName}" from Google Drive.` });
 
-    useEffect(() => {
-        async function loadFiles() {
-            if (user && selectedFolderId) {
-                setIsLoading(true);
-                const fetchedFiles = await getFilesForFolder(user.uid, selectedFolderId);
-                setFiles(fetchedFiles);
-                setSelectedFileIds([]);
-                setIsLoading(false);
-            } else if (!selectedFolderId) {
-                setFiles([]);
+            try {
+                const accessToken = sessionStorage.getItem('google_drive_access_token');
+                if (!accessToken) {
+                    throw new Error("Google Drive access token not found. Please re-authenticate.");
+                }
+
+                const newFile = await downloadFromGoogleDriveAndUpload(
+                    fileId,
+                    fileName,
+                    mimeType,
+                    accessToken,
+                    user.uid,
+                    selectedFolderId,
+                );
+                
+                const newFileWithDate = {
+                    ...newFile,
+                    modifiedAt: new Date(newFile.modifiedAt),
+                };
+
+                setFiles(prev => [...prev, newFileWithDate]);
+                toast({ title: "Import Complete", description: `"${fileName}" has been added to your files.` });
+
+            } catch (error: any) {
+                console.error("Error during Google Drive import process:", error);
+                toast({ variant: 'destructive', title: "Import Failed", description: error.message });
             }
         }
-        loadFiles();
-    }, [user, selectedFolderId]);
+    }, [user, selectedFolderId, toast]);
+
+    const handleGoogleAuthRedirect = useCallback(async (action: 'import' | 'sync') => {
+        if (!user) return;
+        const state = `${action}_${user.uid}_${Date.now()}`;
+        sessionStorage.setItem('google_auth_state', state);
+        sessionStorage.setItem('google_auth_redirect', window.location.pathname);
+        const { url } = await getGoogleAuthUrl(user.uid, state);
+        window.location.href = url;
+    }, [user]);
+
+    const handleGoogleImport = useCallback(async () => {
+        if (selectedFolderId === 'all') {
+            toast({ variant: 'destructive', title: 'Select a Folder', description: 'Please select a specific folder to import files into.' });
+            return;
+        }
+        
+        const showPicker = (accessToken: string) => {
+             const picker = new google.picker.PickerBuilder()
+                .addView(google.picker.ViewId.DOCS)
+                .setOAuthToken(accessToken)
+                .setDeveloperKey(process.env.NEXT_PUBLIC_GOOGLE_DEVELOPER_KEY!)
+                .setCallback(handlePickerCallback)
+                .build();
+            picker.setVisible(true);
+        };
+
+        const existingToken = sessionStorage.getItem('google_drive_access_token');
+        if (existingToken) {
+            showPicker(existingToken);
+        } else {
+            handleGoogleAuthRedirect('import');
+        }
+    }, [selectedFolderId, handlePickerCallback, toast, handleGoogleAuthRedirect]);
+
+    const handleGoogleSyncClick = useCallback(async () => {
+        const existingToken = sessionStorage.getItem('google_drive_access_token');
+        if (!existingToken) {
+            await handleGoogleAuthRedirect('sync');
+        } else {
+            toast({
+                title: "Ready to Sync",
+                description: "You are already connected to Google Drive. The next step will perform the sync."
+            });
+        }
+    }, [handleGoogleAuthRedirect, toast]);
+
+    useEffect(() => {
+        if (isGapiLoaded && isGisLoaded && !gisInited.current && window.gapi && window.google) {
+            gisInited.current = true;
+            gapi.load('client:picker', () => {
+                gapi.client.init({}).then(() => {
+                    gapi.client.load('https://www.googleapis.com/discovery/v1/apis/drive/v3/rest');
+                });
+            });
+        }
+    }, [isGapiLoaded, isGisLoaded]);
+
 
     const handleCreateFolder = async () => {
         if (!user || !newFolderName.trim()) return;
         try {
-            const newFolder = await addFolder({ name: newFolderName, parentId: newFolderParentId, userId: user.uid });
+            const newFolder = await addFolder({ 
+                name: newFolderName.trim(), 
+                parentId: newFolderParentId, 
+                userId: user.uid 
+            });
             setFolders(prev => [...prev, newFolder]);
-            if(newFolder.parentId) {
-                setExpandedFolders(p => new Set(p).add(newFolder.parentId!));
-            }
+            setNewFolderName("");
+            setNewFolderParentId(null);
+            setIsNewFolderDialogOpen(false);
             toast({ title: "Folder Created" });
-        } catch(e: any) { toast({ variant: "destructive", title: "Failed", description: e.message }); }
-        finally { setIsNewFolderDialogOpen(false); setNewFolderName(""); }
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Failed to create folder", description: error.message });
+        }
     };
     
-    const handleStartRename = (folder: FolderItem | null) => {
-        if (!folder) return;
+    const selectedFolder = folders.find(f => f.id === selectedFolderId);
+
+    const displayedFiles = useMemo(() => {
+        if (selectedFolderId === 'all') return files;
+        return files.filter(file => file.folderId === selectedFolderId);
+    }, [files, selectedFolderId]);
+
+    const handleUploadClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (!user || !event.target.files || event.target.files.length === 0) return;
+        const file = event.target.files[0];
+
+        try {
+            const { signedUrl, storagePath } = await getUploadUrl({
+                fileName: file.name,
+                fileType: file.type,
+                userId: user.uid,
+                folderId: selectedFolderId,
+            });
+
+            const uploadResponse = await fetch(signedUrl, {
+                method: 'PUT',
+                body: file,
+                headers: { 'Content-Type': file.type },
+            });
+            
+            if (!uploadResponse.ok) throw new Error('File upload failed.');
+
+            const newFileRecord = await addFileRecord({
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                modifiedAt: new Date(),
+                folderId: selectedFolderId,
+                userId: user.uid,
+                storagePath,
+            });
+            
+            setFiles(prev => [...prev, newFileRecord]);
+            toast({ title: "File Uploaded", description: `"${file.name}" has been successfully uploaded.` });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: "Upload Failed", description: error.message });
+        } finally {
+            if (fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
+
+    const handleStartRename = (folder: FolderItem) => {
         setRenamingFolder(folder);
         setRenameInputValue(folder.name);
     };
@@ -194,6 +312,7 @@ export function FilesView() {
             handleCancelRename();
             return;
         }
+
         try {
             await updateFolder(renamingFolder.id, { name: renameInputValue.trim() });
             setFolders(prev => prev.map(f => f.id === renamingFolder.id ? { ...f, name: renameInputValue.trim() } : f));
@@ -204,123 +323,45 @@ export function FilesView() {
             handleCancelRename();
         }
     };
-
-    const handleConfirmDeleteFolder = async () => {
+    
+    const handleConfirmDelete = async () => {
         if (!user || !folderToDelete) return;
+
         try {
             await deleteFolderAndContents(user.uid, folderToDelete.id);
-            toast({ title: "Folder Deleted" });
-            loadData(null);
-        } catch (e: any) { toast({ variant: 'destructive', title: "Delete Failed", description: e.message }); }
-        finally { setFolderToDelete(null); }
-    };
-    
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!user || !selectedFolderId || !e.target.files || e.target.files.length === 0) return;
-        const file = e.target.files[0];
-        toast({ title: 'Uploading...', description: file.name });
-
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('userId', user.uid);
-            formData.append('folderId', selectedFolderId);
-
-            await addFile(formData);
-
-            toast({ title: 'Upload successful', description: `${file.name} has been uploaded.` });
-            const fetchedFiles = await getFilesForFolder(user.uid, selectedFolderId);
-            setFiles(fetchedFiles);
+            if (selectedFolderId === folderToDelete.id) {
+                setSelectedFolderId('all');
+            }
+            toast({ title: `Folder "${folderToDelete.name}" and all its contents have been deleted.` });
+            loadData();
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
+            toast({ variant: "destructive", title: "Delete Failed", description: error.message });
         } finally {
-            if (fileInputRef.current) {
-                fileInputRef.current.value = "";
-            }
+            setFolderToDelete(null);
         }
     };
     
-    const handleDeleteSelectedFiles = async () => {
-        if (!user || selectedFileIds.length === 0) return;
+    const handleDownloadFile = async (file: FileItem) => {
         try {
-            await deleteFiles(selectedFileIds);
-            setFiles(files.filter(f => !selectedFileIds.includes(f.id)));
-            setSelectedFileIds([]);
-            toast({ title: `${selectedFileIds.length} file(s) deleted.` });
+            const url = await getFileDownloadUrl(file.storagePath);
+            await triggerBrowserDownload(url, file.name);
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Delete Failed', description: error.message });
-        }
-    };
-    
-    const handleDownloadSelectedFiles = async () => {
-        if(selectedFileIds.length === 0) return;
-        toast({ title: `Preparing ${selectedFileIds.length} download(s)...`});
-        for (const fileId of selectedFileIds) {
-            const fileToDownload = files.find(f => f.id === fileId);
-            if(fileToDownload) {
-                try {
-                    const url = await getFileDownloadUrl(fileToDownload.storagePath);
-                    await triggerBrowserDownload(url, fileToDownload.name);
-                } catch (error: any) {
-                    toast({ variant: 'destructive', title: `Download Failed for ${fileToDownload.name}`, description: error.message });
-                }
-            }
-        }
-    };
-    
-    const handleOpenFile = async (file: FileItem) => {
-        if (file.webViewLink) {
-            window.open(file.webViewLink, '_blank');
-        } else {
-            try {
-                toast({ title: 'Preparing download...' });
-                const url = await getFileDownloadUrl(file.storagePath);
-                await triggerBrowserDownload(url, file.name);
-            } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Download Failed', description: error.message });
-            }
+            toast({ variant: "destructive", title: "Download Failed", description: error.message });
         }
     };
 
     const handleEditFile = async (file: FileItem) => {
-        if (!file.type.startsWith('text/')) {
-            toast({ variant: "destructive", title: "Cannot Edit", description: "Only plain text files can be edited in this view." });
-            return;
-        }
         setFileToEdit(file);
-        setFileContent(null); // Clear previous content
-        setIsEditDialogOpen(true);
-
+        setFileContent(null);
         try {
             const content = await getFileContent(file.storagePath);
             setFileContent(content);
         } catch (error: any) {
-            toast({ variant: "destructive", title: "Failed to Load Content", description: error.message });
-            setIsEditDialogOpen(false);
+            console.error("Failed to load file content:", error);
+            toast({ variant: "destructive", title: "Could not load file content", description: error.message });
+            setFileToEdit(null);
         }
     };
-    
-    const handleFileDrop = async (file: FileItem, newFolderId: string) => {
-        if (file.folderId === newFolderId) return;
-        try {
-            await updateFile(file.id, { folderId: newFolderId });
-            setFiles(prev => prev.filter(f => f.id !== file.id));
-            toast({ title: "File Moved" });
-        } catch (error: any) { toast({ variant: "destructive", title: "Move Failed", description: error.message }); }
-    };
-    
-    const handleFolderDrop = async (folder: FolderItem, newParentId: string | null) => {
-        if (folder.parentId === newParentId) return;
-        try {
-            await updateFolder(folder.id, { parentId: newParentId });
-            setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, parentId: newParentId } : f));
-            toast({ title: "Folder Moved" });
-        } catch (error: any) { toast({ variant: "destructive", title: "Move Failed", description: error.message }); }
-    };
-    
-    const allVisibleSelected = files.length > 0 && selectedFileIds.length === files.length;
-
-    const selectedFolder = folders.find(f => f.id === selectedFolderId);
     
     const FolderTreeItem = ({
       folder,
@@ -331,189 +372,186 @@ export function FilesView() {
       allFolders: FolderItem[];
       level?: number;
     }) => {
-        const hasChildren = allFolders.some((f: FolderItem) => f.parentId === folder.id);
+        const hasChildren = allFolders.some((f) => f.parentId === folder.id);
         const isExpanded = expandedFolders.has(folder.id);
         const isRenaming = renamingFolder?.id === folder.id;
 
-        const [{ isDragging }, drag, dragPreview] = useDrag(() => ({
-            type: ItemTypes.FOLDER,
-            item: folder,
-            collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-        }));
-
-        const [{ canDrop, isOver }, drop] = useDrop(() => ({
-            accept: [ItemTypes.FILE, ItemTypes.FOLDER],
-            drop: (item: any) => {
-                if (item.id === folder.id) return;
-                
-                if (item.type === ItemTypes.FOLDER) {
-                    handleFolderDrop(item, folder.id);
-                } else {
-                    handleFileDrop(item, folder.id);
-                }
-            },
-            collect: (monitor) => ({ isOver: monitor.isOver(), canDrop: monitor.canDrop() }),
-        }));
-        
         return (
-            <div key={folder.id} className="my-1 rounded-md" style={{ marginLeft: level > 0 ? '1rem' : '0' }} ref={dragPreview}>
+            <div key={folder.id} className="my-1 rounded-md" style={{ marginLeft: level > 0 ? '1rem' : '0' }}>
                 <div
-                    ref={node => drag(drop(node))}
                     className={cn(
                         "flex items-center gap-1 rounded-md pr-1 group",
-                        !isRenaming && "hover:bg-accent",
-                        (isOver && canDrop) && 'bg-primary/20 ring-1 ring-primary',
-                        isDragging && 'opacity-50',
-                        selectedFolderId === folder.id && !isRenaming && "bg-accent"
+                        isRenaming ? 'bg-background' : 'hover:bg-accent',
+                        selectedFolderId === folder.id && !isRenaming && 'bg-accent'
                     )}
                 >
                     <Button variant="ghost" className="flex-1 justify-start gap-2 h-9 p-2 text-left" onClick={() => !isRenaming && setSelectedFolderId(folder.id)}>
                         {hasChildren ? (
-                           <ChevronRight className={cn('h-4 w-4 shrink-0 transition-transform', isExpanded && 'rotate-90')} onClick={(e) => { e.stopPropagation(); setExpandedFolders((p: Set<string>) => { const n = new Set(p); n.has(folder.id) ? n.delete(folder.id) : n.add(folder.id); return n; }); }} />
+                           <ChevronRight className={cn('h-4 w-4 shrink-0 transition-transform', isExpanded && 'rotate-90')} onClick={(e) => { e.stopPropagation(); setExpandedFolders(p => { const n = new Set(p); n.has(folder.id) ? n.delete(folder.id) : n.add(folder.id); return n; }); }} />
                         ) : <div className="w-4 h-4 shrink-0" />}
                         <Folder className="h-4 w-4 shrink-0 text-primary" />
-                        {isRenaming ? (
-                            <Input
-                                autoFocus
-                                value={renameInputValue}
-                                onChange={e => setRenameInputValue(e.target.value)}
-                                onBlur={handleConfirmRename}
-                                onKeyDown={e => {
-                                    if (e.key === 'Enter') handleConfirmRename();
-                                    if (e.key === 'Escape') handleCancelRename();
-                                }}
-                                className="h-7"
-                                onClick={e => e.stopPropagation()}
-                            />
-                        ) : (
+                         {isRenaming ? (
+                            <Input autoFocus value={renameInputValue} onChange={e => setRenameInputValue(e.target.value)} onBlur={handleConfirmRename} onKeyDown={e => { if (e.key === 'Enter') handleConfirmRename(); if (e.key === 'Escape') handleCancelRename(); }} className="h-7" onClick={e => e.stopPropagation()} />
+                         ) : (
                             <span className="truncate flex-1">{folder.name}</span>
-                        )}
+                         )}
                     </Button>
                      {!isRenaming && (
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem onSelect={() => { setNewFolderParentId(folder.id); setIsNewFolderDialogOpen(true); }}><FolderPlus className="mr-2 h-4 w-4" />Create subfolder</DropdownMenuItem>
-                                <DropdownMenuItem onSelect={() => handleStartRename(folder)}><Pencil className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive" onSelect={() => setFolderToDelete(folder)}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                            <DropdownMenuContent align="end" onClick={e => e.stopPropagation()}>
+                                <DropdownMenuItem onSelect={() => handleStartRename(folder)}><Pencil className="mr-2 h-4 w-4"/>Rename</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" onSelect={() => setFolderToDelete(folder)}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                     )}
                 </div>
-                {isExpanded && allFolders.filter((f: FolderItem) => f.parentId === folder.id).sort((a: FolderItem, b: FolderItem) => a.name.localeCompare(b.name)).map((childFolder: FolderItem) => (
+                {isExpanded && allFolders.filter((f) => f.parentId === folder.id).sort((a,b) => a.name.localeCompare(b.name)).map((childFolder) => (
                     <FolderTreeItem key={childFolder.id} folder={childFolder} allFolders={allFolders} level={level + 1} />
                 ))}
             </div>
         );
     };
 
-    return (
-        <div className="flex flex-col h-full p-4 sm:p-6">
-            <header className="text-center pb-4">
-                <h1 className="text-3xl font-bold font-headline text-primary">File Manager</h1>
-                <p className="text-muted-foreground">Organize your project and client documents.</p>
-            </header>
-            <div className="flex-1 min-h-0">
-                <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
-                    <ResizablePanel defaultSize={25} minSize={20}>
-                        <div className="flex h-full flex-col">
-                            <div className="flex items-center justify-between p-2 border-b h-[57px]">
-                                <h3 className="text-lg font-semibold px-2">Folders</h3>
-                                <Button variant="ghost" size="icon" onClick={() => { setNewFolderParentId(null); setIsNewFolderDialogOpen(true); }} title="New Root Folder"><FolderPlus className="h-5 w-5" /></Button>
-                            </div>
-                            <ScrollArea className="flex-1 p-2">
-                                {folders.filter(f => !f.parentId).sort((a,b) => a.name.localeCompare(b.name)).map(folder => (
-                                    <FolderTreeItem key={folder.id} folder={folder} allFolders={folders} level={0} />
-                                ))}
-                            </ScrollArea>
-                        </div>
-                    </ResizablePanel>
-                    <ResizableHandle withHandle />
-                    <ResizablePanel defaultSize={75}>
-                        <div className="flex flex-col h-full">
-                            <div className="flex items-center justify-between p-4 border-b h-20">
-                                {selectedFileIds.length > 0 ? (
-                                    <>
-                                        <h2 className="text-xl font-bold">{selectedFileIds.length} selected</h2>
-                                        <div className="flex items-center gap-2">
-                                            <Button variant="outline" onClick={handleDownloadSelectedFiles}><Download className="mr-2 h-4 w-4" /> Download</Button>
-                                            <Button variant="destructive" onClick={handleDeleteSelectedFiles}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div>
-                                            <h2 className="text-xl font-bold">{selectedFolder?.name}</h2>
-                                            <p className="text-sm text-muted-foreground">{files.length} item(s)</p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Button onClick={() => fileInputRef.current?.click()} disabled={!selectedFolderId}><UploadCloud className="mr-2 h-4 w-4" /> Upload File</Button>
-                                            <Input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                            <ScrollArea className="flex-1">
-                                <Table>
-                                    <TableHeader><TableRow><TableHead className="w-[50px]"><Checkbox checked={allVisibleSelected} onCheckedChange={() => setSelectedFileIds(allVisibleSelected ? [] : files.map(f => f.id))} /></TableHead><TableHead>Name</TableHead><TableHead>Size</TableHead><TableHead>Modified</TableHead><TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead></TableRow></TableHeader>
-                                    <TableBody>
-                                        {isLoading ? <TableRow><TableCell colSpan={5} className="h-24 text-center"><LoaderCircle className="mx-auto h-6 w-6 animate-spin"/></TableCell></TableRow>
-                                            : files.map((file) => (
-                                            <DraggableTableRow key={file.id} file={file}>
-                                                <TableCell><Checkbox checked={selectedFileIds.includes(file.id)} onCheckedChange={() => setSelectedFileIds(p => p.includes(file.id) ? p.filter(id => id !== file.id) : [...p, file.id])} /></TableCell>
-                                                <TableCell className="font-medium flex items-center gap-2"><FileIcon fileType={file.type} /> {file.name}</TableCell>
-                                                <TableCell>{(file.size / 1024).toFixed(2)} KB</TableCell>
-                                                <TableCell>{format(new Date(file.modifiedAt), 'PPp')}</TableCell>
-                                                <TableCell>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                                <MoreVertical className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onSelect={() => handleOpenFile(file)}><BookOpen className="mr-2 h-4 w-4" /> Open</DropdownMenuItem>
-                                                            <DropdownMenuItem onSelect={() => handleEditFile(file)}><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                                                            <DropdownMenuItem onSelect={() => { /* Placeholder for rename */ }}><Pencil className="mr-2 h-4 w-4" /> Rename</DropdownMenuItem>
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuItem className="text-destructive" onSelect={async () => {
-                                                                if (window.confirm(`Are you sure you want to delete "${file.name}"?`)) {
-                                                                    await deleteFiles([file.id]);
-                                                                    setFiles(prev => prev.filter(f => f.id !== file.id));
-                                                                    toast({ title: "File Deleted" });
-                                                                }
-                                                            }}>
-                                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </TableCell>
-                                            </DraggableTableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </ScrollArea>
-                        </div>
-                    </ResizablePanel>
-                </ResizablePanelGroup>
+    if (isLoading) {
+        return (
+            <div className="flex h-full w-full items-center justify-center p-4">
+                <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
             </div>
+        );
+    }
 
-            <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
-                <DialogContent><DialogHeader><DialogTitle>Create New Folder</DialogTitle></DialogHeader><div className="py-4"><Label htmlFor="folder-name">Name</Label><Input id="folder-name" value={newFolderName} onChange={e => setNewFolderName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateFolder()} /></div><DialogFooter><Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button><Button onClick={handleCreateFolder}>Create</Button></DialogFooter></DialogContent>
-            </Dialog>
-            <Dialog open={folderToDelete !== null} onOpenChange={() => setFolderToDelete(null)}>
-                <DialogContent><DialogHeader><DialogTitle>Delete Folder</DialogTitle><DialogDescription>Are you sure? Deleting "{folderToDelete?.name}" will also delete all its subfolders and files.</DialogDescription></DialogHeader><DialogFooter><Button variant="ghost" onClick={() => setFolderToDelete(null)}>Cancel</Button><Button variant="destructive" onClick={handleConfirmDeleteFolder}>Delete</Button></DialogFooter></DialogContent>
-            </Dialog>
-            
-            {isEditDialogOpen && (
-                <FileEditDialog
-                    isOpen={isEditDialogOpen}
-                    onOpenChange={setIsEditDialogOpen}
-                    file={fileToEdit}
-                    initialContent={fileContent}
-                />
-            )}
-        </div>
+    return (
+        <>
+            <Script src="https://apis.google.com/js/api.js" async onLoad={() => setIsGapiLoaded(true)} />
+            <Script src="https://accounts.google.com/gsi/client" async onLoad={() => setIsGisLoaded(true)} />
+            <div className="flex flex-col h-full p-4 sm:p-6">
+                <header className="text-center pb-4">
+                    <h1 className="text-3xl font-bold font-headline text-primary">File Manager</h1>
+                    <p className="text-muted-foreground">Organize your project and client documents.</p>
+                </header>
+                <div className="flex-1 min-h-0">
+                    <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
+                        <ResizablePanel defaultSize={25} minSize={20}>
+                            <div className="flex h-full flex-col">
+                                <div className="flex items-center justify-between p-2 border-b h-[57px]">
+                                    <h3 className="text-lg font-semibold px-2">Folders</h3>
+                                    <Button variant="ghost" size="icon" onClick={() => { setNewFolderParentId(selectedFolderId !== 'all' ? selectedFolderId : null); setIsNewFolderDialogOpen(true); }} title="New Folder">
+                                        <FolderPlus className="h-5 w-5" />
+                                    </Button>
+                                </div>
+                                <ScrollArea className="flex-1 p-2">
+                                    <Button variant={selectedFolderId === 'all' ? "secondary" : "ghost"} className="w-full justify-start gap-3 my-1" onClick={() => setSelectedFolderId('all')}>
+                                        <Users className="h-4 w-4" /> <span>All Files</span>
+                                    </Button>
+                                    <Separator className="my-2"/>
+                                    {folders.filter(f => !f.parentId).sort((a,b) => a.name.localeCompare(b.name)).map(folder => (
+                                        <FolderTreeItem key={folder.id} folder={folder} allFolders={folders} level={0} />
+                                    ))}
+                                </ScrollArea>
+                            </div>
+                        </ResizablePanel>
+                        <ResizableHandle withHandle />
+                        <ResizablePanel defaultSize={75}>
+                            <div className="flex flex-col h-full">
+                                <div className="flex items-center justify-between p-4 border-b h-20">
+                                    <div>
+                                        <h2 className="text-xl font-bold">{selectedFolderId === 'all' ? 'All Files' : selectedFolder?.name}</h2>
+                                        <p className="text-sm text-muted-foreground">{displayedFiles.length} item(s)</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button variant="outline" onClick={handleGoogleSyncClick} disabled={!isGapiLoaded || !isGisLoaded}>
+                                            <RefreshCw className="mr-2 h-4 w-4" /> Sync with Google Drive
+                                        </Button>
+                                        <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+                                        <Button variant="outline" onClick={handleUploadClick} disabled={selectedFolderId === 'all'}>
+                                            <UploadCloud className="mr-2 h-4 w-4" /> Upload from Computer
+                                        </Button>
+                                        <Button variant="outline" onClick={handleGoogleImport} disabled={!isGapiLoaded || !isGisLoaded || selectedFolderId === 'all'}>
+                                            <GoogleDriveIcon className="mr-2 h-4 w-4" /> Import from Google Drive
+                                        </Button>
+                                    </div>
+                                </div>
+                                <ScrollArea className="flex-1">
+                                    <Table>
+                                      <TableHeader>
+                                        <TableRow>
+                                          <TableHead className="w-[50px]"><Checkbox /></TableHead>
+                                          <TableHead>Name</TableHead>
+                                          <TableHead>Type</TableHead>
+                                          <TableHead>Size</TableHead>
+                                          <TableHead>Modified</TableHead>
+                                          <TableHead><span className="sr-only">Actions</span></TableHead>
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {displayedFiles.map(file => (
+                                            <TableRow key={file.id}>
+                                                <TableCell><Checkbox /></TableCell>
+                                                <TableCell className="font-medium flex items-center gap-2">
+                                                    <FileIcon fileType={file.type} />
+                                                    {file.name}
+                                                </TableCell>
+                                                <TableCell>{file.type}</TableCell>
+                                                <TableCell>{(file.size / 1024).toFixed(2)} KB</TableCell>
+                                                <TableCell>{format(file.modifiedAt, 'PPp')}</TableCell>
+                                                <TableCell>
+                                                     <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem onClick={() => handleDownloadFile(file)}>Download</DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleEditFile(file)} disabled={!file.type.startsWith('text/')}>Edit</DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                     </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                      </TableBody>
+                                    </Table>
+                                </ScrollArea>
+                            </div>
+                        </ResizablePanel>
+                    </ResizablePanelGroup>
+                </div>
+                
+                <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Create New Folder</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <Label htmlFor="folder-name">Name</Label>
+                            <Input id="folder-name" value={newFolderName} onChange={e => setNewFolderName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateFolder()} />
+                        </div>
+                        <DialogFooter>
+                            <Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button>
+                            <Button onClick={handleCreateFolder}>Create</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+                
+                <AlertDialog open={!!folderToDelete} onOpenChange={() => setFolderToDelete(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>This will permanently delete the "{folderToDelete?.name}" folder and all its contents (including subfolders). This action cannot be undone.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+                
+                {fileToEdit && (
+                    <FileEditDialog
+                        isOpen={!!fileToEdit}
+                        onOpenChange={(open) => { if (!open) setFileToEdit(null); }}
+                        file={fileToEdit}
+                        initialContent={fileContent}
+                    />
+                )}
+            </div>
+        </>
     );
 }

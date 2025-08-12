@@ -20,7 +20,7 @@ export function SiteHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-primary/95 text-primary-foreground backdrop-blur supports-[backdrop-filter]:bg-primary/60">
       <div className="container flex h-16 items-center">
         <div className="mr-4 flex">
           <Logo />
@@ -29,7 +29,7 @@ export function SiteHeader() {
            <Button asChild variant="outline">
                 <Link href="/login">Log in</Link>
             </Button>
-            <Button asChild>
+            <Button asChild variant="secondary">
                 <Link href="/register" onClick={handleRegisterClick}>Become a Beta Tester</Link>
             </Button>
         </div>

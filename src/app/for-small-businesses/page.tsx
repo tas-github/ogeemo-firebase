@@ -1,6 +1,7 @@
+
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Clock, FileSearch, HardHat } from "lucide-react";
-import Image from "next/image";
+import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 import Link from "next/link";
 
 const benefits = [
@@ -89,6 +90,7 @@ export default function ForSmallBusinessesPage() {
                                 </div>
                             </div>
                         </div>
+                        <ImagePlaceholder data-ai-hint="business dashboard" className="rounded-lg h-[400px] w-full" />
                     </div>
                 </div>
             </section>

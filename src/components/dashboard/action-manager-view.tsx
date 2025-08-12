@@ -57,16 +57,16 @@ export function ActionManagerView() {
         {preferences?.showDashboardFrame && (
             <Card>
                 <CardHeader className="text-center">
-                    <div className="relative flex justify-center items-center">
+                    <div className="relative flex justify-center items-center mb-4">
                         <CardTitle className="text-2xl text-primary font-headline">Your Action Dashboard</CardTitle>
                         <div className="absolute right-0">
-                            <Button asChild className="bg-orange-500 hover:bg-orange-600 text-white">
+                            <Button asChild className="bg-[#3B2F4A] hover:bg-[#3B2F4A]/90 text-white">
                               <Link href="/action-manager/manage">Manage Dashboard</Link>
                             </Button>
                         </div>
                     </div>
                     <CardDescription>
-                        Click an action to begin. You can customize these shortcuts in "Manage Dashboard".
+                        Click an action to begin. You can customize these shortcuts in "Manage Dashboard". This is where you will keep your favorite actions. Click on the "Manage Dashboard button" to manage your most commonly used actions.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-wrap justify-center gap-2 p-4">

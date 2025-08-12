@@ -15,7 +15,7 @@ export default function ActionManagerPage() {
         <div className="w-full max-w-4xl space-y-6">
             {/* Page Header */}
             <header className="text-center">
-                <h1 className="text-4xl font-bold font-headline text-orange-500">
+                <h1 className="text-4xl font-bold font-headline text-[#3B2F4A]">
                     Action Manager
                 </h1>
             </header>
@@ -28,11 +28,9 @@ export default function ActionManagerPage() {
             </div>
             
             {/* Command Bar */}
-            {preferences?.showCommandFrame && (
-                <div>
-                    <CommandBar />
-                </div>
-            )}
+            <div>
+                <CommandBar />
+            </div>
         </div>
       </div>
     </div>

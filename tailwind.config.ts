@@ -19,7 +19,6 @@ const config: Config = {
       fontFamily: {
         body: ['var(--font-body)', 'sans-serif'],
         headline: ['var(--font-headline)', 'sans-serif'],
-        code: ['monospace'],
       },
       colors: {
         background: 'hsl(var(--background))',
@@ -72,12 +71,12 @@ const config: Config = {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
-        'soft-green': {
-          '500': '#73c68c',
-          '600': '#63b87b',
-          '700': '#469e60',
-          '900': '#308347',
-        },
+        'glass-start': '#C3FFF9',
+        'glass-end': '#62C1B6',
+      },
+      boxShadow: {
+        glass: '0 4px 6px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.1)',
+        'glass-strong': '0 6px 10px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(0, 0, 0, 0.15)',
       },
       borderRadius: {
         lg: 'var(--radius)',

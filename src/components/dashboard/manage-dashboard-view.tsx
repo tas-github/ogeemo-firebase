@@ -208,7 +208,7 @@ export function ManageDashboardView() {
                 </p>
             </div>
             <div className="flex items-center gap-2">
-                <Button onClick={() => setIsAddActionDialogOpen(true)} className="bg-orange-500 hover:bg-orange-600 text-white">
+                <Button onClick={() => setIsAddActionDialogOpen(true)} className="bg-[#3B2F4A] hover:bg-[#3B2F4A]/90 text-white">
                     <Plus className="mr-2 h-4 w-4" /> Add New Action
                 </Button>
                 <Button asChild variant="outline">

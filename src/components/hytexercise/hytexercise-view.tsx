@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -21,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExercisePlayer } from './exercise-player';
+import { ImagePlaceholder } from '../ui/image-placeholder';
 
 
 const formatTime = (totalSeconds: number) => {
@@ -249,8 +249,8 @@ export function HytexerciseView() {
             </CardHeader>
             <CardContent className="flex-1">
               <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
-                  <img src="https://placehold.co/600x400.png" alt="Exercise preview placeholder" data-ai-hint="chair exercise" className="object-cover w-full h-full" />
-                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                  <ImagePlaceholder data-ai-hint="chair exercise" className="w-full h-full" />
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
                       <p className="text-white font-semibold">Animation Placeholder</p>
                   </div>
               </div>

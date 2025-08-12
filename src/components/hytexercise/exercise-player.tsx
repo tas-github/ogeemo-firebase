@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { ImagePlaceholder } from '../ui/image-placeholder';
 
 const exercises = [
   { name: 'Neck Tilts', description: 'Slowly tilt your head from side to side, holding for 15 seconds on each side.', duration: 30, hint: 'neck stretch' },
@@ -68,11 +69,9 @@ export function ExercisePlayer({ breakDurationMinutes, onFinish }: ExercisePlaye
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="aspect-video bg-muted rounded-lg flex items-center justify-center relative overflow-hidden">
-            <img
-                src="https://placehold.co/600x400.png"
-                alt={currentExercise.name}
-                className="object-cover w-full h-full"
+            <ImagePlaceholder
                 data-ai-hint={currentExercise.hint}
+                className="w-full h-full"
                 key={currentExerciseIndex}
             />
           </div>

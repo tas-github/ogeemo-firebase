@@ -1,7 +1,9 @@
+
 import { Button } from "@/components/ui/button";
 import { DollarSign, Share2, Clock, ShieldCheck, Zap, Award, Users } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 
 const benefits = [
     {
@@ -89,40 +91,45 @@ export default function ForAccountantsPage() {
 
             {/* Consultant Advantage Section */}
             <section className="py-16 md:py-24">
-                <div className="container mx-auto px-4">
-                    <div className="text-center mb-16">
-                        <h2 className="text-3xl md:text-4xl font-bold font-headline">The Ogeemo Consultant Advantage</h2>
-                        <p className="mt-4 text-muted-foreground max-w-3xl mx-auto">
-                            Master Ogeemo as a beta tester and unlock a new business opportunity. Become a certified consultant and market your services to a growing community.
-                        </p>
+                 <div className="container mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
+                    <div className="md:order-2">
+                        <ImagePlaceholder data-ai-hint="financial analytics" className="rounded-lg h-[400px] w-full" />
                     </div>
-                    <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                        <Card>
-                            <CardHeader className="flex-row items-start gap-4">
-                                <div className="p-3 bg-primary/10 rounded-lg">
-                                    <Award className="h-6 w-6 text-primary" />
-                                </div>
-                                <div>
-                                    <CardTitle>Become a Certified Expert</CardTitle>
-                                    <CardContent className="p-0 pt-2 text-muted-foreground">
-                                        Know the app inside and out? Pass our competency test to become a Certified Ogeemo Consultant, validating your expertise and building trust with potential clients.
-                                    </CardContent>
-                                </div>
-                            </CardHeader>
-                        </Card>
-                        <Card>
-                             <CardHeader className="flex-row items-start gap-4">
-                                <div className="p-3 bg-primary/10 rounded-lg">
-                                    <Users className="h-6 w-6 text-primary" />
-                                </div>
-                                <div>
-                                    <CardTitle>Expand Your Client Base</CardTitle>
-                                     <CardContent className="p-0 pt-2 text-muted-foreground">
-                                        Onboard your existing clients to Ogeemo for streamlined service, and market your expertise to other Ogeemo users who need professional bookkeeping and advisory help.
-                                    </CardContent>
-                                </div>
-                            </CardHeader>
-                        </Card>
+                    <div className="md:order-1">
+                        <div className="mb-8">
+                            <h2 className="text-3xl md:text-4xl font-bold font-headline">The Ogeemo Consultant Advantage</h2>
+                            <p className="mt-4 text-muted-foreground max-w-3xl">
+                                Master Ogeemo as a beta tester and unlock a new business opportunity. Become a certified consultant and market your services to a growing community.
+                            </p>
+                        </div>
+                        <div className="space-y-6">
+                            <Card>
+                                <CardHeader className="flex-row items-start gap-4">
+                                    <div className="p-3 bg-primary/10 rounded-lg">
+                                        <Award className="h-6 w-6 text-primary" />
+                                    </div>
+                                    <div>
+                                        <CardTitle>Become a Certified Expert</CardTitle>
+                                        <CardContent className="p-0 pt-2 text-muted-foreground">
+                                            Know the app inside and out? Pass our competency test to become a Certified Ogeemo Consultant, validating your expertise and building trust with potential clients.
+                                        </CardContent>
+                                    </div>
+                                </CardHeader>
+                            </Card>
+                            <Card>
+                                 <CardHeader className="flex-row items-start gap-4">
+                                    <div className="p-3 bg-primary/10 rounded-lg">
+                                        <Users className="h-6 w-6 text-primary" />
+                                    </div>
+                                    <div>
+                                        <CardTitle>Expand Your Client Base</CardTitle>
+                                         <CardContent className="p-0 pt-2 text-muted-foreground">
+                                            Onboard your existing clients to Ogeemo for streamlined service, and market your expertise to other Ogeemo users who need professional bookkeeping and advisory help.
+                                        </CardContent>
+                                    </div>
+                                </CardHeader>
+                            </Card>
+                        </div>
                     </div>
                 </div>
             </section>

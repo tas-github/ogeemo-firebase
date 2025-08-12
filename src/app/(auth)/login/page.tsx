@@ -100,11 +100,11 @@ export default function LoginPage() {
   return (
     <>
       {isLoading && <LoadingModal message="Signing in..." />}
-      <CardHeader className="flex flex-row items-center gap-4">
-        <Logo className="h-16 w-16"/>
+      <CardHeader className="flex flex-col items-center gap-4 text-center">
+        <Logo />
         <div className="flex flex-col">
-            <CardTitle className="text-2xl font-headline font-semibold">Welcome to Ogeemo</CardTitle>
-            <CardDescription>Sign in to your account to continue.</CardDescription>
+            <CardTitle className="text-2xl font-body font-bold text-[#3B2F4A]">Welcome Back</CardTitle>
+            <CardDescription>Sign in to your Ogeemo account.</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">

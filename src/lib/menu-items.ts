@@ -37,6 +37,7 @@ import {
   Trash2,
   ListTodo,
   ImageIcon,
+  BookText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -65,6 +66,7 @@ export const allMenuItems: MenuItem[] = [
   { href: "/my-worker", label: "My Worker", icon: HardHat },
   { href: "/debug", label: "Debug", icon: Bug },
   { href: "/data", label: "Data", icon: Database },
+  { href: "/dev-notes", label: "Dev Notes", icon: BookText },
   { href: "/forms", label: "Forms", icon: FilePlus2 },
   { href: "/image-generator", label: "Image Generation", icon: ImageIcon },
   { href: "/settings", label: "Settings", icon: Settings },

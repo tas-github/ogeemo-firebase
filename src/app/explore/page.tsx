@@ -4,7 +4,7 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/landing/header";
 import { SiteFooter } from "@/components/landing/footer";
 import { CheckCircle } from "lucide-react";
-import Image from "next/image";
+import { ImagePlaceholder } from "@/components/ui/image-placeholder";
 
 const benefitsSmallBusiness = [
     {
@@ -74,14 +74,7 @@ export default function ExplorePage() {
                             </div>
                         </div>
                         <div className="relative h-80 md:h-full w-full">
-                            <Image
-                                src="https://placehold.co/600x400.png"
-                                alt="Dashboard preview for small businesses"
-                                layout="fill"
-                                objectFit="cover"
-                                className="rounded-lg"
-                                data-ai-hint="business dashboard"
-                            />
+                            <ImagePlaceholder data-ai-hint="business dashboard" className="rounded-lg h-full w-full" />
                         </div>
                     </div>
                 </section>
@@ -90,14 +83,7 @@ export default function ExplorePage() {
                 <section className="py-16 md:py-24 bg-muted">
                      <div className="container mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
                         <div className="relative h-80 md:h-full w-full md:order-2">
-                            <Image
-                                src="https://placehold.co/600x400.png"
-                                alt="Dashboard preview for accountants"
-                                layout="fill"
-                                objectFit="cover"
-                                className="rounded-lg"
-                                data-ai-hint="financial analytics"
-                            />
+                            <ImagePlaceholder data-ai-hint="financial analytics" className="rounded-lg h-full w-full" />
                         </div>
                         <div className="md:order-1">
                             <h2 className="text-3xl md:text-4xl font-bold font-headline text-primary">For Accountants & Bookkeepers</h2>

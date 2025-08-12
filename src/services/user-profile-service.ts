@@ -21,6 +21,7 @@ export interface UserProfile {
         showCommandFrame?: boolean;
         showDashboardFrame?: boolean;
         menuOrder?: string[];
+        googleAppsOrder?: string[];
     };
 }
 
@@ -36,6 +37,7 @@ const defaultPreferences = {
     showCommandFrame: true,
     showDashboardFrame: true,
     menuOrder: [],
+    googleAppsOrder: [],
 };
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
@@ -73,6 +75,9 @@ export async function updateUserProfile(
     };
 
     if (docSnap.exists()) {
+        const existingData = docSnap.data();
+        const existingPrefs = existingData.preferences || {};
+        dataWithTimestamp.preferences = { ...existingPrefs, ...data.preferences };
         await updateDoc(docRef, dataWithTimestamp);
     } else {
         dataWithTimestamp.email = email;
