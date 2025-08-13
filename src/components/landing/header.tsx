@@ -26,7 +26,7 @@ export function SiteHeader() {
           <Logo />
         </div>
         <div className="flex flex-1 items-center justify-end space-x-4">
-           <Button asChild variant="outline">
+           <Button asChild variant="secondary">
                 <Link href="/login">Log in</Link>
             </Button>
             <Button asChild variant="secondary">
