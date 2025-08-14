@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useDrop } from 'react-dnd';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { LoaderCircle, Plus, ArrowLeft, Trash2, ArrowDownAZ } from 'lucide-react';
+import { LoaderCircle, Plus, ArrowLeft, Trash2, ArrowDownAZ, ArrowUpZA, Save } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -129,13 +129,11 @@ export function ManageDashboardView() {
       const newUserChips = [...prevState.userChips];
       const [draggedItem] = newUserChips.splice(dragIndex, 1);
       newUserChips.splice(hoverIndex, 0, draggedItem);
-      
-      if (user) {
-        updateActionChips(user.uid, newUserChips);
-      }
+      // Local state is updated for immediate visual feedback.
+      // Final order is persisted on "Save" button click.
       return { ...prevState, userChips: newUserChips };
     });
-  }, [user]);
+  }, []);
 
   const handleDrop = React.useCallback((item: ActionChipData & { index: number }, target: 'user' | 'available') => {
     setChipsState(prevState => {
@@ -188,6 +186,30 @@ export function ManageDashboardView() {
       toast({ variant: 'destructive', title: 'Failed to trash action', description: error.message });
     }
   };
+
+  const handleSortUserChips = (direction: 'asc' | 'desc') => {
+    setChipsState(prevState => {
+      const sortedChips = [...prevState.userChips].sort((a, b) => {
+        return direction === 'asc'
+          ? a.label.localeCompare(b.label)
+          : b.label.localeCompare(a.label);
+      });
+      return { ...prevState, userChips: sortedChips };
+    });
+  };
+
+  const handleSaveUserChipOrder = async () => {
+    if (!user) return;
+    try {
+      await updateActionChips(user.uid, chipsState.userChips);
+      toast({
+        title: "Dashboard Order Saved",
+        description: "Your new dashboard layout has been saved.",
+      });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+    }
+  };
   
   if (isLoading) {
     return (
@@ -222,6 +244,11 @@ export function ManageDashboardView() {
                 <CardHeader className="text-center">
                     <CardTitle>Selected Actions</CardTitle>
                     <CardDescription>Actions currently on your dashboard. Drag to reorder or add from "Available".</CardDescription>
+                    <div className="flex justify-center gap-2 pt-2">
+                        <Button variant="outline" size="sm" onClick={() => handleSortUserChips('asc')}><ArrowDownAZ className="mr-2 h-4 w-4" /> Sort A-Z</Button>
+                        <Button variant="outline" size="sm" onClick={() => handleSortUserChips('desc')}><ArrowUpZA className="mr-2 h-4 w-4" /> Sort Z-A</Button>
+                        <Button size="sm" onClick={handleSaveUserChipOrder}><Save className="mr-2 h-4 w-4" /> Save Order</Button>
+                    </div>
                 </CardHeader>
                 <ChipDropZone onDrop={(item) => handleDrop(item, 'user')} onMove={handleMoveUserChip} className="min-h-[150px]">
                     {chipsState.userChips.map((chip, index) => (

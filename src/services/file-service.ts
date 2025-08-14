@@ -5,6 +5,7 @@ import { adminDb as db, getAdminStorage } from '@/lib/firebase-admin';
 import {
   type DocumentData,
   type QueryDocumentSnapshot,
+  FieldValue,
 } from 'firebase-admin/firestore';
 import { type FileItem, type FolderItem } from '@/data/files';
 
@@ -144,8 +145,10 @@ export async function getUploadUrl(data: {
 
 export async function addFileRecord(fileData: Omit<FileItem, 'id'>): Promise<FileItem> {
     checkDb();
-    const docRef = await db.collection(FILES_COLLECTION).add(fileData);
-    return { id: docRef.id, ...fileData };
+    const dataWithTimestamp = { ...fileData, modifiedAt: FieldValue.serverTimestamp() };
+    const docRef = await db.collection(FILES_COLLECTION).add(dataWithTimestamp);
+    const docSnap = await docRef.get();
+    return docToFile(docSnap);
 }
 
 export async function getFilesForFolder(userId: string, folderId: string): Promise<FileItem[]> {
@@ -153,11 +156,6 @@ export async function getFilesForFolder(userId: string, folderId: string): Promi
     const q = db.collection(FILES_COLLECTION).where("userId", "==", userId).where("folderId", "==", folderId);
     const snapshot = await q.get();
     return snapshot.docs.map(docToFile);
-}
-
-export async function updateFile(fileId: string, data: Partial<Omit<FileItem, 'id' | 'userId'>>): Promise<void> {
-    checkDb();
-    await db.collection(FILES_COLLECTION).doc(fileId).update({ ...data, modifiedAt: new Date() });
 }
 
 export async function deleteFiles(fileIds: string[]): Promise<void> {
