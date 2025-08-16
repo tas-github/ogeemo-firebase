@@ -9,11 +9,10 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { BarChart, Braces, BrainCircuit, UploadCloud, LoaderCircle, X, Save, FileText } from "lucide-react";
+import { BarChart, Braces, BrainCircuit, UploadCloud, LoaderCircle, Save, FileText } from "lucide-react";
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
@@ -128,7 +127,7 @@ export default function VisionariesDialog({ isOpen, onOpenChange }: VisionariesD
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-        <DialogHeader className="p-6 pb-4 border-b flex-row items-center justify-between text-center relative">
+        <DialogHeader className="p-6 pb-4 border-b flex-row items-center justify-between text-center">
             <div className="flex-1">
                 <DialogTitle className="text-3xl font-headline text-primary">
                     The Ogeemo Difference: Why We Embraced Complexity
@@ -142,12 +141,6 @@ export default function VisionariesDialog({ isOpen, onOpenChange }: VisionariesD
                     {isUploading ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                     {isUploading ? "Saving..." : "Save and Close"}
                 </Button>
-                <DialogClose asChild>
-                    <Button variant="ghost" size="icon" className="rounded-full">
-                        <X className="h-5 w-5" />
-                        <span className="sr-only">Close</span>
-                    </Button>
-                </DialogClose>
             </div>
         </DialogHeader>
         

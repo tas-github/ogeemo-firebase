@@ -1,18 +1,44 @@
-import { File, FileText, FileJson, Image as ImageIcon, FileCode2 } from 'lucide-react';
 
-export const FileIcon = ({ fileType }: { fileType: string }) => {
-    if (fileType.startsWith('image/')) {
-        return <ImageIcon className="h-5 w-5 text-blue-500" />;
-    }
-    switch (fileType) {
-        case 'application/pdf':
-            return <FileText className="h-5 w-5 text-red-500" />;
-        case 'application/json':
-            return <FileJson className="h-5 w-5 text-yellow-500" />;
-        case 'text/javascript':
-        case 'text/typescript':
-             return <FileCode2 className="h-5 w-5 text-indigo-500" />;
-        default:
-            return <File className="h-5 w-5 text-gray-500" />;
-    }
+"use client";
+
+import { FileText, FileImage, FileAudio, FileVideo, FileArchive, Table2, FileCode2, FileQuestion } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+
+interface FileIconProps {
+  fileType: string;
+}
+
+const mimeTypeToIcon: { [key: string]: LucideIcon } = {
+  // Text
+  "text/plain": FileText,
+  "text/html": FileCode2,
+  "text/css": FileCode2,
+  "text/javascript": FileCode2,
+  "application/json": FileCode2,
+  "application/pdf": FileText,
+  // Images
+  "image/jpeg": FileImage,
+  "image/png": FileImage,
+  "image/gif": FileImage,
+  "image/svg+xml": FileImage,
+  // Audio
+  "audio/mpeg": FileAudio,
+  "audio/wav": FileAudio,
+  // Video
+  "video/mp4": FileVideo,
+  "video/webm": FileVideo,
+  // Archives
+  "application/zip": FileArchive,
+  "application/x-rar-compressed": FileArchive,
+  // Spreadsheets
+  "application/vnd.ms-excel": Table2,
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": Table2,
+  // Ogeemo Custom Types
+  "application/vnd.og-report-template+html": FileText,
 };
+
+
+export function FileIcon({ fileType }: FileIconProps) {
+  const Icon = mimeTypeToIcon[fileType] || FileQuestion;
+  return <Icon className="h-5 w-5 text-muted-foreground" />;
+}

@@ -2,10 +2,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, FileText, LoaderCircle, Eye, Trash2 } from 'lucide-react';
+import { Plus, FileText, LoaderCircle, Eye, Trash2, Palette, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -22,7 +23,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { getFiles, saveChatArchive, deleteFiles, getFileContent, getFolders } from '@/services/file-service';
+import { getFiles, saveChatArchive, deleteFiles, getFolders } from '@/services/file-service';
+import { fetchFileContent } from '@/app/actions/file-actions'; // Use the new server action
 import { type FileItem } from '@/data/files';
 import { format } from 'date-fns';
 
@@ -97,8 +99,11 @@ export default function DevNotesPage() {
     setIsViewDialogOpen(true);
     setArchiveContent(null); 
     try {
-        const content = await getFileContent(archive.storagePath);
-        setArchiveContent(content);
+        const { content, error } = await fetchFileContent(archive.storagePath);
+        if (error) {
+            throw new Error(error);
+        }
+        setArchiveContent(content || "");
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Failed to load content', description: error.message });
         setIsViewDialogOpen(false);
@@ -131,51 +136,84 @@ export default function DevNotesPage() {
           </p>
         </header>
 
-        <Card className="w-full max-w-4xl flex-1 flex flex-col">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle>Saved Chat Archives</CardTitle>
-                <CardDescription>
-                  Your saved development chat sessions.
-                </CardDescription>
-              </div>
-              <Button onClick={() => setIsSaveDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Save Current Chat
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-hidden">
-            <ScrollArea className="h-full border rounded-md">
-                {isLoading ? (
-                    <div className="flex items-center justify-center h-full"><LoaderCircle className="h-8 w-8 animate-spin" /></div>
-                ) : archives.length > 0 ? (
-                    archives.map(archive => (
-                        <div key={archive.id} className="flex items-center justify-between p-3 border-b last:border-b-0">
-                            <div className="flex items-center gap-3">
-                                <FileText className="h-5 w-5 text-muted-foreground" />
-                                <div>
-                                    <p className="font-medium">{archive.name}</p>
-                                    <p className="text-xs text-muted-foreground">Saved on {format(new Date(archive.modifiedAt), 'PP')}</p>
+        <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+            <Card className="md:col-span-2 flex-1 flex flex-col">
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle>Saved Chat Archives</CardTitle>
+                    <CardDescription>
+                    Your saved development chat sessions.
+                    </CardDescription>
+                </div>
+                <Button onClick={() => setIsSaveDialogOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Save Current Chat
+                </Button>
+                </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden">
+                <ScrollArea className="h-full border rounded-md">
+                    {isLoading ? (
+                        <div className="flex items-center justify-center h-full"><LoaderCircle className="h-8 w-8 animate-spin" /></div>
+                    ) : archives.length > 0 ? (
+                        archives.map(archive => (
+                            <div key={archive.id} className="flex items-center justify-between p-3 border-b last:border-b-0">
+                                <div className="flex items-center gap-3">
+                                    <FileText className="h-5 w-5 text-muted-foreground" />
+                                    <div>
+                                        <p className="font-medium">{archive.name}</p>
+                                        <p className="text-xs text-muted-foreground">Saved on {format(new Date(archive.modifiedAt), 'PP')}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button size="sm" onClick={() => handleView(archive)}><Eye className="mr-2 h-4 w-4" /> View</Button>
+                                    <Button
+                                    size="sm"
+                                    onClick={() => setArchiveToDelete(archive)}
+                                    className="bg-[#3B2F4A] hover:bg-[#3B2F4A]/90 text-white"
+                                    >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                    </Button>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Button variant="outline" size="sm" onClick={() => handleView(archive)}><Eye className="mr-2 h-4 w-4" /> View</Button>
-                                <Button variant="destructive" size="sm" onClick={() => setArchiveToDelete(archive)}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
-                            </div>
+                        ))
+                    ) : (
+                        <div className="text-center text-muted-foreground p-16">
+                            <FileText className="mx-auto h-12 w-12" />
+                            <p className="mt-4">No archives found.</p>
+                            <p className="text-sm">Click "Save Current Chat" to add your first one.</p>
                         </div>
-                    ))
-                ) : (
-                    <div className="text-center text-muted-foreground p-16">
-                        <FileText className="mx-auto h-12 w-12" />
-                        <p className="mt-4">No archives found.</p>
-                        <p className="text-sm">Click "Save Current Chat" to add your first one.</p>
-                    </div>
-                )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
+                    )}
+                </ScrollArea>
+            </CardContent>
+            </Card>
+            <div className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Developer Resources</CardTitle>
+                        <CardDescription>Quick links to helpful development resources.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        <Button asChild className="w-full">
+                            <Link href="/styles/BUTTON_STYLES.md" target="_blank">
+                                <Palette className="mr-2 h-4 w-4" /> View Button Styles
+                            </Link>
+                        </Button>
+                        <Button asChild className="w-full">
+                            <Link href="/styles/COLOR_PALETTE.md" target="_blank">
+                                <Palette className="mr-2 h-4 w-4" /> View Color Palette
+                            </Link>
+                        </Button>
+                        <Button asChild className="w-full">
+                            <Link href="/styles/DEV_TERMS.md" target="_blank">
+                                <BookOpen className="mr-2 h-4 w-4" /> View Dev Terms
+                            </Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
       </div>
       
       <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
@@ -199,18 +237,23 @@ export default function DevNotesPage() {
       </Dialog>
       
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col">
-            <DialogHeader><DialogTitle>{archiveToView?.name}</DialogTitle><DialogDescription>Saved on {archiveToView ? format(new Date(archiveToView.modifiedAt), 'PPp') : ''}</DialogDescription></DialogHeader>
-            <div className="flex-1 min-h-0">
-                <ScrollArea className="h-full border rounded-md p-4">
-                    {archiveContent === null ? (
-                        <div className="flex items-center justify-center h-full"><LoaderCircle className="h-8 w-8 animate-spin" /></div>
-                    ) : (
-                        <pre className="text-sm whitespace-pre-wrap font-body">{archiveContent}</pre>
-                    )}
+        <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
+            <DialogHeader className="p-6 pb-4 border-b">
+                <DialogTitle>{archiveToView?.name}</DialogTitle>
+                <DialogDescription>Saved on {archiveToView ? format(new Date(archiveToView.modifiedAt), 'PPp') : ''}</DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 min-h-0 p-6 pt-0">
+                <ScrollArea className="h-full -mx-6">
+                    <div className="p-6">
+                        {archiveContent === null ? (
+                            <div className="flex items-center justify-center h-full"><LoaderCircle className="h-8 w-8 animate-spin" /></div>
+                        ) : (
+                            <pre className="text-sm whitespace-pre-wrap font-body">{archiveContent}</pre>
+                        )}
+                    </div>
                 </ScrollArea>
             </div>
-            <DialogFooter>
+            <DialogFooter className="p-6 pt-4 border-t">
                 <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>Close</Button>
             </DialogFooter>
         </DialogContent>

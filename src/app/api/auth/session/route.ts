@@ -4,6 +4,9 @@ import { adminAuth } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
 
 export async function POST(req: NextRequest) {
+    // Server-side environment variable check
+    console.log('[SERVER LOG] NEXT_PUBLIC_FIREBASE_PROJECT_ID:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+
     console.log('Session API POST request received.');
     try {
         const { idToken } = await req.json();

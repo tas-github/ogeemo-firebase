@@ -10,11 +10,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowDownAZ, ArrowUpZA, Save } from "lucide-react";
+import { ArrowDownAZ, ArrowUpZA, Save, X } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { getUserProfile, updateUserProfile } from "@/services/user-profile-service";
 import { DraggableAppButton } from "./DraggableAppButton";
+import Link from "next/link";
 
 // Icon components remain the same
 const GoogleDriveIcon = (props: React.SVGProps<SVGSVGElement>) => ( <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" {...props}> <path d="M7.71 5.42L12 12.25l4.29-6.83a.996.996 0 00-.85-1.42H8.56c-.5 0-.89.37-.85.86z" fill="#34A853"/> <path d="M16.29 18.58l4.29-6.83h-8.58L7.71 18.58c.28.45.81.71 1.35.71h5.88c.54 0 1.07-.26 1.35-.71z" fill="#FFC107"/> <path d="M3.42 11.75l4.29 6.83 4.29-6.83H3.42z" fill="#4285F4"/> </svg> );
@@ -112,6 +113,14 @@ export function GoogleIntegrationView() {
                         <CardDescription>
                         Drag to reorder, or sort your Google Workspace apps.
                         </CardDescription>
+                         <div className="absolute top-4 right-4">
+                            <Button asChild variant="ghost" size="icon">
+                                <Link href="/files">
+                                    <X className="h-5 w-5" />
+                                    <span className="sr-only">Back to File Cabinet</span>
+                                </Link>
+                            </Button>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <div className="text-center">

@@ -2,7 +2,7 @@
 'use client';
 
 import type { User } from 'firebase/auth';
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { initializeFirebase, FirebaseServices } from '@/lib/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';

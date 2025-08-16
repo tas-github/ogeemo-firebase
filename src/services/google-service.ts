@@ -80,9 +80,8 @@ export async function getGoogleAuthUrl(
 ): Promise<{ url: string }> {
   const oauth2Client = getOAuth2Client();
   const scopes = [
-    'https://www.googleapis.com/auth/drive.readonly',
+    'https://www.googleapis.com/auth/drive.file', // Changed from readonly to file for creating files
     'https://www.googleapis.com/auth/userinfo.profile',
-    // The contacts scope is now included
     'https://www.googleapis.com/auth/contacts.readonly',
   ];
 
@@ -90,7 +89,7 @@ export async function getGoogleAuthUrl(
     access_type: 'offline',
     scope: scopes,
     state: state,
-    prompt: 'consent', // Force consent screen to get refresh_token
+    prompt: 'consent',
   });
   return { url };
 }
@@ -153,6 +152,60 @@ export async function downloadFromGoogleDriveAndUpload(
     ...savedFile,
     modifiedAt: savedFile.modifiedAt.toISOString(),
   } as unknown as FileItem;
+}
+
+export async function getGoogleDriveWebViewLink(fileId: string, storagePath: string): Promise<{ url?: string; error?: string }> {
+    const accessToken = "DUMMY_TOKEN_REPLACE_WITH_REAL_ONE"; // In a real app, this would be retrieved from the user's session/database
+    if (!accessToken) {
+        return { error: 'User is not authenticated with Google. Please connect your account in the Google Integration settings.' };
+    }
+
+    try {
+        const oauth2Client = getOAuth2Client();
+        oauth2Client.setCredentials({ access_token: accessToken });
+        const drive = google.drive({ version: 'v3', auth: oauth2Client });
+
+        // Step 1: Download the file from Firebase Storage to the server's memory
+        const bucket = getAdminStorage().bucket();
+        const file = bucket.file(storagePath);
+        const [buffer] = await file.download();
+
+        // Step 2: Get file metadata from Firestore
+        const fileDoc = await db.collection('files').doc(fileId).get();
+        if (!fileDoc.exists) {
+            return { error: 'File record not found in database.' };
+        }
+        const fileData = fileDoc.data() as FileItem;
+
+        // Step 3: Upload the file to Google Drive
+        const media = {
+            mimeType: fileData.type,
+            body: require('stream').Readable.from(buffer),
+        };
+        const driveResponse = await drive.files.create({
+            requestBody: {
+                name: fileData.name,
+                mimeType: fileData.type,
+            },
+            media: media,
+            fields: 'webViewLink',
+        });
+        
+        const webViewLink = driveResponse.data.webViewLink;
+
+        if (!webViewLink) {
+            return { error: 'Could not get a viewable link from Google Drive.' };
+        }
+        
+        return { url: webViewLink };
+
+    } catch (error: any) {
+        console.error("Error processing file with Google Drive:", error);
+        if (error.code === 401 || (error.response && error.response.status === 401)) {
+            return { error: 'Google authentication is invalid. Please reconnect your account.' };
+        }
+        return { error: error.message || 'An unknown server error occurred.' };
+    }
 }
 
 export async function syncGoogleDriveFolder(

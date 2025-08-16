@@ -1,49 +1,69 @@
 
-'use server';
+'use client';
 
-import { adminDb as db, getAdminStorage } from '@/lib/firebase-admin';
-import {
-  type DocumentData,
-  type QueryDocumentSnapshot,
-  FieldValue,
-} from 'firebase-admin/firestore';
-import { type FileItem, type FolderItem } from '@/data/files';
+import { 
+    getFirestore, 
+    collection, 
+    getDocs, 
+    doc, 
+    addDoc, 
+    updateDoc, 
+    deleteDoc, 
+    query, 
+    where, 
+    writeBatch,
+    Timestamp,
+    getDoc,
+    setDoc,
+} from 'firebase/firestore';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { initializeFirebase } from '@/lib/firebase';
+import type { FileItem, FolderItem } from '@/data/files';
 
 const FOLDERS_COLLECTION = 'fileFolders';
 const FILES_COLLECTION = 'files';
 
-function checkDb() {
-    if (!db) throw new Error("Firestore is not initialized.");
+// --- Helper Functions ---
+async function getDb() {
+    const { db } = await initializeFirebase();
+    return db;
+}
+async function getAppStorage() {
+    const { storage } = await initializeFirebase();
+    return storage;
 }
 
-// --- Type Converters ---
-const docToFolder = (doc: QueryDocumentSnapshot<DocumentData>): FolderItem => ({ id: doc.id, ...doc.data() } as FolderItem);
-const docToFile = (doc: QueryDocumentSnapshot<DocumentData>): FileItem => {
-    const data = doc.data();
-    return { 
-        id: doc.id, 
-        ...data,
-        modifiedAt: data.modifiedAt?.toDate ? data.modifiedAt.toDate() : new Date(),
-    } as FileItem;
-};
+const docToFolder = (doc: any): FolderItem => ({ 
+    id: doc.id, 
+    ...doc.data(),
+    createdAt: (doc.data().createdAt as Timestamp)?.toDate() || new Date(),
+} as FolderItem);
 
-// --- Folder Functions ---
+const docToFile = (doc: any): FileItem => ({ 
+    id: doc.id, 
+    ...doc.data(),
+    modifiedAt: (doc.data().modifiedAt as Timestamp)?.toDate() || new Date(),
+} as FileItem);
+
+
+// --- Folder functions ---
 export async function getFolders(userId: string): Promise<FolderItem[]> {
-    checkDb();
-    const q = db.collection(FOLDERS_COLLECTION).where("userId", "==", userId);
-    const snapshot = await q.get();
-    return snapshot.docs.map(docToFolder);
+  const db = await getDb();
+  const q = query(collection(db, FOLDERS_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docToFolder);
 }
 
 export async function findOrCreateFileFolder(userId: string, folderName: string, parentId: string | null = null): Promise<FolderItem> {
-    checkDb();
-    const q = db.collection(FOLDERS_COLLECTION)
-        .where("userId", "==", userId)
-        .where("name", "==", folderName)
-        .where("parentId", "==", parentId);
-    
-    const snapshot = await q.get();
-    
+    const db = await getDb();
+    const q = query(
+        collection(db, FOLDERS_COLLECTION), 
+        where("userId", "==", userId), 
+        where("name", "==", folderName),
+        where("parentId", "==", parentId)
+    );
+    const snapshot = await getDocs(q);
+
     if (!snapshot.empty) {
         return docToFolder(snapshot.docs[0]);
     } else {
@@ -51,246 +71,241 @@ export async function findOrCreateFileFolder(userId: string, folderName: string,
             name: folderName,
             userId,
             parentId,
+            createdAt: new Date(),
         };
-        return addFolder(newFolderData);
+        const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), newFolderData);
+        return { id: docRef.id, ...newFolderData };
     }
 }
 
-
-export async function addFolder(folderData: Omit<FolderItem, 'id'>): Promise<FolderItem> {
-    checkDb();
-    const docRef = await db.collection(FOLDERS_COLLECTION).add({ ...folderData, parentId: folderData.parentId || null });
-    return { id: docRef.id, ...folderData };
+export async function addFolder(folderData: Omit<FolderItem, 'id' | 'createdAt'>): Promise<FolderItem> {
+  const db = await getDb();
+  const dataToSave = {
+    ...folderData,
+    parentId: folderData.parentId || null,
+    createdAt: new Date(),
+  };
+  const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), dataToSave);
+  return { id: docRef.id, ...dataToSave };
 }
 
 export async function updateFolder(folderId: string, folderData: Partial<Omit<FolderItem, 'id' | 'userId'>>): Promise<void> {
-    checkDb();
-    await db.collection(FOLDERS_COLLECTION).doc(folderId).update(folderData);
+    const db = await getDb();
+    const folderRef = doc(db, FOLDERS_COLLECTION, folderId);
+    await updateDoc(folderRef, folderData);
 }
 
-export async function deleteFolderAndContents(userId: string, folderId: string): Promise<void> {
-    checkDb();
-    const batch = db.batch();
-    const allFoldersSnapshot = await db.collection(FOLDERS_COLLECTION).where("userId", "==", userId).get();
-    const allFolders = allFoldersSnapshot.docs.map(docToFolder);
+export async function deleteFolders(userId: string, folderIds: string[]): Promise<void> {
+    const db = await getDb();
+    const batch = writeBatch(db);
     
-    const folderIdsToDelete = new Set<string>([folderId]);
-    const findDescendants = (parentId: string) => {
-        allFolders.filter(f => f.parentId === parentId).forEach(child => {
-            folderIdsToDelete.add(child.id);
-            findDescendants(child.id);
-        });
-    };
-    findDescendants(folderId);
-
-    const filesQuery = db.collection(FILES_COLLECTION).where('folderId', 'in', Array.from(folderIdsToDelete));
-    const filesSnapshot = await filesQuery.get();
-    
-    for (const fileDoc of filesSnapshot.docs) {
-        const fileData = fileDoc.data() as FileItem;
-        if (fileData.storagePath) {
-            const fileRef = getAdminStorage().bucket().file(fileData.storagePath);
-            await fileRef.delete().catch(error => {
-                if (error.code !== 404) { // 404 means not found, which is fine
-                    console.error(`Failed to delete file from storage: ${fileData.storagePath}`, error);
-                }
-            });
-        }
-        batch.delete(fileDoc.ref);
-    }
-
-    folderIdsToDelete.forEach(id => {
-        batch.delete(db.collection(FOLDERS_COLLECTION).doc(id));
+    folderIds.forEach(id => {
+        const folderRef = doc(db, FOLDERS_COLLECTION, id);
+        batch.delete(folderRef);
     });
 
     await batch.commit();
 }
 
-// --- File Functions ---
-
+// --- File functions ---
 export async function getFiles(userId: string): Promise<FileItem[]> {
-    checkDb();
-    const q = db.collection(FILES_COLLECTION).where("userId", "==", userId);
-    const snapshot = await q.get();
-    return snapshot.docs.map(docToFile);
-}
-
-export async function getUploadUrl(data: {
-  fileName: string;
-  fileType: string;
-  userId: string;
-  folderId: string;
-}): Promise<{ signedUrl: string; storagePath: string; }> {
-    const { fileName, fileType, userId, folderId } = data;
-
-    if (!fileName || !fileType || !userId || !folderId) {
-        throw new Error("Missing required parameters for getting upload URL.");
-    }
-    
-    const bucket = getAdminStorage().bucket();
-    const storagePath = `${userId}/${folderId}/${Date.now()}-${fileName}`;
-    const file = bucket.file(storagePath);
-    
-    const options = {
-        version: 'v4' as const,
-        action: 'write' as const,
-        expires: Date.now() + 5 * 60 * 1000, // 5 minutes
-        contentType: fileType,
-    };
-    
-    const [url] = await file.getSignedUrl(options);
-    
-    return { signedUrl: url, storagePath };
-}
-
-export async function addFileRecord(fileData: Omit<FileItem, 'id'>): Promise<FileItem> {
-    checkDb();
-    const dataWithTimestamp = { ...fileData, modifiedAt: FieldValue.serverTimestamp() };
-    const docRef = await db.collection(FILES_COLLECTION).add(dataWithTimestamp);
-    const docSnap = await docRef.get();
-    return docToFile(docSnap);
-}
-
-export async function getFilesForFolder(userId: string, folderId: string): Promise<FileItem[]> {
-    checkDb();
-    const q = db.collection(FILES_COLLECTION).where("userId", "==", userId).where("folderId", "==", folderId);
-    const snapshot = await q.get();
-    return snapshot.docs.map(docToFile);
-}
-
-export async function deleteFiles(fileIds: string[]): Promise<void> {
-    checkDb();
-    const batch = db.batch();
-    for (const id of fileIds) {
-        const fileRef = db.collection(FILES_COLLECTION).doc(id);
-        const fileDoc = await fileRef.get();
-        if (fileDoc.exists) {
-            const fileData = fileDoc.data() as FileItem;
-            if (fileData.storagePath) {
-                const storageFileRef = getAdminStorage().bucket().file(fileData.storagePath);
-                await storageFileRef.delete().catch(error => {
-                   if (error.code !== 404) {
-                        console.error(`Failed to delete file from storage: ${fileData.storagePath}`, error);
-                    }
-                });
-            }
-            batch.delete(fileRef);
-        }
-    }
-    await batch.commit();
-}
-
-export async function getFileDownloadUrl(storagePath: string): Promise<string> {
-    const bucket = getAdminStorage().bucket();
-    const file = bucket.file(storagePath);
-    
-    const [url] = await file.getSignedUrl({
-        action: 'read',
-        expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-    });
-    
-    return url;
+  const db = await getDb();
+  const q = query(collection(db, FILES_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docToFile);
 }
 
 export async function getFileContent(storagePath: string): Promise<string> {
-    const bucket = getAdminStorage().bucket();
-    const file = bucket.file(storagePath);
+    const { storage } = await initializeFirebase();
+    const fileRef = storageRef(storage, storagePath);
+    const downloadUrl = await getDownloadURL(fileRef);
+
+    // Fetch the content from the URL
+    const response = await fetch(downloadUrl);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch file content: ${response.statusText}`);
+    }
+    return await response.text();
+}
+
+export async function getFilesForFolder(userId: string, folderId: string): Promise<FileItem[]> {
+  const db = await getDb();
+  const q = query(collection(db, FILES_COLLECTION), where("userId", "==", userId), where("folderId", "==", folderId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docToFile);
+}
+
+export async function addFileRecord(fileData: Omit<FileItem, 'id'>): Promise<FileItem> {
+    const db = await getDb();
+    const docRef = await addDoc(collection(db, FILES_COLLECTION), fileData);
+    return { id: docRef.id, ...fileData };
+}
+
+export async function addFile(formData: FormData): Promise<FileItem> {
+    const file = formData.get('file') as File;
+    const userId = formData.get('userId') as string;
+    let folderId = formData.get('folderId') as string;
+
+    if (!file || !userId || folderId === null || folderId === undefined) {
+        throw new Error("Missing required data for file upload.");
+    }
     
-    const [contents] = await file.download();
-    return contents.toString('utf-8');
+    if (folderId === 'unfiled') {
+        folderId = '';
+    }
+
+    const storage = await getAppStorage();
+    const storagePath = `${userId}/${folderId || 'unfiled'}/${Date.now()}-${file.name}`;
+    const fileRef = storageRef(storage, storagePath);
+    
+    await uploadBytes(fileRef, file);
+
+    const newFileRecord: Omit<FileItem, 'id'> = {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        modifiedAt: new Date(),
+        folderId,
+        userId,
+        storagePath,
+    };
+
+    return addFileRecord(newFileRecord);
+}
+
+export async function addFileFromDataUrl(options: { dataUrl: string; fileName: string; userId: string; folderId: string }): Promise<void> {
+    const { dataUrl, fileName, userId, folderId } = options;
+
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    
+    const storage = await getAppStorage();
+    const storagePath = `${userId}/${folderId}/${Date.now()}-${fileName}`;
+    const fileRef = storageRef(storage, storagePath);
+
+    await uploadBytes(fileRef, blob, { contentType: blob.type });
+
+    const newFileRecord: Omit<FileItem, 'id'> = {
+        name: fileName,
+        type: blob.type,
+        size: blob.size,
+        modifiedAt: new Date(),
+        folderId,
+        userId,
+        storagePath,
+    };
+    
+    await addFileRecord(newFileRecord);
+}
+
+export async function deleteFiles(fileIds: string[]): Promise<void> {
+    if (fileIds.length === 0) return;
+    const db = await getDb();
+    const storage = await getAppStorage();
+    const batch = writeBatch(db);
+
+    const fileDocsPromises = fileIds.map(id => getDoc(doc(db, FILES_COLLECTION, id)));
+    const fileDocs = await Promise.all(fileDocsPromises);
+
+    for (const fileDoc of fileDocs) {
+        if (fileDoc.exists()) {
+            const fileData = fileDoc.data() as Omit<FileItem, 'id'>;
+            
+            // Delete from Storage if a path exists
+            if (fileData.storagePath) {
+                const fileRef = storageRef(storage, fileData.storagePath);
+                try {
+                    await deleteObject(fileRef);
+                } catch (error: any) {
+                    // If the object doesn't exist, we can ignore the error and proceed with DB deletion.
+                    if (error.code !== 'storage/object-not-found') {
+                        console.error(`Failed to delete file from storage at path ${fileData.storagePath}:`, error);
+                        throw new Error(`Failed to delete file from storage: ${error.message}`);
+                    }
+                }
+            }
+            
+            // Delete from Firestore
+            batch.delete(fileDoc.ref);
+        }
+    }
+
+    await batch.commit();
 }
 
 
-// --- Special Function for Saving Emails ---
-export async function saveEmailForContact(userId: string, contactName: string, emailContent: { subject: string; body: string; }) {
-    checkDb();
-    const filesRoot = await getFolders(userId);
-    let contactRootFolder = filesRoot.find(f => f.name === "Client Documents" && !f.parentId);
-    if (!contactRootFolder) {
-        contactRootFolder = await addFolder({ name: "Client Documents", userId, parentId: null });
-    }
+// A special function to save text content (like an email) as a file in a contact's subfolder
+export async function saveEmailForContact(userId: string, contactName: string, email: { subject: string; body: string }): Promise<void> {
+    const db = await getDb();
+    const storage = await getAppStorage();
+
+    // 1. Find or create the main "Contacts" folder
+    const contactsRootFolder = await findOrCreateFileFolder(userId, "Contacts");
     
-    let contactFolder = filesRoot.find(f => f.name === contactName && f.parentId === contactRootFolder!.id);
-    if (!contactFolder) {
-        contactFolder = await addFolder({ name: contactName, userId, parentId: contactRootFolder.id });
-    }
+    // 2. Find or create the subfolder for this specific contact
+    const contactFolder = await findOrCreateFileFolder(userId, contactName, contactsRootFolder.id);
 
-    const fileName = `${emailContent.subject.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString()}.html`;
-    const fileContent = `<html><body><h1>${emailContent.subject}</h1><div>${emailContent.body}</div></body></html>`;
-    const buffer = Buffer.from(fileContent, 'utf-8');
-    const storagePath = `${userId}/${contactFolder.id}/${Date.now()}-${fileName}`;
-    const bucket = getAdminStorage().bucket();
-    await bucket.file(storagePath).save(buffer, { contentType: 'text/html' });
+    // 3. Create the file content
+    const timestamp = new Date().toISOString();
+    const fileName = `${email.subject.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.html`;
+    const fileContent = `
+        <html>
+            <head>
+                <title>${email.subject}</title>
+                <style>body { font-family: sans-serif; }</style>
+            </head>
+            <body>
+                <h1>${email.subject}</h1>
+                <p>Saved on: ${new Date().toLocaleString()}</p>
+                <hr>
+                <div>${email.body}</div>
+            </body>
+        </html>
+    `;
+    const fileBlob = new Blob([fileContent], { type: 'text/html' });
 
-    const fileData: Omit<FileItem, 'id'> = {
+    // 4. Upload to Firebase Storage
+    const storagePath = `${userId}/${contactFolder.id}/${fileName}`;
+    const fileRef = storageRef(storage, storagePath);
+    await uploadBytes(fileRef, fileBlob);
+
+    // 5. Create Firestore record
+    const newFileRecord: Omit<FileItem, 'id'> = {
         name: fileName,
         type: 'text/html',
-        size: buffer.length,
+        size: fileBlob.size,
         modifiedAt: new Date(),
         folderId: contactFolder.id,
         userId,
         storagePath,
     };
-    
-    await addFileRecord(fileData);
+
+    await addFileRecord(newFileRecord);
 }
 
-export async function addFileFromDataUrl(data: {
-    dataUrl: string;
-    fileName: string;
-    userId: string;
-    folderId: string;
-}): Promise<FileItem> {
-    const { dataUrl, fileName, userId, folderId } = data;
-    
-    const mimeTypeMatch = dataUrl.match(/^data:(.*);base64,/);
-    if (!mimeTypeMatch) {
-        throw new Error("Invalid data URL format.");
-    }
-    const mimeType = mimeTypeMatch[1];
-    const base64Data = dataUrl.split(',')[1];
-    const buffer = Buffer.from(base64Data, 'base64');
-    
-    const bucket = getAdminStorage().bucket();
-    const storagePath = `${userId}/${folderId}/${Date.now()}-${fileName}`;
-    
-    await bucket.file(storagePath).save(buffer, { contentType: mimeType });
+// Function to save a chat archive
+export async function saveChatArchive(userId: string, fileName: string, content: string): Promise<void> {
+    const db = await getDb();
+    const storage = await getAppStorage();
 
-    const fileData: Omit<FileItem, 'id'> = {
-        name: fileName,
-        type: mimeType,
-        size: buffer.length,
-        modifiedAt: new Date(),
-        folderId: folderId,
-        userId: userId,
-        storagePath: storagePath,
-    };
-    
-    return addFileRecord(fileData);
-}
+    const chatArchiveFolder = await findOrCreateFileFolder(userId, "Chat Archives");
 
-export async function saveChatArchive(userId: string, fileName: string, chatContent: string): Promise<void> {
-    checkDb();
-    // 1. Find or create the "Chat Archives" folder
-    const archiveFolder = await findOrCreateFileFolder(userId, "Chat Archives", null);
-
-    // 2. Prepare content and upload to storage
     const finalFileName = fileName.endsWith('.txt') ? fileName : `${fileName}.txt`;
-    const buffer = Buffer.from(chatContent, 'utf-8');
-    const storagePath = `${userId}/${archiveFolder.id}/${Date.now()}-${finalFileName}`;
-    const bucket = getAdminStorage().bucket();
-    await bucket.file(storagePath).save(buffer, { contentType: 'text/plain' });
+    const fileBlob = new Blob([content], { type: 'text/plain' });
 
-    // 3. Create the file record in Firestore
-    const fileData: Omit<FileItem, 'id'> = {
+    const storagePath = `${userId}/${chatArchiveFolder.id}/${Date.now()}-${finalFileName}`;
+    const fileRef = storageRef(storage, storagePath);
+    await uploadBytes(fileRef, fileBlob);
+    
+    const newFileRecord: Omit<FileItem, 'id'> = {
         name: finalFileName,
         type: 'text/plain',
-        size: buffer.length,
+        size: fileBlob.size,
         modifiedAt: new Date(),
-        folderId: archiveFolder.id,
+        folderId: chatArchiveFolder.id,
         userId,
         storagePath,
     };
-    
-    await addFileRecord(fileData);
+
+    await addFileRecord(newFileRecord);
 }

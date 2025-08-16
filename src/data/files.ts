@@ -19,24 +19,25 @@ export interface FolderItem {
   name: string;
   parentId?: string | null;
   userId: string;
+  createdAt: Date;
 }
 
 // NOTE: Mock data below is for demonstration in other components
 // and is NOT used by the main Files Manager view.
 // A 'userId' of 'mock-user' is used as a placeholder.
 
-export const mockFolders: FolderItem[] = [
-  { id: 'folder-reports', name: 'Report Templates', parentId: null, userId: 'mock-user' },
-  { id: 'folder-1', name: 'Client Documents', parentId: null, userId: 'mock-user' },
-  { id: 'folder-2', name: 'Invoices', parentId: 'folder-1', userId: 'mock-user' },
-  { id: 'folder-3', name: 'Marketing Assets', parentId: 'folder-1', userId: 'mock-user' },
-  { id: 'folder-4', name: 'Internal Projects', parentId: null, userId: 'mock-user' },
-  { id: 'folder-5', name: 'Website V2', parentId: 'folder-4', userId: 'mock-user' },
-  { id: 'folder-6', name: 'Design', parentId: 'folder-5', userId: 'mock-user' },
-  { id: 'folder-7', name: 'Development', parentId: 'folder-5', userId: 'mock-user' },
+export const mockFolders: Omit<FolderItem, 'userId' | 'createdAt'>[] = [
+  { id: 'folder-reports', name: 'Report Templates', parentId: null },
+  { id: 'folder-1', name: 'Client Documents', parentId: null },
+  { id: 'folder-2', name: 'Invoices', parentId: 'folder-1' },
+  { id: 'folder-3', name: 'Marketing Assets', parentId: 'folder-1' },
+  { id: 'folder-4', name: 'Internal Projects', parentId: null },
+  { id: 'folder-5', name: 'Website V2', parentId: 'folder-4' },
+  { id: 'folder-6', name: 'Design', parentId: 'folder-5' },
+  { id: 'folder-7', name: 'Development', parentId: 'folder-5' },
 ];
 
-export const mockFiles: FileItem[] = [
+export const mockFiles: Omit<FileItem, 'userId'>[] = [
   {
     id: 'file-1',
     name: 'Website_Redesign_Brief.pdf',
@@ -44,7 +45,6 @@ export const mockFiles: FileItem[] = [
     size: 1204857,
     modifiedAt: new Date('2024-07-20T10:00:00Z'),
     folderId: 'folder-6',
-    userId: 'mock-user',
     storagePath: 'mock/path/file-1.pdf',
   },
   {
@@ -54,7 +54,6 @@ export const mockFiles: FileItem[] = [
     size: 34567,
     modifiedAt: new Date('2024-07-21T14:30:00Z'),
     folderId: 'folder-1',
-    userId: 'mock-user',
     storagePath: 'mock/path/file-2.xlsx',
   },
   {
@@ -64,7 +63,6 @@ export const mockFiles: FileItem[] = [
     size: 78234,
     modifiedAt: new Date('2024-07-22T09:00:00Z'),
     folderId: 'folder-2',
-    userId: 'mock-user',
     storagePath: 'mock/path/file-3.pdf',
   },
   {
@@ -74,7 +72,6 @@ export const mockFiles: FileItem[] = [
     size: 81234,
     modifiedAt: new Date('2024-07-25T11:00:00Z'),
     folderId: 'folder-2',
-    userId: 'mock-user',
     storagePath: 'mock/path/file-4.pdf',
   },
   {
@@ -84,7 +81,6 @@ export const mockFiles: FileItem[] = [
     size: 56345,
     modifiedAt: new Date('2024-07-19T18:00:00Z'),
     folderId: 'folder-3',
-    userId: 'mock-user',
     storagePath: 'mock/path/file-5.png',
   },
   {
@@ -94,7 +90,6 @@ export const mockFiles: FileItem[] = [
     size: 980432,
     modifiedAt: new Date('2024-07-23T16:45:00Z'),
     folderId: 'folder-3',
-    userId: 'mock-user',
     storagePath: 'mock/path/file-6.jpg',
   },
   {
@@ -104,7 +99,6 @@ export const mockFiles: FileItem[] = [
     size: 1234,
     modifiedAt: new Date('2024-07-26T10:15:00Z'),
     folderId: 'folder-7',
-    userId: 'mock-user',
     storagePath: 'mock/path/file-7.json',
   },
   {
@@ -114,7 +108,6 @@ export const mockFiles: FileItem[] = [
     size: 2456,
     modifiedAt: new Date('2024-07-26T11:30:00Z'),
     folderId: 'folder-7',
-    userId: 'mock-user',
     storagePath: 'mock/path/file-8.tsx',
   },
   {
@@ -124,7 +117,6 @@ export const mockFiles: FileItem[] = [
     size: 4500123,
     modifiedAt: new Date('2024-07-24T09:00:00Z'),
     folderId: 'folder-6',
-    userId: 'mock-user',
     storagePath: 'mock/path/file-9.fig',
   },
   {
@@ -134,7 +126,6 @@ export const mockFiles: FileItem[] = [
     size: 5100234,
     modifiedAt: new Date('2024-07-25T15:20:00Z'),
     folderId: 'folder-6',
-    userId: 'mock-user',
     storagePath: 'mock/path/file-10.fig',
   },
   {
@@ -144,7 +135,6 @@ export const mockFiles: FileItem[] = [
     size: 2800,
     modifiedAt: new Date(),
     folderId: 'folder-reports',
-    userId: 'mock-user',
     storagePath: 'mock/path/file-11.html',
     content: `<h3>How to Create a Voice-to-Text Feature</h3>...`
   },

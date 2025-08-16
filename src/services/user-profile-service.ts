@@ -22,6 +22,7 @@ export interface UserProfile {
         showDashboardFrame?: boolean;
         menuOrder?: string[];
         googleAppsOrder?: string[];
+        fileFolderOrder?: string[];
     };
 }
 
@@ -38,6 +39,7 @@ const defaultPreferences = {
     showDashboardFrame: true,
     menuOrder: [],
     googleAppsOrder: [],
+    fileFolderOrder: [],
 };
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {

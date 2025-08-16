@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
+import { createContext, useState, useContext, ReactNode, useCallback } from 'react';
 import LoadingModal from '@/components/ui/loading-modal';
 
 interface LoadingContextType {
