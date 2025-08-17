@@ -66,6 +66,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Checkbox } from '../ui/checkbox';
 
 
 const ItemTypes = {
@@ -78,18 +79,29 @@ const itemFrameStyle = "flex items-center gap-1 p-1 border border-foreground rou
 interface DraggableFileProps {
     file: FileItem;
     onDelete: (file: FileItem) => void;
+    isSelected: boolean;
+    onToggleSelect: (fileId: string) => void;
+    selectedFileIds: string[];
 }
 
-const DraggableFile = ({ file, onDelete }: DraggableFileProps) => {
+const DraggableFile = ({ file, onDelete, isSelected, onToggleSelect, selectedFileIds }: DraggableFileProps) => {
     const [{ isDragging }, drag] = useDrag(() => ({
         type: ItemTypes.FILE,
-        item: file,
+        item: () => {
+            // If the dragged file is part of a selection, drag all selected files.
+            // Otherwise, just drag the single file.
+            const isSelectedInDrag = selectedFileIds.includes(file.id);
+            const draggedIds = isSelectedInDrag ? selectedFileIds : [file.id];
+            return { ids: draggedIds, type: ItemTypes.FILE };
+        },
         collect: (monitor) => ({
             isDragging: !!monitor.isDragging(),
         }),
     }));
+
     return (
         <div ref={drag} className={cn(itemFrameStyle, "bg-blue-100 text-blue-900 group", isDragging && "opacity-50")}>
+            <Checkbox checked={isSelected} onCheckedChange={() => onToggleSelect(file.id)} className="mx-2" />
             <FileIconLucide className="h-4 w-4 text-blue-800/80" />
             <span className="text-sm truncate flex-1">{file.name}</span>
             <DropdownMenu>
@@ -110,7 +122,7 @@ const DraggableFile = ({ file, onDelete }: DraggableFileProps) => {
 
 interface DroppableFolderProps {
     folder: FolderItem;
-    onDrop: (item: FileItem | FolderItem, folderId: string | null) => void;
+    onDrop: (item: { ids?: string[], type: string } | FileItem | FolderItem, folderId: string | null) => void;
     onRename: (folder: FolderItem) => void;
     onDelete: (folder: FolderItem) => void;
     onNewSubfolder: (parentId: string) => void;
@@ -124,7 +136,7 @@ const DroppableFolder = ({ folder, onDrop, onRename, onDelete, onNewSubfolder, i
     const ref = useRef<HTMLDivElement>(null);
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.FOLDER,
-        item: folder,
+        item: { ...folder, type: ItemTypes.FOLDER },
         collect: (monitor) => ({
             isDragging: !!monitor.isDragging(),
         }),
@@ -132,7 +144,7 @@ const DroppableFolder = ({ folder, onDrop, onRename, onDelete, onNewSubfolder, i
 
     const [{ isOver, canDrop }, drop] = useDrop(() => ({
         accept: [ItemTypes.FILE, ItemTypes.FOLDER],
-        drop: (item: FileItem | FolderItem) => onDrop(item, folder.id),
+        drop: (item: { ids?: string[], type: string } | FileItem | FolderItem) => onDrop(item, folder.id),
         collect: (monitor) => ({
             isOver: !!monitor.isOver(),
             canDrop: !!monitor.canDrop(),
@@ -185,9 +197,11 @@ export function ManageFilesView() {
   const [allFiles, setAllFiles] = useState<FileItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'unfiled' | 'all'>('unfiled');
+  const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   
   const [isAddFileDialogOpen, setIsAddFileDialogOpen] = useState(false);
-  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -243,38 +257,55 @@ export function ManageFilesView() {
     loadInitialData();
   }, [loadInitialData]);
 
-  const handleDrop = async (item: FileItem | FolderItem, folderId: string | null) => {
-    if ('storagePath' in item) { // It's a file
-        if (item.folderId === folderId) return;
-        setAllFiles(prev => prev.map(f => f.id === item.id ? { ...f, folderId: folderId! } : f));
-        try {
+  const handleDrop = async (item: { ids?: string[], type: string } | FileItem | FolderItem, folderId: string | null) => {
+    const originalFiles = [...allFiles];
+    const originalFolders = [...folders];
+    let movedCount = 0;
+
+    try {
+        if (item.type === ItemTypes.FILE && item.ids) { // Bulk file drop
+            const fileIdsToMove = item.ids;
+            movedCount = fileIdsToMove.length;
+            
+            // Optimistic UI update
+            setAllFiles(prev => prev.map(f => fileIdsToMove.includes(f.id) ? { ...f, folderId: folderId! } : f));
+            
+            // Server update
+            await Promise.all(fileIdsToMove.map(id => moveFile(id, folderId!)));
+
+        } else if ('storagePath' in item) { // Single file drop
+            if (item.folderId === folderId) return;
+            movedCount = 1;
+            setAllFiles(prev => prev.map(f => f.id === item.id ? { ...f, folderId: folderId! } : f));
             await moveFile(item.id, folderId!);
-            toast({ title: "File Moved" });
-        } catch(error: any) {
-            toast({ variant: 'destructive', title: 'Move Failed', description: error.message });
-            loadInitialData(); // Revert
-        }
-    } else { // It's a folder
-        if (item.id === folderId || item.parentId === folderId) return;
-        
-        let currentParentId = folderId;
-        while (currentParentId) {
-            if (currentParentId === item.id) {
-                toast({ variant: "destructive", title: "Invalid Move", description: "You cannot move a folder into one of its own subfolders." });
-                return;
+            
+        } else if ('parentId' in item) { // Folder drop
+            if (item.id === folderId || item.parentId === folderId) return;
+            movedCount = 1;
+            
+            let currentParentId = folderId;
+            while (currentParentId) {
+                if (currentParentId === item.id) {
+                    toast({ variant: "destructive", title: "Invalid Move", description: "You cannot move a folder into one of its own subfolders." });
+                    return;
+                }
+                const parent = folders.find(f => f.id === currentParentId);
+                currentParentId = parent?.parentId || null;
             }
-            const parent = folders.find(f => f.id === currentParentId);
-            currentParentId = parent?.parentId || null;
+
+            setFolders(prev => prev.map(f => f.id === item.id ? { ...f, parentId: folderId } : f));
+            await updateFolder(item.id, { parentId: folderId });
+        }
+        
+        toast({ title: `${movedCount} item(s) moved successfully.` });
+        if (item.type === ItemTypes.FILE) {
+            setSelectedFileIds([]);
         }
 
-        setFolders(prev => prev.map(f => f.id === item.id ? { ...f, parentId: folderId } : f));
-        try {
-            await updateFolder(item.id, { parentId: folderId });
-            toast({ title: "Folder Moved" });
-        } catch(error: any) {
-            toast({ variant: 'destructive', title: 'Move Failed', description: error.message });
-            loadInitialData(); // Revert
-        }
+    } catch(error: any) {
+        toast({ variant: 'destructive', title: 'Move Failed', description: error.message });
+        setAllFiles(originalFiles); // Revert on failure
+        setFolders(originalFolders); // Revert on failure
     }
   };
 
@@ -282,6 +313,8 @@ export function ManageFilesView() {
     const folderIds = new Set(folders.map(f => f.id));
     return allFiles.filter(file => !file.folderId || !folderIds.has(file.folderId));
   }, [allFiles, folders]);
+
+  const filesToDisplay = viewMode === 'unfiled' ? unfiledDocuments : allFiles;
 
   const handleToggleExpand = (folderId: string) => {
       setExpandedFolders(prev => {
@@ -296,24 +329,27 @@ export function ManageFilesView() {
   };
   
   const handleFileUpload = async () => {
-    if (!user || !fileToUpload) {
-        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Please select a file.' });
+    if (!user || filesToUpload.length === 0) {
+        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Please select one or more files.' });
         return;
     }
     setIsUploading(true);
+    let successfulUploads = 0;
     try {
-        const formData = new FormData();
-        formData.append('file', fileToUpload);
-        formData.append('userId', user.uid);
-        formData.append('folderId', '');
-
-        const newFile = await addFile(formData);
-        setAllFiles(prev => [...prev, newFile]);
-        toast({ title: 'Upload Successful', description: `"${newFile.name}" has been added to Unfiled Documents.` });
+        for (const file of filesToUpload) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', user.uid);
+            formData.append('folderId', ''); // Empty string for unfiled
+            const newFile = await addFile(formData);
+            setAllFiles(prev => [...prev, newFile]);
+            successfulUploads++;
+        }
+        toast({ title: 'Upload Successful', description: `${successfulUploads} file(s) have been added to your unfiled documents.` });
         setIsAddFileDialogOpen(false);
-        setFileToUpload(null);
+        setFilesToUpload([]);
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
+        toast({ variant: 'destructive', title: 'Upload Failed', description: `Only ${successfulUploads} files were uploaded. ${error.message}` });
     } finally {
         setIsUploading(false);
     }
@@ -377,17 +413,34 @@ export function ManageFilesView() {
       }
   };
   
-  const handleConfirmDeleteFile = async () => {
-      if (!fileToDelete) return;
+  const handleConfirmDeleteFile = async (filesToDelete: FileItem[]) => {
+      if (filesToDelete.length === 0) return;
+      const fileIds = filesToDelete.map(f => f.id);
+      
       try {
-        await deleteFiles([fileToDelete.id]);
-        setAllFiles(prev => prev.filter(f => f.id !== fileToDelete.id));
-        toast({ title: "File Deleted" });
+          await deleteFiles(fileIds);
+          setAllFiles(prev => prev.filter(f => !fileIds.includes(f.id)));
+          toast({ title: `${fileIds.length} file(s) deleted` });
       } catch(error: any) {
         toast({ variant: "destructive", title: "Delete Failed", description: error.message });
       } finally {
         setFileToDelete(null);
+        setSelectedFileIds([]);
       }
+  };
+  
+  const handleToggleSelect = (fileId: string) => {
+    setSelectedFileIds(prev =>
+        prev.includes(fileId) ? prev.filter(id => id !== fileId) : [...prev, fileId]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedFileIds.length === filesToDisplay.length) {
+        setSelectedFileIds([]);
+    } else {
+        setSelectedFileIds(filesToDisplay.map(f => f.id));
+    }
   };
 
   const handleSortFolders = (direction: 'asc' | 'desc') => {
@@ -445,7 +498,7 @@ export function ManageFilesView() {
                             hasChildren={hasContents}
                         >
                             {filesInFolder.map(file => (
-                                <DraggableFile key={file.id} file={file} onDelete={setFileToDelete} />
+                                <DraggableFile key={file.id} file={file} onDelete={setFileToDelete} isSelected={selectedFileIds.includes(file.id)} onToggleSelect={handleToggleSelect} selectedFileIds={selectedFileIds} />
                             ))}
                             <FolderTree parentId={folder.id} />
                         </DroppableFolder>
@@ -470,7 +523,7 @@ export function ManageFilesView() {
                     <header className="absolute inset-0 flex justify-center items-center">
                         <div className="text-center">
                             <h1 className="text-2xl font-bold font-headline text-primary">Manage Files</h1>
-                            <p className="text-muted-foreground text-sm">Your Files & Folders</p>
+                            <p className="text-muted-foreground text-sm">Organize your files and folders.</p>
                         </div>
                     </header>
                     <div className="absolute left-0 top-1/2 -translate-y-1/2">
@@ -483,49 +536,75 @@ export function ManageFilesView() {
                     </div>
                     <div className="absolute right-0 top-1/2 -translate-y-1/2">
                         <Button onClick={handleSaveChanges}>
-                            <Save className="mr-2 h-4 w-4" /> Save New Order
+                            <Save className="mr-2 h-4 w-4" /> Save Order
                         </Button>
                     </div>
                 </div>
                 
                 <div className="flex-1 min-h-0 w-full grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                     <Card className="flex flex-col h-full">
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <div>
-                                <CardTitle>File Cabinet</CardTitle>
-                                <CardDescription>Your Files & Folders</CardDescription>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Button size="sm" variant="outline" onClick={() => handleSortFolders('asc')}><ArrowDownAZ className="mr-2 h-4 w-4" /> A-Z</Button>
-                                <Button size="sm" variant="outline" onClick={() => handleSortFolders('desc')}><ArrowUpZA className="mr-2 h-4 w-4" /> Z-A</Button>
-                                <Button size="sm" onClick={() => { setNewFolderParentId(null); setIsNewFolderDialogOpen(true); }}>
-                                    <FolderPlus className="mr-2 h-4 w-4" /> Create Folder
-                                </Button>
+                        <CardHeader className="pt-4 pb-2">
+                            <div className="flex items-center justify-between">
+                                <CardTitle>Folders</CardTitle>
+                                <div className="flex items-center gap-2">
+                                    <Button size="sm" variant="outline" onClick={() => handleSortFolders('asc')}><ArrowDownAZ className="mr-2 h-4 w-4" /> A-Z</Button>
+                                    <Button size="sm" variant="outline" onClick={() => handleSortFolders('desc')}><ArrowUpZA className="mr-2 h-4 w-4" /> Z-A</Button>
+                                    <Button size="sm" onClick={() => { setNewFolderParentId(null); setIsNewFolderDialogOpen(true); }}>
+                                        <FolderPlus className="mr-2 h-4 w-4" /> Create Folder
+                                    </Button>
+                                </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="flex-1 p-2 overflow-hidden">
+                        <CardContent className="flex-1 overflow-hidden pt-8">
                             <ScrollArea className="h-full">
-                                <div className="p-2">
-                                    <FolderTree />
-                                </div>
+                                <FolderTree />
                             </ScrollArea>
                         </CardContent>
                     </Card>
                     <Card className="flex flex-col h-full">
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <div>
-                                <CardTitle>Unfiled Documents</CardTitle>
-                                <CardDescription>Drag these files into folders on the left.</CardDescription>
+                        <CardHeader className="pt-4 pb-2">
+                             <div className="flex items-center justify-between">
+                                <CardTitle>Files</CardTitle>
+                                <div className="flex items-center gap-2">
+                                    {selectedFileIds.length > 0 && (
+                                        <Button variant="destructive" size="sm" onClick={() => handleConfirmDeleteFile(allFiles.filter(f => selectedFileIds.includes(f.id)))}>
+                                            <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedFileIds.length})
+                                        </Button>
+                                    )}
+                                    <Button size="sm" onClick={() => setIsAddFileDialogOpen(true)}>
+                                        <UploadCloud className="mr-2 h-4 w-4" /> Upload File
+                                    </Button>
+                                    <Button 
+                                        size="sm" 
+                                        onClick={() => setViewMode('unfiled')}
+                                        className={cn(viewMode === 'unfiled' ? 'bg-black text-white hover:bg-black/80' : 'bg-white text-black border border-black hover:bg-gray-100')}
+                                    >
+                                        Unfiled
+                                    </Button>
+                                    <Button 
+                                        size="sm" 
+                                        onClick={() => setViewMode('all')}
+                                        className={cn(viewMode === 'all' ? 'bg-black text-white hover:bg-black/80' : 'bg-white text-black border border-black hover:bg-gray-100')}
+                                    >
+                                        All Files
+                                    </Button>
+                                </div>
                             </div>
-                            <Button size="sm" onClick={() => setIsAddFileDialogOpen(true)}>
-                                <Plus className="mr-2 h-4 w-4" /> Upload File
-                            </Button>
+                             <CardDescription>Drag files to the left</CardDescription>
                         </CardHeader>
-                        <CardContent className="flex-1 p-2 overflow-hidden">
+                        <CardContent className="flex-1 overflow-hidden pt-0">
+                            <div className="flex items-center p-1">
+                                <Checkbox
+                                    checked={filesToDisplay.length > 0 && selectedFileIds.length === filesToDisplay.length}
+                                    onCheckedChange={handleToggleSelectAll}
+                                    className="mx-2"
+                                />
+                                <Label>Select All</Label>
+                            </div>
                             <ScrollArea className="h-full">
-                                <div className="p-2 space-y-2">
-                                    {unfiledDocuments.map(file => (
-                                        <DraggableFile key={file.id} file={file} onDelete={setFileToDelete} />
+                                <div className="space-y-2">
+                                    {filesToDisplay.map(file => (
+                                        <DraggableFile key={file.id} file={file} onDelete={setFileToDelete} isSelected={selectedFileIds.includes(file.id)} onToggleSelect={handleToggleSelect} selectedFileIds={selectedFileIds}/>
                                     ))}
                                 </div>
                             </ScrollArea>
@@ -536,9 +615,9 @@ export function ManageFilesView() {
             <Dialog open={isAddFileDialogOpen} onOpenChange={(open) => { if (!isUploading) setIsAddFileDialogOpen(open); }}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Upload to Unfiled Documents</DialogTitle>
+                        <DialogTitle>Upload to Files</DialogTitle>
                         <DialogDescription>
-                            The selected file will be added to your "Unfiled Documents" list.
+                            The selected files will be added to your "Files" list.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
@@ -546,12 +625,12 @@ export function ManageFilesView() {
                           className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted"
                           onClick={() => fileInputRef.current?.click()}
                       >
-                          {fileToUpload ? (
-                              <p className="font-medium">{fileToUpload.name}</p>
+                          {filesToUpload.length > 0 ? (
+                              <p className="font-medium text-center">{filesToUpload.length} file(s) selected.<br/><span className="text-xs font-normal">({filesToUpload[0].name}, etc.)</span></p>
                           ) : (
                               <>
                                   <UploadCloud className="w-8 h-8 text-muted-foreground" />
-                                  <p className="text-sm text-muted-foreground">Click to browse or drag file here</p>
+                                  <p className="text-sm text-muted-foreground">Click to browse or drag files here</p>
                               </>
                           )}
                       </div>
@@ -559,14 +638,15 @@ export function ManageFilesView() {
                           type="file" 
                           ref={fileInputRef} 
                           className="hidden" 
-                          onChange={(e) => setFileToUpload(e.target.files ? e.target.files[0] : null)} 
+                          multiple
+                          onChange={(e) => setFilesToUpload(e.target.files ? Array.from(e.target.files) : [])} 
                       />
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setIsAddFileDialogOpen(false)} disabled={isUploading}>Cancel</Button>
-                        <Button onClick={handleFileUpload} disabled={isUploading || !fileToUpload}>
+                        <Button onClick={handleFileUpload} disabled={isUploading || filesToUpload.length === 0}>
                             {isUploading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                            {isUploading ? "Uploading..." : "Upload File"}
+                            {isUploading ? "Uploading..." : "Upload File(s)"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -637,7 +717,7 @@ export function ManageFilesView() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmDeleteFile} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                        <AlertDialogAction onClick={() => handleConfirmDeleteFile([fileToDelete!])} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

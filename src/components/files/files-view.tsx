@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import {
   Folder,
   Plus,
@@ -17,6 +18,7 @@ import {
   UploadCloud,
   Wand2,
   BookOpen,
+  Save,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -54,10 +56,8 @@ import {
     deleteFiles,
     deleteFolders
 } from '@/services/file-service';
-import { getDownloadUrl } from '@/app/actions/file-actions';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
-import { triggerBrowserDownload } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,29 +73,17 @@ import { FileIcon } from './file-icon';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { useUserPreferences } from '@/hooks/use-user-preferences';
+import { getDownloadUrl, checkinFromGoogleDrive } from '@/app/actions/file-actions';
+import { triggerBrowserDownload } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
-// Mime types that are candidates for opening in Google Drive
-const GOOGLE_WORKSPACE_MIME_TYPES = [
+const GOOGLE_DOC_TYPES = [
+    'application/vnd.google-apps.document',
+    'application/vnd.google-apps.spreadsheet',
+    'application/vnd.google-apps.presentation',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',   // .xlsx
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
     'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
-    'application/msword', // .doc
-    'application/vnd.ms-excel', // .xls
-    'application/vnd.ms-powerpoint', // .ppt
-];
-
-// Mime types browsers can typically open directly
-const WEB_VIEWABLE_MIME_TYPES = [
-    'application/pdf',
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/svg+xml',
-    'text/plain',
-    'text/html',
-    'text/css',
-    'text/javascript',
-    'application/json',
 ];
 
 export function FilesView() {
@@ -118,13 +106,15 @@ export function FilesView() {
   const [sortConfig, setSortConfig] = useState<{ key: keyof FileItem; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
 
   const [isAddFileDialogOpen, setIsAddFileDialogOpen] = useState(false);
-  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const { preferences } = useUserPreferences();
+  const router = useRouter();
   
   const loadInitialData = useCallback(async () => {
     if (!user) {
@@ -137,25 +127,8 @@ export function FilesView() {
             getFolders(user.uid),
             getFiles(user.uid)
         ]);
-
-        const savedOrder = preferences?.fileFolderOrder;
-        if (savedOrder && savedOrder.length > 0) {
-            const folderMap = new Map(fetchedFolders.map(f => [f.id, f]));
-            const orderedFolders = savedOrder.map(id => folderMap.get(id)).filter(Boolean) as FolderItem[];
-            const remainingFolders = fetchedFolders.filter(f => !savedOrder.includes(f.id));
-            setFolders([...orderedFolders, ...remainingFolders]);
-        } else {
-            setFolders(fetchedFolders.sort((a,b) => a.name.localeCompare(b.name)));
-        }
-
+        setFolders(fetchedFolders.sort((a,b) => a.name.localeCompare(b.name)));
         setAllFiles(fetchedFiles);
-        
-        if (fetchedFolders.length > 0) {
-            const rootFolder = fetchedFolders.find(f => !f.parentId);
-            if (rootFolder && expandedFolders.size === 0) { 
-                setExpandedFolders(new Set([rootFolder.id]));
-            }
-        }
     } catch (error: any) {
         toast({
             variant: "destructive",
@@ -165,12 +138,11 @@ export function FilesView() {
     } finally {
         setIsLoading(false);
     }
-  }, [user, toast, preferences, expandedFolders.size]);
+  }, [user, toast]);
 
   useEffect(() => {
     loadInitialData();
   }, [loadInitialData]);
-
 
   useEffect(() => {
     setSelectedFileIds([]);
@@ -187,12 +159,51 @@ export function FilesView() {
     }
     return allFiles.filter(file => file.folderId === selectedFolderId);
   }, [selectedFolderId, allFiles]);
-
-  const handleOpenNewFolderDialog = (parentId: string | null = null) => {
-    setNewFolderParentId(parentId);
-    setIsNewFolderDialogOpen(true);
-  };
   
+  const handleOpenFile = async (file: FileItem) => {
+      if (GOOGLE_DOC_TYPES.includes(file.type)) {
+          // It's a Google Doc type, send to the opener page
+          const openerUrl = `/opener?fileId=${file.id}&fileName=${encodeURIComponent(file.name)}&storagePath=${encodeURIComponent(file.storagePath)}`;
+          window.open(openerUrl, '_blank');
+      } else {
+          // For other files, get a download URL and open in a new tab
+          try {
+              const { url, error } = await getDownloadUrl(file.storagePath);
+              if (error) throw new Error(error);
+              if (url) {
+                  // For images and PDFs, the browser will likely display them.
+                  // For others, it will trigger a download.
+                  window.open(url, '_blank');
+              }
+          } catch (error: any) {
+              toast({ variant: 'destructive', title: 'Could not open file', description: error.message });
+          }
+      }
+  };
+
+  const handleCheckIn = async (file: FileItem) => {
+      if (!file.googleDriveFileId || !accessToken) {
+          toast({ variant: 'destructive', title: 'Check-in Failed', description: 'File is not properly checked out or authentication is missing.' });
+          return;
+      }
+      try {
+          const result = await checkinFromGoogleDrive({
+              fileId: file.id,
+              storagePath: file.storagePath,
+              googleDriveFileId: file.googleDriveFileId,
+              accessToken,
+          });
+          if (result.success) {
+              toast({ title: 'Check-in Successful', description: `${file.name} has been saved back to Ogeemo.` });
+              await loadInitialData(); // Refresh the file list to show updated status
+          } else {
+              throw new Error(result.error);
+          }
+      } catch (error: any) {
+          toast({ variant: 'destructive', title: 'Check-in Failed', description: error.message });
+      }
+  };
+
   const handleCreateFolder = async () => {
     if (!user || !newFolderName.trim()) return;
     try {
@@ -251,17 +262,6 @@ export function FilesView() {
       }
   };
   
-  const handleDownloadFile = async (file: FileItem) => {
-    toast({ title: "Preparing download..." });
-    try {
-        const { url, error } = await getDownloadUrl(file.storagePath);
-        if (error || !url) throw new Error(error || "Could not get download URL.");
-        await triggerBrowserDownload(url, file.name);
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Download Failed', description: error.message });
-    }
-  };
-
   const handleDeleteFiles = async (filesToDelete: FileItem[]) => {
       if (!user || filesToDelete.length === 0) return;
       
@@ -296,28 +296,74 @@ export function FilesView() {
   };
 
   const handleFileUpload = async () => {
-    if (!user || !fileToUpload || !selectedFolderId || selectedFolderId === 'all') {
-        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Please select a file and a specific folder.' });
+    if (!user || filesToUpload.length === 0 || !selectedFolderId || selectedFolderId === 'all') {
+        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Please select one or more files and a specific folder.' });
         return;
     }
     setIsUploading(true);
+    let successfulUploads = 0;
     try {
-        const formData = new FormData();
-        formData.append('file', fileToUpload);
-        formData.append('userId', user.uid);
-        formData.append('folderId', selectedFolderId);
-
-        const newFile = await addFile(formData);
-        setAllFiles(prev => [...prev, newFile]);
-        toast({ title: 'Upload Successful', description: `"${newFile.name}" has been uploaded.` });
+        for (const file of filesToUpload) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', user.uid);
+            formData.append('folderId', selectedFolderId);
+            const newFile = await addFile(formData);
+            setAllFiles(prev => [...prev, newFile]);
+            successfulUploads++;
+        }
+        toast({ title: 'Upload Successful', description: `${successfulUploads} file(s) have been uploaded.` });
         setIsAddFileDialogOpen(false);
-        setFileToUpload(null);
+        setFilesToUpload([]);
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
+        toast({ variant: 'destructive', title: 'Upload Failed', description: `Only ${successfulUploads} files were uploaded. ${error.message}` });
     } finally {
         setIsUploading(false);
     }
   };
+  
+  const handleFolderUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0 || !user) return;
+
+    const firstFile = files[0];
+    const rootFolderName = firstFile.webkitRelativePath.split('/')[0];
+    
+    if (!rootFolderName) {
+        toast({ variant: 'destructive', title: 'Could not determine folder name.' });
+        return;
+    }
+    
+    setIsUploading(true);
+    toast({ title: 'Folder Upload Started', description: `Uploading folder "${rootFolderName}"...` });
+    
+    try {
+        const newFolder = await addFolder({ name: rootFolderName, userId: user.uid, parentId: selectedFolderId !== 'all' ? selectedFolderId : null, createdAt: new Date() });
+        setFolders(prev => [...prev, newFolder]);
+
+        const uploadPromises = Array.from(files).map(async (file) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', user.uid);
+            formData.append('folderId', newFolder.id);
+            return addFile(formData);
+        });
+        
+        const newFiles = await Promise.all(uploadPromises);
+        setAllFiles(prev => [...prev, ...newFiles]);
+
+        toast({ title: 'Folder Upload Complete', description: `${files.length} file(s) uploaded to "${rootFolderName}".` });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Folder Upload Failed', description: error.message });
+    } finally {
+        setIsUploading(false);
+        // Reset file input
+        if (folderInputRef.current) {
+            folderInputRef.current.value = "";
+        }
+    }
+  };
+
 
   const FolderTreeItem = ({ folder, allFolders, level = 0 }: { folder: FolderItem, allFolders: FolderItem[], level?: number }) => {
     const hasChildren = allFolders.some(f => f.parentId === folder.id);
@@ -361,7 +407,7 @@ export function FilesView() {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenuItem onSelect={() => handleOpenNewFolderDialog(folder.id)}><FolderPlus className="mr-2 h-4 w-4" />New Subfolder</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => { setNewFolderParentId(folder.id); setIsNewFolderDialogOpen(true); }}><FolderPlus className="mr-2 h-4 w-4" />New Subfolder</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleStartRename(folder)}><Pencil className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="text-destructive" onSelect={() => setFolderToDelete(folder)}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
@@ -452,13 +498,12 @@ export function FilesView() {
                         </Button>
                     ) : (
                         <div className="flex items-center gap-2">
-                            <Button asChild>
-                                <Link href="/google"><Wand2 className="mr-2 h-4 w-4" /> Workspace</Link>
-                            </Button>
+                            <input type="file" ref={folderInputRef} onChange={handleFolderUpload} className="hidden" multiple directory="" webkitdirectory="" />
+                            <Button onClick={() => folderInputRef.current?.click()}><UploadCloud className="mr-2 h-4 w-4" /> Folder Upload</Button>
                             <Button asChild>
                                 <Link href="/files/manage">Manage Files</Link>
                             </Button>
-                            <Button onClick={() => handleOpenNewFolderDialog(selectedFolderId !== 'all' ? selectedFolderId : null)}>
+                            <Button onClick={() => setIsNewFolderDialogOpen(true)}>
                                 <FolderPlus className="mr-2 h-4 w-4" /> Add Folder
                             </Button>
                             <Button onClick={() => setIsAddFileDialogOpen(true)}>
@@ -468,7 +513,6 @@ export function FilesView() {
                     )}
                 </div>
                  <div className="flex-1 overflow-y-auto p-2">
-                    {/* Header Row */}
                     <div className="flex items-center p-2 h-10">
                         <div className="w-12"><Checkbox onCheckedChange={handleToggleSelectAll} checked={sortedFiles.length > 0 && selectedFileIds.length === sortedFiles.length} /></div>
                         <div className="w-12"><span className="sr-only">Icon</span></div>
@@ -476,27 +520,34 @@ export function FilesView() {
                         <Button variant="ghost" onClick={() => handleSort('modifiedAt')} className="w-48 justify-start p-0 h-auto font-medium text-muted-foreground hover:bg-transparent">Last Modified <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
                         <div className="w-12"><span className="sr-only">Actions</span></div>
                     </div>
-                    {/* File List */}
                     <div className="space-y-1">
                         {sortedFiles.length > 0 ? (
                             sortedFiles.map(file => {
-                                const canOpenFile = GOOGLE_WORKSPACE_MIME_TYPES.includes(file.type) || WEB_VIEWABLE_MIME_TYPES.includes(file.type);
+                                const isCheckedOut = !!file.googleDriveFileId;
                                 return (
-                                <div key={file.id} className="flex items-center h-8 rounded-md p-2 bg-blue-100 text-blue-900 border border-foreground">
+                                <div key={file.id} className="flex items-center h-8 rounded-md p-2 border border-foreground bg-blue-100 text-blue-900">
                                     <div className="w-12"><Checkbox checked={selectedFileIds.includes(file.id)} onCheckedChange={() => setSelectedFileIds(p => p.includes(file.id) ? p.filter(id => id !== file.id) : [...p, file.id])} /></div>
                                     <div className="w-12"><FileIcon fileType={file.type} /></div>
-                                    <div className="flex-1 font-medium text-sm truncate">{file.name}</div>
+                                    <div className="flex-1 font-medium text-sm truncate flex items-center gap-2">
+                                        {file.name}
+                                        {isCheckedOut && (
+                                            <Image src="/images/google-drive-icon.png" alt="Google Drive Icon" width={16} height={16} title="Checked out to Google Drive" />
+                                        )}
+                                    </div>
                                     <div className="w-48 text-sm">{format(file.modifiedAt, 'PPp')}</div>
                                     <div className="w-12">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem asChild disabled={!canOpenFile}>
-                                                  <a href={`/opener?fileId=${file.id}&fileType=${encodeURIComponent(file.type)}&storagePath=${encodeURIComponent(file.storagePath)}`} target="_blank" rel="noopener noreferrer">
-                                                    <BookOpen className="mr-2 h-4 w-4" /> Open
-                                                  </a>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => handleDownloadFile(file)}><Download className="mr-2 h-4 w-4" /> Download</DropdownMenuItem>
+                                                {isCheckedOut ? (
+                                                    <DropdownMenuItem onSelect={() => handleCheckIn(file)}>
+                                                        <Save className="mr-2 h-4 w-4" /> Save & Check In from Drive
+                                                    </DropdownMenuItem>
+                                                ) : (
+                                                    <DropdownMenuItem onSelect={() => handleOpenFile(file)}>
+                                                        <BookOpen className="mr-2 h-4 w-4" /> Open
+                                                    </DropdownMenuItem>
+                                                )}
                                                 <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteFiles([file])}><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
@@ -530,9 +581,9 @@ export function FilesView() {
       <AlertDialog open={!!folderToDelete} onOpenChange={() => setFolderToDelete(null)}>
         <AlertDialogContent>
             <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    This will permanently delete the folder "{folderToDelete?.name}". This action cannot be undone.
+                    This will permanently delete the folder "{folderToDelete?.name}" and all its contents. This action cannot be undone.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -545,9 +596,9 @@ export function FilesView() {
       <Dialog open={isAddFileDialogOpen} onOpenChange={(open) => { if (!isUploading) setIsAddFileDialogOpen(open); }}>
           <DialogContent>
               <DialogHeader>
-                  <DialogTitle>Add New File</DialogTitle>
+                  <DialogTitle>Add New File(s)</DialogTitle>
                   <DialogDescription>
-                      Upload a file to the folder: "{selectedFolder?.name || 'Please select a folder'}".
+                      Upload files to the folder: "{selectedFolder?.name || 'Please select a folder'}".
                   </DialogDescription>
               </DialogHeader>
               <div className="py-4">
@@ -555,12 +606,12 @@ export function FilesView() {
                     className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted"
                     onClick={() => fileInputRef.current?.click()}
                 >
-                    {fileToUpload ? (
-                        <p className="font-medium">{fileToUpload.name}</p>
+                    {filesToUpload.length > 0 ? (
+                        <p className="font-medium text-center">{filesToUpload.length} file(s) selected.<br/><span className="text-xs font-normal">({filesToUpload[0].name}, etc.)</span></p>
                     ) : (
                         <>
                             <UploadCloud className="w-8 h-8 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">Click to browse or drag file here</p>
+                            <p className="text-sm text-muted-foreground">Click to browse or drag files here</p>
                         </>
                     )}
                 </div>
@@ -568,14 +619,15 @@ export function FilesView() {
                     type="file" 
                     ref={fileInputRef} 
                     className="hidden" 
-                    onChange={(e) => setFileToUpload(e.target.files ? e.target.files[0] : null)} 
+                    multiple
+                    onChange={(e) => setFilesToUpload(e.target.files ? Array.from(e.target.files) : [])} 
                 />
               </div>
               <DialogFooter>
                   <Button variant="ghost" onClick={() => setIsAddFileDialogOpen(false)} disabled={isUploading}>Cancel</Button>
-                  <Button onClick={handleFileUpload} disabled={isUploading || !fileToUpload || selectedFolderId === 'all'}>
+                  <Button onClick={handleFileUpload} disabled={isUploading || filesToUpload.length === 0 || selectedFolderId === 'all'}>
                       {isUploading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                      {isUploading ? "Uploading..." : "Upload File"}
+                      {isUploading ? "Uploading..." : "Upload File(s)"}
                   </Button>
               </DialogFooter>
           </DialogContent>

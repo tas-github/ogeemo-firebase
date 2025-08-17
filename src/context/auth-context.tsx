@@ -5,7 +5,7 @@ import type { User } from 'firebase/auth';
 import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { initializeFirebase, FirebaseServices } from '@/lib/firebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -13,6 +13,7 @@ interface AuthContextType {
   accessToken: string | null;
   firebaseServices: FirebaseServices | null;
   logout: () => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,11 +36,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setFirebaseServices(services);
         const unsubscribe = onAuthStateChanged(services.auth, (currentUser) => {
           setUser(currentUser);
-          if (!currentUser) {
+          
+          // **THE FIX IS HERE**: Immediately load the access token from sessionStorage when the user state is confirmed.
+          if (currentUser) {
+            // This ensures that on any page load (including a new tab), if the user is logged in,
+            // we attempt to load their Google token into the context's state.
+            const token = sessionStorage.getItem('google_access_token');
+            setAccessToken(token);
+          } else {
+            // Clear access token on logout.
             setAccessToken(null);
             sessionStorage.removeItem('google_access_token');
           }
-          // The main loading state will be managed by the routing logic below
         });
         return unsubscribe;
       })
@@ -57,9 +65,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           console.log('Getting ID token...');
           const idToken = await user.getIdToken();
+          
           console.log('ID token received. Awaiting session API call...');
           
-          // CRITICAL FIX: Await the session API call to complete before doing anything else.
           const response = await fetch('/api/auth/session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -74,13 +82,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const responseData = await response.json();
           console.log('Session API response:', response.status, responseData);
 
-          const storedToken = sessionStorage.getItem('google_access_token');
-          if (storedToken) {
-            setAccessToken(storedToken);
-          }
         } catch (error) {
             console.error("Failed to set session cookie", error);
-            // If session fails, sign the user out to prevent an inconsistent state
             if (firebaseServices) {
                 await signOut(firebaseServices.auth);
             }
@@ -91,7 +94,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('Delete session call complete.');
       }
       
-      // Now that session management is complete, we can handle routing.
       setIsLoading(false);
     };
     handleAuthChange(user);
@@ -109,17 +111,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('Redirecting to /login');
         router.push('/login');
       } 
-      else if (user && isPublicPath) {
+      else if (user && (isPublicPath || pathname === '/home')) {
         console.log('Redirecting to /action-manager');
         router.push('/action-manager');
       }
     }
   }, [user, isLoading, pathname, router]);
+  
+  const signInWithGoogle = async () => {
+    if (!firebaseServices) {
+        throw new Error("Firebase is not initialized.");
+    }
+    const provider = new GoogleAuthProvider();
+    provider.addScope('https://www.googleapis.com/auth/drive');
+    provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
+    
+    const result = await signInWithPopup(firebaseServices.auth, provider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (credential?.accessToken) {
+        sessionStorage.setItem('google_access_token', credential.accessToken);
+        setAccessToken(credential.accessToken);
+    }
+  };
+
 
   const logout = async () => {
     if (firebaseServices) {
       await signOut(firebaseServices.auth);
-      // The onAuthStateChanged listener will handle the session deletion and redirect.
     }
   };
   
@@ -133,7 +151,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  // Use a single loading screen until Firebase is initialized and the first auth check is complete.
   if (isLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
@@ -142,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  const value = { user, isLoading, accessToken, firebaseServices, logout };
+  const value = { user, isLoading, accessToken, firebaseServices, logout, signInWithGoogle };
 
   return (
     <AuthContext.Provider value={value}>

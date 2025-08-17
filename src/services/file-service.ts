@@ -43,6 +43,7 @@ const docToFile = (doc: any): FileItem => ({
     id: doc.id, 
     ...doc.data(),
     modifiedAt: (doc.data().modifiedAt as Timestamp)?.toDate() || new Date(),
+    checkedOutAt: (doc.data().checkedOutAt as Timestamp)?.toDate() || undefined,
 } as FileItem);
 
 
@@ -140,6 +141,13 @@ export async function addFileRecord(fileData: Omit<FileItem, 'id'>): Promise<Fil
     const docRef = await addDoc(collection(db, FILES_COLLECTION), fileData);
     return { id: docRef.id, ...fileData };
 }
+
+export async function updateFileRecord(fileId: string, data: Partial<Omit<FileItem, 'id' | 'userId'>>): Promise<void> {
+    const db = await getDb();
+    const fileRef = doc(db, FILES_COLLECTION, fileId);
+    await updateDoc(fileRef, data);
+}
+
 
 export async function addFile(formData: FormData): Promise<FileItem> {
     const file = formData.get('file') as File;

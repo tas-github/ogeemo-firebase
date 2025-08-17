@@ -9,7 +9,7 @@ import { ai } from '@/ai/ai';
 // By initializing here, we ensure that the Genkit plugins are only
 // loaded in a pure server environment, which resolves the build errors.
 configureGenkit({
-  plugins: [googleAI(), firebase(), dotprompt({
+  plugins: [googleAI({ apiKey: process.env.GEMINI_API_KEY }), firebase(), dotprompt({
     prompt: {
       model: googleAI.model('gemini-1.5-flash'),
     },

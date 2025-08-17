@@ -11,7 +11,8 @@ export interface FileItem {
   userId: string;
   storagePath: string;
   content?: string;
-  webViewLink?: string; // Add this line
+  googleDriveFileId?: string; // ID of the file in Google Drive
+  checkedOutAt?: Date; // Timestamp for when it was checked out
 }
 
 export interface FolderItem {

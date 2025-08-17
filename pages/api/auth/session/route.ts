@@ -7,7 +7,7 @@ import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 export async function POST(req: NextRequest) {
     console.log('Session API POST request received.');
     try {
-        const { idToken } = await req.json();
+        const { idToken, accessToken } = await req.json();
         if (!idToken) {
             console.log('Session API error: ID token is required.');
             return new NextResponse(JSON.stringify({ error: 'ID token is required.' }), { status: 400 });
