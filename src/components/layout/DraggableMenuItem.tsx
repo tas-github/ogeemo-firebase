@@ -14,6 +14,8 @@ interface DraggableMenuItemProps {
   index: number;
   isActive: boolean;
   moveMenuItem: (dragIndex: number, hoverIndex: number) => void;
+  isDraggable?: boolean;
+  isCompact?: boolean;
 }
 
 interface DragItem {
@@ -22,13 +24,21 @@ interface DragItem {
   type: string;
 }
 
-export function DraggableMenuItem({ item, index, isActive, moveMenuItem }: DraggableMenuItemProps) {
+export function DraggableMenuItem({ 
+    item, 
+    index, 
+    isActive, 
+    moveMenuItem, 
+    isDraggable = true, 
+    isCompact = false 
+}: DraggableMenuItemProps) {
   const ref = useRef<HTMLDivElement>(null);
   const Icon = item.icon;
 
   const [{ isDragging }, drag, preview] = useDrag({
     type: 'MENU_ITEM',
     item: () => ({ id: item.href, index }),
+    canDrag: isDraggable,
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
@@ -37,7 +47,7 @@ export function DraggableMenuItem({ item, index, isActive, moveMenuItem }: Dragg
   const [, drop] = useDrop({
     accept: 'MENU_ITEM',
     hover(draggedItem: DragItem, monitor) {
-      if (!ref.current) return;
+      if (!ref.current || !isDraggable) return;
       
       const dragIndex = draggedItem.index;
       const hoverIndex = index;
@@ -52,7 +62,7 @@ export function DraggableMenuItem({ item, index, isActive, moveMenuItem }: Dragg
 
   return (
     <div
-      ref={preview}
+      ref={isDraggable ? preview : null}
       style={{ opacity: isDragging ? 0.5 : 1 }}
       className="relative"
     >
@@ -61,8 +71,10 @@ export function DraggableMenuItem({ item, index, isActive, moveMenuItem }: Dragg
           asChild
           variant={isActive ? "secondary" : "ghost"}
           className={cn(
-            "w-full justify-start gap-3 pl-8",
-            "h-10 text-base border-b-4 border-black hover:bg-sidebar-accent/90 active:mt-1 active:border-b-2"
+            "w-full justify-start gap-3",
+            isDraggable ? "pl-8" : "pl-3",
+            isCompact ? "h-9 text-sm" : "h-10 text-base",
+            "border-b-4 border-black hover:bg-sidebar-accent/90 active:mt-1 active:border-b-2"
           )}
         >
           <Link href={item.href}>
@@ -70,9 +82,11 @@ export function DraggableMenuItem({ item, index, isActive, moveMenuItem }: Dragg
             <span>{item.label}</span>
           </Link>
         </Button>
-        <GripVertical
-          className="absolute left-2 top-1/2 -translate-y-1/2 h-5 w-5 text-sidebar-foreground/50 cursor-grab"
-        />
+        {isDraggable && (
+            <GripVertical
+            className="absolute left-2 top-1/2 -translate-y-1/2 h-5 w-5 text-sidebar-foreground/50 cursor-grab"
+            />
+        )}
       </div>
     </div>
   );

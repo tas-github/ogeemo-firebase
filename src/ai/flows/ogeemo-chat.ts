@@ -1,101 +1,97 @@
-
 'use server';
-
-import { ai } from "@/ai/ai";
-import { z } from "zod";
+/**
+ * @fileOverview The primary Ogeemo AI assistant agent.
+ * This agent can answer questions about the Ogeemo application and use tools to perform actions.
+ *
+ * - ogeemoAgent - The main function that handles user requests.
+ * - OgeemoAgentInput - The input type for the ogeemoAgent function.
+ */
+import { ai } from '@/ai/ai';
+import { z } from 'zod';
 import { MessageData } from 'genkit';
-import { googleAI } from "@genkit-ai/googleai";
+import { addContact } from '@/services/contact-service';
 import fs from 'fs';
 import path from 'path';
 
-// Function to read knowledge base files
+// Schemas
+
+const messageContentSchema = z.object({
+  text: z.string(),
+  // Assuming content can only be text for now. Add other types if needed.
+});
+
+const clientMessageSchema = z.object({
+    role: z.enum(['user', 'model']),
+    content: z.array(messageContentSchema),
+});
+
+
+const OgeemoAgentInputSchema = z.object({
+  userId: z.string(),
+  message: z.string(),
+  history: z.array(clientMessageSchema).optional(),
+});
+export type OgeemoAgentInput = z.infer<typeof OgeemoAgentInputSchema>;
+
+const ContactInputSchema = z.object({
+  firstName: z.string().describe('The first name of the contact'),
+  lastName: z.string().describe('The last name of the contact'),
+  email: z.string().email().describe('The email address of the contact'),
+  phone: z.string().optional().describe('The primary phone number for the contact. This will be stored as a cell phone.'),
+  company: z.string().optional().describe('The company the contact works for'),
+  notes: z.string().optional().describe('Any additional notes about the contact'),
+});
+
+const AddContactToolInputSchema = ContactInputSchema.extend({
+    userId: z.string(),
+});
+
+// Tool Definition
+const addContactTool = ai.defineTool(
+  {
+    name: 'addContact',
+    description: 'Use this tool to add a new contact when the user explicitly asks to. It requires a first name, last name, and email. Phone number, company, and notes are optional.',
+    inputSchema: AddContactToolInputSchema,
+    outputSchema: z.object({
+      success: z.boolean(),
+      contactId: z.string().optional(),
+      message: z.string(),
+    }),
+  },
+  async (input) => {
+    const { userId, ...contactDetails } = input;
+    if (!userId) {
+      return { success: false, message: "Error: User is not authenticated." };
+    }
+    try {
+      const newContact = await addContact({
+        name: `${contactDetails.firstName} ${contactDetails.lastName}`,
+        email: contactDetails.email,
+        businessName: contactDetails.company || '',
+        cellPhone: contactDetails.phone || '',
+        primaryPhoneType: 'cellPhone',
+        notes: contactDetails.notes || '',
+        userId: userId,
+        folderId: '', // Defaulting to root
+      });
+      return {
+        success: true,
+        contactId: newContact.id,
+        message: `Successfully added contact ${contactDetails.firstName} ${contactDetails.lastName}.`,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      return { success: false, message: `Failed to add contact: ${errorMessage}` };
+    }
+  }
+);
+
+// Helper to get Knowledge Base
 function getKnowledgeBase(): string {
   try {
-    const guidelinesPath = path.join(process.cwd(), 'STUDIO_GUIDELINES.md');
-    const trademarkPath = path.join(process.cwd(), 'TRADEMARK_DESCRIPTION.md');
-    const bksPath = path.join(process.cwd(), 'src/app/(app)/accounting/bks/page.tsx');
-
-    const guidelinesContent = fs.readFileSync(guidelinesPath, 'utf-8');
-    const trademarkContent = fs.readFileSync(trademarkPath, 'utf-8');
-    const bksContent = fs.readFileSync(bksPath, 'utf-8');
-    
-    // Extract relevant text from the BKS page component for the AI
-    const bksTextContent = `
-      - The title is "Bookkeeping Kept Simple".
-      - The description is "Your straightforward path to financial clarity. Start with the basics, expand when you're ready."
-      - The core concept is a simple cash-based accounting system focusing on two main ledgers: "Manage Income" and "Manage Expenses".
-      - By recording all incoming and outgoing money, users can prepare for taxes and understand their business's financial health.
-    `;
-
-    const ogeemailTextContent = `
-      - Ogeemo has a built-in email client called "OgeeMail".
-      - Users can access it via the "OgeeMail" link in the main menu.
-      - To compose a new email, the user should navigate to the OgeeMail section and click the "Compose" button. This will take them to the email composition page.
-    `;
-
-    const projectManagerTextContent = `
-      - The Project Manager is where users can see all their projects.
-      - Each project is a container for tasks.
-      - Clicking on a project in the Project Manager will take the user to the Task Board for that specific project.
-      - Users can also start planning a project from this view.
-    `;
-    
-    const taskManagerTextContent = `
-      - The Task Manager displays tasks in a Kanban board format with columns for "To Do", "In Progress", and "Done".
-      - Tasks can be moved between columns to update their status.
-      - The Task Manager is the primary view for managing the day-to-day work within a project.
-    `;
-
-    const contactsManagerTextContent = `
-      - The Contacts manager is for organizing all client and personal contacts.
-      - Contacts are organized into folders.
-      - Users can create, edit, and delete contacts and folders.
-      - It supports importing contacts from Google.
-    `;
-
-    const calendarManagerTextContent = `
-      - The Calendar allows users to manage their schedule, events, and appointments.
-      - It features multiple views (day, week, month) and supports drag-and-drop for rescheduling.
-      - Events in the calendar can be linked to projects and contacts.
-    `;
-
-    const timeManagerTextContent = `
-      - The Time Manager is used to track time spent on tasks.
-      - It features a live timer that can be started, paused, and stopped.
-      - Logged time can be associated with specific clients and projects, and marked as billable.
-    `;
-
-    return `
-      <knowledge_base>
-        <document name="STUDIO_GUIDELINES.md">
-          ${guidelinesContent}
-        </document>
-        <document name="TRADEMARK_DESCRIPTION.md">
-          ${trademarkContent}
-        </document>
-        <document name="BKS_INFO">
-          ${bksTextContent}
-        </document>
-        <document name="OGEEMAIL_INFO">
-          ${ogeemailTextContent}
-        </document>
-        <document name="PROJECT_MANAGER_INFO">
-          ${projectManagerTextContent}
-        </document>
-        <document name="TASK_MANAGER_INFO">
-          ${taskManagerTextContent}
-        </document>
-        <document name="CONTACTS_MANAGER_INFO">
-          ${contactsManagerTextContent}
-        </document>
-        <document name="CALENDAR_MANAGER_INFO">
-          ${calendarManagerTextContent}
-        </document>
-        <document name="TIME_MANAGER_INFO">
-          ${timeManagerTextContent}
-        </document>
-      </knowledge_base>
-    `;
+    const summaryPath = path.join(process.cwd(), 'OGEEMO_SUMMARY.md');
+    const summaryContent = fs.readFileSync(summaryPath, 'utf-8');
+    return `<knowledge_base><document name="OGEEMO_SUMMARY.md">${summaryContent}</document></knowledge_base>`;
   } catch (error) {
     console.error("Error reading knowledge base files:", error);
     return "<knowledge_base>Error: Could not load application documentation.</knowledge_base>";
@@ -103,8 +99,8 @@ function getKnowledgeBase(): string {
 }
 
 const systemPromptTemplate = `
-You are Ogeemo, an AI assistant for the Ogeemo platform. Your primary role is to help users understand and use the Ogeemo application.
-Your secondary role is to act as a general business assistant.
+You are Ogeemo, an AI assistant for the Ogeemo platform. Your primary role is to help users understand and use the Ogeemo application based on the provided knowledge base.
+Your secondary role is to act as a general business assistant and perform actions on the user's behalf using the available tools.
 Your persona is helpful, knowledgeable, and slightly formal.
 You must always respond in markdown format.
 
@@ -112,48 +108,53 @@ You have been provided with a knowledge base containing specific documentation a
 You MUST prioritize the information in this knowledge base when answering questions about Ogeemo's features, purpose, or functionality.
 If a user asks a question you cannot answer from the provided history or the knowledge base, state that you do not have that information and then add the following text on a new line: "The Ogeemo Assistant is still under development and will be gaining even more power as we continue to enhance the Ogeemo app.". Do not make up information.
 
+When the user asks you to perform an action, like adding a contact, you must use the available tools.
+
 Here is the knowledge base:
 {{{knowledgeBase}}}
 `;
 
-// Define a more specific Zod schema for the history objects to match the client
-const messageSchema = z.object({
-  role: z.enum(['user', 'model']),
-  content: z.array(z.object({
-    text: z.string(),
-  })),
-});
-
-const ogeemoChatFlowInputSchema = z.object({
-  message: z.string(),
-  history: z.array(messageSchema).optional(),
-});
-
-export async function ogeemoChatFlow(input: z.infer<typeof ogeemoChatFlowInputSchema>): Promise<{ reply: string }> {
-  const { message, history } = input;
-  
-  const conversationHistory: MessageData[] = history || [];
-
-  const messages: MessageData[] = [
-    ...conversationHistory,
-    { role: 'user', content: [{ text: message }] }
-  ];
-  
-  const knowledgeBase = getKnowledgeBase();
-  
-  // Replace the placeholder in the template with the actual knowledge base content.
-  const finalSystemPrompt = systemPromptTemplate.replace('{{knowledgeBase}}', knowledgeBase);
-
-  const result = await ai.generate({
-    model: googleAI.model('gemini-1.5-flash'),
-    messages: messages,
-    config: {
-      temperature: 0.7,
-    },
-    system: finalSystemPrompt,
-  });
-
-  return {
-    reply: result.text,
-  };
+// Exported wrapper function for the flow
+export async function ogeemoAgent(input: OgeemoAgentInput): Promise<{ reply: string }> {
+    return ogeemoAgentFlow(input);
 }
+
+// The Main Agent Flow
+const ogeemoAgentFlow = ai.defineFlow(
+  {
+    name: 'ogeemoAgentFlow',
+    inputSchema: OgeemoAgentInputSchema,
+    outputSchema: z.object({ reply: z.string() }),
+  },
+  async (input) => {
+    const { userId, message, history } = input;
+
+    const conversationHistory: MessageData[] = (history as MessageData[]) || [];
+    const messages: MessageData[] = [
+      ...conversationHistory,
+      { role: 'user', content: [{ text: message }] }
+    ];
+
+    const knowledgeBase = getKnowledgeBase();
+    const finalSystemPrompt = systemPromptTemplate.replace('{{knowledgeBase}}', knowledgeBase);
+
+    const result = await ai.generate({
+      model: 'googleai/gemini-1.5-flash',
+      messages: messages,
+      tools: [addContactTool],
+      toolConfig: {
+        commonData: {
+            userId,
+        },
+      },
+      system: finalSystemPrompt,
+      config: {
+        temperature: 0.1,
+      },
+    });
+
+    return {
+      reply: result.text,
+    };
+  }
+);

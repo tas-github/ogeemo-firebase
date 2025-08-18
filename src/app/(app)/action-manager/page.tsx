@@ -1,8 +1,6 @@
-
 'use client';
 
 import { ActionManagerView } from "@/components/dashboard/action-manager-view";
-import { CommandBar } from "@/components/layout/command-bar";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -25,11 +23,6 @@ export default function ActionManagerPage() {
                 <ScrollArea className="h-full">
                     <ActionManagerView />
                 </ScrollArea>
-            </div>
-            
-            {/* Command Bar */}
-            <div>
-                <CommandBar />
             </div>
         </div>
       </div>

@@ -148,9 +148,8 @@ export function ImagePlaceholder({ 'data-ai-hint': hint, className }: ImagePlace
             <Image
                 src={previewUrl}
                 alt={`Preview for ${hint}`}
-                layout="fill"
-                objectFit="cover"
-                className="rounded-lg"
+                fill
+                className="rounded-lg object-cover"
                 unoptimized
             />
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -173,9 +172,8 @@ export function ImagePlaceholder({ 'data-ai-hint': hint, className }: ImagePlace
         <Image
           src={imageUrl}
           alt={hint}
-          layout="fill"
-          objectFit="cover"
-          className="rounded-lg"
+          fill
+          className="rounded-lg object-cover"
         />
         <div 
           onClick={handlePlaceholderClick}

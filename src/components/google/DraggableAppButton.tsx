@@ -6,13 +6,10 @@ import { useDrag, useDrop } from 'react-dnd';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { type GoogleApp } from '@/lib/google-apps';
 
 interface DraggableAppButtonProps {
-    app: {
-        name: string;
-        href: string;
-        icon: React.ElementType;
-    };
+    app: GoogleApp;
     index: number;
     moveApp: (dragIndex: number, hoverIndex: number) => void;
 }

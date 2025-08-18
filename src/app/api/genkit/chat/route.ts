@@ -1,43 +1,28 @@
-
-// src/app/api/genkit/chat/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { ogeemoChatFlow } from '@/ai/flows/ogeemo-chat';
-import { experimentalChatFlow } from '@/ai/flows/experimental-chat-flow';
-
-// Define the expected message structure from the client
-interface ClientMessage {
-  role: 'user' | 'model' | 'tool';
-  content: any[];
-}
+import {NextRequest, NextResponse} from 'next/server';
+import {ogeemoAgent} from '@/ai/flows/ogeemo-chat'; // Ensure we import the new wrapper function
+import {getCurrentUserId} from '@/app/actions';
 
 export async function POST(req: NextRequest) {
-    try {
-        const { message, history, experimental } = await req.json();
-
-        if (!message) {
-            return NextResponse.json({ error: 'Message is required.' }, { status: 400 });
-        }
-
-        const typedHistory: ClientMessage[] = history || [];
-
-        let result;
-        if (experimental) {
-            result = await experimentalChatFlow({
-                message,
-                history: typedHistory,
-            });
-        } else {
-            result = await ogeemoChatFlow({
-                message,
-                history: typedHistory.filter(m => m.role !== 'tool') as any, // Ogeemo chat doesn't handle tool messages
-            });
-        }
-        
-
-        return NextResponse.json(result);
-
-    } catch (error: any) {
-        console.error("Error in chat route handler:", error);
-        return NextResponse.json({ error: error.message || 'An unexpected error occurred.' }, { status: 500 });
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json({error: 'Unauthorized'}, {status: 401});
     }
+
+    const {message, history} = await req.json();
+
+    if (!message) {
+      return NextResponse.json({error: 'Message is required.'}, {status: 400});
+    }
+
+    // Call the exported wrapper function, which will in turn run the Genkit flow.
+    const result = await ogeemoAgent({userId, message, history: history || []});
+    
+    // The result is now guaranteed to be a JSON-serializable object.
+    return NextResponse.json(result);
+    
+  } catch (error: any) {
+    console.error("[Ogeemo Agent API Error]", error);
+    return NextResponse.json({error: error.message || 'An unexpected error occurred.'}, {status: 500});
+  }
 }

@@ -24,4 +24,6 @@ export * from '@/ai/flows/ogeemo-chat';
 export * from '@/ai/flows/ai-search-flow';
 export * from '@/ai/flows/generate-form-flow';
 export * from '@/ai/flows/summarize-database';
+export * from '@/ai/flows/experimental-chat-flow';
+export * from '@/ai/tools/contact-tools';
 export { ai };
