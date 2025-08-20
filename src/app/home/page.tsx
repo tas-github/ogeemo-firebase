@@ -4,7 +4,6 @@
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import React, { useState } from 'react';
-import VisionariesDialog from '@/components/landing/visionaries-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SiteHeader } from '@/components/landing/header';
 import { SiteFooter } from '@/components/landing/footer';
@@ -12,8 +11,6 @@ import { ImagePlaceholder } from '@/components/ui/image-placeholder';
 import { ChevronDown } from 'lucide-react';
 
 export default function HomePage() {
-  const [isVisionariesDialogOpen, setIsVisionariesDialogOpen] = useState(false);
-
   const handleScroll = () => {
     const nextSection = document.getElementById('visionaries-section');
     if (nextSection) {
@@ -60,7 +57,6 @@ export default function HomePage() {
                   <p className="mt-4 text-lg text-muted-foreground">
                       Ogeemo is not a casual project; it's the result of immense dedication and a commitment to pushing boundaries. This is a platform built for those who see the bigger picture—the entrepreneurs ready to take their business to the next level.
                   </p>
-                  <Button className="mt-4 text-lg" onClick={() => setIsVisionariesDialogOpen(true)}>Learn why we embraced the complexity...</Button>
               </div>
           </section>
 
@@ -99,7 +95,6 @@ export default function HomePage() {
         </main>
         <SiteFooter />
       </div>
-      <VisionariesDialog isOpen={isVisionariesDialogOpen} onOpenChange={setIsVisionariesDialogOpen} />
     </>
   );
 }

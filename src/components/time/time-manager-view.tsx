@@ -328,7 +328,7 @@ export function TimeManagerView() {
                         <Clock className="h-8 w-8 text-primary" />
                     </div>
                     <div className="text-center">
-                        <h1 className="text-3xl font-bold font-headline text-primary">Time Manager</h1>
+                        <h1 className="text-2xl font-bold font-headline text-primary">Event Manager</h1>
                         <p className="text-muted-foreground">
                             Track your time or schedule future events.
                         </p>

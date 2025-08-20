@@ -85,7 +85,7 @@ export function OgeeMailInboxView() {
                     <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
                         <div className="flex h-full flex-col p-2">
                             <div className="p-2">
-                            <Button asChild className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+                            <Button asChild className="w-full bg-slate-900 hover:bg-slate-900/90 text-white">
                                 <Link href="/ogeemail/compose">
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Compose

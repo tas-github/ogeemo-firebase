@@ -85,7 +85,7 @@ export default function IdeasPage() {
     <>
       <div className="p-4 sm:p-6 flex flex-col h-full">
         <header className="text-center mb-6">
-          <h1 className="text-3xl font-bold font-headline text-primary">
+          <h1 className="text-2xl font-bold font-headline text-primary">
             Idea Board
           </h1>
           <p className="text-muted-foreground">

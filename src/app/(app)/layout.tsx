@@ -9,15 +9,14 @@ import { ActiveTimerIndicator } from '@/components/layout/active-timer-indicator
 import { Sidebar, SidebarTrigger } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
 import { UserNav } from '@/components/user-nav';
-import { GlobalSearch } from '@/components/layout/global-search';
 import { Button } from '@/components/ui/button';
-import { Mic } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { LayoutDashboard } from 'lucide-react';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
@@ -26,7 +25,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <ClientLayout>
       <div className="flex h-screen w-full bg-muted">
         {/* Sidebar */}
-        <Sidebar className="hidden h-full flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
+        <Sidebar className="hidden h-full w-[16rem] flex-col border-r bg-sidebar text-sidebar-foreground md:flex">
           <div className="flex h-16 shrink-0 items-center justify-center border-b border-white/20 px-4 lg:px-6">
             <Logo />
           </div>
@@ -40,34 +39,53 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <header className="flex h-16 items-center justify-between gap-4 bg-gradient-to-r from-[#3DD5C0] to-[#1E8E86] px-4 md:px-6">
              <div className="flex items-center gap-4">
                <SidebarTrigger className="md:hidden" />
+               <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button asChild variant="ghost" size="icon" className="h-9 w-9 text-black hover:bg-white/20 hover:text-black">
+                        <Link href="/action-manager">
+                          <LayoutDashboard className="h-5 w-5" />
+                          <span className="sr-only">Action Manager</span>
+                        </Link>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p>Action Manager</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
              </div>
-             <div className="flex flex-1 justify-center">
-                <div className="flex items-center gap-2 max-w-2xl w-full">
-                    <GlobalSearch isOpen={isCommandCenterOpen} onOpenChange={setIsCommandCenterOpen} />
+             <div className="flex justify-center">
+                <div className="flex items-center gap-2">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                           <Button variant="outline" size="icon" className="h-10 w-10 rounded-full flex-shrink-0" onClick={() => setIsCommandCenterOpen(true)}>
-                                <Mic className="h-5 w-5" />
-                                <span className="sr-only">Open Command Center with Mic</span>
-                           </Button>
+                          <Button asChild variant="outline" className="h-9 px-4">
+                            <Link href="/command-centre">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                                    <span className="font-bold">OGEEMO</span>
+                                </div>
+                            </Link>
+                          </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Voice Command</p>
+                          <p>Open Command Centre</p>
                         </TooltipContent>
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                           <Button asChild variant="outline" className="h-9 px-2 flex-shrink-0">
+                           <Button asChild variant="outline" className="h-9 px-2">
                                 <Link href="https://gemini.google.com/app" target="_blank">
                                     <div className="flex items-center gap-2">
-                                        <span className="font-bold">OGEEMO Ai</span>
+                                        <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                                        <span className="font-bold">GEMINI</span>
                                     </div>
                                 </Link>
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Open Ogeemo Ai</p>
+                          <p>Open Gemini</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>

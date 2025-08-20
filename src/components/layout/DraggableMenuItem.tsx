@@ -73,7 +73,7 @@ export function DraggableMenuItem({
           className={cn(
             "w-full justify-start gap-3",
             isDraggable ? "pl-8" : "pl-3",
-            isCompact ? "h-9 text-sm" : "h-10 text-base",
+            isCompact ? "h-9 text-sm" : "h-5 text-sm py-1",
             "border-b-4 border-black hover:bg-sidebar-accent/90 active:mt-1 active:border-b-2"
           )}
         >

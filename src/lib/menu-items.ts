@@ -38,6 +38,7 @@ import {
   ListTodo,
   ImageIcon,
   BookText,
+  BrainCircuit,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -49,6 +50,7 @@ export interface MenuItem {
 
 export const allMenuItems: MenuItem[] = [
   { href: "/action-manager", label: "Action Manager", icon: LayoutDashboard },
+  { href: "/command-centre", label: "Command Centre", icon: BrainCircuit },
   { href: "/action-manager/manage", label: "Manage Dashboard", icon: LayoutDashboard },
   { href: "/action-manager/trash", label: "Trash", icon: Trash2 },
   { href: "/a-z-sort", label: "A-Z Sort", icon: ArrowDownAZ },

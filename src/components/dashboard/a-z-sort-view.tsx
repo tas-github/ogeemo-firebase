@@ -160,7 +160,7 @@ export function AZSortView() {
   return (
     <div className="p-4 sm:p-6 space-y-6">
         <header className="text-center">
-            <h1 className="text-3xl font-bold font-headline text-primary">A-Z Sort Manager</h1>
+            <h1 className="text-2xl font-bold font-headline text-primary">A-Z Sort Manager</h1>
             <p className="text-muted-foreground max-w-2xl mx-auto">
                 Sort your main menu managers alphabetically or drag and drop to create a custom order.
             </p>

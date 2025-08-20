@@ -3,11 +3,17 @@
 
 import React, { useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDrag, useDrop, XYCoord } from 'react-dnd';
+import { useDrag, useDrop } from 'react-dnd';
 import { Button } from '@/components/ui/button';
 import { type ActionChipData } from '@/types/calendar';
 import { cn } from '@/lib/utils';
-import { Wand2, X } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export const DraggableItemTypes = {
   ACTION_CHIP: 'actionChip',
@@ -17,15 +23,15 @@ interface ActionChipProps {
   chip: ActionChipData;
   index: number;
   onDelete?: () => void;
+  onEdit?: () => void;
   onMove?: (dragIndex: number, hoverIndex: number) => void;
 }
 
 export const ActionChip = React.forwardRef<HTMLDivElement, ActionChipProps>(
-  ({ chip, index, onDelete, onMove }, ref) => {
+  ({ chip, index, onDelete, onEdit, onMove }, ref) => {
     const router = useRouter();
     const localRef = useRef<HTMLDivElement>(null);
-    const { icon: IconComponent, href, label } = chip;
-    const Icon = typeof IconComponent === 'function' ? IconComponent : Wand2;
+    const { href, label } = chip;
 
     const [{ isDragging }, drag] = useDrag({
       type: DraggableItemTypes.ACTION_CHIP,
@@ -52,7 +58,6 @@ export const ActionChip = React.forwardRef<HTMLDivElement, ActionChipProps>(
         const clientOffset = monitor.getClientOffset();
         if (!clientOffset) return;
 
-        // You might need more sophisticated logic here depending on layout (e.g., grid)
         const hoverClientY = clientOffset.y - hoverBoundingRect.top;
         if (dragIndex < hoverIndex && hoverClientY < hoverBoundingRect.height / 2) {
           return;
@@ -84,42 +89,51 @@ export const ActionChip = React.forwardRef<HTMLDivElement, ActionChipProps>(
       }
     };
     
-    const handleDelete = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        onDelete?.();
-    }
-
     return (
       <div
         ref={localRef}
         className={cn(
-          'relative group',
+          'relative group w-full min-w-36 max-w-40',
           isDragging && 'opacity-50'
         )}
       >
         <Button
           onClick={handleClick}
           className={cn(
-            "w-48 justify-start border-b-4 border-primary/70 bg-primary text-primary-foreground",
-            "hover:bg-primary/90",
-            "active:mt-1 active:border-b-2 active:border-primary/90",
-            !href && "cursor-default active:mt-0 active:border-b-4",
-            "border-blue-800"
+            "w-full h-6 text-xs justify-center border-b-2 border-black bg-tan text-black",
+            "hover:bg-tan/90",
+            "active:mt-0.5 active:border-b-0 active:border-black",
+            !href && "cursor-default active:mt-0 active:border-b-2",
+            (onDelete || onEdit) && "pr-8" // Add padding if menu is present
           )}
         >
-          <Icon className="mr-2 h-4 w-4 flex-shrink-0" />
           <span className="truncate">{label}</span>
         </Button>
-        {onDelete && (
-             <Button
-                variant="destructive"
-                size="icon"
-                className="absolute -top-2 -right-2 h-5 w-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={handleDelete}
-            >
-                <X className="h-3 w-3" />
-                <span className="sr-only">Delete {label}</span>
-            </Button>
+        {(onDelete || onEdit) && (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-1/2 right-1 -translate-y-1/2 h-5 w-5"
+                    >
+                        <MoreVertical className="h-4 w-4" />
+                        <span className="sr-only">More options for {label}</span>
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                    {onEdit && (
+                        <DropdownMenuItem onSelect={onEdit}>
+                            <Pencil className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                    )}
+                    {onDelete && (
+                         <DropdownMenuItem onSelect={onDelete} className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </DropdownMenuItem>
+                    )}
+                </DropdownMenuContent>
+            </DropdownMenu>
         )}
       </div>
     );

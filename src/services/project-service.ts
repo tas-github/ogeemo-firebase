@@ -322,10 +322,14 @@ async function getChipsFromCollection(userId: string, collectionName: string): P
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
         const data = docSnap.data();
-        return (data.chips || []).map((chip: any) => ({
+        const chips = (data.chips || []).map((chip: any) => ({
             ...chip,
             icon: iconMap[chip.iconName as keyof typeof iconMap] || Wand2,
         }));
+        // Ensure position exists if it doesn't, then sort
+        return chips
+            .map((chip: any, index: number) => ({ ...chip, position: chip.position ?? index }))
+            .sort((a: any, b: any) => a.position - b.position);
     }
     return [];
 }
@@ -344,8 +348,7 @@ async function updateChipsInCollection(userId: string, collectionName: string, c
 export async function getActionChips(userId: string): Promise<ActionChipData[]> {
     const chips = await getChipsFromCollection(userId, ACTION_CHIPS_COLLECTION);
     if (chips.length === 0) {
-        const db = await getDb();
-        const docRef = doc(db, ACTION_CHIPS_COLLECTION, userId);
+        const docRef = doc(getFirestore(), ACTION_CHIPS_COLLECTION, userId);
         const docSnap = await getDoc(docRef);
         if (!docSnap.exists()) {
             await updateActionChips(userId, defaultChips);
@@ -372,7 +375,6 @@ export async function updateAvailableActionChips(userId: string, chips: ActionCh
 }
 
 export async function trashActionChips(userId: string, chipsToTrash: ActionChipData[]): Promise<void> {
-    const db = await getDb();
     const userChips = await getActionChips(userId);
     const availableChips = await getAvailableActionChips(userId);
     const trashedChips = await getTrashedActionChips(userId);
@@ -391,7 +393,6 @@ export async function trashActionChips(userId: string, chipsToTrash: ActionChipD
 }
 
 export async function restoreActionChips(userId: string, chipsToRestore: ActionChipData[]): Promise<void> {
-    const db = await getDb();
     const availableChips = await getAvailableActionChips(userId);
     const trashedChips = await getTrashedActionChips(userId);
     
@@ -412,9 +413,9 @@ export async function deleteActionChips(userId: string, chipIdsToDelete: string[
   const docSnap = await getDoc(docRef);
 
   if (docSnap.exists()) {
-    const currentChips = (docSnap.data().chips || []) as ActionChipData[];
+    const currentChips = (docSnap.data().chips || []).map(docToActionChip);
     const updatedChips = currentChips.filter(chip => !chipIdsToDelete.includes(chip.id));
-    await setDoc(docRef, { chips: updatedChips }, { merge: true });
+    await updateChipsInCollection(userId, TRASHED_ACTION_CHIPS_COLLECTION, updatedChips);
   }
 }
 
@@ -423,17 +424,31 @@ export async function addActionChip(chipData: Omit<ActionChipData, 'id'>): Promi
   const docRef = doc(db, AVAILABLE_ACTION_CHIPS_COLLECTION, chipData.userId);
   const docSnap = await getDoc(docRef);
   
-  const existingChips = docSnap.exists() ? (docSnap.data().chips || []) : [];
+  const existingChips = docSnap.exists() ? (docSnap.data().chips || []).map(docToActionChip) : [];
   
-  const iconName = Object.keys(iconMap).find(key => iconMap[key] === chipData.icon);
-  const { icon, ...rest } = chipData;
-  const newChipData = { ...rest, id: `chip_${Date.now()}`, iconName };
+  const newChipData = { ...chipData, id: `chip_${Date.now()}` };
   
   const updatedChips = [...existingChips, newChipData];
-  await setDoc(docRef, { chips: updatedChips }, { merge: true });
+  await updateChipsInCollection(chipData.userId, AVAILABLE_ACTION_CHIPS_COLLECTION, updatedChips);
   
-  return { ...chipData, id: newChipData.id };
+  return newChipData;
 }
+
+export async function updateActionChip(userId: string, updatedChip: ActionChipData): Promise<void> {
+    const userChips = await getActionChips(userId);
+    const availableChips = await getAvailableActionChips(userId);
+    
+    const isUserChip = userChips.some(c => c.id === updatedChip.id);
+    
+    if (isUserChip) {
+        const newUserChips = userChips.map(c => c.id === updatedChip.id ? updatedChip : c);
+        await updateActionChips(userId, newUserChips);
+    } else {
+        const newAvailableChips = availableChips.map(c => c.id === updatedChip.id ? updatedChip : c);
+        await updateAvailableActionChips(userId, newAvailableChips);
+    }
+}
+
 
 // --- Data for Dialogs ---
 export type ManagerOption = { label: string; href: string; icon: LucideIcon };

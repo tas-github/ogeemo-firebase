@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { addActionChip, managerOptions } from '@/services/project-service';
+import { addActionChip, updateActionChip, managerOptions } from '@/services/project-service';
 import type { ActionChipData } from '@/types/calendar';
 import { Wand2 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
@@ -48,7 +48,7 @@ const addActionSchema = z.object({
     return true; // 'none' is always valid
 }, {
     message: "A target is required for this link type.",
-    path: ['targetPage'], // You can point the error to one of the fields
+    path: ['targetPage'],
 });
 
 
@@ -58,9 +58,11 @@ interface AddActionDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onActionAdded: (action: ActionChipData) => void;
+  onActionEdited: (action: ActionChipData) => void;
+  chipToEdit: ActionChipData | null;
 }
 
-export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded }: AddActionDialogProps) {
+export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, onActionEdited, chipToEdit }: AddActionDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const form = useForm<AddActionFormData>({
@@ -72,6 +74,38 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded }:
       targetUrl: "",
     },
   });
+  
+  useEffect(() => {
+    if (chipToEdit) {
+        let linkType: 'page' | 'url' | 'none' = 'none';
+        let targetPage: string | undefined = undefined;
+        let targetUrl: string | undefined = undefined;
+
+        if (typeof chipToEdit.href === 'string') {
+            if (chipToEdit.href.startsWith('/')) {
+                linkType = 'page';
+                targetPage = chipToEdit.href;
+            } else if (chipToEdit.href.startsWith('http')) {
+                linkType = 'url';
+                targetUrl = chipToEdit.href;
+            }
+        }
+
+        form.reset({
+            label: chipToEdit.label,
+            linkType,
+            targetPage,
+            targetUrl,
+        });
+    } else {
+        form.reset({
+          label: "",
+          linkType: 'page',
+          targetPage: undefined,
+          targetUrl: "",
+        });
+    }
+  }, [chipToEdit, form]);
 
   const linkType = form.watch('linkType');
 
@@ -95,21 +129,31 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded }:
     }
 
     try {
-      const newActionData: Omit<ActionChipData, 'id'> = {
-        label: values.label,
-        icon,
-        href,
-        userId: user.uid,
-      };
+      if (chipToEdit) {
+        const updatedActionData: ActionChipData = {
+            ...chipToEdit,
+            label: values.label,
+            href,
+            icon,
+        };
+        await updateActionChip(user.uid, updatedActionData);
+        onActionEdited(updatedActionData);
+        toast({ title: "Action Updated" });
+      } else {
+         const newActionData: Omit<ActionChipData, 'id'> = {
+            label: values.label,
+            icon,
+            href,
+            userId: user.uid,
+         };
+         const newAction = await addActionChip(newActionData);
+         onActionAdded(newAction);
+         toast({ title: "Action Added" });
+      }
 
-      const newAction = await addActionChip(newActionData);
-      onActionAdded(newAction);
-      
-      toast({ title: "Action Added", description: `"${values.label}" has been added to your dashboard.` });
       onOpenChange(false);
-      form.reset();
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Failed to add action", description: error.message });
+      toast({ variant: "destructive", title: "Failed to save action", description: error.message });
     }
   }
 
@@ -117,9 +161,9 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded }:
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add New Action</DialogTitle>
+          <DialogTitle>{chipToEdit ? 'Edit Action' : 'Add New Action'}</DialogTitle>
           <DialogDescription>
-            Create a custom shortcut for your Action Dashboard.
+            {chipToEdit ? 'Modify the details for this action.' : 'Create a custom shortcut for your Action Dashboard.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -215,7 +259,7 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded }:
 
              <DialogFooter className="pt-4">
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                <Button type="submit">Add Action</Button>
+                <Button type="submit">{chipToEdit ? 'Save Changes' : 'Add Action'}</Button>
             </DialogFooter>
           </form>
         </Form>

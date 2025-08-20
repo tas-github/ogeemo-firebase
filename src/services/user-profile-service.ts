@@ -18,7 +18,6 @@ export interface UserProfile {
     updatedAt?: any;
     preferences?: {
         showDictationButton?: boolean;
-        showCommandFrame?: boolean;
         showDashboardFrame?: boolean;
         menuOrder?: string[];
         googleAppsOrder?: string[];
@@ -35,7 +34,6 @@ async function getDb() {
 
 const defaultPreferences = {
     showDictationButton: true,
-    showCommandFrame: true,
     showDashboardFrame: true,
     menuOrder: [],
     googleAppsOrder: [],

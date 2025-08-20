@@ -85,8 +85,8 @@ export function AccountingToolsView() {
     <div className="p-4 sm:p-6 space-y-6">
       <header className="text-center mb-6">
         <div className="flex justify-center items-center gap-4 mb-2">
-            <Calculator className="h-10 w-10 text-primary" />
-            <h1 className="text-4xl font-bold font-headline text-primary">
+            <Calculator className="h-8 w-8 text-primary" />
+            <h1 className="text-2xl font-bold font-headline text-primary">
             Accounting Tools
             </h1>
         </div>

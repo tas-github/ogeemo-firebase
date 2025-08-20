@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useDrop } from 'react-dnd';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { LoaderCircle, Plus, ArrowLeft, Trash2, ArrowDownAZ, ArrowUpZA, Save } from 'lucide-react';
+import { LoaderCircle, Plus, ArrowLeft, Trash2, ArrowDownAZ, ArrowUpZA, Save, BookOpen } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -15,7 +15,9 @@ import {
   updateActionChips,
   updateAvailableActionChips,
   trashActionChips,
+  updateActionChip,
   type ActionChipData,
+  addActionChip,
 } from '@/services/project-service';
 import { ActionChip, DraggableItemTypes } from './ActionChip';
 import { ChipDropZone } from './ChipDropZone';
@@ -77,6 +79,7 @@ export function ManageDashboardView() {
   });
   const [isLoading, setIsLoading] = React.useState(true);
   const [isAddActionDialogOpen, setIsAddActionDialogOpen] = React.useState(false);
+  const [chipToEdit, setChipToEdit] = React.useState<ActionChipData | null>(null);
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -171,6 +174,13 @@ export function ManageDashboardView() {
       return { ...prevState, availableChips: newAvailable };
     });
   };
+  
+  const handleActionEdited = (editedChip: ActionChipData) => {
+      setChipsState(prevState => ({
+          userChips: prevState.userChips.map(c => c.id === editedChip.id ? editedChip : c),
+          availableChips: prevState.availableChips.map(c => c.id === editedChip.id ? editedChip : c),
+      }));
+  };
 
   const handleTrashChip = async (chipToTrash: ActionChipData) => {
     if (!user) return;
@@ -185,6 +195,16 @@ export function ManageDashboardView() {
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Failed to trash action', description: error.message });
     }
+  };
+  
+  const handleEditChip = (chipToEdit: ActionChipData) => {
+    setChipToEdit(chipToEdit);
+    setIsAddActionDialogOpen(true);
+  };
+  
+  const handleAddNewChip = () => {
+    setChipToEdit(null);
+    setIsAddActionDialogOpen(true);
   };
 
   const handleSortUserChips = (direction: 'asc' | 'desc') => {
@@ -224,51 +244,53 @@ export function ManageDashboardView() {
       <div className="p-4 sm:p-6 space-y-6">
         <header className="flex items-center justify-between">
             <div className="text-center flex-1">
-                <h1 className="text-3xl font-bold font-headline text-primary">Manage Dashboard</h1>
+                <h1 className="text-2xl font-bold font-headline text-primary">Manage Dashboard</h1>
                 <p className="text-muted-foreground max-w-2xl mx-auto">
                     Drag and drop actions to customize your dashboard.
                 </p>
             </div>
             <div className="flex items-center gap-2">
-                <Button onClick={() => setIsAddActionDialogOpen(true)} className="bg-[#3B2F4A] hover:bg-[#3B2F4A]/90 text-white">
-                    <Plus className="mr-2 h-4 w-4" /> Add New Action
+                <Button asChild className="h-6 px-2 py-1 text-xs">
+                    <Link href="/action-manager/manage/instructions"><BookOpen className="mr-2 h-4 w-4"/> Instructions</Link>
                 </Button>
-                <Button asChild variant="outline">
-                    <Link href="/action-manager"><ArrowLeft className="mr-2 h-4 w-4"/> Back to Dashboard</Link>
+                <Button asChild className="bg-slate-900 text-white hover:bg-slate-900/90 h-6 px-2 py-1 text-xs">
+                    <Link href="/action-manager"><ArrowLeft className="mr-2 h-4 w-4"/> Back to Action Manager</Link>
                 </Button>
             </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+        <div className="space-y-6">
             <Card>
                 <CardHeader className="text-center">
-                    <CardTitle>Selected Actions</CardTitle>
+                    <CardTitle className="text-lg">Selected Actions</CardTitle>
                     <CardDescription>Actions currently on your dashboard. Drag to reorder or add from "Available".</CardDescription>
                     <div className="flex justify-center gap-2 pt-2">
-                        <Button variant="outline" size="sm" onClick={() => handleSortUserChips('asc')}><ArrowDownAZ className="mr-2 h-4 w-4" /> Sort A-Z</Button>
-                        <Button variant="outline" size="sm" onClick={() => handleSortUserChips('desc')}><ArrowUpZA className="mr-2 h-4 w-4" /> Sort Z-A</Button>
-                        <Button size="sm" onClick={handleSaveUserChipOrder}><Save className="mr-2 h-4 w-4" /> Save Order</Button>
+                        <Button variant="outline" onClick={() => handleSortUserChips('asc')} className="h-6 px-2 py-1 text-xs"><ArrowDownAZ className="mr-2 h-4 w-4" /> Sort A-Z</Button>
+                        <Button variant="outline" onClick={() => handleSortUserChips('desc')} className="h-6 px-2 py-1 text-xs"><ArrowUpZA className="mr-2 h-4 w-4" /> Sort Z-A</Button>
+                        <Button onClick={handleSaveUserChipOrder} className="h-6 px-2 py-1 text-xs"><Save className="mr-2 h-4 w-4" /> Save Order</Button>
+                        <Button onClick={handleAddNewChip} className="h-6 px-2 py-1 text-xs">
+                            <Plus className="mr-2 h-4 w-4" /> Add New Action
+                        </Button>
                     </div>
                 </CardHeader>
-                <ChipDropZone onDrop={(item) => handleDrop(item, 'user')} onMove={handleMoveUserChip} className="min-h-[150px]">
+                <ChipDropZone onDrop={(item) => handleDrop(item, 'user')} onMove={handleMoveUserChip} className="min-h-[150px] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1 p-4 place-items-center">
                     {chipsState.userChips.map((chip, index) => (
-                        <ActionChip key={chip.id} chip={chip} index={index} onDelete={() => handleTrashChip(chip)} />
+                        <ActionChip key={chip.id} chip={chip} index={index} onDelete={() => handleTrashChip(chip)} onEdit={() => handleEditChip(chip)} />
                     ))}
                 </ChipDropZone>
             </Card>
-            <div className="space-y-6">
-                <Card>
-                    <CardHeader className="text-center">
-                        <CardTitle>Available Actions</CardTitle>
-                        <CardDescription>Drag actions to "Selected Actions" to add them to your dashboard.</CardDescription>
-                    </CardHeader>
-                    <ChipDropZone onDrop={(item) => handleDrop(item, 'available')} className="min-h-[150px]">
-                        {chipsState.availableChips.map((chip, index) => (
-                            <ActionChip key={chip.id} chip={chip} index={index} onDelete={() => handleTrashChip(chip)} />
-                        ))}
-                    </ChipDropZone>
-                </Card>
-            </div>
+            
+            <Card>
+                <CardHeader className="text-center">
+                    <CardTitle className="text-lg">Available Actions</CardTitle>
+                    <CardDescription>Drag actions to "Selected Actions" to add them to your dashboard.</CardDescription>
+                </CardHeader>
+                <ChipDropZone onDrop={(item) => handleDrop(item, 'available')} className="min-h-[150px] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1 p-4 place-items-center">
+                    {chipsState.availableChips.map((chip, index) => (
+                        <ActionChip key={chip.id} chip={chip} index={index} onDelete={() => handleTrashChip(chip)} onEdit={() => handleEditChip(chip)} />
+                    ))}
+                </ChipDropZone>
+            </Card>
         </div>
         <TrashDropZone />
       </div>
@@ -277,6 +299,8 @@ export function ManageDashboardView() {
         isOpen={isAddActionDialogOpen}
         onOpenChange={setIsAddActionDialogOpen}
         onActionAdded={handleActionAdded}
+        onActionEdited={handleActionEdited}
+        chipToEdit={chipToEdit}
       />
     </>
   );

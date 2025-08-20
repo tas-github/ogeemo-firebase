@@ -25,7 +25,6 @@ function PreferencesCard() {
             <CardContent className="space-y-4">
                 <Skeleton className="h-8 w-full" />
                 <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
             </CardContent>
         </Card>
     )
@@ -53,22 +52,9 @@ function PreferencesCard() {
         </div>
          <div className="flex items-center justify-between space-x-2 rounded-lg border p-4">
             <div className="space-y-0.5">
-                <Label htmlFor="command-frame-switch" className="text-base">Show Command Frame</Label>
+                <Label htmlFor="dashboard-frame-switch" className="text-base">Show Dashboard Info Panel</Label>
                 <p className="text-sm text-muted-foreground">
-                    Display the "Give a Command" and "Ask a Question" frame on the Action Manager.
-                </p>
-            </div>
-            <Switch
-                id="command-frame-switch"
-                checked={preferences?.showCommandFrame}
-                onCheckedChange={(checked) => handleTogglePreference('showCommandFrame', checked)}
-            />
-        </div>
-         <div className="flex items-center justify-between space-x-2 rounded-lg border p-4">
-            <div className="space-y-0.5">
-                <Label htmlFor="dashboard-frame-switch" className="text-base">Show Dashboard Frame</Label>
-                <p className="text-sm text-muted-foreground">
-                    Display the "Your Action Dashboard" frame with custom shortcuts.
+                    Display the "About the Action Manager" panel on your main dashboard.
                 </p>
             </div>
             <Switch
@@ -87,7 +73,7 @@ export default function SettingsPage() {
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <header className="text-center">
-        <h1 className="text-3xl font-bold font-headline text-primary">Settings</h1>
+        <h1 className="text-2xl font-bold font-headline text-primary">Settings</h1>
         <p className="text-muted-foreground">Manage your account and preferences.</p>
       </header>
       <div className="max-w-md mx-auto space-y-6">

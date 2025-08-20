@@ -182,7 +182,7 @@ export function AccountsPayableView() {
     <>
       <div className="space-y-6">
         <header className="text-center">
-          <h1 className="text-3xl font-bold font-headline text-primary">Accounts Payable</h1>
+          <h1 className="text-2xl font-bold font-headline text-primary">Accounts Payable</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Manage and track all outstanding bills from your vendors.
           </p>

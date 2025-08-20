@@ -8,7 +8,7 @@ export default function BksWelcomePage() {
   return (
     <div className="p-4 sm:p-6 space-y-8 flex flex-col items-center">
       <header className="text-center max-w-3xl">
-        <h1 className="text-4xl font-bold font-headline text-primary">
+        <h1 className="text-2xl font-bold font-headline text-primary">
           Welcome to Bookkeeping Kept Simple (BKS)
         </h1>
         <p className="text-lg text-muted-foreground mt-2">

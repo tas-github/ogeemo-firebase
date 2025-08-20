@@ -24,7 +24,7 @@ const groupedMenuItems = {
     Relationships: { icon: Users, items: ['/contacts', '/crm'] },
     Operations: { icon: Bot, items: ['/projects', '/time', '/accounting'] },
     Growth: { icon: BarChart3, items: ['/reports', '/marketing-manager', '/research', '/ideas'] },
-    Administration: { icon: Settings, items: ['/settings', '/hr-manager', '/legal-hub', '/backup'] },
+    Administration: { icon: Settings, items: ['/hr-manager', '/legal-hub', '/backup'] },
 };
 
 export function MainMenu() {
@@ -205,7 +205,7 @@ export function MainMenu() {
                         <LayoutDashboard className="h-4 w-4" />
                     </Button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom"><p>Actions</p></TooltipContent>
+                <TooltipContent side="bottom"><p>Favorite Actions</p></TooltipContent>
             </Tooltip>
         </TooltipProvider>
       </div>

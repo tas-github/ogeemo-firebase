@@ -82,7 +82,7 @@ export default function InvoiceTemplatesPage() {
     <div className="p-4 sm:p-6 space-y-6">
       <InvoicePageHeader pageTitle="Invoice Templates" />
       <header className="text-center">
-        <h1 className="text-3xl font-bold font-headline text-primary">
+        <h1 className="text-2xl font-bold font-headline text-primary">
           Invoice Templates
         </h1>
         <p className="text-muted-foreground">
