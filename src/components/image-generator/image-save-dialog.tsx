@@ -18,6 +18,7 @@ import { Folder, ChevronRight, LoaderCircle, FolderPlus } from "lucide-react";
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getFolders, addFolder, addFileFromDataUrl, type FolderItem } from '@/services/file-service';
+import { setFileForHint } from '@/services/image-placeholder-service';
 import { cn } from '@/lib/utils';
 
 interface ImageSaveDialogProps {
@@ -26,6 +27,9 @@ interface ImageSaveDialogProps {
   imageDataUrl: string;
   defaultFileName: string;
   convertFileToDataUrl?: () => Promise<string>;
+  onSaveSuccess?: () => void;
+  preselectedFolderId?: string;
+  hint?: string;
 }
 
 export default function ImageSaveDialog({
@@ -33,7 +37,10 @@ export default function ImageSaveDialog({
   onOpenChange,
   imageDataUrl,
   defaultFileName,
-  convertFileToDataUrl
+  convertFileToDataUrl,
+  onSaveSuccess,
+  preselectedFolderId,
+  hint,
 }: ImageSaveDialogProps) {
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [isLoadingFolders, setIsLoadingFolders] = useState(true);
@@ -54,7 +61,10 @@ export default function ImageSaveDialog({
     try {
       const fetchedFolders = await getFolders(user.uid);
       setFolders(fetchedFolders);
-      if (fetchedFolders.length > 0) {
+      
+      if (preselectedFolderId && fetchedFolders.some(f => f.id === preselectedFolderId)) {
+        setSelectedFolderId(preselectedFolderId);
+      } else if (fetchedFolders.length > 0) {
         const rootFolder = fetchedFolders.find(f => !f.parentId);
         if (rootFolder) {
             setSelectedFolderId(rootFolder.id);
@@ -68,7 +78,7 @@ export default function ImageSaveDialog({
     } finally {
       setIsLoadingFolders(false);
     }
-  }, [user, toast]);
+  }, [user, toast, preselectedFolderId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -87,13 +97,19 @@ export default function ImageSaveDialog({
     try {
         const finalImageDataUrl = convertFileToDataUrl ? await convertFileToDataUrl() : imageDataUrl;
 
-        await addFileFromDataUrl({
+        const newFile = await addFileFromDataUrl({
             dataUrl: finalImageDataUrl,
             fileName: fileName.trim(),
             userId: user.uid,
             folderId: selectedFolderId,
         });
-        toast({ title: 'Image Saved', description: `"${fileName.trim()}" has been saved to your File Manager.` });
+        
+        if (hint) {
+          await setFileForHint(hint, newFile.id);
+        }
+
+        toast({ title: 'Image Saved', description: `"${fileName.trim()}" has been saved.` });
+        onSaveSuccess?.();
         onOpenChange(false);
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Save Failed', description: error.message });

@@ -18,6 +18,7 @@ import { getActionChips, type ActionChipData } from '@/services/project-service'
 import { ActionChipMenu } from './ActionChipMenu';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useSidebarView } from '@/context/sidebar-view-context';
 
 const groupedMenuItems = {
     Workspace: { icon: Briefcase, items: ['/action-manager', '/calendar', '/tasks', '/files', '/ogeemail'] },
@@ -34,7 +35,7 @@ export function MainMenu() {
   const { preferences, isLoading: isLoadingPreferences } = useUserPreferences();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [view, setView] = useState<'grouped' | 'fullMenu' | 'dashboard'>('grouped');
+  const { view, setView } = useSidebarView();
   const [isLoadingChips, setIsLoadingChips] = useState(true);
 
   const sortMenuItems = useCallback((order: string[]) => {

@@ -19,7 +19,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const publicPaths = ['/login', '/register', '/auth/callback'];
-const marketingPaths = ['/home', '/for-small-businesses', '/for-accountants', '/news', '/about', '/contact', '/privacy', '/terms'];
+const marketingPaths = ['/home', '/for-small-businesses', '/for-accountants', '/news', '/about', '/contact', '/privacy', '/terms', '/explore'];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -37,14 +37,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const unsubscribe = onAuthStateChanged(services.auth, (currentUser) => {
           setUser(currentUser);
           
-          // **THE FIX IS HERE**: Immediately load the access token from sessionStorage when the user state is confirmed.
           if (currentUser) {
-            // This ensures that on any page load (including a new tab), if the user is logged in,
-            // we attempt to load their Google token into the context's state.
             const token = sessionStorage.getItem('google_access_token');
             setAccessToken(token);
           } else {
-            // Clear access token on logout.
             setAccessToken(null);
             sessionStorage.removeItem('google_access_token');
           }
@@ -110,8 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!user && !isPublicPath && !isMarketingPath) {
         console.log('Redirecting to /login');
         router.push('/login');
-      } 
-      else if (user && (isPublicPath || pathname === '/home')) {
+      } else if (user && isPublicPath) {
         console.log('Redirecting to /action-manager');
         router.push('/action-manager');
       }

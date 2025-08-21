@@ -22,6 +22,8 @@ import type { FileItem, FolderItem } from '@/data/files';
 
 const FOLDERS_COLLECTION = 'fileFolders';
 const FILES_COLLECTION = 'files';
+const SITE_IMAGES_FOLDER_NAME = 'Site Images';
+export const SITE_IMAGES_FOLDER_ID = 'folder-site-images'; // A constant ID for simplicity
 
 // --- Helper Functions ---
 async function getDb() {
@@ -55,8 +57,18 @@ export async function getFolders(userId: string): Promise<FolderItem[]> {
   return snapshot.docs.map(docToFolder);
 }
 
-export async function findOrCreateFileFolder(userId: string, folderName: string, parentId: string | null = null): Promise<FolderItem> {
+export async function findOrCreateFileFolder(userId: string, folderName: string, parentId: string | null = null, predefinedId?: string): Promise<FolderItem> {
     const db = await getDb();
+    
+    // If a predefined ID is given, check for that first.
+    if (predefinedId) {
+        const docRef = doc(db, FOLDERS_COLLECTION, predefinedId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            return docToFolder(docSnap);
+        }
+    }
+
     const q = query(
         collection(db, FOLDERS_COLLECTION), 
         where("userId", "==", userId), 
@@ -74,7 +86,8 @@ export async function findOrCreateFileFolder(userId: string, folderName: string,
             parentId,
             createdAt: new Date(),
         };
-        const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), newFolderData);
+        const docRef = predefinedId ? doc(db, FOLDERS_COLLECTION, predefinedId) : doc(collection(db, FOLDERS_COLLECTION));
+        await setDoc(docRef, newFolderData);
         return { id: docRef.id, ...newFolderData };
     }
 }
@@ -158,6 +171,12 @@ export async function addFile(formData: FormData): Promise<FileItem> {
         throw new Error("Missing required data for file upload.");
     }
     
+    // Special handling for site images to ensure the folder exists
+    if (folderId === SITE_IMAGES_FOLDER_ID) {
+        const siteImagesFolder = await findOrCreateFileFolder(userId, SITE_IMAGES_FOLDER_NAME, null, SITE_IMAGES_FOLDER_ID);
+        folderId = siteImagesFolder.id; // Use the confirmed ID
+    }
+    
     if (folderId === 'unfiled') {
         folderId = '';
     }
@@ -181,14 +200,24 @@ export async function addFile(formData: FormData): Promise<FileItem> {
     return addFileRecord(newFileRecord);
 }
 
-export async function addFileFromDataUrl(options: { dataUrl: string; fileName: string; userId: string; folderId: string }): Promise<void> {
+export async function addFileFromDataUrl(options: { dataUrl: string; fileName: string; userId: string; folderId: string }): Promise<FileItem> {
     const { dataUrl, fileName, userId, folderId } = options;
 
     const response = await fetch(dataUrl);
     const blob = await response.blob();
     
     const storage = await getAppStorage();
-    const storagePath = `${userId}/${folderId}/${Date.now()}-${fileName}`;
+    
+    // **THE FIX IS HERE**: The logic to find or create the "Site Images" folder
+    // was missing from this specific function. Adding it ensures the folder exists
+    // before the upload is attempted, preventing the save dialog from hanging.
+    let finalFolderId = folderId;
+    if (folderId === SITE_IMAGES_FOLDER_ID) {
+        const siteImagesFolder = await findOrCreateFileFolder(userId, SITE_IMAGES_FOLDER_NAME, null, SITE_IMAGES_FOLDER_ID);
+        finalFolderId = siteImagesFolder.id;
+    }
+
+    const storagePath = `${userId}/${finalFolderId}/${Date.now()}-${fileName}`;
     const fileRef = storageRef(storage, storagePath);
 
     await uploadBytes(fileRef, blob, { contentType: blob.type });
@@ -198,12 +227,12 @@ export async function addFileFromDataUrl(options: { dataUrl: string; fileName: s
         type: blob.type,
         size: blob.size,
         modifiedAt: new Date(),
-        folderId,
+        folderId: finalFolderId,
         userId,
         storagePath,
     };
     
-    await addFileRecord(newFileRecord);
+    return addFileRecord(newFileRecord);
 }
 
 export async function deleteFiles(fileIds: string[]): Promise<void> {

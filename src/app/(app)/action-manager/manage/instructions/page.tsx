@@ -82,7 +82,7 @@ export default function ManageDashboardInstructionsPage() {
                                     <p>
                                         <strong>To remove an action</strong> from your dashboard without deleting it, drag it from "Selected Actions" down to "Available Actions".
                                         <br/><br/>
-                                        <strong>To permanently delete an action</strong>, drag it from either panel down to the <strong>"Drag here to trash"</strong> zone at the bottom of the page.
+                                        <strong>To permanently delete an action</strong>, you can either drag it from any panel down to the <strong>"Drag here to trash"</strong> zone, or click the 3-dot menu on an action chip and select "Delete".
                                     </p>
                                 </div>
                             </AccordionContent>

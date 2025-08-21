@@ -3,31 +3,27 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
-import { UploadCloud, LoaderCircle, Save, X } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { UploadCloud, Save, X } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import { Button } from './button';
-import { addFile } from '@/services/file-service';
-import { getImageUrlForHint, setFileForHint } from '@/services/image-placeholder-service';
-
-const SITE_IMAGES_FOLDER_ID = 'folder-site-images';
+import ImageSaveDialog from '@/components/image-generator/image-save-dialog';
+import { getImageUrlForHint } from '@/services/image-placeholder-service';
+import { SITE_IMAGES_FOLDER_ID } from '@/services/file-service';
+import { Skeleton } from './skeleton';
 
 interface ImagePlaceholderProps {
   'data-ai-hint': string;
   className?: string;
 }
 
-// Custom hook to manage the state and logic for each placeholder independently
 const useImagePlaceholderState = (hint: string) => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user } = useAuth();
-  const { toast } = useToast();
 
   const loadInitialImage = useCallback(async () => {
     setIsLoading(true);
@@ -46,14 +42,16 @@ const useImagePlaceholderState = (hint: string) => {
   }, [loadInitialImage]);
 
   const handlePlaceholderClick = () => {
-    if (!isUploading) {
-      fileInputRef.current?.click();
-    }
+    fileInputRef.current?.click();
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
 
     setSelectedFile(file);
     const objectUrl = URL.createObjectURL(file);
@@ -70,43 +68,29 @@ const useImagePlaceholderState = (hint: string) => {
       fileInputRef.current.value = "";
     }
   };
-
-  const handleSave = async () => {
-    if (!selectedFile || !user) return;
-
-    setIsUploading(true);
-    toast({ title: "Uploading..." });
-
-    try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('userId', user.uid);
-      formData.append('folderId', SITE_IMAGES_FOLDER_ID);
-
-      const newFile = await addFile(formData);
-      await setFileForHint(hint, newFile.id);
-      
-      toast({ title: "Image Saved", description: "The new image is now active." });
-      
-      handleCancel();
-      await loadInitialImage(); // Use await to ensure it reloads before finishing
-
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Upload Failed',
-        description: error.message,
-      });
-    } finally {
-      setIsUploading(false);
-    }
+  
+  const handleOpenSaveDialog = () => {
+    setIsSaveDialogOpen(true);
   };
 
-  // Effect to clean up the object URL on unmount or when previewUrl changes
+  const onSaveSuccess = () => {
+    handleCancel();
+    loadInitialImage();
+  };
+  
+  const convertFileToDataUrl = useCallback(async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+  }, []);
+
   useEffect(() => {
     const currentPreviewUrl = previewUrl;
     return () => {
-      if (currentPreviewUrl && currentPreviewUrl.startsWith('blob:')) {
+      if (currentPreviewUrl) {
         URL.revokeObjectURL(currentPreviewUrl);
       }
     };
@@ -115,13 +99,17 @@ const useImagePlaceholderState = (hint: string) => {
   return {
     imageUrl,
     previewUrl,
+    selectedFile,
     isLoading,
-    isUploading,
+    isSaveDialogOpen,
+    setIsSaveDialogOpen,
     fileInputRef,
     handlePlaceholderClick,
     handleFileChange,
-    handleSave,
+    handleOpenSaveDialog,
     handleCancel,
+    onSaveSuccess,
+    convertFileToDataUrl,
   };
 };
 
@@ -129,20 +117,26 @@ export function ImagePlaceholder({ 'data-ai-hint': hint, className }: ImagePlace
   const {
     imageUrl,
     previewUrl,
+    selectedFile,
     isLoading,
-    isUploading,
+    isSaveDialogOpen,
+    setIsSaveDialogOpen,
     fileInputRef,
     handlePlaceholderClick,
     handleFileChange,
-    handleSave,
+    handleOpenSaveDialog,
     handleCancel,
+    onSaveSuccess,
+    convertFileToDataUrl,
   } = useImagePlaceholderState(hint);
+  
+  const { user } = useAuth(); // Check for authenticated user
 
   if (isLoading) {
-    return <div className={cn("w-full h-48 bg-muted rounded-lg animate-pulse", className)} />;
+    return <Skeleton className={cn("w-full h-48 bg-muted rounded-lg", className)} />;
   }
   
-  if (previewUrl) {
+  if (previewUrl && selectedFile) {
     return (
         <div className={cn("relative w-full h-48 group", className)}>
             <Image
@@ -152,16 +146,29 @@ export function ImagePlaceholder({ 'data-ai-hint': hint, className }: ImagePlace
                 className="rounded-lg object-cover"
                 unoptimized
             />
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button onClick={handleSave} disabled={isUploading}>
-                    {isUploading ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button onClick={handleOpenSaveDialog} className="pointer-events-auto">
+                    <Save className="mr-2 h-4 w-4" />
                     Save
                 </Button>
-                <Button variant="secondary" onClick={handleCancel} disabled={isUploading}>
+                <Button variant="secondary" onClick={handleCancel} className="pointer-events-auto">
                     <X className="mr-2 h-4 w-4" />
                     Cancel
                 </Button>
             </div>
+            {isSaveDialogOpen && (
+                <ImageSaveDialog
+                    isOpen={isSaveDialogOpen}
+                    onOpenChange={setIsSaveDialogOpen}
+                    imageDataUrl={previewUrl}
+                    defaultFileName={selectedFile.name}
+                    convertFileToDataUrl={() => convertFileToDataUrl(selectedFile)}
+                    onSaveSuccess={onSaveSuccess}
+                    preselectedFolderId={SITE_IMAGES_FOLDER_ID}
+                    hint={hint}
+                />
+            )}
         </div>
     );
   }
@@ -175,29 +182,38 @@ export function ImagePlaceholder({ 'data-ai-hint': hint, className }: ImagePlace
           fill
           className="rounded-lg object-cover"
         />
-        <div 
-          onClick={handlePlaceholderClick}
-          className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-        >
-            <p className="text-white font-semibold">Change Image</p>
-        </div>
-        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+        {user && ( // Only show change functionality if user is logged in
+          <>
+            <div 
+              onClick={handlePlaceholderClick}
+              className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            >
+                <p className="text-white font-semibold">Change Image</p>
+            </div>
+            <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+          </>
+        )}
       </div>
     );
   }
 
   return (
     <div
-      onClick={handlePlaceholderClick}
+      onClick={user ? handlePlaceholderClick : undefined} // Only allow click if user is logged in
       className={cn(
-        "w-full h-48 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors",
+        "w-full h-48 border-2 border-dashed rounded-lg flex flex-col items-center justify-center transition-colors",
+        user && "cursor-pointer hover:border-primary hover:bg-muted/50",
         className
       )}
     >
       <UploadCloud className="h-8 w-8 text-muted-foreground" />
-      <p className="mt-2 text-sm text-muted-foreground">Upload Image Here</p>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {user ? 'Upload Image Here' : 'Image Placeholder'}
+      </p>
       <p className="text-xs text-muted-foreground">({hint})</p>
-      <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+      {user && (
+        <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+      )}
     </div>
   );
 }

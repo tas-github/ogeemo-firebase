@@ -8,6 +8,7 @@ import { getUserProfile, updateUserProfile, UserProfile } from '@/services/user-
 const defaultPreferences: UserProfile['preferences'] = {
     showDictationButton: true,
     showDashboardFrame: true,
+    showMenuViewInstructions: true,
 };
 
 export function useUserPreferences() {
