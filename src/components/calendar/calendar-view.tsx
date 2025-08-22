@@ -489,7 +489,7 @@ export function CalendarView() {
             </div>
           </div>
           
-           <div className="flex items-center gap-4 py-2 text-sm">
+           <div className="flex items-center gap-4 py-2 text-sm flex-shrink-0">
                 <div className="flex items-center gap-2"><Label>Start Hour</Label><Select value={String(viewStartHour)} onValueChange={(v) => setViewStartHour(Number(v))}><SelectTrigger className="w-28"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent></Select></div>
                 <div className="flex items-center gap-2"><Label>End Hour</Label><Select value={String(viewEndHour)} onValueChange={(v) => setViewEndHour(Number(v))}><SelectTrigger className="w-28"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent></Select></div>
                 <div className="flex items-center gap-2"><Label>Time Slots</Label><Select value={String(timeSlotIncrement)} onValueChange={(v) => setTimeSlotIncrement(Number(v))}><SelectTrigger className="w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="5">5 min</SelectItem><SelectItem value="10">10 min</SelectItem><SelectItem value="15">15 min</SelectItem><SelectItem value="30">30 min</SelectItem></SelectContent></Select></div>
