@@ -250,7 +250,7 @@ export function NewTaskDialog({
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-          <DialogHeader className="p-6 pb-4 border-b text-center">
+          <DialogHeader className="p-6 pb-4 border-b text-left">
             <DialogTitle className="text-primary">{getDialogTitle()}</DialogTitle>
             <DialogDescription>{isProjectMode ? "Define your new project." : 'Add a new task. Check "Add to Calendar" to schedule it.'}</DialogDescription>
           </DialogHeader>

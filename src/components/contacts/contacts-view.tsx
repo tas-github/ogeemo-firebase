@@ -67,7 +67,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
-const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-form-dialog'), {
+const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-form-dialog').then((mod) => mod.default), {
   loading: () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg/50">
       <LoaderCircle className="h-10 w-10 animate-spin text-white" />
@@ -294,8 +294,9 @@ export function ContactsView() {
     if (contact.folderId === newFolderId) return;
 
     try {
+        const updatedContact = { ...contact, folderId: newFolderId };
         await updateContact(contact.id, { folderId: newFolderId });
-        setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, folderId: newFolderId } : c));
+        setContacts(prev => prev.map(c => c.id === contact.id ? updatedContact : c));
         const folder = folders.find(f => f.id === newFolderId);
         toast({ title: "Contact Moved", description: `"${contact.name}" moved to "${folder?.name}".` });
     } catch (error: any) {

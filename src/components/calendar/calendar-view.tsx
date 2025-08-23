@@ -2,310 +2,77 @@
 "use client"
 
 import * as React from "react"
-import { format, addDays, setHours, isSameDay, eachDayOfInterval, startOfWeek, endOfWeek, set, startOfMinute, startOfMonth, endOfMonth, isToday, isSameMonth, addMonths, addWeeks, getMinutes, getHours } from "date-fns"
-import { ChevronLeft, ChevronRight, LoaderCircle, Plus } from "lucide-react"
-import { useDrag, useDrop } from 'react-dnd';
+import { format, addDays, startOfWeek, endOfWeek, isSameMonth, addMonths, addWeeks, setHours, set, addMinutes } from "date-fns"
+import { ChevronLeft, ChevronRight, Plus, Settings, ChevronDown, CheckCircle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/context/auth-context";
-import { addTask, getTasksForUser, updateTask } from "@/services/project-service";
-import { type Event } from "@/types/calendar";
-import { getContacts, type Contact } from "@/services/contact-service";
-import { NewTaskDialog } from "../tasks/NewTaskDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { Label } from "../ui/label";
-import { HourlyPlannerDialog } from "./hourly-planner-dialog";
-
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarShadCN } from "@/components/ui/calendar"
+import { ScrollArea } from "../ui/scroll-area"
+import { type Event } from '@/types/calendar'
+import { NewTaskDialog } from "../tasks/NewTaskDialog"
+import { getContacts, type Contact } from "@/services/contact-service"
+import { getTasksForUser } from "@/services/project-service";
+import { useAuth } from "@/context/auth-context"
+import { useToast } from "@/hooks/use-toast"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { CalendarSkeleton } from "./calendar-skeleton";
 
 type CalendarView = "day" | "5days" | "week" | "month";
 
-const DraggableTimelineEvent = ({ event, style, className, onClick }: { event: Event; style: React.CSSProperties; className: string, onClick: () => void }) => {
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: 'event',
-    item: event,
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  }));
-
-  return (
-    <div
-      ref={drag}
-      style={{ ...style, opacity: isDragging ? 0.5 : 1 }}
-      className={cn(className, "cursor-move")}
-      onClick={onClick}
-    >
-      <p className="font-bold text-xs truncate">{event.title}</p>
-      <p className="text-xs opacity-80 truncate">{format(event.start, 'p')} - {format(event.end, 'p')}</p>
-    </div>
-  );
-};
-
-const TimelineDayColumn = ({
-  day,
-  dayEvents,
-  viewStartHour,
-  viewEndHour,
-  onEventDrop,
-  onEventClick,
-  hideHeader = false,
-  today,
-}: {
-  day: Date;
-  dayEvents: Event[];
-  viewStartHour: number;
-  viewEndHour: number;
-  onEventDrop: (eventId: string, newStart: Date) => void;
-  onEventClick: (event: Event) => void;
-  hideHeader?: boolean;
-  today: Date | null;
-}) => {
-  const PIXELS_PER_MINUTE = 2;
-  const hours = Array.from({ length: viewEndHour - viewStartHour }, (_, i) => i + viewStartHour);
-  const dropRef = React.useRef<HTMLDivElement>(null);
-
-  const [, drop] = useDrop(() => ({
-    accept: 'event',
-    drop: (item: Event, monitor) => {
-      if (!dropRef.current) return;
-      const dropTargetRect = dropRef.current.getBoundingClientRect();
-      const clientOffset = monitor.getClientOffset();
-      if (!clientOffset) return;
-      
-      const dropY = clientOffset.y - dropTargetRect.top;
-      const minutesFromStartOfDay = (dropY / (60 * PIXELS_PER_MINUTE)) * 60;
-      
-      const newHour = viewStartHour + Math.floor(minutesFromStartOfDay / 60);
-      const newMinute = minutesFromStartOfDay % 60;
-      
-      const snappedMinute = Math.round(newMinute / 15) * 15;
-      
-      const newStartDate = set(day, { hours: newHour, minutes: snappedMinute, seconds: 0, milliseconds: 0 });
-      
-      onEventDrop(item.id, newStartDate);
-    },
-  }));
-
-  drop(dropRef);
-  
-  const calculateEventPosition = (event: Event) => {
-    const startMinutes = getHours(event.start) * 60 + getMinutes(event.start);
-    const top = (startMinutes - viewStartHour * 60) * PIXELS_PER_MINUTE;
-    const durationMinutes = Math.max(15, (event.end.getTime() - event.start.getTime()) / 60000);
-    const height = durationMinutes * PIXELS_PER_MINUTE;
-
-    return { top, height };
-  }
-
-  return (
-    <div className={cn("border-r last:border-r-0", hideHeader && "border-t")}>
-      {!hideHeader && (
-        <div className="sticky top-0 z-10 h-16 border-b bg-background text-center">
-          <p className="text-sm font-semibold">{format(day, 'EEE')}</p>
-          <p className={cn("text-2xl font-bold", today && isSameDay(day, today) && "text-primary")}>{format(day, 'd')}</p>
-        </div>
-      )}
-      <div ref={dropRef} className="relative">
-        {hours.map(hour => (
-          <div key={`hour-container-${hour}-${day.toISOString()}`} className="border-b h-[120px]" />
-        ))}
-        {dayEvents.map(event => {
-          const { top, height } = calculateEventPosition(event);
-          return (
-            <DraggableTimelineEvent
-              key={event.id}
-              event={event}
-              style={{ top: `${top}px`, height: `${height}px` }}
-              className="absolute left-1 right-1 rounded-lg bg-primary/20 p-2 border border-primary/50 overflow-hidden text-primary"
-              onClick={() => onEventClick(event)}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-const MonthView = ({ date, events, onEventClick, today }: { date: Date; events: Event[], onEventClick: (event: Event) => void; today: Date | null }) => {
-  const monthStart = startOfMonth(date);
-  const monthEnd = endOfMonth(date);
-  const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
-  const days = eachDayOfInterval({ start: startDate, end: endDate });
-
-  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-  return (
-    <div className="flex flex-col h-full">
-      <header className="grid grid-cols-7 flex-none text-center font-semibold text-sm text-muted-foreground border-t border-l border-r">
-        {weekDays.map(day => (
-          <div key={day} className="py-2 border-b border-r last:border-r-0">
-            {day}
-          </div>
-        ))}
-      </header>
-      <ScrollArea className="flex-1">
-        <div className="grid grid-cols-7 auto-rows-[minmax(120px,_1fr)] border-l">
-          {days.map((day) => {
-            const dayEvents = events.filter(event => isSameDay(event.start, day));
-            return (
-              <div
-                key={day.toString()}
-                className={cn(
-                  "border-b border-r p-2 flex flex-col",
-                  !isSameMonth(day, date) && "bg-muted/20",
-                )}
-              >
-                <p className={cn(
-                  "font-medium text-sm self-start",
-                  today && isSameDay(day, today) && "bg-primary text-primary-foreground rounded-full h-6 w-6 flex items-center justify-center",
-                  !isSameMonth(day, date) && "text-muted-foreground"
-                )}>
-                  {format(day, 'd')}
-                </p>
-                <div className="mt-1 space-y-1 overflow-hidden">
-                  {dayEvents.map(event => (
-                    <div
-                      key={event.id}
-                      className="text-xs p-1 rounded bg-primary/20 text-primary truncate cursor-pointer"
-                      title={event.title}
-                      onClick={() => onEventClick(event)}
-                    >
-                      {event.title}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </ScrollArea>
-    </div>
-  );
-};
-
 export function CalendarView() {
-  const [date, setDate] = React.useState<Date | undefined>();
-  const [today, setToday] = React.useState<Date | null>(null);
-  const [view, setView] = React.useState<CalendarView>("day");
-  const [events, setEvents] = React.useState<Event[]>([]);
-  const [contacts, setContacts] = React.useState<Contact[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [date, setDate] = React.useState<Date | undefined>(new Date());
+  const [view, setView] = React.useState<CalendarView>("week");
   
   const [viewStartHour, setViewStartHour] = React.useState(8);
   const [viewEndHour, setViewEndHour] = React.useState(18);
-  const [timeSlotIncrement, setTimeSlotIncrement] = React.useState(15);
+
+  const [events, setEvents] = React.useState<Event[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
   
-  const [isTaskDialogOpen, setIsTaskDialogOpen] = React.useState(false);
+  const [isNewEventDialogOpen, setIsNewEventDialogOpen] = React.useState(false);
+  const [newEventDefaultDate, setNewEventDefaultDate] = React.useState<Date | null>(null);
   const [eventToEdit, setEventToEdit] = React.useState<Event | null>(null);
-  const [dialogDefaultValues, setDialogDefaultValues] = React.useState({});
 
-  const [isPlannerOpen, setIsPlannerOpen] = React.useState(false);
-  const [plannerDate, setPlannerDate] = React.useState<Date>(new Date());
-  const [plannerHour, setPlannerHour] = React.useState(9);
-
-  const { toast } = useToast();
+  const [contacts, setContacts] = React.useState<Contact[]>([]);
   const { user } = useAuth();
-
-  React.useEffect(() => {
-    const now = new Date();
-    setDate(now);
-    setToday(now);
-  }, []);
+  const { toast } = useToast();
   
+  const [timeSlotIncrements, setTimeSlotIncrements] = React.useState<Record<number, number>>({});
+
   const loadData = React.useCallback(async () => {
     if (!user) {
-      setIsLoading(false);
-      return;
-    };
+        setIsLoading(false);
+        return;
+    }
     setIsLoading(true);
     try {
-        const [userTasks, userContacts] = await Promise.all([
-            getTasksForUser(user.uid),
-            getContacts(user.uid)
+        const [fetchedContacts, fetchedEvents] = await Promise.all([
+            getContacts(user.uid),
+            getTasksForUser(user.uid)
         ]);
-        setEvents(userTasks);
-        setContacts(userContacts);
-    } catch(error: any) {
-        toast({ variant: "destructive", title: "Could not load data", description: error.message });
+        setContacts(fetchedContacts);
+        setEvents(fetchedEvents);
+    } catch (error) {
+        console.error("Failed to load calendar data:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not load calendar data.' });
     } finally {
         setIsLoading(false);
     }
   }, [user, toast]);
-  
+
   React.useEffect(() => {
     loadData();
   }, [loadData]);
 
-
-  const handleTaskCreate = async (taskData: Omit<Event, 'id' | 'userId'>) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to create events.' });
-        return;
-    }
-    try {
-        const newEvent = await addTask({ ...taskData, userId: user.uid, position: 0 }); // position needs logic
-        setEvents(prev => [...prev, newEvent]);
-        toast({ title: "Event Created" });
-    } catch (error: any) {
-         toast({ variant: 'destructive', title: 'Failed to create event', description: error.message });
-    }
-  };
-
-  const handleTaskUpdate = async (updatedEventData: Event) => {
-    try {
-      await updateTask(updatedEventData.id, updatedEventData);
-      setEvents(prev => prev.map(e => e.id === updatedEventData.id ? { ...e, ...updatedEventData } : e));
-      toast({ title: "Event Updated" });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Failed to update event', description: error.message });
-    }
-  };
-  
-  const handleDialogClose = (open: boolean) => {
-    setIsTaskDialogOpen(open);
-    if (!open) {
-        setEventToEdit(null);
-        setDialogDefaultValues({});
-        loadData();
-    }
-  };
-
-  const handleEventClick = (event: Event) => {
-    setEventToEdit(event);
-    setDialogDefaultValues({
-      ...event,
-      isScheduled: true,
-      startDate: event.start,
-      endDate: event.end,
-      startHour: String(event.start.getHours()),
-      startMinute: String(event.start.getMinutes()),
-      endHour: String(event.end.getHours()),
-      endMinute: String(event.end.getMinutes()),
-    });
-    setIsTaskDialogOpen(true);
-  };
-  
-  const handleTimeSlotClick = (time: Date) => {
-      setDialogDefaultValues({
-          isScheduled: true,
-          startDate: time,
-          startHour: String(time.getHours()),
-          startMinute: String(time.getMinutes()),
-      });
-      setIsTaskDialogOpen(true);
-      setIsPlannerOpen(false);
-  }
-  
-  const handleOpenPlanner = (hour: number) => {
-      if (!date) return;
-      setPlannerDate(date);
-      setPlannerHour(hour);
-      setIsPlannerOpen(true);
-  }
 
   const viewTitle = React.useMemo(() => {
     if (!date) return "Select a date";
@@ -346,24 +113,6 @@ export function CalendarView() {
     { id: "week", label: "Week" },
     { id: "month", label: "Month" },
   ];
-
-  const handleEventDrop = React.useCallback(async (eventId: string, newStart: Date) => {
-    const eventToUpdate = events.find(e => e.id === eventId);
-    if (!eventToUpdate) return;
-
-    const duration = eventToUpdate.end.getTime() - eventToUpdate.start.getTime();
-    const newEnd = new Date(newStart.getTime() + duration);
-    
-    try {
-      await updateTask(eventId, { start: newStart, end: newEnd });
-      setEvents(prevEvents => prevEvents.map(e => 
-        e.id === eventId ? { ...e, start: newStart, end: newEnd } : e
-      ));
-      toast({ title: "Event Time Updated" });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Failed to update event time', description: error.message });
-    }
-  }, [events, toast]);
   
   const handlePrev = () => {
     if (!date) return;
@@ -383,145 +132,177 @@ export function CalendarView() {
     setDate(newDate);
   };
 
-  const hours = React.useMemo(() => {
-    return Array.from({ length: viewEndHour - viewStartHour }, (_, i) => i + viewStartHour);
-  }, [viewStartHour, viewEndHour]);
-
-  const renderTimelineView = (days: Date[]) => {
-    if (days.length === 0) return null;
-    
-    const hideDayHeader = days.length === 1;
-
-    return (
-      <ScrollArea className="h-full w-full">
-        <div className="flex" style={{ minWidth: 80 + 150 * days.length }}>
-          <div className="sticky left-0 z-20 w-24 shrink-0 bg-background">
-            {!hideDayHeader && <div className="h-16 border-b border-r">&nbsp;</div>}
-            <div>
-              {hours.map(hour => (
-                  <button key={`time-gutter-${hour}`} className="relative w-full border-r text-right h-[120px] hover:bg-accent/50" onClick={() => handleOpenPlanner(hour)}>
-                      <p className="absolute top-0 right-2 -translate-y-1/2 bg-background px-1 text-xs text-muted-foreground">{format(setHours(new Date(), hour), 'ha')}</p>
-                  </button>
-              ))}
-            </div>
-          </div>
-          
-          <div className="grid flex-1" style={{ gridTemplateColumns: `repeat(${days.length}, minmax(150px, 1fr))` }}>
-            {days.map((day) => {
-              const dayEvents = events.filter(event => isSameDay(event.start, day));
-              return (
-                <TimelineDayColumn
-                    key={day.toISOString()}
-                    day={day}
-                    dayEvents={dayEvents}
-                    viewStartHour={viewStartHour}
-                    viewEndHour={viewEndHour}
-                    onEventDrop={handleEventDrop}
-                    onEventClick={handleEventClick}
-                    hideHeader={hideDayHeader}
-                    today={today}
-                />
-              )
-            })}
-          </div>
-        </div>
-      </ScrollArea>
-    );
-  }
-
-  const renderViewContent = () => {
-    if (!date) return null;
-
-    if (isLoading) {
-      return (
-        <div className="flex h-full items-center justify-center">
-            <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
-        </div>
-      )
-    }
-
-    switch (view) {
-      case "day":
-        return renderTimelineView([date]);
-      case "5days":
-        const fiveDayRange = eachDayOfInterval({ start: date, end: addDays(date, 4) });
-        return renderTimelineView(fiveDayRange);
-      case "week":
-        const weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 1; // Monday
-        const weekRange = eachDayOfInterval({ start: startOfWeek(date, { weekStartsOn }), end: endOfWeek(date, { weekStartsOn }) });
-        return renderTimelineView(weekRange);
-      case "month":
-        return <MonthView date={date} events={events} onEventClick={handleEventClick} today={today} />;
-      default:
-        return null;
-    }
-  }
-
   const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(setHours(new Date(), i), 'h a') }));
-
+  
+  const handleEventCreatedOrUpdated = () => {
+      loadData(); // Reload all data to ensure view is up to date
+      setIsNewEventDialogOpen(false);
+      setEventToEdit(null);
+  };
+  
+  const handleIncrementClick = (hour: number, increment: number) => {
+    setTimeSlotIncrements(prev => {
+        const newIncrements = {...prev};
+        if (newIncrements[hour] === increment) {
+            delete newIncrements[hour]; // Toggle off if same increment is clicked
+        } else {
+            newIncrements[hour] = increment;
+        }
+        return newIncrements;
+    });
+  };
+  
+  const handleTimeSlotClick = (time: Date) => {
+    setEventToEdit(null);
+    setNewEventDefaultDate(time);
+    setIsNewEventDialogOpen(true);
+  };
+  
+  if (isLoading) {
+    return <CalendarSkeleton />;
+  }
 
   return (
-      <div className="p-4 sm:p-6 flex flex-col h-full">
-        <header className="text-center mb-6">
-          <h1 className="text-3xl font-bold font-headline text-primary">
-            Calendar
-          </h1>
-          <p className="text-muted-foreground">
-            Manage your schedule, events and appointments.
-          </p>
-        </header>
-        <div className="flex-1 min-h-0 flex flex-col">
+    <>
+      <div className="p-4 sm:p-6 h-full flex flex-col space-y-6">
+        {/* --- TOP FRAME (STATIC CONTROLS) --- */}
+        <div>
+          <header className="text-center mb-6">
+              <h1 className="text-3xl font-bold font-headline text-primary">Calendar</h1>
+              <p className="text-muted-foreground">Manage your schedule, events and appointments.</p>
+          </header>
           <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b">
-            <h2 className="text-xl font-semibold font-headline">
-              <span>{viewTitle}</span>
-            </h2>
-            <div className="flex items-center gap-2">
-              <Button onClick={() => { setEventToEdit(null); setIsTaskDialogOpen(true); }}><Plus className="mr-2 h-4 w-4" />New Event</Button>
-              <div className="flex items-center gap-1 rounded-md bg-muted p-1">
-                  {viewOptions.map((option) => (
-                  <Button key={option.id} variant={view === option.id ? "secondary" : "ghost"} size="sm" onClick={() => setView(option.id)} className="h-8 px-3">
-                      {option.label}
-                  </Button>
-                  ))}
+              <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}><span className="sr-only">Previous period</span><ChevronLeft className="h-4 w-4" /></Button>
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}><span className="sr-only">Next period</span><ChevronRight className="h-4 w-4" /></Button>
               </div>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}><span className="sr-only">Previous period</span><ChevronLeft className="h-4 w-4" /></Button>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}><span className="sr-only">Next period</span><ChevronRight className="h-4 w-4" /></Button>
-            </div>
-          </div>
-          
-           <div className="flex items-center gap-4 py-2 text-sm flex-shrink-0">
-                <div className="flex items-center gap-2"><Label>Start Hour</Label><Select value={String(viewStartHour)} onValueChange={(v) => setViewStartHour(Number(v))}><SelectTrigger className="w-28"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent></Select></div>
-                <div className="flex items-center gap-2"><Label>End Hour</Label><Select value={String(viewEndHour)} onValueChange={(v) => setViewEndHour(Number(v))}><SelectTrigger className="w-28"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent></Select></div>
-                <div className="flex items-center gap-2"><Label>Time Slots</Label><Select value={String(timeSlotIncrement)} onValueChange={(v) => setTimeSlotIncrement(Number(v))}><SelectTrigger className="w-28"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="5">5 min</SelectItem><SelectItem value="10">10 min</SelectItem><SelectItem value="15">15 min</SelectItem><SelectItem value="30">30 min</SelectItem></SelectContent></Select></div>
-           </div>
-          
-          <div className="flex-1 mt-2 overflow-hidden border-t">
-              {renderViewContent()}
+              <h2 className="text-xl font-semibold font-headline text-center">
+                  <Popover>
+                      <PopoverTrigger asChild>
+                          <Button variant="ghost">{viewTitle}</Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                          <CalendarShadCN mode="single" selected={date} onSelect={setDate} />
+                      </PopoverContent>
+                  </Popover>
+              </h2>
+              <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                      {viewOptions.map((option) => (
+                          <Button key={option.id} variant={view === option.id ? "secondary" : "ghost"} size="sm" onClick={() => setView(option.id)} className="h-8 px-3">
+                              {option.label}
+                          </Button>
+                      ))}
+                  </div>
+                  <Button className="h-8 py-1" onClick={() => { setEventToEdit(null); setNewEventDefaultDate(new Date()); setIsNewEventDialogOpen(true); }}><Plus className="mr-2 h-4 w-4" />New Event</Button>
+                  <Popover>
+                      <PopoverTrigger asChild>
+                          <Button variant="outline" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 space-y-4">
+                          <div className="space-y-2">
+                              <Label className="font-semibold">View Start Hour</Label>
+                              <Select value={String(viewStartHour)} onValueChange={(v) => setViewStartHour(Number(v))}>
+                                  <SelectTrigger className="h-8 py-1"><SelectValue /></SelectTrigger>
+                                  <SelectContent>{hourOptions.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent>
+                              </Select>
+                          </div>
+                           <div className="space-y-2">
+                              <Label className="font-semibold">View End Hour</Label>
+                              <Select value={String(viewEndHour)} onValueChange={(v) => setViewEndHour(Number(v))}>
+                                  <SelectTrigger className="h-8 py-1"><SelectValue /></SelectTrigger>
+                                  <SelectContent>{hourOptions.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent>
+                              </Select>
+                          </div>
+                      </PopoverContent>
+                  </Popover>
+              </div>
           </div>
         </div>
+        
+        {/* --- BOTTOM FRAME (SCROLLABLE CONTENT) --- */}
+        <div className="flex-1 bg-card rounded-lg border p-4 min-h-0">
+          <header className="text-center mb-4">
+              <h3 className="text-lg font-semibold">Customizable Time Slots</h3>
+          </header>
+          <ScrollArea className="h-full">
+            <div className="space-y-2 pr-4">
+              {Array.from({ length: viewEndHour - viewStartHour }).map((_, i) => {
+                const hour = viewStartHour + i;
+                const increment = timeSlotIncrements[hour];
+                
+                return (
+                  <div key={hour} className="border border-foreground rounded-lg p-2">
+                    <div className="flex items-start">
+                        <time className="font-semibold w-20 text-right pr-4 pt-1">{format(set(new Date(), { hours: hour }), 'h a')}</time>
+                        <div className="flex-1 justify-start gap-2 text-xs text-muted-foreground flex pt-1 min-h-[24px]">
+                            {/* Event summaries will be rendered here */}
+                        </div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7"><ChevronDown className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                {[5, 10, 15, 30, 60].map(inc => (
+                                    <DropdownMenuItem key={inc} onSelect={() => handleIncrementClick(hour, inc)} className="flex justify-between">
+                                        {inc} min slots
+                                        {increment === inc && <CheckCircle className="h-4 w-4 text-primary" />}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                    {increment && (
+                        <div className="grid grid-cols-1 gap-1 pl-20 mt-1">
+                            {Array.from({ length: 60 / increment }).map((_, slotIndex) => {
+                                const slotTime = addMinutes(set(date || new Date(), { hours: hour }), slotIndex * increment);
+                                const slotEndTime = addMinutes(slotTime, increment);
+                                const slotEvents = events.filter(e => e.start >= slotTime && e.start < slotEndTime);
 
-        <NewTaskDialog 
-            isOpen={isTaskDialogOpen} 
-            onOpenChange={handleDialogClose}
-            onTaskCreate={handleTaskCreate}
-            onTaskUpdate={handleTaskUpdate}
-            eventToEdit={eventToEdit}
-            contacts={contacts}
-            defaultValues={dialogDefaultValues}
-        />
-
-        {isPlannerOpen && date && (
-          <HourlyPlannerDialog
-            isOpen={isPlannerOpen}
-            onOpenChange={setIsPlannerOpen}
-            selectedDate={date}
-            selectedHour={plannerHour}
-            events={events.filter(e => isSameDay(e.start, date) && getHours(e.start) === plannerHour)}
-            timeSlotIncrement={timeSlotIncrement}
-            onEventUpdate={handleEventDrop}
-            onTimeSlotClick={handleTimeSlotClick}
-          />
-        )}
+                                return (
+                                    <div
+                                        key={slotIndex}
+                                        className="border border-border rounded p-1 min-h-[50px] cursor-pointer hover:bg-accent/50"
+                                        onClick={() => slotEvents.length === 0 && handleTimeSlotClick(slotTime)}
+                                    >
+                                        <time className="text-xs text-muted-foreground">{format(slotTime, 'p')}</time>
+                                        {slotEvents.map(event => (
+                                            <div key={event.id} className="text-xs bg-primary/20 p-1 rounded my-1">
+                                                <p className="font-semibold truncate">{event.title}</p>
+                                                <p>{format(event.start, 'p')} - {format(event.end, 'p')}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        </div>
       </div>
-  )
+      
+      <NewTaskDialog
+        isOpen={isNewEventDialogOpen}
+        onOpenChange={(open) => {
+            setIsNewEventDialogOpen(open);
+            if (!open) setEventToEdit(null);
+        }}
+        onTaskCreate={handleEventCreatedOrUpdated}
+        onTaskUpdate={handleEventCreatedOrUpdated}
+        initialMode="task"
+        contacts={contacts}
+        eventToEdit={eventToEdit}
+        defaultValues={{
+            isScheduled: true,
+            startDate: newEventDefaultDate || undefined,
+            startHour: newEventDefaultDate ? String(newEventDefaultDate.getHours()) : undefined,
+            startMinute: newEventDefaultDate ? String(newEventDefaultDate.getMinutes()) : undefined,
+        }}
+      />
+    </>
+  );
 }
