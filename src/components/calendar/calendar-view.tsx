@@ -3,11 +3,11 @@
 
 import * as React from "react"
 import { format, addDays, startOfWeek, isSameDay, set } from "date-fns"
-import { ChevronLeft, ChevronRight, Plus, Settings, ZoomIn } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, Settings } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarShadCN } from "@/components/ui/calendar"
