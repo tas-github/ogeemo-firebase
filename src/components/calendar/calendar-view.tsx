@@ -132,9 +132,8 @@ export function CalendarView() {
             <p className="text-muted-foreground">Manage your schedule, events and appointments.</p>
         </header>
 
-        {/* This div is the new frame with a white background and padding */}
         <div className="flex-1 min-h-0 pt-4 flex flex-col bg-card border rounded-lg">
-          <div className="flex items-center justify-between flex-wrap gap-4 px-4 pb-4 border-b">
+          <div className="flex items-center justify-between flex-wrap gap-4 px-4 pb-4">
               <div className="flex items-center gap-2">
                   <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}><span className="sr-only">Previous period</span><ChevronLeft className="h-4 w-4" /></Button>
                   <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}><span className="sr-only">Next period</span><ChevronRight className="h-4 w-4" /></Button>
@@ -187,14 +186,16 @@ export function CalendarView() {
               <>
                 <div className="flex border-b">
                   <div className="w-14 shrink-0 border-r"></div>
-                  <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
-                      {daysInView.map(day => (
-                          <div key={day.toISOString()} className="p-2 text-center border-l first:border-l-0">
-                              <p className="text-sm font-medium">{format(day, 'E')}</p>
-                              <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
-                          </div>
-                      ))}
-                  </div>
+                  {view !== 'day' && (
+                    <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
+                        {daysInView.map(day => (
+                            <div key={day.toISOString()} className="p-2 text-center border-l first:border-l-0">
+                                <p className="text-sm font-medium">{format(day, 'E')}</p>
+                                <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
+                            </div>
+                        ))}
+                    </div>
+                  )}
                 </div>
                 <ScrollArea className="flex-1">
                   <div className="flex h-full">
