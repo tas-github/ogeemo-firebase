@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { format, addDays, startOfWeek, isSameDay, set } from "date-fns"
-import { ChevronLeft, ChevronRight, Plus, Settings } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, Settings, Calendar as CalendarIcon, ZoomIn } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
