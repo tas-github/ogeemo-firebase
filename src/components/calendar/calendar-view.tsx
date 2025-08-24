@@ -29,6 +29,7 @@ export function CalendarView() {
   
   const [viewStartHour, setViewStartHour] = React.useState(8);
   const [viewEndHour, setViewEndHour] = React.useState(18);
+  const [expandedHour, setExpandedHour] = React.useState<number | null>(null);
 
   const [isLoading, setIsLoading] = React.useState(false); // Kept for future use
   const [events, setEvents] = React.useState<Event[]>([]); // Placeholder for events
@@ -125,7 +126,6 @@ export function CalendarView() {
   }
 
   return (
-    <DndProvider backend={HTML5Backend}>
       <div className="p-4 sm:p-6 h-full flex flex-col">
         <header className="text-center mb-6">
             <h1 className="text-3xl font-bold font-headline text-primary">Calendar</h1>
@@ -179,10 +179,51 @@ export function CalendarView() {
             </div>
         </div>
 
-        <div className="flex-1 min-h-0 mt-4 bg-card border rounded-lg">
-          {/* This is the new frame you requested */}
+        <div className="flex-1 min-h-0 mt-4 bg-card border rounded-lg flex flex-col">
+          {view !== 'day' && (
+            <div className="flex border-b">
+              <div className="w-14 shrink-0 border-r"></div>
+              <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
+                  {daysInView.map(day => (
+                      <div key={day.toISOString()} className="p-2 text-center border-l first:border-l-0">
+                          <p className="text-sm font-medium">{format(day, 'E')}</p>
+                          <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
+                      </div>
+                  ))}
+              </div>
+            </div>
+          )}
+          <ScrollArea className="flex-1">
+            <div className="flex h-full">
+              <div className="w-14 shrink-0">
+                {Array.from({ length: viewEndHour - viewStartHour + 1 }).map((_, i) => (
+                  <div key={i} className="relative h-20 text-right pr-2 border-r">
+                    <span className="text-xs text-muted-foreground absolute -top-2 right-2">
+                      {format(set(new Date(), { hours: viewStartHour + i }), 'h a')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
+                {daysInView.map(day => (
+                  <div key={day.toISOString()} className="relative border-l first:border-l-0">
+                    {Array.from({ length: viewEndHour - viewStartHour + 1 }).map((_, i) => (
+                      <div key={i} className="h-20 border-b relative group">
+                          <Button 
+                              variant="ghost" 
+                              className="absolute inset-0 w-full h-full opacity-0 hover:opacity-100 flex items-center justify-center"
+                              onClick={() => handleOpenHourlyPlanner(day, viewStartHour + i)}
+                          >
+                              <ZoomIn className="h-5 w-5"/>
+                          </Button>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ScrollArea>
         </div>
-      </div>
       
        <HourlyPlannerDialog 
           isOpen={isHourlyPlannerOpen}
@@ -194,6 +235,6 @@ export function CalendarView() {
           onEventUpdate={handleEventUpdate}
           onTimeSlotClick={handleTimeSlotClick}
         />
-    </DndProvider>
+    </div>
   );
 }
