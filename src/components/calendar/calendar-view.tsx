@@ -303,6 +303,14 @@ export function CalendarView() {
                 </Popover>
             </div>
         </div>
+        <div className="flex items-center gap-4 py-2">
+            {daysInView.map(day => (
+                <div key={day.toISOString()} className="flex-1 text-center">
+                    <p className="text-sm text-muted-foreground">{format(day, 'EEE')}</p>
+                    <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
+                </div>
+            ))}
+        </div>
         
         {/* --- BOTTOM FRAME (SCROLLABLE CONTENT) --- */}
         <div className="flex-1 min-h-0 flex flex-col">
@@ -313,7 +321,6 @@ export function CalendarView() {
                              const hour = viewStartHour + i;
                              return (
                                 <div key={hour} className="relative h-[120px] border-r border-b text-right pr-2">
-                                    <time className="text-xs text-muted-foreground absolute -top-2 right-2">{format(set(new Date(), { hours: hour }), 'h a')}</time>
                                 </div>
                              )
                          })}
