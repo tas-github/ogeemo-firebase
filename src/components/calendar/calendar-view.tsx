@@ -22,7 +22,7 @@ import { CalendarSkeleton } from "./calendar-skeleton";
 
 type CalendarView = "day" | "5days" | "week" | "month";
 
-const INCREMENT_OPTIONS = [15, 30, 60];
+const INCREMENT_OPTIONS = [5, 10, 15, 30, 60];
 
 export function CalendarView() {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
@@ -267,7 +267,7 @@ export function CalendarView() {
                                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleIncrementChange(hour, 'down')}>
                                         <ChevronLeft className="h-4 w-4" />
                                     </Button>
-                                    <span className="text-xs w-16 text-center font-mono bg-muted rounded-sm py-0.5">{increment} min slots</span>
+                                    <span className="text-xs w-24 text-center font-mono bg-muted rounded-sm py-0.5">{increment} min slots</span>
                                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleIncrementChange(hour, 'up')}>
                                         <ChevronRight className="h-4 w-4" />
                                     </Button>
