@@ -317,93 +317,97 @@ export function CalendarView() {
               </div>
           </div>
         
-          <div className="flex items-center gap-4 py-2 border-b">
-              <div className="w-24 shrink-0" />
-              {daysInView.map(day => (
-                  <div key={day.toISOString()} className="flex-1 text-center">
-                      <p className="text-sm text-muted-foreground">{format(day, 'EEE')}</p>
-                      <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
-                  </div>
-              ))}
-          </div>
-          <ScrollArea className="flex-1">
-              <div className="flex h-full">
-                  <div className="w-24 shrink-0">
-                       {Array.from({ length: viewEndHour - viewStartHour }).map((_, i) => {
-                           const hour = viewStartHour + i;
-                           return (
-                              <div key={hour} className="relative h-[120px] border-r border-b text-right pr-2">
+          {view !== 'day' && (
+              <div className="flex items-center gap-4 py-2 border-b">
+                  <div className="w-24 shrink-0" />
+                  {daysInView.map(day => (
+                      <div key={day.toISOString()} className="flex-1 text-center">
+                          <p className="text-sm text-muted-foreground">{format(day, 'EEE')}</p>
+                          <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
+                      </div>
+                  ))}
+              </div>
+          )}
+          <div className="flex-1 min-h-0">
+            <ScrollArea className="h-full">
+                <div className="flex h-full">
+                    <div className="w-24 shrink-0">
+                        {Array.from({ length: viewEndHour - viewStartHour }).map((_, i) => {
+                            const hour = viewStartHour + i;
+                            return (
+                                <div key={hour} className="relative h-[120px] border-r border-b text-right pr-2">
                                 <time className="text-xs text-muted-foreground absolute top-0 -translate-y-1/2 right-2">{format(set(new Date(), { hours: hour }), 'h a')}</time>
-                              </div>
-                           )
-                       })}
-                  </div>
-                  <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, minmax(0, 1fr))`}}>
-                      {daysInView.map((day) => {
-                          const eventsOnDay = events.filter(e => isSameDay(e.start, day));
-                          return (
-                              <div key={day.toISOString()} className="border-r last:border-r-0 relative">
-                                  {Array.from({ length: viewEndHour - viewStartHour }).map((_, i) => {
-                                      const hour = viewStartHour + i;
-                                      const hourKey = `${format(day, 'yyyy-MM-dd')}-${hour}`;
-                                      const isExpanded = expandedHours.has(hourKey);
-                                      const increment = hourIncrements[hourKey] || 15;
-                                      const hourStartTime = set(day, { hours: hour, minutes: 0 });
-                                      const eventsInHour = eventsOnDay.filter(e => getHours(e.start) === hour);
-                                      
-                                      const HourDropTarget = ({ children, time }: { children: React.ReactNode, time: Date }) => {
-                                          const [{ isOver }, drop] = useDrop(() => ({
-                                              accept: DND_ITEM_TYPE,
-                                              drop: (item: Event) => handleEventDrop(item.id, time),
-                                              collect: (monitor) => ({ isOver: !!monitor.isOver() }),
-                                          }));
-                                          return <div ref={drop} className={cn("flex-1", isOver && "bg-accent")}>{children}</div>;
-                                      };
+                                </div>
+                            )
+                        })}
+                    </div>
+                    <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, minmax(0, 1fr))`}}>
+                        {daysInView.map((day) => {
+                            const eventsOnDay = events.filter(e => isSameDay(e.start, day));
+                            return (
+                                <div key={day.toISOString()} className="border-r last:border-r-0 relative">
+                                    {Array.from({ length: viewEndHour - viewStartHour }).map((_, i) => {
+                                        const hour = viewStartHour + i;
+                                        const hourKey = `${format(day, 'yyyy-MM-dd')}-${hour}`;
+                                        const isExpanded = expandedHours.has(hourKey);
+                                        const increment = hourIncrements[hourKey] || 15;
+                                        const hourStartTime = set(day, { hours: hour, minutes: 0 });
+                                        const eventsInHour = eventsOnDay.filter(e => getHours(e.start) === hour);
+                                        
+                                        const HourDropTarget = ({ children, time }: { children: React.ReactNode, time: Date }) => {
+                                            const [{ isOver }, drop] = useDrop(() => ({
+                                                accept: DND_ITEM_TYPE,
+                                                drop: (item: Event) => handleEventDrop(item.id, time),
+                                                collect: (monitor) => ({ isOver: !!monitor.isOver() }),
+                                            }));
+                                            return <div ref={drop} className={cn("flex-1", isOver && "bg-accent")}>{children}</div>;
+                                        };
 
-                                      return (
-                                          <div key={hour} className="h-[120px] border-b p-1 flex flex-col">
-                                              <div className="flex items-center justify-end text-xs text-muted-foreground">
-                                                  {isExpanded && (
-                                                      <div className="flex items-center gap-1">
-                                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleIncrementChange(hourKey, 'down')}>&lt;</Button>
-                                                          <span className="w-12 text-center">{increment} min</span>
-                                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleIncrementChange(hourKey, 'up')}>&gt;</Button>
-                                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenHourlyPlanner(day, hour)}><ZoomIn className="h-4 w-4" /></Button>
-                                                      </div>
-                                                  )}
-                                                  <div className="flex-1 text-left pl-1">
-                                                    {!isExpanded && eventsInHour.length > 0 && (
-                                                        <div className="text-xs space-y-0.5">
-                                                          {eventsInHour.slice(0,3).map(e => <p key={e.id} className="truncate bg-primary/10 rounded-sm px-1">{e.title}</p>)}
+                                        return (
+                                            <div key={hour} className="h-[120px] border-b p-1 flex flex-col">
+                                                <div className="flex items-center justify-end text-xs text-muted-foreground">
+                                                    {isExpanded && (
+                                                        <div className="flex items-center gap-1">
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleIncrementChange(hourKey, 'down')}>&lt;</Button>
+                                                            <span className="w-12 text-center">{increment} min</span>
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleIncrementChange(hourKey, 'up')}>&gt;</Button>
+                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenHourlyPlanner(day, hour)}><ZoomIn className="h-4 w-4" /></Button>
                                                         </div>
                                                     )}
-                                                  </div>
-                                              </div>
-                                              <div className="flex-1 flex flex-col">
-                                                {isExpanded ? (
-                                                  Array.from({ length: 60 / increment }).map((_, j) => {
-                                                    const slotTime = addMinutes(hourStartTime, j * increment);
-                                                    return (
-                                                      <HourDropTarget key={j} time={slotTime}>
-                                                        <div className="h-full border-t text-xs text-muted-foreground" onClick={() => handleTimeSlotClick(slotTime)} />
-                                                      </HourDropTarget>
-                                                    )
-                                                  })
-                                                ) : (
-                                                    <HourDropTarget time={hourStartTime}>
-                                                      <div className="h-full" onClick={() => handleHourToggle(day, hour)} />
-                                                    </HourDropTarget>
-                                                )}
-                                              </div>
-                                          </div>
-                                      )
-                                  })}
-                              </div>
-                          )
-                      })}
-                  </div>
-              </div>
-          </ScrollArea>
+                                                    <div className="flex-1 text-left pl-1">
+                                                        {!isExpanded && eventsInHour.length > 0 && (
+                                                            <div className="text-xs space-y-0.5">
+                                                            {eventsInHour.slice(0,3).map(e => <p key={e.id} className="truncate bg-primary/10 rounded-sm px-1">{e.title}</p>)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1 flex flex-col">
+                                                    {isExpanded ? (
+                                                    Array.from({ length: 60 / increment }).map((_, j) => {
+                                                        const slotTime = addMinutes(hourStartTime, j * increment);
+                                                        return (
+                                                        <HourDropTarget key={j} time={slotTime}>
+                                                            <div className="h-full border-t text-xs text-muted-foreground" onClick={() => handleTimeSlotClick(slotTime)} />
+                                                        </HourDropTarget>
+                                                        )
+                                                    })
+                                                    ) : (
+                                                        <HourDropTarget time={hourStartTime}>
+                                                        <div className="h-full" onClick={() => handleHourToggle(day, hour)} />
+                                                        </HourDropTarget>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            </ScrollArea>
+          </div>
         </div>
       </div>
       
