@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { format, addDays, startOfWeek, isSameDay, set } from "date-fns"
-import { ChevronLeft, ChevronRight, Plus, Settings } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, Settings, ZoomIn } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,12 @@ import { Calendar as CalendarShadCN } from "@/components/ui/calendar"
 import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { CalendarSkeleton } from "./calendar-skeleton";
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import { type Event } from '@/types/calendar';
+import { ScrollArea } from '../ui/scroll-area';
+import { HourlyPlannerDialog } from "./hourly-planner-dialog";
+
 
 type CalendarView = "day" | "5days" | "week" | "month";
 
@@ -25,6 +31,11 @@ export function CalendarView() {
   const [viewEndHour, setViewEndHour] = React.useState(18);
 
   const [isLoading, setIsLoading] = React.useState(false); // Kept for future use
+  const [events, setEvents] = React.useState<Event[]>([]); // Placeholder for events
+
+  const [isHourlyPlannerOpen, setIsHourlyPlannerOpen] = React.useState(false);
+  const [selectedPlannerDate, setSelectedPlannerDate] = React.useState<Date>(new Date());
+  const [selectedPlannerHour, setSelectedPlannerHour] = React.useState(0);
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -34,7 +45,7 @@ export function CalendarView() {
     const weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 1; // Monday
     switch(view) {
         case 'day':
-            return [startOfWeek(date, { weekStartsOn })]; // Corrected to return an array
+            return [date];
         case '5days':
              const fiveDayStart = startOfWeek(date, { weekStartsOn });
             return Array.from({ length: 5 }, (_, i) => addDays(fiveDayStart, i));
@@ -92,11 +103,29 @@ export function CalendarView() {
 
   const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
 
+  const handleOpenHourlyPlanner = (date: Date, hour: number) => {
+    setSelectedPlannerDate(date);
+    setSelectedPlannerHour(hour);
+    setIsHourlyPlannerOpen(true);
+  };
+
+  const handleEventUpdate = (eventId: string, newStart: Date) => {
+    // Placeholder function for updating events from the dialog
+    console.log(`Update event ${eventId} to start at ${newStart}`);
+  };
+
+  const handleTimeSlotClick = (time: Date) => {
+    // Placeholder function for creating a new event from the dialog
+    console.log(`Create new event at ${time}`);
+  };
+
+
   if (isLoading) {
     return <CalendarSkeleton />;
   }
 
   return (
+    <DndProvider backend={HTML5Backend}>
       <div className="p-4 sm:p-6 h-full flex flex-col">
         <header className="text-center mb-6">
             <h1 className="text-3xl font-bold font-headline text-primary">Calendar</h1>
@@ -149,6 +178,22 @@ export function CalendarView() {
                 </Popover>
             </div>
         </div>
+
+        <div className="flex-1 min-h-0 mt-4 bg-card border rounded-lg">
+          {/* This is the new frame you requested */}
+        </div>
       </div>
+      
+       <HourlyPlannerDialog 
+          isOpen={isHourlyPlannerOpen}
+          onOpenChange={setIsHourlyPlannerOpen}
+          selectedDate={selectedPlannerDate}
+          selectedHour={selectedPlannerHour}
+          events={events}
+          timeSlotIncrement={15}
+          onEventUpdate={handleEventUpdate}
+          onTimeSlotClick={handleTimeSlotClick}
+        />
+    </DndProvider>
   );
 }
