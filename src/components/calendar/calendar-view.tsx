@@ -188,17 +188,19 @@ export function CalendarView() {
             {view !== 'month' && (
               <div className="flex-1 min-h-0 flex flex-col">
                 {/* Day Headers */}
-                <div className="flex border-b shrink-0">
-                    <div className="w-14 shrink-0 border-r"></div>
-                    <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
-                        {daysInView.map(day => (
-                            <div key={day.toISOString()} className="p-1 text-center border-l first:border-l-0">
-                                <p className="text-xs font-medium">{format(day, 'E')}</p>
-                                <p className={cn("text-lg font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                {view !== 'day' && (
+                  <div className="flex border-b shrink-0">
+                      <div className="w-14 shrink-0 border-r"></div>
+                      <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
+                          {daysInView.map(day => (
+                              <div key={day.toISOString()} className="p-1 text-center border-l first:border-l-0">
+                                  <p className="text-xs font-medium">{format(day, 'E')}</p>
+                                  <p className={cn("text-lg font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+                )}
                 
                 {/* Scrollable Time Grid */}
                 <ScrollArea className="flex-1">
@@ -206,8 +208,8 @@ export function CalendarView() {
                     {/* Time Gutter */}
                     <div className="w-14 shrink-0">
                       {Array.from({ length: viewEndHour - viewStartHour + 1 }).map((_, i) => (
-                        <div key={i} className="relative h-20 text-right pr-2 border-r">
-                          <span className="text-xs text-muted-foreground absolute -top-2 right-2">
+                        <div key={i} className="relative h-20 text-right border-r pt-2 pr-2">
+                          <span className="text-xs text-muted-foreground">
                             {format(set(new Date(), { hours: viewStartHour + i }), 'h a')}
                           </span>
                         </div>
