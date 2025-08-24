@@ -73,6 +73,7 @@ export function CalendarView() {
   
   const handleToday = () => {
     setDate(new Date());
+    setNumberOfDays(1);
   };
 
   const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
@@ -166,25 +167,23 @@ export function CalendarView() {
               </Popover>
             </div>
           </div>
+            <div className="flex">
+                <div className="w-14 shrink-0 border-r"></div>
+                <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
+                    {daysInView.map(day => (
+                        <div key={day.toISOString()} className="py-1 text-center border-l first:border-l-0">
+                            <p className="text-xs font-medium">{format(day, 'E')}</p>
+                            <p className={cn("text-sm font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
         </header>
 
         {/* FRAME 2: CALENDAR PANEL */}
-        <div className="flex-1 min-h-0 pt-4">
+        <div className="flex-1 min-h-0">
           <div className="h-full border rounded-lg flex flex-col bg-background p-4">
             <div className="flex-1 min-h-0 flex flex-col">
-                {/* Day Headers */}
-                <div className="flex border-b shrink-0">
-                    <div className="w-14 shrink-0 border-r"></div>
-                    <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
-                        {daysInView.map(day => (
-                            <div key={day.toISOString()} className="py-1 text-center border-l first:border-l-0">
-                                <p className="text-xs font-medium">{format(day, 'E')}</p>
-                                <p className={cn("text-base font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                
                 {/* Scrollable Time Grid */}
                 <ScrollArea className="flex-1">
                   <div className="flex h-full">
