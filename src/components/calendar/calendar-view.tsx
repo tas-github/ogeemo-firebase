@@ -2,7 +2,9 @@
 "use client"
 
 import * as React from "react"
-import { format, addDays, startOfWeek, endOfWeek, isSameMonth, addMonths, addWeeks, setHours, set, addMinutes, getHours } from "date-fns"
+import { useDrag, useDrop, DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import { format, addDays, startOfWeek, endOfWeek, isSameMonth, addMonths, addWeeks, setHours, set, addMinutes, getHours, differenceInMinutes } from "date-fns"
 import { ChevronLeft, ChevronRight, Plus, Settings, CheckCircle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -15,7 +17,7 @@ import { ScrollArea } from "../ui/scroll-area"
 import { type Event } from '@/types/calendar'
 import { NewTaskDialog } from "../tasks/NewTaskDialog"
 import { getContacts, type Contact } from "@/services/contact-service"
-import { getTasksForUser } from "@/services/project-service";
+import { getTasksForUser, updateTask } from "@/services/project-service";
 import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { CalendarSkeleton } from "./calendar-skeleton";
@@ -23,6 +25,33 @@ import { CalendarSkeleton } from "./calendar-skeleton";
 type CalendarView = "day" | "5days" | "week" | "month";
 
 const INCREMENT_OPTIONS = [5, 10, 15, 30, 60];
+const DND_ITEM_TYPE = 'event';
+
+
+const DraggableEvent = ({ event, onEventClick }: { event: Event; onEventClick: () => void }) => {
+    const [{ isDragging }, drag] = useDrag(() => ({
+        type: DND_ITEM_TYPE,
+        item: event,
+        collect: (monitor) => ({
+            isDragging: !!monitor.isDragging(),
+        }),
+    }));
+
+    return (
+        <div
+            ref={drag}
+            onClick={onEventClick}
+            className={cn(
+                "text-xs bg-primary/20 text-primary-foreground p-1 rounded my-1 cursor-move",
+                isDragging && "opacity-50"
+            )}
+        >
+            <p className="font-semibold truncate text-foreground">{event.title}</p>
+            <p className="opacity-80">{format(event.start, 'p')} - {format(event.end, 'p')}</p>
+        </div>
+    );
+};
+
 
 export function CalendarView() {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
@@ -136,6 +165,28 @@ export function CalendarView() {
       setIsNewEventDialogOpen(false);
       setEventToEdit(null);
   }, [loadData]);
+
+  const handleEventDrop = React.useCallback(async (eventId: string, newStartTime: Date) => {
+    const eventToMove = events.find(e => e.id === eventId);
+    if (!eventToMove) return;
+
+    const originalStartTime = eventToMove.start;
+    const durationMinutes = differenceInMinutes(eventToMove.end, eventToMove.start);
+    const newEndTime = addMinutes(newStartTime, durationMinutes);
+
+    // Optimistic UI update
+    setEvents(prev => prev.map(e => e.id === eventId ? { ...e, start: newStartTime, end: newEndTime } : e));
+
+    try {
+        await updateTask(eventId, { start: newStartTime, end: newEndTime });
+        toast({ title: "Event Rescheduled", description: `"${eventToMove.title}" moved to ${format(newStartTime, 'p')}.` });
+    } catch (error) {
+        console.error("Failed to update event:", error);
+        toast({ variant: 'destructive', title: "Update Failed", description: "Could not save the new event time." });
+        // Revert UI on failure
+        setEvents(prev => prev.map(e => e.id === eventId ? { ...e, start: originalStartTime, end: eventToMove.end } : e));
+    }
+  }, [events, toast]);
   
   const handleHourToggle = (hour: number) => {
     setExpandedHours(prev => {
@@ -178,12 +229,18 @@ export function CalendarView() {
     setIsNewEventDialogOpen(true);
   };
   
+  const handleEventClick = (event: Event) => {
+    setEventToEdit(event);
+    setNewEventDefaultDate(null);
+    setIsNewEventDialogOpen(true);
+  };
+  
   if (isLoading) {
     return <CalendarSkeleton />;
   }
 
   return (
-    <>
+    <DndProvider backend={HTML5Backend}>
       <div className="p-4 sm:p-6 h-full flex flex-col space-y-6">
         {/* --- TOP FRAME (STATIC CONTROLS) --- */}
         <div>
@@ -251,8 +308,21 @@ export function CalendarView() {
                 const hour = viewStartHour + i;
                 const isExpanded = expandedHours.has(hour);
                 const increment = hourIncrements[hour] || 15;
+                const hourStartTime = set(date || new Date(), { hours: hour, minutes: 0 });
                 const eventsInHour = events.filter(e => getHours(e.start) === hour);
                 
+                 const HourDropTarget = ({ children, time }: { children: React.ReactNode, time: Date }) => {
+                    const [{ isOver }, drop] = useDrop(() => ({
+                        accept: DND_ITEM_TYPE,
+                        drop: (item: Event) => handleEventDrop(item.id, time),
+                        collect: (monitor) => ({
+                            isOver: !!monitor.isOver(),
+                        }),
+                    }));
+
+                    return <div ref={drop} className={cn("flex-1", isOver && "bg-accent")}>{children}</div>;
+                };
+
                 return (
                   <div key={hour} className="border border-foreground rounded-lg p-2">
                     <div className="flex items-start">
@@ -262,27 +332,27 @@ export function CalendarView() {
                         >
                             {format(set(new Date(), { hours: hour }), 'h a')}
                         </time>
-                        <div className="flex-1 justify-start gap-2 text-xs text-muted-foreground flex pt-1 min-h-[24px]">
-                           {isExpanded ? (
-                                <div className="flex items-center gap-1 text-foreground animate-in fade-in-50 duration-300">
-                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleIncrementChange(hour, 'down')}>
-                                        <ChevronLeft className="h-4 w-4" />
-                                    </Button>
-                                    <span className="text-xs w-24 text-center font-mono bg-muted rounded-sm py-0.5">{increment} min slots</span>
-                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleIncrementChange(hour, 'up')}>
-                                        <ChevronRight className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="space-y-1">
-                                    {eventsInHour.map(event => (
-                                        <div key={event.id} className="text-xs bg-primary/10 text-primary-foreground rounded px-2 py-1">
-                                            <p className="font-semibold text-foreground truncate">{event.title}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                        <HourDropTarget time={hourStartTime}>
+                          <div className="flex-1 justify-start gap-2 text-xs text-muted-foreground flex pt-1 min-h-[24px]">
+                            {isExpanded ? (
+                                  <div className="flex items-center gap-1 text-foreground animate-in fade-in-50 duration-300">
+                                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleIncrementChange(hour, 'down')}>
+                                          <ChevronLeft className="h-4 w-4" />
+                                      </Button>
+                                      <span className="text-xs w-24 text-center font-mono bg-muted rounded-sm py-0.5">{increment} min slots</span>
+                                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleIncrementChange(hour, 'up')}>
+                                          <ChevronRight className="h-4 w-4" />
+                                      </Button>
+                                  </div>
+                              ) : (
+                                  <div className="space-y-1 w-full">
+                                      {eventsInHour.map(event => (
+                                          <DraggableEvent key={event.id} event={event} onEventClick={() => handleEventClick(event)} />
+                                      ))}
+                                  </div>
+                              )}
+                          </div>
+                        </HourDropTarget>
                     </div>
                     {isExpanded && (
                         <div className="grid grid-cols-1 gap-1 pl-20 mt-1">
@@ -290,21 +360,30 @@ export function CalendarView() {
                                 const slotTime = addMinutes(set(date || new Date(), { hours: hour }), slotIndex * increment);
                                 const slotEndTime = addMinutes(slotTime, increment);
                                 const slotEvents = events.filter(e => e.start >= slotTime && e.start < slotEndTime);
+                                
+                                const TimeSlotDropTarget = ({ children, time }: { children: React.ReactNode, time: Date }) => {
+                                    const [{ isOver }, drop] = useDrop(() => ({
+                                        accept: DND_ITEM_TYPE,
+                                        drop: (item: Event) => handleEventDrop(item.id, time),
+                                        collect: (monitor) => ({
+                                            isOver: !!monitor.isOver(),
+                                        }),
+                                    }));
+                                    return <div ref={drop} className={cn(isOver && "bg-accent/50 rounded")}>{children}</div>;
+                                };
 
                                 return (
+                                  <TimeSlotDropTarget key={slotIndex} time={slotTime}>
                                     <div
-                                        key={slotIndex}
                                         className="border border-border rounded p-1 min-h-[50px] cursor-pointer hover:bg-accent/50"
                                         onClick={() => slotEvents.length === 0 && handleTimeSlotClick(slotTime)}
                                     >
                                         <time className="text-xs text-muted-foreground">{format(slotTime, 'p')}</time>
                                         {slotEvents.map(event => (
-                                            <div key={event.id} className="text-xs bg-primary/20 p-1 rounded my-1">
-                                                <p className="font-semibold truncate">{event.title}</p>
-                                                <p>{format(event.start, 'p')} - {format(event.end, 'p')}</p>
-                                            </div>
+                                            <DraggableEvent key={event.id} event={event} onEventClick={() => handleEventClick(event)} />
                                         ))}
                                     </div>
+                                  </TimeSlotDropTarget>
                                 );
                             })}
                         </div>
@@ -335,6 +414,6 @@ export function CalendarView() {
             startMinute: newEventDefaultDate ? String(newEventDefaultDate.getMinutes()) : undefined,
         }}
       />
-    </>
+    </DndProvider>
   );
 }
