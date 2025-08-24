@@ -132,8 +132,7 @@ export function CalendarView() {
             <p className="text-muted-foreground">Manage your schedule, events and appointments.</p>
         </header>
 
-        <div className="flex-1 min-h-0 pt-4 flex flex-col bg-card border rounded-lg">
-          <div className="flex items-center justify-between flex-wrap gap-4 px-4 pb-4">
+        <div className="flex items-center justify-between flex-wrap gap-4 px-4 pb-4 border-b">
               <div className="flex items-center gap-2">
                   <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}><span className="sr-only">Previous period</span><ChevronLeft className="h-4 w-4" /></Button>
                   <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}><span className="sr-only">Next period</span><ChevronRight className="h-4 w-4" /></Button>
@@ -179,58 +178,55 @@ export function CalendarView() {
                       </PopoverContent>
                   </Popover>
               </div>
-          </div>
-          
-          <div className="flex-1 min-h-0 flex flex-col">
+        </div>
+        
+        <div className="flex-1 min-h-0 pt-4 flex flex-col bg-card border rounded-lg">
             {view !== 'month' && (
-              <>
-                <div className="flex border-b border-t shrink-0">
-                  <div className="w-14 shrink-0 border-r"></div>
-                   {view !== 'day' && (
-                    <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
-                        {daysInView.map(day => (
-                            <div key={day.toISOString()} className="p-2 text-center border-l first:border-l-0">
-                                <p className="text-sm font-medium">{format(day, 'E')}</p>
-                                <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
+                <>
+                    <div className="flex border-b shrink-0">
+                        <div className="w-14 shrink-0 border-r"></div>
+                        <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
+                            {daysInView.map(day => (
+                                <div key={day.toISOString()} className="p-2 text-center border-l first:border-l-0">
+                                    <p className="text-sm font-medium">{format(day, 'E')}</p>
+                                    <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <ScrollArea className="flex-1">
+                    <div className="flex h-full">
+                        <div className="w-14 shrink-0">
+                        {Array.from({ length: viewEndHour - viewStartHour + 1 }).map((_, i) => (
+                            <div key={i} className="relative h-20 text-right pr-2 border-r">
+                            <span className="text-xs text-muted-foreground absolute -top-2 right-2">
+                                {format(set(new Date(), { hours: viewStartHour + i }), 'h a')}
+                            </span>
                             </div>
                         ))}
-                    </div>
-                   )}
-                </div>
-
-                <ScrollArea className="flex-1">
-                  <div className="flex h-full">
-                    <div className="w-14 shrink-0">
-                      {Array.from({ length: viewEndHour - viewStartHour + 1 }).map((_, i) => (
-                        <div key={i} className="relative h-20 text-right pr-2 border-r">
-                          <span className="text-xs text-muted-foreground absolute -top-2 right-2">
-                            {format(set(new Date(), { hours: viewStartHour + i }), 'h a')}
-                          </span>
                         </div>
-                      ))}
-                    </div>
-                    <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
-                      {daysInView.map(day => (
-                        <div key={day.toISOString()} className="relative border-l first:border-l-0">
-                          {Array.from({ length: viewEndHour - viewStartHour + 1 }).map((_, i) => (
-                            <div key={i} className="h-20 border-b relative group">
-                                <Button 
-                                    variant="ghost" 
-                                    className="absolute inset-0 w-full h-full opacity-0 hover:opacity-100 flex items-center justify-center"
-                                    onClick={() => handleOpenHourlyPlanner(day, viewStartHour + i)}
-                                >
-                                    <ZoomIn className="h-5 w-5"/>
-                                </Button>
+                        <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
+                        {daysInView.map(day => (
+                            <div key={day.toISOString()} className="relative border-l first:border-l-0">
+                            {Array.from({ length: viewEndHour - viewStartHour + 1 }).map((_, i) => (
+                                <div key={i} className="h-20 border-b relative group">
+                                    <Button 
+                                        variant="ghost" 
+                                        className="absolute inset-0 w-full h-full opacity-0 hover:opacity-100 flex items-center justify-center"
+                                        onClick={() => handleOpenHourlyPlanner(day, viewStartHour + i)}
+                                    >
+                                        <ZoomIn className="h-5 w-5"/>
+                                    </Button>
+                                </div>
+                            ))}
                             </div>
-                          ))}
+                        ))}
                         </div>
-                      ))}
                     </div>
-                  </div>
-                </ScrollArea>
-              </>
+                    </ScrollArea>
+                </>
             )}
-          </div>
         </div>
       
        <HourlyPlannerDialog 
