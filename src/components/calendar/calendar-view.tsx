@@ -126,112 +126,125 @@ export function CalendarView() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="p-4 sm:p-6 h-full flex flex-col">
-        <header className="shrink-0">
-            <div className="text-center mb-4">
-                <h1 className="text-3xl font-bold font-headline text-primary">Calendar</h1>
-                <p className="text-muted-foreground">Manage your schedule, events and appointments.</p>
+      <div className="h-full flex flex-col">
+        {/* FRAME 1: STATIC HEADER */}
+        <header className="shrink-0 p-4 sm:p-6 space-y-4">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold font-headline text-primary">Calendar</h1>
+            <p className="text-muted-foreground">Manage your schedule, events and appointments.</p>
+          </div>
+          <div className="flex items-center justify-between flex-wrap gap-4 border-b pb-4">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}><span className="sr-only">Previous period</span><ChevronLeft className="h-4 w-4" /></Button>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}><span className="sr-only">Next period</span><ChevronRight className="h-4 w-4" /></Button>
             </div>
-            <div className="flex items-center justify-between flex-wrap gap-4 px-4 pb-4 border-b">
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}><span className="sr-only">Previous period</span><ChevronLeft className="h-4 w-4" /></Button>
-                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}><span className="sr-only">Next period</span><ChevronRight className="h-4 w-4" /></Button>
-                </div>
-                <h2 className="text-xl font-semibold font-headline text-center">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="ghost">{viewTitle}</Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                            <CalendarShadCN mode="single" selected={date} onSelect={setDate} />
-                        </PopoverContent>
-                    </Popover>
-                </h2>
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1 rounded-md bg-muted p-1">
-                        {viewOptions.map((option) => (
-                            <Button key={option.id} variant={view === option.id ? "secondary" : "ghost"} size="sm" onClick={() => setView(option.id)} className="h-8 px-3">
-                                {option.label}
-                            </Button>
-                        ))}
-                    </div>
-                    <Button className="h-8 py-1"><Plus className="mr-2 h-4 w-4" />New Event</Button>
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-64 space-y-4">
-                            <div className="space-y-2">
-                                <Label className="font-semibold">View Start Hour</Label>
-                                <Select value={String(viewStartHour)} onValueChange={(v) => setViewStartHour(Number(v))}>
-                                    <SelectTrigger className="h-8 py-1"><SelectValue /></SelectTrigger>
-                                    <SelectContent>{hourOptions.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent>
-                                </Select>
-                            </div>
-                              <div className="space-y-2">
-                                <Label className="font-semibold">View End Hour</Label>
-                                <Select value={String(viewEndHour)} onValueChange={(v) => setViewEndHour(Number(v))}>
-                                    <SelectTrigger className="h-8 py-1"><SelectValue /></SelectTrigger>
-                                    <SelectContent>{hourOptions.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent>
-                                </Select>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-                </div>
+            <h2 className="text-xl font-semibold font-headline text-center">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost">{viewTitle}</Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <CalendarShadCN mode="single" selected={date} onSelect={setDate} />
+                </PopoverContent>
+              </Popover>
+            </h2>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                {viewOptions.map((option) => (
+                  <Button key={option.id} variant={view === option.id ? "secondary" : "ghost"} size="sm" onClick={() => setView(option.id)} className="h-8 px-3">
+                    {option.label}
+                  </Button>
+                ))}
+              </div>
+              <Button className="h-8 py-1"><Plus className="mr-2 h-4 w-4" />New Event</Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 space-y-4">
+                  <div className="space-y-2">
+                    <Label className="font-semibold">View Start Hour</Label>
+                    <Select value={String(viewStartHour)} onValueChange={(v) => setViewStartHour(Number(v))}>
+                      <SelectTrigger className="h-8 py-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>{hourOptions.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-semibold">View End Hour</Label>
+                    <Select value={String(viewEndHour)} onValueChange={(v) => setViewEndHour(Number(v))}>
+                      <SelectTrigger className="h-8 py-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>{hourOptions.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
-             {view !== 'month' && (
-                <div className="flex border-b shrink-0">
-                    <div className="w-14 shrink-0 border-r"></div>
-                    <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
-                    {daysInView.map(day => (
-                        <div key={day.toISOString()} className="p-2 text-center border-l first:border-l-0">
-                        <p className="text-sm font-medium">{format(day, 'E')}</p>
-                        <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
-                        </div>
-                    ))}
-                    </div>
-                </div>
-            )}
+          </div>
         </header>
 
-        <div className="flex-1 min-h-0 pt-4">
-             <div className="h-full border rounded-lg flex flex-col bg-background">
-                {view !== 'month' && (
-                    <div className="flex-1 min-h-0 flex flex-col">
-                        <ScrollArea className="flex-1">
-                        <div className="flex h-full">
-                            <div className="w-14 shrink-0">
-                            {Array.from({ length: viewEndHour - viewStartHour + 1 }).map((_, i) => (
-                                <div key={i} className="relative h-20 text-right pr-2 border-r">
-                                <span className="text-xs text-muted-foreground absolute -top-2 right-2">
-                                    {format(set(new Date(), { hours: viewStartHour + i }), 'h a')}
-                                </span>
-                                </div>
-                            ))}
-                            </div>
-                            <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
+        {/* FRAME 2: CALENDAR PANEL */}
+        <div className="flex-1 min-h-0 px-4 sm:px-6 pb-4 sm:pb-6">
+          <div className="h-full border rounded-lg flex flex-col bg-background p-4">
+            {view !== 'month' && (
+              <div className="flex-1 min-h-0 flex flex-col">
+                {/* Day Headers */}
+                {view !== 'day' && (
+                    <div className="flex border-b shrink-0">
+                        <div className="w-14 shrink-0 border-r"></div>
+                        <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
                             {daysInView.map(day => (
-                                <div key={day.toISOString()} className="relative border-l first:border-l-0">
-                                {Array.from({ length: viewEndHour - viewStartHour + 1 }).map((_, i) => (
-                                    <div key={i} className="h-20 border-b relative group">
-                                        <Button 
-                                            variant="ghost" 
-                                            className="absolute inset-0 w-full h-full opacity-0 hover:opacity-100 flex items-center justify-center"
-                                            onClick={() => handleOpenHourlyPlanner(day, viewStartHour + i)}
-                                        >
-                                            <ZoomIn className="h-5 w-5"/>
-                                        </Button>
-                                    </div>
-                                ))}
+                                <div key={day.toISOString()} className="p-2 text-center border-l first:border-l-0">
+                                    <p className="text-sm font-medium">{format(day, 'E')}</p>
+                                    <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
                                 </div>
                             ))}
-                            </div>
                         </div>
-                        </ScrollArea>
                     </div>
                 )}
-             </div>
+                
+                {/* Scrollable Time Grid */}
+                <ScrollArea className="flex-1">
+                  <div className="flex h-full">
+                    {/* Time Gutter */}
+                    <div className="w-14 shrink-0">
+                      {Array.from({ length: viewEndHour - viewStartHour + 1 }).map((_, i) => (
+                        <div key={i} className="relative h-20 text-right pr-2 border-r">
+                          <span className="text-xs text-muted-foreground absolute -top-2 right-2">
+                            {format(set(new Date(), { hours: viewStartHour + i }), 'h a')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Day Columns */}
+                    <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
+                      {daysInView.map(day => (
+                        <div key={day.toISOString()} className="relative border-l first:border-l-0">
+                          {Array.from({ length: viewEndHour - viewStartHour + 1 }).map((_, i) => (
+                            <div key={i} className="h-20 border-b relative group">
+                              <Button 
+                                variant="ghost" 
+                                className="absolute inset-0 w-full h-full opacity-0 hover:opacity-100 flex items-center justify-center"
+                                onClick={() => handleOpenHourlyPlanner(day, viewStartHour + i)}
+                              >
+                                <ZoomIn className="h-5 w-5"/>
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+            {view === 'month' && (
+                 <div className="flex h-full items-center justify-center text-muted-foreground">
+                    <p>Month view coming soon.</p>
+                </div>
+            )}
+          </div>
         </div>
+      </div>
       
        <HourlyPlannerDialog 
           isOpen={isHourlyPlannerOpen}
@@ -243,7 +256,6 @@ export function CalendarView() {
           onEventUpdate={handleEventUpdate}
           onTimeSlotClick={handleTimeSlotClick}
         />
-    </div>
-  </DndProvider>
+    </DndProvider>
   );
 }
