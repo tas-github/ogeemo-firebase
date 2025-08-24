@@ -70,6 +70,10 @@ export function CalendarView() {
     const newDate = addDays(date, numberOfDays);
     setDate(newDate);
   };
+  
+  const handleToday = () => {
+    setDate(new Date());
+  };
 
   const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
 
@@ -119,7 +123,7 @@ export function CalendarView() {
               </Popover>
             </h2>
             <div className="flex items-center gap-2">
-              <Button variant="outline" className="h-8 py-1" onClick={() => setDate(new Date())}>Today</Button>
+              <Button variant="outline" className="h-8 py-1" onClick={handleToday}>Today</Button>
               <div className="flex items-center gap-2">
                 <Label htmlFor="days-select" className="text-sm">Show:</Label>
                 <Select
@@ -173,9 +177,9 @@ export function CalendarView() {
                     <div className="w-14 shrink-0 border-r"></div>
                     <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
                         {daysInView.map(day => (
-                            <div key={day.toISOString()} className="p-1 text-center border-l first:border-l-0">
+                            <div key={day.toISOString()} className="py-1 text-center border-l first:border-l-0">
                                 <p className="text-xs font-medium">{format(day, 'E')}</p>
-                                <p className={cn("text-lg font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
+                                <p className={cn("text-base font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
                             </div>
                         ))}
                     </div>
