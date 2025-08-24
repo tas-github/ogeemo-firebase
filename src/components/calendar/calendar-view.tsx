@@ -20,12 +20,9 @@ import { type Event } from '@/types/calendar';
 import { ScrollArea } from '../ui/scroll-area';
 import { HourlyPlannerDialog } from "./hourly-planner-dialog";
 
-
-type CalendarView = "day" | "5days" | "week" | "month";
-
 export function CalendarView() {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
-  const [view, setView] = React.useState<CalendarView>("week");
+  const [numberOfDays, setNumberOfDays] = React.useState<number>(2);
   
   const [viewStartHour, setViewStartHour] = React.useState(8);
   const [viewEndHour, setViewEndHour] = React.useState(18);
@@ -42,24 +39,11 @@ export function CalendarView() {
 
   const daysInView = React.useMemo(() => {
     if (!date) return [];
-    const weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6 = 1; // Monday
-    switch(view) {
-        case 'day':
-            return [date];
-        case '5days':
-             const fiveDayStart = startOfWeek(date, { weekStartsOn });
-            return Array.from({ length: 5 }, (_, i) => addDays(fiveDayStart, i));
-        case 'week':
-            const start = startOfWeek(date, { weekStartsOn });
-            return Array.from({ length: 7 }, (_, i) => addDays(start, i));
-        default:
-            return [];
-    }
-  }, [date, view]);
+    return Array.from({ length: numberOfDays }, (_, i) => addDays(date, i));
+  }, [date, numberOfDays]);
 
   const viewTitle = React.useMemo(() => {
     if (!date) return "Select a date";
-    if (view === 'month') return format(date, 'MMMM yyyy');
     if (daysInView.length === 1) return format(date, 'EEEE, MMMM d, yyyy');
     if (daysInView.length > 1) {
         const start = daysInView[0];
@@ -73,31 +57,17 @@ export function CalendarView() {
         return `${format(start, 'MMMM d')} – ${format(end, 'd, yyyy')}`;
     }
     return format(date, 'PPP');
-  }, [date, view, daysInView]);
-
-
-  const viewOptions: { id: CalendarView; label: string }[] = [
-    { id: "day", label: "Day" },
-    { id: "5days", label: "5 Days" },
-    { id: "week", label: "Week" },
-    { id: "month", label: "Month" },
-  ];
+  }, [date, daysInView]);
   
   const handlePrev = () => {
     if (!date) return;
-    const newDate = view === 'month' ? addDays(date, -28) // approx.
-                  : view === 'week' ? addDays(date, -7)
-                  : view === '5days' ? addDays(date, -5)
-                  : addDays(date, -1);
+    const newDate = addDays(date, -numberOfDays);
     setDate(newDate);
   };
   
   const handleNext = () => {
     if (!date) return;
-    const newDate = view === 'month' ? addDays(date, 28)
-                  : view === 'week' ? addDays(date, 7)
-                  : view === '5days' ? addDays(date, 5)
-                  : addDays(date, 1);
+    const newDate = addDays(date, numberOfDays);
     setDate(newDate);
   };
 
@@ -149,12 +119,24 @@ export function CalendarView() {
               </Popover>
             </h2>
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 rounded-md bg-muted p-1">
-                {viewOptions.map((option) => (
-                  <Button key={option.id} variant={view === option.id ? "secondary" : "ghost"} size="sm" onClick={() => setView(option.id)} className="h-8 px-3">
-                    {option.label}
-                  </Button>
-                ))}
+              <Button variant="outline" className="h-8 py-1" onClick={() => setDate(new Date())}>Today</Button>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="days-select" className="text-sm">Show:</Label>
+                <Select
+                  value={String(numberOfDays)}
+                  onValueChange={(value) => setNumberOfDays(Number(value))}
+                >
+                  <SelectTrigger id="days-select" className="h-8 w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 30 }, (_, i) => i + 1).map(dayCount => (
+                      <SelectItem key={dayCount} value={String(dayCount)}>
+                        {dayCount} day{dayCount > 1 ? 's' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <Button className="h-8 py-1"><Plus className="mr-2 h-4 w-4" />New Event</Button>
               <Popover>
@@ -185,22 +167,19 @@ export function CalendarView() {
         {/* FRAME 2: CALENDAR PANEL */}
         <div className="flex-1 min-h-0 pt-4">
           <div className="h-full border rounded-lg flex flex-col bg-background p-4">
-            {view !== 'month' && (
-              <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0 flex flex-col">
                 {/* Day Headers */}
-                {view !== 'day' && (
-                  <div className="flex border-b shrink-0">
-                      <div className="w-14 shrink-0 border-r"></div>
-                      <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
-                          {daysInView.map(day => (
-                              <div key={day.toISOString()} className="p-1 text-center border-l first:border-l-0">
-                                  <p className="text-xs font-medium">{format(day, 'E')}</p>
-                                  <p className={cn("text-lg font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
-                              </div>
-                          ))}
-                      </div>
-                  </div>
-                )}
+                <div className="flex border-b shrink-0">
+                    <div className="w-14 shrink-0 border-r"></div>
+                    <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
+                        {daysInView.map(day => (
+                            <div key={day.toISOString()} className="p-1 text-center border-l first:border-l-0">
+                                <p className="text-xs font-medium">{format(day, 'E')}</p>
+                                <p className={cn("text-lg font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
                 
                 {/* Scrollable Time Grid */}
                 <ScrollArea className="flex-1">
@@ -236,12 +215,6 @@ export function CalendarView() {
                   </div>
                 </ScrollArea>
               </div>
-            )}
-            {view === 'month' && (
-                 <div className="flex h-full items-center justify-center text-muted-foreground">
-                    <p>Month view coming soon.</p>
-                </div>
-            )}
           </div>
         </div>
       </div>
