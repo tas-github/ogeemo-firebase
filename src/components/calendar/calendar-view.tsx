@@ -2,8 +2,8 @@
 "use client"
 
 import * as React from "react"
-import { format, addDays, startOfWeek, endOfWeek, isSameMonth, addMonths, addWeeks, setHours, set, addMinutes } from "date-fns"
-import { ChevronLeft, ChevronRight, Plus, Settings, ChevronDown, CheckCircle } from "lucide-react"
+import { format, addDays, startOfWeek, endOfWeek, isSameMonth, addMonths, addWeeks, setHours, set, addMinutes, getHours } from "date-fns"
+import { ChevronLeft, ChevronRight, Plus, Settings, CheckCircle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -251,6 +251,7 @@ export function CalendarView() {
                 const hour = viewStartHour + i;
                 const isExpanded = expandedHours.has(hour);
                 const increment = hourIncrements[hour] || 15;
+                const eventsInHour = events.filter(e => getHours(e.start) === hour);
                 
                 return (
                   <div key={hour} className="border border-foreground rounded-lg p-2">
@@ -262,7 +263,7 @@ export function CalendarView() {
                             {format(set(new Date(), { hours: hour }), 'h a')}
                         </time>
                         <div className="flex-1 justify-start gap-2 text-xs text-muted-foreground flex pt-1 min-h-[24px]">
-                           {isExpanded && (
+                           {isExpanded ? (
                                 <div className="flex items-center gap-1 text-foreground animate-in fade-in-50 duration-300">
                                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleIncrementChange(hour, 'down')}>
                                         <ChevronLeft className="h-4 w-4" />
@@ -271,6 +272,14 @@ export function CalendarView() {
                                     <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleIncrementChange(hour, 'up')}>
                                         <ChevronRight className="h-4 w-4" />
                                     </Button>
+                                </div>
+                            ) : (
+                                <div className="space-y-1">
+                                    {eventsInHour.map(event => (
+                                        <div key={event.id} className="text-xs bg-primary/10 text-primary-foreground rounded px-2 py-1">
+                                            <p className="font-semibold text-foreground truncate">{event.title}</p>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
