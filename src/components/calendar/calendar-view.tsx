@@ -126,9 +126,9 @@ export function CalendarView() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col p-4 sm:p-6">
         {/* FRAME 1: STATIC HEADER */}
-        <header className="shrink-0 p-4 sm:p-6 space-y-4">
+        <header className="shrink-0 space-y-4">
           <div className="text-center">
             <h1 className="text-3xl font-bold font-headline text-primary">Calendar</h1>
             <p className="text-muted-foreground">Manage your schedule, events and appointments.</p>
@@ -183,24 +183,22 @@ export function CalendarView() {
         </header>
 
         {/* FRAME 2: CALENDAR PANEL */}
-        <div className="flex-1 min-h-0 px-4 sm:px-6 pb-4 sm:pb-6">
+        <div className="flex-1 min-h-0 pt-4">
           <div className="h-full border rounded-lg flex flex-col bg-background p-4">
             {view !== 'month' && (
               <div className="flex-1 min-h-0 flex flex-col">
                 {/* Day Headers */}
-                {view !== 'day' && (
-                    <div className="flex border-b shrink-0">
-                        <div className="w-14 shrink-0 border-r"></div>
-                        <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
-                            {daysInView.map(day => (
-                                <div key={day.toISOString()} className="p-2 text-center border-l first:border-l-0">
-                                    <p className="text-sm font-medium">{format(day, 'E')}</p>
-                                    <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
-                                </div>
-                            ))}
-                        </div>
+                <div className="flex border-b shrink-0">
+                    <div className="w-14 shrink-0 border-r"></div>
+                    <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
+                        {daysInView.map(day => (
+                            <div key={day.toISOString()} className="p-1 text-center border-l first:border-l-0">
+                                <p className="text-xs font-medium">{format(day, 'E')}</p>
+                                <p className={cn("text-lg font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
+                            </div>
+                        ))}
                     </div>
-                )}
+                </div>
                 
                 {/* Scrollable Time Grid */}
                 <ScrollArea className="flex-1">
