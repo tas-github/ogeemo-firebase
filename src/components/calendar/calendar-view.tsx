@@ -179,9 +179,9 @@ export function CalendarView() {
                     </Popover>
                 </div>
             </div>
-            {view !== 'month' && view !== 'day' && (
+             {view !== 'month' && (
                 <div className="flex border-b shrink-0">
-                    <div className="w-14 shrink-0"></div>
+                    <div className="w-14 shrink-0 border-r"></div>
                     <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
                     {daysInView.map(day => (
                         <div key={day.toISOString()} className="p-2 text-center border-l first:border-l-0">
@@ -195,7 +195,7 @@ export function CalendarView() {
         </header>
 
         <div className="flex-1 min-h-0 pt-4">
-             <div className="h-full border rounded-lg flex flex-col">
+             <div className="h-full border rounded-lg flex flex-col bg-background">
                 {view !== 'month' && (
                     <div className="flex-1 min-h-0 flex flex-col">
                         <ScrollArea className="flex-1">
