@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { format, addDays, startOfWeek, isSameDay, set } from "date-fns"
+import { format, addDays, isSameDay, set } from "date-fns"
 import { ChevronLeft, ChevronRight, Plus, Settings, Calendar as CalendarIcon, ZoomIn } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -19,6 +19,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { type Event } from '@/types/calendar';
 import { ScrollArea } from '../ui/scroll-area';
 import { HourlyPlannerDialog } from "./hourly-planner-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export function CalendarView() {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
@@ -201,17 +202,26 @@ export function CalendarView() {
                     <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
                       {daysInView.map(day => (
                         <div key={day.toISOString()} className="relative border-l first:border-l-0">
-                          {Array.from({ length: viewEndHour - viewStartHour + 1 }).map((_, i) => (
-                            <div key={i} className="h-20 border-b relative group">
-                              <Button 
-                                variant="ghost" 
-                                className="absolute inset-0 w-full h-full opacity-0 hover:opacity-100 flex items-center justify-center"
-                                onClick={() => handleOpenHourlyPlanner(day, viewStartHour + i)}
-                              >
-                                <ZoomIn className="h-5 w-5"/>
-                              </Button>
-                            </div>
-                          ))}
+                          <TooltipProvider>
+                            {Array.from({ length: viewEndHour - viewStartHour + 1 }).map((_, i) => (
+                              <div key={i} className="h-20 border-b relative group">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      className="absolute inset-0 w-full h-full opacity-0 hover:opacity-100 flex items-center justify-center"
+                                      onClick={() => handleOpenHourlyPlanner(day, viewStartHour + i)}
+                                    >
+                                      <ZoomIn className="h-5 w-5"/>
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Create an Event</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </div>
+                            ))}
+                          </TooltipProvider>
                         </div>
                       ))}
                     </div>
