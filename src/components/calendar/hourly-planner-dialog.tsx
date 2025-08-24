@@ -61,7 +61,7 @@ const TimeSlot = ({ time, onDrop, children, onClick }: { time: Date; onDrop: (ev
     }));
 
     return (
-        <div ref={drop} className={cn("flex gap-4 border border-foreground py-2 pl-2 rounded-lg", isOver && canDrop && "bg-accent")}>
+        <div ref={drop} className={cn("flex gap-4 border-b py-2 pl-2", isOver && canDrop && "bg-accent")}>
             <time className="w-16 text-right text-sm text-muted-foreground pt-1">{format(time, 'p')}</time>
             <div className="flex-1 min-h-[40px] cursor-pointer" onClick={onClick}>
                 {children}
@@ -94,7 +94,7 @@ export function HourlyPlannerDialog({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-        <DialogHeader className="p-4 border-b flex flex-row items-center justify-end text-center">
+        <DialogHeader className="p-4 border-b flex flex-row items-center justify-between">
           <div className="text-center flex-1">
             <DialogTitle className="text-3xl font-bold font-headline text-primary">Hourly Planner</DialogTitle>
             <DialogDescription>{format(set(selectedDate, { hours: selectedHour }), 'MMMM d, yyyy @ h a')}</DialogDescription>
