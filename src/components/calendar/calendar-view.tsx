@@ -319,7 +319,7 @@ export function CalendarView() {
         
         <div className="flex-1 min-h-0 pt-2 flex flex-col">
             {view !== 'day' && (
-              <div className="flex border-b">
+              <div className="flex">
                   <div className="w-24 shrink-0" />
                   {daysInView.map(day => (
                       <div key={day.toISOString()} className="flex-1 text-center pb-2">
