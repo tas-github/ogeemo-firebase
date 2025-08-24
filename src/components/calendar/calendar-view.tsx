@@ -22,6 +22,8 @@ import { CalendarSkeleton } from "./calendar-skeleton";
 
 type CalendarView = "day" | "5days" | "week" | "month";
 
+const INCREMENT_OPTIONS = [15, 30, 60];
+
 export function CalendarView() {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
   const [view, setView] = React.useState<CalendarView>("week");
@@ -41,6 +43,7 @@ export function CalendarView() {
   const { toast } = useToast();
   
   const [expandedHours, setExpandedHours] = React.useState<Set<number>>(new Set());
+  const [hourIncrements, setHourIncrements] = React.useState<Record<number, number>>({});
 
   const loadData = React.useCallback(async () => {
     if (!user) {
@@ -141,11 +144,34 @@ export function CalendarView() {
             newSet.delete(hour);
         } else {
             newSet.add(hour);
+            if (!hourIncrements[hour]) {
+                setHourIncrements(prevIncrements => ({
+                    ...prevIncrements,
+                    [hour]: 15
+                }));
+            }
         }
         return newSet;
     });
   };
   
+  const handleIncrementChange = (hour: number, direction: 'up' | 'down') => {
+    setHourIncrements(prevIncrements => {
+        const currentIncrement = prevIncrements[hour] || 15;
+        const currentIndex = INCREMENT_OPTIONS.indexOf(currentIncrement);
+        let nextIndex;
+        if (direction === 'up') {
+            nextIndex = (currentIndex + 1) % INCREMENT_OPTIONS.length;
+        } else {
+            nextIndex = (currentIndex - 1 + INCREMENT_OPTIONS.length) % INCREMENT_OPTIONS.length;
+        }
+        return {
+            ...prevIncrements,
+            [hour]: INCREMENT_OPTIONS[nextIndex]
+        };
+    });
+  };
+
   const handleTimeSlotClick = (time: Date) => {
     setEventToEdit(null);
     setNewEventDefaultDate(time);
@@ -224,7 +250,7 @@ export function CalendarView() {
               {Array.from({ length: viewEndHour - viewStartHour }).map((_, i) => {
                 const hour = viewStartHour + i;
                 const isExpanded = expandedHours.has(hour);
-                const increment = 15; // Fixed 15-minute increment
+                const increment = hourIncrements[hour] || 15;
                 
                 return (
                   <div key={hour} className="border border-foreground rounded-lg p-2">
@@ -236,7 +262,17 @@ export function CalendarView() {
                             {format(set(new Date(), { hours: hour }), 'h a')}
                         </time>
                         <div className="flex-1 justify-start gap-2 text-xs text-muted-foreground flex pt-1 min-h-[24px]">
-                            {/* Event summaries will be rendered here */}
+                           {isExpanded && (
+                                <div className="flex items-center gap-1 text-foreground animate-in fade-in-50 duration-300">
+                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleIncrementChange(hour, 'down')}>
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <span className="text-xs w-16 text-center font-mono bg-muted rounded-sm py-0.5">{increment} min slots</span>
+                                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => handleIncrementChange(hour, 'up')}>
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </div>
                     {isExpanded && (
