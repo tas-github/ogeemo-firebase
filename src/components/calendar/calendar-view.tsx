@@ -184,9 +184,10 @@ export function CalendarView() {
           <div className="flex-1 min-h-0 flex flex-col">
             {view !== 'month' && (
               <>
-                <div className="flex border-b">
+                {/* This is the new "bar" for the headers */}
+                <div className="flex border-b border-t shrink-0">
                   <div className="w-14 shrink-0 border-r"></div>
-                  {view !== 'day' && (
+                   {view !== 'day' && (
                     <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
                         {daysInView.map(day => (
                             <div key={day.toISOString()} className="p-2 text-center border-l first:border-l-0">
@@ -195,8 +196,9 @@ export function CalendarView() {
                             </div>
                         ))}
                     </div>
-                  )}
+                   )}
                 </div>
+
                 <ScrollArea className="flex-1">
                   <div className="flex h-full">
                     <div className="w-14 shrink-0">
