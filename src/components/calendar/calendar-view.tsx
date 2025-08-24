@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { useDrag, useDrop } from 'react-dnd';
+import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { format, addDays, startOfWeek, isSameDay, set, addMinutes, getHours, differenceInMinutes, startOfDay } from "date-fns"
 import { ChevronLeft, ChevronRight, Plus, Settings, ZoomIn } from "lucide-react"
@@ -268,55 +268,55 @@ export function CalendarView() {
             <h1 className="text-3xl font-bold font-headline text-primary">Calendar</h1>
             <p className="text-muted-foreground">Manage your schedule, events and appointments.</p>
         </header>
-        <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b">
-            <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}><span className="sr-only">Previous period</span><ChevronLeft className="h-4 w-4" /></Button>
-                <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}><span className="sr-only">Next period</span><ChevronRight className="h-4 w-4" /></Button>
-            </div>
-            <h2 className="text-xl font-semibold font-headline text-center">
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant="ghost">{viewTitle}</Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                        <CalendarShadCN mode="single" selected={date} onSelect={setDate} />
-                    </PopoverContent>
-                </Popover>
-            </h2>
-            <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 rounded-md bg-muted p-1">
-                    {viewOptions.map((option) => (
-                        <Button key={option.id} variant={view === option.id ? "secondary" : "ghost"} size="sm" onClick={() => setView(option.id)} className="h-8 px-3">
-                            {option.label}
-                        </Button>
-                    ))}
-                </div>
-                <Button className="h-8 py-1" onClick={() => { setEventToEdit(null); setNewEventDefaultDate(new Date()); setIsNewEventDialogOpen(true); }}><Plus className="mr-2 h-4 w-4" />New Event</Button>
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64 space-y-4">
-                        <div className="space-y-2">
-                            <Label className="font-semibold">View Start Hour</Label>
-                            <Select value={String(viewStartHour)} onValueChange={(v) => setViewStartHour(Number(v))}>
-                                <SelectTrigger className="h-8 py-1"><SelectValue /></SelectTrigger>
-                                <SelectContent>{hourOptions.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent>
-                            </Select>
-                        </div>
-                          <div className="space-y-2">
-                            <Label className="font-semibold">View End Hour</Label>
-                            <Select value={String(viewEndHour)} onValueChange={(v) => setViewEndHour(Number(v))}>
-                                <SelectTrigger className="h-8 py-1"><SelectValue /></SelectTrigger>
-                                <SelectContent>{hourOptions.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent>
-                            </Select>
-                        </div>
-                    </PopoverContent>
-                </Popover>
-            </div>
-        </div>
-        
         <div className="flex-1 min-h-0 flex flex-col">
+          <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b">
+              <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}><span className="sr-only">Previous period</span><ChevronLeft className="h-4 w-4" /></Button>
+                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}><span className="sr-only">Next period</span><ChevronRight className="h-4 w-4" /></Button>
+              </div>
+              <h2 className="text-xl font-semibold font-headline text-center">
+                  <Popover>
+                      <PopoverTrigger asChild>
+                          <Button variant="ghost">{viewTitle}</Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                          <CalendarShadCN mode="single" selected={date} onSelect={setDate} />
+                      </PopoverContent>
+                  </Popover>
+              </h2>
+              <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 rounded-md bg-muted p-1">
+                      {viewOptions.map((option) => (
+                          <Button key={option.id} variant={view === option.id ? "secondary" : "ghost"} size="sm" onClick={() => setView(option.id)} className="h-8 px-3">
+                              {option.label}
+                          </Button>
+                      ))}
+                  </div>
+                  <Button className="h-8 py-1" onClick={() => { setEventToEdit(null); setNewEventDefaultDate(new Date()); setIsNewEventDialogOpen(true); }}><Plus className="mr-2 h-4 w-4" />New Event</Button>
+                  <Popover>
+                      <PopoverTrigger asChild>
+                          <Button variant="outline" size="icon" className="h-8 w-8"><Settings className="h-4 w-4" /></Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 space-y-4">
+                          <div className="space-y-2">
+                              <Label className="font-semibold">View Start Hour</Label>
+                              <Select value={String(viewStartHour)} onValueChange={(v) => setViewStartHour(Number(v))}>
+                                  <SelectTrigger className="h-8 py-1"><SelectValue /></SelectTrigger>
+                                  <SelectContent>{hourOptions.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent>
+                              </Select>
+                          </div>
+                            <div className="space-y-2">
+                              <Label className="font-semibold">View End Hour</Label>
+                              <Select value={String(viewEndHour)} onValueChange={(v) => setViewEndHour(Number(v))}>
+                                  <SelectTrigger className="h-8 py-1"><SelectValue /></SelectTrigger>
+                                  <SelectContent>{hourOptions.map(h => <SelectItem key={h.value} value={h.value}>{h.label}</SelectItem>)}</SelectContent>
+                              </Select>
+                          </div>
+                      </PopoverContent>
+                  </Popover>
+              </div>
+          </div>
+        
           <div className="flex items-center gap-4 py-2 border-b">
               <div className="w-24 shrink-0" />
               {daysInView.map(day => (
