@@ -18,12 +18,6 @@ import { getContacts, type Contact } from "@/services/contact-service"
 import { getTasksForUser } from "@/services/project-service";
 import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { CalendarSkeleton } from "./calendar-skeleton";
 
 type CalendarView = "day" | "5days" | "week" | "month";
@@ -46,7 +40,7 @@ export function CalendarView() {
   const { user } = useAuth();
   const { toast } = useToast();
   
-  const [timeSlotIncrements, setTimeSlotIncrements] = React.useState<Record<number, number>>({});
+  const [expandedHours, setExpandedHours] = React.useState<Set<number>>(new Set());
 
   const loadData = React.useCallback(async () => {
     if (!user) {
@@ -134,21 +128,21 @@ export function CalendarView() {
 
   const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(setHours(new Date(), i), 'h a') }));
   
-  const handleEventCreatedOrUpdated = () => {
+  const handleEventCreatedOrUpdated = React.useCallback(() => {
       loadData(); // Reload all data to ensure view is up to date
       setIsNewEventDialogOpen(false);
       setEventToEdit(null);
-  };
+  }, [loadData]);
   
-  const handleIncrementClick = (hour: number, increment: number) => {
-    setTimeSlotIncrements(prev => {
-        const newIncrements = {...prev};
-        if (newIncrements[hour] === increment) {
-            delete newIncrements[hour]; // Toggle off if same increment is clicked
+  const handleHourToggle = (hour: number) => {
+    setExpandedHours(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(hour)) {
+            newSet.delete(hour);
         } else {
-            newIncrements[hour] = increment;
+            newSet.add(hour);
         }
-        return newIncrements;
+        return newSet;
     });
   };
   
@@ -229,30 +223,23 @@ export function CalendarView() {
             <div className="space-y-2 pr-4">
               {Array.from({ length: viewEndHour - viewStartHour }).map((_, i) => {
                 const hour = viewStartHour + i;
-                const increment = timeSlotIncrements[hour];
+                const isExpanded = expandedHours.has(hour);
+                const increment = 15; // Fixed 15-minute increment
                 
                 return (
                   <div key={hour} className="border border-foreground rounded-lg p-2">
                     <div className="flex items-start">
-                        <time className="font-semibold w-20 text-right pr-4 pt-1">{format(set(new Date(), { hours: hour }), 'h a')}</time>
+                        <time 
+                            className="font-semibold w-20 text-right pr-4 pt-1 cursor-pointer"
+                            onClick={() => handleHourToggle(hour)}
+                        >
+                            {format(set(new Date(), { hours: hour }), 'h a')}
+                        </time>
                         <div className="flex-1 justify-start gap-2 text-xs text-muted-foreground flex pt-1 min-h-[24px]">
                             {/* Event summaries will be rendered here */}
                         </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7"><ChevronDown className="h-4 w-4" /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                {[5, 10, 15, 30, 60].map(inc => (
-                                    <DropdownMenuItem key={inc} onSelect={() => handleIncrementClick(hour, inc)} className="flex justify-between">
-                                        {inc} min slots
-                                        {increment === inc && <CheckCircle className="h-4 w-4 text-primary" />}
-                                    </DropdownMenuItem>
-                                ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
                     </div>
-                    {increment && (
+                    {isExpanded && (
                         <div className="grid grid-cols-1 gap-1 pl-20 mt-1">
                             {Array.from({ length: 60 / increment }).map((_, slotIndex) => {
                                 const slotTime = addMinutes(set(date || new Date(), { hours: hour }), slotIndex * increment);
