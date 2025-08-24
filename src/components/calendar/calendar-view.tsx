@@ -112,7 +112,8 @@ export function CalendarView() {
         case 'day':
             return [startOfDay(date)];
         case '5days':
-            return Array.from({ length: 5 }, (_, i) => startOfDay(addDays(date, i)));
+             const fiveDayStart = startOfWeek(date, { weekStartsOn });
+            return Array.from({ length: 5 }, (_, i) => startOfDay(addDays(fiveDayStart, i)));
         case 'week':
             const start = startOfWeek(date, { weekStartsOn });
             return Array.from({ length: 7 }, (_, i) => startOfDay(addDays(start, i)));
@@ -268,8 +269,7 @@ export function CalendarView() {
             <h1 className="text-3xl font-bold font-headline text-primary">Calendar</h1>
             <p className="text-muted-foreground">Manage your schedule, events and appointments.</p>
         </header>
-        <div className="flex-1 min-h-0 flex flex-col">
-          <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b">
+        <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b">
               <div className="flex items-center gap-2">
                   <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}><span className="sr-only">Previous period</span><ChevronLeft className="h-4 w-4" /></Button>
                   <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}><span className="sr-only">Next period</span><ChevronRight className="h-4 w-4" /></Button>
@@ -315,21 +315,21 @@ export function CalendarView() {
                       </PopoverContent>
                   </Popover>
               </div>
-          </div>
+        </div>
         
-          {view !== 'day' && (
-              <div className="flex items-center gap-4 py-2 border-b">
+        <div className="flex-1 min-h-0 pt-2 flex flex-col">
+            {view !== 'day' && (
+              <div className="flex items-center gap-4 border-b">
                   <div className="w-24 shrink-0" />
                   {daysInView.map(day => (
-                      <div key={day.toISOString()} className="flex-1 text-center">
+                      <div key={day.toISOString()} className="flex-1 text-center pb-2">
                           <p className="text-sm text-muted-foreground">{format(day, 'EEE')}</p>
                           <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
                       </div>
                   ))}
               </div>
-          )}
-          <div className="flex-1 min-h-0">
-            <ScrollArea className="h-full">
+            )}
+            <ScrollArea className="flex-1 min-h-0 border-t">
                 <div className="flex h-full">
                     <div className="w-24 shrink-0">
                         {Array.from({ length: viewEndHour - viewStartHour }).map((_, i) => {
@@ -394,7 +394,11 @@ export function CalendarView() {
                                                     })
                                                     ) : (
                                                         <HourDropTarget time={hourStartTime}>
-                                                        <div className="h-full" onClick={() => handleHourToggle(day, hour)} />
+                                                        <div className="h-full" onClick={() => handleHourToggle(day, hour)}>
+                                                            {eventsInHour.length > 0 && (
+                                                                <div>{eventsInHour.map(e => <DraggableEvent key={e.id} event={e} onEventClick={() => handleEventClick(e)} />)}</div>
+                                                            )}
+                                                        </div>
                                                         </HourDropTarget>
                                                     )}
                                                 </div>
@@ -407,7 +411,6 @@ export function CalendarView() {
                     </div>
                 </div>
             </ScrollArea>
-          </div>
         </div>
       </div>
       
