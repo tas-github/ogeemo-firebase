@@ -45,18 +45,12 @@ const docToProject = (doc: any): Project => {
     name: data.name,
     description: data.description || '',
     clientId: data.clientId || null,
-    ownerId: data.ownerId || null,
-    assigneeIds: data.assigneeIds || [],
-    startDate: (data.startDate as Timestamp)?.toDate ? (data.startDate as Timestamp).toDate() : null,
-    dueDate: (data.dueDate as Timestamp)?.toDate ? (data.dueDate as Timestamp).toDate() : null,
     userId: data.userId,
     createdAt: (data.createdAt as Timestamp)?.toDate ? (data.createdAt as Timestamp).toDate() : new Date(),
-    reminder: data.reminder || null,
     steps: (data.steps || []).map((step: any) => ({
         ...step,
         startTime: (step.startTime as Timestamp)?.toDate ? (step.startTime as Timestamp).toDate() : null,
     })),
-    folderId: data.folderId || null,
   };
 };
 
@@ -71,13 +65,14 @@ const docToTask = (doc: any): TaskEvent => {
     end: (data.end as Timestamp)?.toDate ? (data.end as Timestamp).toDate() : new Date(),
     status: data.status || 'todo',
     position: data.position || 0,
-    projectId: data.projectId,
+    projectId: data.projectId || null,
     userId: data.userId,
-    assigneeIds: data.assigneeIds || [],
-    reminder: data.reminder || null,
     stepId: data.stepId || null,
     contactId: data.contactId || null,
     isScheduled: data.isScheduled || false,
+    duration: data.duration,
+    isBillable: data.isBillable,
+    billableRate: data.billableRate,
   };
 };
 
@@ -246,7 +241,7 @@ export async function deleteProject(projectId: string, taskIds: string[]): Promi
     await batch.commit();
 }
 
-// --- Task Functions ---
+// --- Task/Event Functions ---
 
 export async function getTasksForProject(projectId: string): Promise<TaskEvent[]> {
   const db = await getDb();
@@ -271,7 +266,12 @@ export async function addTask(taskData: Omit<TaskEvent, 'id'>): Promise<TaskEven
 export async function updateTask(taskId: string, taskData: Partial<Omit<TaskEvent, 'id' | 'userId'>>): Promise<void> {
     const db = await getDb();
     const taskRef = doc(db, TASKS_COLLECTION, taskId);
-    await updateDoc(taskRef, taskData);
+    // Ensure projectId is not undefined
+    const dataToUpdate = { ...taskData };
+    if (dataToUpdate.projectId === undefined) {
+        dataToUpdate.projectId = null;
+    }
+    await updateDoc(taskRef, dataToUpdate);
 }
 
 export async function updateTaskPositions(tasksToUpdate: { id: string; position: number; status: TaskStatus }[]): Promise<void> {

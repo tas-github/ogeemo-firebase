@@ -5,8 +5,6 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LoaderCircle, ArrowLeft, Route } from 'lucide-react';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 import { TaskColumn } from './TaskColumn';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
@@ -121,7 +119,7 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
     }
 
     return (
-        <DndProvider backend={HTML5Backend}>
+        <>
             <div className="p-4 sm:p-6 h-full flex flex-col">
                 <header className="flex items-center justify-between pb-4">
                      <div>
@@ -179,6 +177,6 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                 contacts={contacts}
                 defaultValues={{}}
             />
-        </DndProvider>
+        </>
     );
 }

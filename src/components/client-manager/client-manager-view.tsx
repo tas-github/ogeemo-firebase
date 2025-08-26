@@ -4,7 +4,6 @@
 import Link from "next/link";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -46,7 +45,7 @@ export function ClientManagerView() {
                 <CardDescription>{feature.description}</CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="flex-1" />
+            <div className="flex-1" />
             <div className="p-6 pt-0">
                 <Button asChild className="w-full">
                   <Link href={feature.href}>

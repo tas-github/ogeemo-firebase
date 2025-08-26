@@ -50,6 +50,7 @@ export interface MenuItem {
 
 export const allMenuItems: MenuItem[] = [
   { href: "/action-manager", label: "Action Manager", icon: LayoutDashboard },
+  { href: "/master-mind", label: "Master Mind", icon: BrainCircuit },
   { href: "/command-centre", label: "Command Centre", icon: BrainCircuit },
   { href: "/action-manager/manage", label: "Manage Dashboard", icon: LayoutDashboard },
   { href: "/action-manager/trash", label: "Trash", icon: Trash2 },
@@ -83,5 +84,5 @@ export const allMenuItems: MenuItem[] = [
   { href: "/ideas", label: "Ideas", icon: Lightbulb },
   { href: "/research", label: "Research", icon: Beaker },
   { href: "/accounting", label: "Accounting", icon: Calculator },
-  { href: "/time", label: "Time", icon: Clock },
+  { href: "/time", label: "Event Manager", icon: Clock },
 ];

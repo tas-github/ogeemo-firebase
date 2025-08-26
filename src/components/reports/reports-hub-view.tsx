@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -19,10 +18,26 @@ import {
   ArrowRight,
   UserCheck,
   Activity,
+  Briefcase,
+  ListTodo,
 } from "lucide-react";
 
 export function ReportsHubView() {
   const features = [
+    {
+      icon: Briefcase,
+      title: "Project Manager",
+      description: "Oversee all your high-level projects. Click a project to see its detailed task board.",
+      href: "/projects",
+      cta: "Go to Projects",
+    },
+     {
+      icon: ListTodo,
+      title: "Task & Event List",
+      description: "View a comprehensive list of every task and event across all projects and your calendar.",
+      href: "/tasks",
+      cta: "View All Tasks",
+    },
     {
       icon: Activity,
       title: "Activity Report",

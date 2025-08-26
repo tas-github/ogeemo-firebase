@@ -3,24 +3,33 @@ import type { LucideIcon } from 'lucide-react';
 
 export type TaskStatus = 'todo' | 'inProgress' | 'done';
 
+// Unified "Activity" model for Tasks, Events, Appointments, etc.
 export interface Event {
   id: string;
   title: string;
   description?: string;
+  
+  // Scheduling fields
   start: Date;
   end: Date;
-  status?: TaskStatus;
-  position: number;
-  projectId?: string | null;
-  userId: string;
-  assigneeIds?: string[];
-  attendees?: string[];
-  reminder?: string | null;
-  stepId?: string | null; // Link back to the project step
-  contactId?: string | null;
-  billableRate?: number;
-  duration?: number; // in seconds
   isScheduled?: boolean;
+
+  // Kanban fields
+  status: TaskStatus;
+  position: number;
+  
+  // Relational fields
+  projectId?: string | null;
+  contactId?: string | null;
+  userId: string;
+  
+  // Time Tracking fields
+  duration?: number; // in seconds
+  isBillable?: boolean;
+  billableRate?: number;
+
+  // For project planning linkage
+  stepId?: string | null;
 }
 
 export interface ProjectStep {
@@ -39,15 +48,9 @@ export interface Project {
   name: string;
   description?: string;
   clientId: string | null;
-  ownerId: string | null;
-  assigneeIds: string[];
-  startDate?: Date | null;
-  dueDate?: Date | null;
   userId: string;
   createdAt: Date;
-  reminder?: string | null;
   steps?: ProjectStep[];
-  folderId?: string | null;
 }
 
 export interface ProjectFolder {
