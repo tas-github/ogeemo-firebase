@@ -2,135 +2,82 @@
 "use client"
 
 import * as React from "react"
-import { format, addDays, isSameDay, set, getHours, getMinutes, startOfDay, addMinutes, differenceInMinutes, addHours } from "date-fns"
-import { useDrop, useDrag } from 'react-dnd';
+import { format, addDays, set } from "date-fns"
 import { ChevronLeft, ChevronRight, Plus, Settings, Calendar as CalendarIcon, ChevronDown } from "lucide-react"
 
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarShadCN } from "@/components/ui/calendar"
 import { useAuth } from "@/context/auth-context"
-import { useToast } from "@/hooks/use-toast"
-import { CalendarSkeleton } from "./calendar-skeleton";
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import { DraggableEvent } from './DraggableEvent';
+import { useDrop } from 'react-dnd';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { type Event } from '@/types/calendar';
-import { getTasksForUser, updateTask } from "@/services/project-service";
-import { ScrollArea } from '../ui/scroll-area';
-import { DraggableEvent, ItemTypes } from "./DraggableEvent";
-import { NewTaskDialog, type EventFormData } from "../tasks/NewTaskDialog";
 
-const DraggableAddEvent = () => {
-    const [{ isDragging }, drag] = useDrag(() => ({
-        type: ItemTypes.ZOOM_IN,
-        item: { type: ItemTypes.ZOOM_IN },
-        collect: (monitor) => ({
-            isDragging: !!monitor.isDragging(),
-        }),
-    }));
+// Define a type for our draggable item
+interface DraggedEvent extends Event {
+  sourceSlot: string;
+}
 
-    return (
-        <Button ref={drag} className="h-8 py-1 cursor-move bg-slate-700 text-slate-50 hover:bg-slate-700/90" style={{ opacity: isDragging ? 0.5 : 1 }}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Event
-        </Button>
-    );
-};
-
-const TimeSlot = ({ time, height, onDrop }: { time: Date, height: number, onDrop: (item: any) => void }) => {
-  const [, drop] = useDrop(() => ({
-    accept: [ItemTypes.EVENT, ItemTypes.ZOOM_IN],
-    drop: (item: any) => onDrop(item),
+const TimeSlotContainer = ({ 
+  slotKey, 
+  events, 
+  slotsInHour, 
+  onDropEvent 
+}: { 
+  slotKey: string; 
+  events: Event[]; 
+  slotsInHour: number; 
+  onDropEvent: (item: DraggedEvent, targetSlot: string) => void 
+}) => {
+  const [{ canDrop, isOver }, drop] = useDrop(() => ({
+    accept: 'event',
+    drop: (item: DraggedEvent) => onDropEvent(item, slotKey),
+    collect: (monitor) => ({
+      isOver: monitor.isOver(),
+      canDrop: monitor.canDrop(),
+    }),
   }));
 
   return (
-    <div ref={drop} style={{ height: `${height}px` }} className="border-b relative group hover:bg-primary/5">
+    <div
+      ref={drop}
+      className="flex-1 border-l border-black p-2 space-y-2 bg-white min-h-[5rem]"
+    >
+      {events.map((event) => (
+        <DraggableEvent key={event.id} event={event} sourceSlot={slotKey} />
+      ))}
     </div>
   );
-};
-
-const TimeGutterHour = ({ hour, interval, onIntervalChange }: { hour: number, interval: number, onIntervalChange: (newInterval: number) => void }) => {
-    const intervalOptions = [5, 10, 15, 20, 30, 60];
-    const timeLabel = format(set(new Date(), { hours: hour }), 'h a');
-
-    return (
-        <div className="relative text-right pr-2 h-full flex items-center justify-end">
-             <Select
-                value={String(interval)}
-                onValueChange={(value) => onIntervalChange(Number(value))}
-            >
-                <SelectTrigger className="h-7 text-xs w-20 border-0 bg-transparent focus:ring-0 focus:ring-offset-0">
-                    <SelectValue>
-                         <span className="text-xs text-muted-foreground">{timeLabel}</span>
-                    </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                    {intervalOptions.map(opt => (
-                        <SelectItem key={opt} value={String(opt)}>{opt} min intervals</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        </div>
-    );
 };
 
 
 export function CalendarView() {
   const [date, setDate] = React.useState<Date | undefined>(new Date());
   const [numberOfDays, setNumberOfDays] = React.useState<number>(1);
-  
-  const [viewStartHour] = React.useState(8);
-  const [viewEndHour] = React.useState(18);
-
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [events, setEvents] = React.useState<Event[]>([]);
-
-  const [isEventManagerOpen, setIsEventManagerOpen] = React.useState(false);
-  const [selectedEvent, setSelectedEvent] = React.useState<Event | null>(null);
-  const [dialogInitialData, setDialogInitialData] = React.useState<Partial<EventFormData>>({});
-  
-  const [hourIntervals, setHourIntervals] = React.useState<Record<number, number>>(
-    Object.fromEntries(Array.from({ length: 24 }, (_, i) => [i, 15]))
-  );
-  
-  const handleIntervalChange = (hour: number, newInterval: number) => {
-    setHourIntervals(prev => ({ ...prev, [hour]: newInterval }));
-  };
-  
-  const hourBlockHeights = React.useMemo(() => {
-    const MIN_SLOT_HEIGHT = 20; // px
-    const heights: Record<number, number> = {};
-    for (let i = viewStartHour; i <= viewEndHour; i++) {
-        const slots = 60 / hourIntervals[i];
-        heights[i] = Math.max(slots * MIN_SLOT_HEIGHT, 60); // Min height of 60px per hour
-    }
-    return heights;
-  }, [hourIntervals, viewStartHour, viewEndHour]);
+  const [slotsInHour, setSlotsInHour] = React.useState(4); // State for number of slots
+  const [eventsBySlot, setEventsBySlot] = React.useState<Record<string, Event[]>>({
+    // Initial sample data
+    [set(new Date(), { hours: 8, minutes: 0, seconds: 0, milliseconds: 0 }).toISOString()]: [
+        { id: '1', title: 'Task Title 1' } as Event,
+        { id: '2', title: 'Task Title 2' } as Event,
+    ],
+    [set(new Date(), { hours: 9, minutes: 0, seconds: 0, milliseconds: 0 }).toISOString()]: [
+        { id: '3', title: 'Task Title 3' } as Event,
+    ],
+  });
 
   const { user } = useAuth();
-  const { toast } = useToast();
   
-  const loadEvents = React.useCallback(async () => {
-    if (!user) {
-        setIsLoading(false);
-        return;
-    }
-    setIsLoading(true);
-    try {
-        const fetchedEvents = await getTasksForUser(user.uid);
-        setEvents(fetchedEvents.filter(e => e.isScheduled));
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Failed to load events', description: error.message });
-    } finally {
-        setIsLoading(false);
-    }
-  }, [user, toast]);
-
-  React.useEffect(() => {
-    loadEvents();
-  }, [loadEvents]);
-
   const daysInView = React.useMemo(() => {
     if (!date) return [];
     return Array.from({ length: numberOfDays }, (_, i) => addDays(date, i));
@@ -170,49 +117,30 @@ export function CalendarView() {
     setNumberOfDays(1);
   };
 
-  const handleOpenEventManager = (initialTime: Date) => {
-    setSelectedEvent(null);
-    setDialogInitialData({
-      isScheduled: true,
-      startDate: initialTime,
-      endDate: addHours(initialTime, 1),
-      startHour: String(initialTime.getHours()),
-      startMinute: String(initialTime.getMinutes()),
-      endHour: String(addHours(initialTime, 1).getHours()),
-      endMinute: String(initialTime.getMinutes()),
-    });
-    setIsEventManagerOpen(true);
-  };
-
-  const handleEditEvent = (event: Event) => {
-    setSelectedEvent(event);
-    setDialogInitialData({}); // Clear initial data to let the dialog handle it
-    setIsEventManagerOpen(true);
-  };
-  
-  const handleDrop = async (item: any, newStartTime: Date) => {
-    if (item.type === ItemTypes.ZOOM_IN) {
-        handleOpenEventManager(newStartTime);
-    } else {
-        const event = item as Event;
-        const durationMinutes = differenceInMinutes(event.end, event.start);
-        const newEndTime = addMinutes(newStartTime, durationMinutes);
-
-        setEvents(prev => prev.map(e => e.id === event.id ? { ...e, start: newStartTime, end: newEndTime } : e));
+  const handleDropEvent = React.useCallback((item: DraggedEvent, targetSlot: string) => {
+    setEventsBySlot(prev => {
+        const newEvents = { ...prev };
+        const sourceSlot = item.sourceSlot;
         
-        try {
-            await updateTask(event.id, { start: newStartTime, end: newEndTime });
-            toast({ title: "Event Rescheduled", description: `"${event.title}" has been moved.`});
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Update failed", description: "Could not save the new time. Reverting." });
-            loadEvents();
+        // Remove from source if it exists
+        if (newEvents[sourceSlot]) {
+            newEvents[sourceSlot] = newEvents[sourceSlot].filter(event => event.id !== item.id);
         }
-    }
-  };
-  
-  if (isLoading) {
-    return <CalendarSkeleton />;
-  }
+
+        // Add to target
+        if (!newEvents[targetSlot]) {
+            newEvents[targetSlot] = [];
+        }
+        // Avoid adding duplicates if already there
+        if (!newEvents[targetSlot].some(event => event.id === item.id)) {
+            newEvents[targetSlot].push({ ...item });
+        }
+        
+        return newEvents;
+    });
+  }, []);
+
+  const hours = Array.from({ length: 10 }, (_, i) => i + 8); // 8 AM to 5 PM
 
   return (
     <>
@@ -234,10 +162,15 @@ export function CalendarView() {
               </Popover>
             </h2>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}><span className="sr-only">Previous period</span><ChevronLeft className="h-4 w-4" /></Button>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}><span className="sr-only">Next period</span><ChevronRight className="h-4 w-4" /></Button>
-              <Button variant="outline" className="h-8 py-1" onClick={handleToday}>Today</Button>
-              <DraggableAddEvent />
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={handlePrev}><span className="sr-only">Previous period</span><ChevronLeft className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleNext}><span className="sr-only">Next period</span><ChevronRight className="h-4 w-4" /></Button>
+                <Button variant="outline" className="h-8 py-1" onClick={handleToday}>Today</Button>
+                <Button className="h-8 py-1">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Event
+                </Button>
+              </div>
               <div className="flex items-center gap-2">
                 <Label htmlFor="days-select" className="text-sm">Show:</Label>
                 <Select
@@ -255,87 +188,88 @@ export function CalendarView() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            </div>
-          </div>
-            <div className="flex">
-                <div className="w-24 shrink-0 border-r"></div>
-                <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
-                    {daysInView.map(day => (
-                        <div key={day.toISOString()} className="py-1 text-center border-l first:border-l-0">
-                            <p className="text-xs font-medium">{format(day, 'E')}</p>
-                            <p className={cn("text-sm font-bold", isSameDay(day, new Date()) && "text-primary")}>{format(day, 'd')}</p>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </header>
-
-        <div className="flex-1 min-h-0">
-          <div className="h-full border rounded-lg flex flex-col bg-white">
-            <div className="flex-1 min-h-0 flex flex-col">
-                <ScrollArea className="flex-1">
-                  <div className="flex h-full">
-                    <div className="w-24 shrink-0">
-                      {Array.from({ length: viewEndHour - viewStartHour + 1 }).map((_, i) => {
-                          const hour = viewStartHour + i;
-                          return (
-                            <div key={hour} className="relative border-r" style={{ height: `${hourBlockHeights[hour]}px` }}>
-                                <TimeGutterHour hour={hour} interval={hourIntervals[hour]} onIntervalChange={(newInterval) => handleIntervalChange(hour, newInterval)} />
+                 <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Settings className="h-4 w-4" />
+                            <span className="sr-only">Settings</span>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80">
+                       <div className="grid gap-4">
+                            <div className="space-y-2">
+                                <h4 className="font-medium leading-none">Calendar Settings</h4>
+                                <p className="text-sm text-muted-foreground">
+                                Adjust the start and end times for your daily view.
+                                </p>
                             </div>
-                          );
-                      })}
-                    </div>
-                    <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${daysInView.length}, 1fr)`}}>
-                      {daysInView.map(day => (
-                        <div key={day.toISOString()} className="relative border-l first:border-l-0">
-                            {Array.from({ length: viewEndHour - viewStartHour + 1 }).map((_, hourIndex) => {
-                                const currentHour = viewStartHour + hourIndex;
-                                const interval = hourIntervals[currentHour];
-                                const slotsInHour = 60 / interval;
-                                const slotHeight = hourBlockHeights[currentHour] / slotsInHour;
-                                return Array.from({ length: slotsInHour }).map((_, slotIndex) => {
-                                    const time = addMinutes(startOfDay(day), (currentHour * 60) + (slotIndex * interval));
-                                    return (
-                                        <TimeSlot
-                                            key={`${hourIndex}-${slotIndex}`}
-                                            time={time}
-                                            height={slotHeight}
-                                            onDrop={(item: any) => handleDrop(item, time)}
-                                        />
-                                    );
-                                });
-                            })}
-                          {events.filter(e => isSameDay(e.start, day)).map(event => (
-                              <DraggableEvent
-                                  key={event.id}
-                                  event={event}
-                                  onEdit={handleEditEvent}
-                                  viewStartHour={viewStartHour}
-                                  hourBlockHeights={hourBlockHeights}
-                              />
-                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </ScrollArea>
+                    </PopoverContent>
+                </Popover>
               </div>
+            </div>
           </div>
-        </div>
+        </header>
+        
+        <main className="flex-1 mt-4 overflow-auto">
+          <DndProvider backend={HTML5Backend}>
+            <div className="p-4 border border-black">
+              {/* Day Headers */}
+              <div className="flex sticky top-0 bg-background z-10">
+                <div className="w-20 flex-shrink-0 border-b border-black" />
+                <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${numberOfDays}, 1fr)` }}>
+                  {daysInView.map(day => (
+                    <div key={day.toString()} className="text-center font-semibold p-2 border-l border-b border-black">
+                      {format(day, 'EEE d')}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Hourly Rows */}
+              {hours.map(hour => (
+                <div key={hour} className="flex min-h-[6rem]">
+                  {/* Gutter */}
+                  <div className="w-20 flex-shrink-0 border-r border-black p-2 flex flex-col items-center justify-start text-right">
+                    <span className="font-semibold text-xs">{format(set(new Date(), { hours: hour }), 'h a')}</span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 mt-1">
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        {[...Array(12).keys()].map(i => i + 1).map(num => (
+                          <DropdownMenuItem key={num} onSelect={() => setSlotsInHour(num)}>
+                            {num} Slot{num > 1 ? 's' : ''}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  {/* Time Slot Container Grid */}
+                  <div className="flex-1 grid border-b border-black" style={{ gridTemplateColumns: `repeat(${numberOfDays}, 1fr)` }}>
+                    {daysInView.map(day => {
+                        const slotDate = set(day, { hours: hour, minutes: 0, seconds: 0, milliseconds: 0 });
+                        const slotKey = slotDate.toISOString();
+                        const currentEvents = eventsBySlot[slotKey] || [];
+                        return (
+                            <TimeSlotContainer
+                                key={slotKey}
+                                slotKey={slotKey}
+                                events={currentEvents}
+                                slotsInHour={slotsInHour}
+                                onDropEvent={handleDropEvent}
+                            />
+                        )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DndProvider>
+        </main>
+        
       </div>
-      
-       <NewTaskDialog 
-          isOpen={isEventManagerOpen}
-          onOpenChange={(open) => {
-            setIsEventManagerOpen(open);
-            if (!open) loadEvents();
-          }}
-          eventToEdit={selectedEvent}
-          defaultValues={dialogInitialData}
-          onTaskUpdate={loadEvents}
-          onTaskCreate={loadEvents}
-        />
     </>
   );
 }
