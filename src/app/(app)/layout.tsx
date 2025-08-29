@@ -1,7 +1,6 @@
 
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { MainMenu } from '@/components/layout/main-menu';
 import { ClientLayout } from '@/components/layout/client-layout';
@@ -20,8 +19,6 @@ import { LayoutDashboard } from 'lucide-react';
 import { SidebarViewProvider } from '@/context/sidebar-view-context';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
-
   return (
     <ClientLayout>
       <SidebarViewProvider>
