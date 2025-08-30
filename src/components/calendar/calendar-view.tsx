@@ -19,7 +19,6 @@ import { type Event } from "@/types/calendar-types"
 import { Label } from "../ui/label"
 import { DraggableEvent, ItemTypes } from "./DraggableEvent";
 
-const SLOT_HEIGHT = 24; // Height in pixels for one time slot
 const HOUR_HEIGHT = 120; // The total height for one hour block in pixels
 
 export function CalendarView() {
@@ -102,10 +101,11 @@ export function CalendarView() {
         for (let hour = startHour; hour < eventStartHour; hour++) {
             top += HOUR_HEIGHT;
         }
+        
         const startHourIncrement = slotIncrements[eventStartHour] || 60;
         const slotsInStartHour = 60 / startHourIncrement;
         const slotHeightInStartHour = HOUR_HEIGHT / slotsInStartHour;
-        top += (eventStartMinutes / startHourIncrement) * slotsInStartHour * slotHeightInStartHour;
+        top += Math.floor(eventStartMinutes / startHourIncrement) * slotHeightInStartHour;
         
         // Calculate height
         const durationMinutes = differenceInMinutes(event.end, event.start);
@@ -208,8 +208,8 @@ export function CalendarView() {
                 </div>
                 
                 <div className="flex-1 min-h-0 flex flex-col border border-black rounded-lg overflow-hidden">
-                    <div className="flex items-center">
-                        <div className="w-24 shrink-0 text-center py-2 flex items-center justify-center gap-1 border-b border-black">
+                    <div className="flex items-center shrink-0">
+                        <div className="w-24 shrink-0 text-center py-2 flex items-center justify-center gap-1 border-b border-r border-black">
                             <Button variant="outline" size="icon" aria-label="Previous period" onClick={handlePrev} className="h-6 w-6"><ChevronLeft className="h-4 w-4" /></Button>
                             <Button variant="outline" size="icon" aria-label="Next period" onClick={handleNext} className="h-6 w-6"><ChevronRight className="h-4 w-4" /></Button>
                         </div>
@@ -224,54 +224,64 @@ export function CalendarView() {
                     </div>
 
                     <ScrollArea className="flex-1">
-                        <div className="relative flex" style={{ height: `${totalHeight}px` }}>
-                            <div className="w-24 shrink-0 pr-2">
+                        <div className="relative" style={{ height: `${totalHeight}px` }}>
+                            {/* Grid structure */}
+                            <div className="absolute inset-0">
                                 {visibleHours.map((hour) => (
-                                    <div key={hour} className="relative text-right h-[120px] flex items-center justify-center gap-1 border-r border-black">
-                                        <span className="text-xs text-muted-foreground">{format(new Date(0,0,0,hour), 'h a')}</span>
-                                        <Select value={String(slotIncrements[hour] || 60)} onValueChange={(v) => handleSlotIncrementChange(hour, Number(v))}>
-                                            <SelectTrigger className="w-8 h-6 p-1 border-none bg-transparent shadow-none focus:ring-0">
-                                                <ChevronDown className="h-3 w-3" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {slotOptions.map(mins => <SelectItem key={mins} value={String(mins)}>{mins}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
+                                    <div key={hour} className="flex border-b border-black" style={{ height: `${HOUR_HEIGHT}px` }}>
+                                        <div className="w-24 shrink-0 border-r border-black flex items-center justify-center gap-1">
+                                            <span className="text-xs text-muted-foreground">{format(new Date(0,0,0,hour), 'h a')}</span>
+                                            <Select value={String(slotIncrements[hour] || 60)} onValueChange={(v) => handleSlotIncrementChange(hour, Number(v))}>
+                                                <SelectTrigger className="w-8 h-6 p-1 border-none bg-transparent shadow-none focus:ring-0">
+                                                    <ChevronDown className="h-3 w-3" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {slotOptions.map(mins => <SelectItem key={mins} value={String(mins)}>{mins}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
+                                            {visibleDates.map(date => {
+                                                const totalSlotsForHour = 60 / (slotIncrements[hour] || 60);
+                                                const slotHeightForHour = HOUR_HEIGHT / totalSlotsForHour;
+                                                return (
+                                                    <div key={date.toISOString()} className="h-full border-l border-black flex flex-col">
+                                                        {Array.from({ length: totalSlotsForHour }).map((_, slotIndex) => (
+                                                            <div key={slotIndex} className="flex-1 border-b border-black/20 bg-tan" style={{ height: `${slotHeightForHour}px`}}></div>
+                                                        ))}
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
-                            <div ref={dropRef} className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
-                                {visibleDates.map((date) => (
-                                    <div key={date.toISOString()} className={cn("relative h-full border-l border-black")}>
-                                        {visibleHours.map((hour) => {
-                                            const totalSlotsForHour = 60 / (slotIncrements[hour] || 60);
-                                            const slotHeightForHour = HOUR_HEIGHT / totalSlotsForHour;
-                                            return (
-                                                <div key={hour} className="h-[120px] flex flex-col">
-                                                    {Array.from({ length: totalSlotsForHour }).map((_, slotIndex) => (
-                                                        <div key={slotIndex} className="flex-1 border-b border-black/20 bg-tan" style={{ height: `${slotHeightForHour}px`}}></div>
-                                                    ))}
-                                                </div>
-                                            )
-                                        })}
-                                        {events.filter(event => format(event.start, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')).map(event => {
-                                            const { top, height } = getEventPosition(event);
 
-                                            if (top > totalHeight || top + height < 0) return null;
-
-                                            return (
-                                               <DraggableEvent
-                                                    key={event.id}
-                                                    event={event}
-                                                    style={{
-                                                        top: `${top}px`,
-                                                        height: `${height}px`,
-                                                    }}
-                                                />
-                                            );
-                                        })}
+                            {/* Event rendering */}
+                            <div ref={dropRef} className="absolute inset-0">
+                                 <div className="relative h-full flex">
+                                    <div className="w-24 shrink-0" />
+                                    <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
+                                        {visibleDates.map((date, dayIndex) => (
+                                            <div key={date.toISOString()} className="relative h-full">
+                                                {events.filter(event => format(event.start, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')).map(event => {
+                                                    const { top, height } = getEventPosition(event);
+                                                    if (top > totalHeight || top + height < 0) return null;
+                                                    return (
+                                                       <DraggableEvent
+                                                            key={event.id}
+                                                            event={event}
+                                                            style={{
+                                                                top: `${top}px`,
+                                                                height: `${height}px`,
+                                                            }}
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
+                                </div>
                             </div>
                         </div>
                     </ScrollArea>
