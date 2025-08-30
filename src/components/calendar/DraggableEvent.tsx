@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { useDrag } from 'react-dnd';
-import { type Event } from '@/types/calendar';
+import { type Event } from '@/types/calendar-types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
