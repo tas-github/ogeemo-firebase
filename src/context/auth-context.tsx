@@ -29,21 +29,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [initializationError, setInitializationError] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
+  const [idToken, setIdToken] = useState<string | null>(null);
 
   useEffect(() => {
     initializeFirebase()
       .then(services => {
         setFirebaseServices(services);
-        const unsubscribe = onAuthStateChanged(services.auth, (currentUser) => {
+        const unsubscribe = onAuthStateChanged(services.auth, async (currentUser) => {
           setUser(currentUser);
           
           if (currentUser) {
             const token = sessionStorage.getItem('google_access_token');
             setAccessToken(token);
+            const currentIdToken = await currentUser.getIdToken();
+            setIdToken(currentIdToken);
           } else {
             setAccessToken(null);
+            setIdToken(null);
             sessionStorage.removeItem('google_access_token');
           }
+          setIsLoading(false);
         });
         return unsubscribe;
       })
@@ -55,63 +60,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const handleAuthChange = async (user: User | null) => {
-      console.log('Auth state changed. User:', user ? user.uid : null);
-      if (user) {
+    const handleSessionManagement = async () => {
+      if (idToken) {
         try {
-          console.log('Getting ID token...');
-          const idToken = await user.getIdToken();
-          
-          console.log('ID token received. Awaiting session API call...');
-          
-          const response = await fetch('/api/auth/session', {
+          await fetch('/api/auth/session', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ idToken }),
           });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Session creation failed');
-          }
-
-          const responseData = await response.json();
-          console.log('Session API response:', response.status, responseData);
-
         } catch (error) {
-            console.error("Failed to set session cookie", error);
-            if (firebaseServices) {
-                await signOut(firebaseServices.auth);
-            }
+          console.error("Failed to set session cookie", error);
+          if (firebaseServices) {
+            await signOut(firebaseServices.auth);
+          }
         }
-      } else {
-        console.log('User logged out. Deleting session cookie...');
+      } else if (user === null) {
         await fetch('/api/auth/session', { method: 'DELETE' });
-        console.log('Delete session call complete.');
       }
-      
-      setIsLoading(false);
     };
-    handleAuthChange(user);
-  }, [user, firebaseServices]);
+    handleSessionManagement();
+  }, [idToken, firebaseServices, user]);
 
 
   useEffect(() => {
-    if (!isLoading && pathname) {
+    if (!isLoading) {
       const isPublicPath = publicPaths.includes(pathname);
       const isMarketingPath = marketingPaths.some(p => pathname.startsWith(p)) || pathname === '/';
       
-      console.log(`Routing check: isLoading=${isLoading}, user=${!!user}, pathname=${pathname}, isPublic=${isPublicPath}, isMarketing=${isMarketingPath}`);
-
       if (!user && !isPublicPath && !isMarketingPath) {
-        console.log('Redirecting to /login');
         router.push('/login');
       } else if (user && (isPublicPath || pathname === '/home')) {
-        console.log('Redirecting to /action-manager');
         router.push('/action-manager');
       }
     }
-  }, [user, isLoading]);
+  }, [user, isLoading, pathname, router]);
   
   const signInWithGoogle = async () => {
     if (!firebaseServices) {
