@@ -4,7 +4,7 @@
 import * as React from "react"
 import { DndProvider } from 'react-dnd'
 import { HTML5Backend } from 'react-dnd-html5-backend'
-import { format, addDays, startOfDay, set } from "date-fns"
+import { format, addDays, startOfDay, set, isWithinInterval, getMinutes, getHours, differenceInMinutes } from "date-fns"
 import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, ChevronDown, Check } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { getTasksForUser } from "@/services/project-service"
-import { type Event } from "@/types/calendar"
+import { type Event } from "@/types/calendar-types"
 import { Label } from "../ui/label"
 import { Command, CommandGroup, CommandItem } from "../ui/command"
 import { DraggableAddEventButton } from "./DraggableAddEventButton"
@@ -35,10 +35,6 @@ export function CalendarView() {
 
     const { user } = useAuth();
     const { toast } = useToast();
-
-    const visibleHours = React.useMemo(() => {
-        return [8];
-    }, []);
 
     React.useEffect(() => {
         const loadEvents = async () => {
@@ -73,6 +69,13 @@ export function CalendarView() {
 
     const numberOfSlots = 60 / granularity;
     const hourHeight = numberOfSlots * (SLOT_HEIGHT + 8 + 2);
+
+    const totalHours = endHour - startHour;
+    const totalHeight = totalHours * 120; // 120px per hour
+    
+    const visibleHours = React.useMemo(() => {
+        return Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
+    }, [startHour, endHour]);
     
     return (
         <DndProvider backend={HTML5Backend}>
@@ -100,7 +103,7 @@ export function CalendarView() {
                     
                     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                         <div className="flex items-center">
-                            <div className="w-12 shrink-0 border-r text-center py-2"></div>
+                            <div className="w-16 shrink-0 border-r text-center py-2"></div>
                             <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))`}}>
                                 {visibleDates.map((date, index) => (
                                     <div key={date.toISOString()} className={cn("text-center py-2 border-r", index === visibleDates.length - 1 && "border-r-0")}>
@@ -112,51 +115,51 @@ export function CalendarView() {
                         </div>
 
                         <ScrollArea className="flex-1">
-                            <div className="relative">
-                                {visibleHours.map((hour) => (
-                                    <div key={hour} className="flex">
-                                        <div className="w-12 shrink-0 flex items-center justify-center border-r pr-4">
-                                            <div className="flex flex-col items-center">
-                                                <span className="text-xs text-muted-foreground font-semibold">{format(new Date(0, 0, 0, hour), 'h a')}</span>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6">
-                                                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                                                        </Button>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-48 p-0">
-                                                        <Command>
-                                                            <CommandGroup>
-                                                                {timeIncrements.map(g => (
-                                                                    <CommandItem key={g} onSelect={() => setGranularity(g)} className="cursor-pointer">
-                                                                        <Check className={cn("mr-2 h-4 w-4", granularity === g ? "opacity-100" : "opacity-0")} />
-                                                                        {g} minutes
-                                                                    </CommandItem>
-                                                                ))}
-                                                            </CommandGroup>
-                                                        </Command>
-                                                    </PopoverContent>
-                                                </Popover>
-                                            </div>
+                            <div className="relative flex" style={{ height: `${totalHeight}px` }}>
+                                <div className="w-16 shrink-0 border-r pr-2">
+                                    {visibleHours.map((hour) => (
+                                        <div key={hour} className="relative text-right h-[120px]">
+                                            <span className="text-xs text-muted-foreground absolute -top-2 right-2">{format(new Date(0,0,0,hour), 'h a')}</span>
                                         </div>
-                                        <div className="flex-1 grid pl-2" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
-                                            {visibleDates.map((date, index) => (
-                                                <div key={date.toISOString()} className={cn(
-                                                    "relative h-full",
-                                                    index < visibleDates.length - 1 && "border-r"
-                                                )}>
-                                                    <div className="relative" style={{ height: `${hourHeight}px` }}>
-                                                        {Array.from({ length: numberOfSlots }).map((_, slotIndex) => (
-                                                             <div key={slotIndex} className="py-1">
-                                                                <div className="border rounded-md" style={{ height: `${SLOT_HEIGHT}px` }} />
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
+                                    ))}
+                                </div>
+                                <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
+                                    {visibleDates.map((date, index) => (
+                                        <div key={date.toISOString()} className={cn("relative h-full", index < visibleDates.length - 1 && "border-r")}>
+                                            {visibleHours.map((hour) => (
+                                                <div key={hour} className="h-[120px] border-b"></div>
                                             ))}
+                                            {events.filter(event => format(event.start, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')).map(event => {
+                                                const eventStartHour = getHours(event.start);
+                                                const eventStartMinutes = getMinutes(event.start);
+                                                
+                                                const minutesFromDayStart = (eventStartHour - startHour) * 60 + eventStartMinutes;
+                                                const top = (minutesFromDayStart / (totalHours * 60)) * totalHeight;
+                                                
+                                                const durationMinutes = differenceInMinutes(event.end, event.start);
+                                                const height = (durationMinutes / (totalHours * 60)) * totalHeight;
+
+                                                if (top < 0 || top > totalHeight) return null;
+
+                                                const startTime = format(event.start, 'h:mm a');
+                                                const endTime = format(event.end, 'h:mm a');
+
+                                                return (
+                                                    <div
+                                                        key={event.id}
+                                                        className="absolute w-full px-1"
+                                                        style={{ top: `${top}px`, height: `${height}px` }}
+                                                    >
+                                                        <div className="bg-primary/20 border border-primary text-primary-foreground h-full rounded-lg p-2 text-xs overflow-hidden">
+                                                            <p className="font-bold truncate">{event.title}</p>
+                                                            <p className="truncate">{startTime} - {endTime}</p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
                         </ScrollArea>
                     </div>
@@ -165,3 +168,5 @@ export function CalendarView() {
         </DndProvider>
     );
 }
+
+    
