@@ -163,7 +163,7 @@ export function CalendarView() {
                                 {visibleDates.map((date, index) => (
                                     <div key={date.toISOString()} className={cn("relative h-full border-l border-black")}>
                                         {visibleHours.map((hour) => (
-                                            <div key={hour} className="h-[120px] border-b border-black/20"></div>
+                                            <div key={hour} className="h-[120px] border-b border-black/20 bg-tan"></div>
                                         ))}
                                         {events.filter(event => format(event.start, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')).map(event => {
                                             const eventStartHour = getHours(event.start);
