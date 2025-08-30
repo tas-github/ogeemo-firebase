@@ -28,6 +28,8 @@ export function CalendarView() {
     const [isLoading, setIsLoading] = React.useState(true);
     const [startHour, setStartHour] = React.useState(8);
     const [endHour, setEndHour] = React.useState(17);
+    const [slotIncrementMinutes, setSlotIncrementMinutes] = React.useState<number>(60);
+
 
     const { user } = useAuth();
     const { toast } = useToast();
@@ -63,9 +65,13 @@ export function CalendarView() {
     const handleToday = () => setCurrentDate(new Date());
 
     const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
+    const slotOptions = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
+
 
     const totalHours = endHour - startHour;
-    const totalHeight = totalHours * 120; // 120px per hour
+    const totalSlotsPerHour = 60 / slotIncrementMinutes;
+    const slotHeight = 120 / totalSlotsPerHour;
+    const totalHeight = totalHours * 120;
     
     const visibleHours = React.useMemo(() => {
         return Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
@@ -103,7 +109,10 @@ export function CalendarView() {
             const dayIndex = Math.floor(x / (dropTargetRect.width / dayCount));
             const dropDate = visibleDates[dayIndex];
             
-            const minutesFromDayStart = (y / totalHeight) * (totalHours * 60);
+            const totalMinutesInView = totalHours * 60;
+            const minutesFromViewStart = (y / totalHeight) * totalMinutesInView;
+            const minutesFromDayStart = (startHour * 60) + minutesFromViewStart;
+
             
             handleEventDrop(item, dropDate, minutesFromDayStart);
         },
@@ -133,6 +142,7 @@ export function CalendarView() {
                         <Button variant="outline" onClick={handleToday}>Today</Button>
                         <Button variant="outline" size="icon" aria-label="Next period" onClick={handleNext}><ChevronRight className="h-4 w-4" /></Button>
                         <Select value={String(dayCount)} onValueChange={(value) => setDayCount(Number(value))}><SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger><SelectContent>{[1, 3, 5, 7].map(day => (<SelectItem key={day} value={String(day)}>{day}-Day</SelectItem>))}</SelectContent></Select>
+                        <Select value={String(slotIncrementMinutes)} onValueChange={(value) => setSlotIncrementMinutes(Number(value))}><SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger><SelectContent>{slotOptions.map(mins => (<SelectItem key={mins} value={String(mins)}>{mins} min slots</SelectItem>))}</SelectContent></Select>
                         <Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" aria-label="Settings"><Settings className="h-4 w-4" /></Button></PopoverTrigger><PopoverContent className="w-80"><div className="grid gap-4"><div className="space-y-2"><h4 className="font-medium leading-none">Display Settings</h4><p className="text-sm text-muted-foreground">Set the visible hours for your calendar day.</p></div><div className="grid gap-2"><div className="grid grid-cols-3 items-center gap-4"><Label htmlFor="start-time">Start Time</Label><Select value={String(startHour)} onValueChange={(v) => setStartHour(Number(v))}><SelectTrigger id="start-time" className="col-span-2 h-8"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div><div className="grid grid-cols-3 items-center gap-4"><Label htmlFor="end-time">End Time</Label><Select value={String(endHour)} onValueChange={(v) => setEndHour(Number(v))}><SelectTrigger id="end-time" className="col-span-2 h-8"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div></div></div></PopoverContent></Popover>
                     </div>
                 </div>
@@ -163,14 +173,18 @@ export function CalendarView() {
                                 {visibleDates.map((date, index) => (
                                     <div key={date.toISOString()} className={cn("relative h-full border-l border-black")}>
                                         {visibleHours.map((hour) => (
-                                            <div key={hour} className="h-[120px] border-b border-black/20 bg-tan"></div>
+                                            <div key={hour} className="h-[120px] flex flex-col">
+                                                {Array.from({ length: totalSlotsPerHour }).map((_, slotIndex) => (
+                                                    <div key={slotIndex} className="flex-1 border-b border-black/20 bg-tan" style={{ height: `${slotHeight}px`}}></div>
+                                                ))}
+                                            </div>
                                         ))}
                                         {events.filter(event => format(event.start, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')).map(event => {
                                             const eventStartHour = getHours(event.start);
                                             const eventStartMinutes = getMinutes(event.start);
                                             
-                                            const minutesFromDayStart = (eventStartHour - startHour) * 60 + eventStartMinutes;
-                                            const top = (minutesFromDayStart / (totalHours * 60)) * totalHeight;
+                                            const minutesFromViewStart = (eventStartHour - startHour) * 60 + eventStartMinutes;
+                                            const top = (minutesFromViewStart / (totalHours * 60)) * totalHeight;
                                             
                                             const durationMinutes = differenceInMinutes(event.end, event.start);
                                             const height = (durationMinutes / (totalHours * 60)) * totalHeight;
