@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LoaderCircle, Briefcase, Calendar, ListTodo, Plus } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getProjects, getTasksForUser, updateTask, type Project, type Event as TaskEvent } from '@/services/project-service';
+import { getProjects, getTasksForUser, updateTask, type Project } from '@/services/project-service';
+import { type Event as TaskEvent } from '@/types/calendar';
 import { getContacts, type Contact } from '@/services/contact-service';
 import { Checkbox } from '@/components/ui/checkbox';
 import { format } from 'date-fns';

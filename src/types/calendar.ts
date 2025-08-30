@@ -1,76 +1,191 @@
+'use client';
 
-import type { LucideIcon } from 'lucide-react';
+import { 
+    getFirestore, 
+    collection, 
+    getDocs, 
+    doc, 
+    addDoc, 
+    updateDoc, 
+    deleteDoc, 
+    query, 
+    where, 
+    writeBatch,
+    Timestamp 
+} from 'firebase/firestore';
+import { initializeFirebase } from '@/lib/firebase';
+import type { Contact, FolderData } from '@/data/contacts';
 
-export type TaskStatus = 'todo' | 'inProgress' | 'done';
+const FOLDERS_COLLECTION = 'contactFolders';
+const CONTACTS_COLLECTION = 'contacts';
+const CLIENT_ACCOUNTS_COLLECTION = 'clientAccounts';
 
-// Unified "Activity" model for Tasks, Events, Appointments, etc.
-export interface Event {
-  id: string;
-  title: string;
-  description?: string;
-  
-  // Scheduling fields
-  start: Date;
-  end: Date;
-  isScheduled?: boolean;
-
-  // Kanban fields
-  status: TaskStatus;
-  position: number;
-  
-  // Relational fields
-  projectId?: string | null;
-  contactId?: string | null;
-  userId: string;
-  
-  // Time Tracking fields
-  duration?: number; // in seconds
-  isBillable?: boolean;
-  billableRate?: number;
-
-  // For project planning linkage
-  stepId?: string | null;
-}
-
-export interface ProjectStep {
-    id: string;
-    title: string;
-    description: string;
-    durationMinutes: number;
-    isBillable: boolean;
-    connectToCalendar: boolean;
-    startTime?: Date | null;
-    isCompleted: boolean;
-}
-
-export interface Project {
+interface ClientAccount {
   id: string;
   name: string;
-  description?: string;
-  clientId: string | null;
+  contactId: string;
   userId: string;
   createdAt: Date;
-  steps?: ProjectStep[];
 }
 
-export interface ProjectFolder {
-    id: string;
-    name: string;
-    parentId: string | null;
-    userId: string;
+// --- Helper Functions ---
+async function getDb() {
+    const { db } = await initializeFirebase();
+    return db;
 }
 
-export interface ProjectTemplate {
-    id: string;
-    name: string;
-    steps: { title: string; defaultDurationHours: number; }[];
-    userId: string;
+const docToFolder = (doc: any): FolderData => ({ id: doc.id, ...doc.data() } as FolderData);
+const docToContact = (doc: any): Contact => ({ id: doc.id, ...doc.data() } as Contact);
+
+
+// --- Client Account Function (New) ---
+async function createClientAccount(userId: string, contactId: string, contactName: string): Promise<void> {
+    const db = await getDb();
+    const q = query(collection(db, CLIENT_ACCOUNTS_COLLECTION), where("contactId", "==", contactId), where("userId", "==", userId));
+    const existingAccount = await getDocs(q);
+
+    if (existingAccount.empty) {
+      const accountData = {
+          name: contactName,
+          contactId,
+          userId,
+          createdAt: new Date(),
+      };
+      await addDoc(collection(db, CLIENT_ACCOUNTS_COLLECTION), accountData);
+    }
 }
 
-export interface ActionChipData {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-  href: string | { pathname: string; query?: { [key: string]: string } };
-  userId: string;
+
+// --- Folder functions ---
+export async function getFolders(userId: string): Promise<FolderData[]> {
+  const db = await getDb();
+  const q = query(collection(db, FOLDERS_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docToFolder);
+}
+
+export async function findOrCreateFolder(userId: string, folderName: string, parentId: string | null = null): Promise<FolderData> {
+    const db = await getDb();
+    const q = query(
+        collection(db, FOLDERS_COLLECTION), 
+        where("userId", "==", userId), 
+        where("name", "==", folderName),
+        where("parentId", "==", parentId)
+    );
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+        return docToFolder(snapshot.docs[0]);
+    } else {
+        const newFolderData = {
+            name: folderName,
+            userId,
+            parentId,
+        };
+        const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), newFolderData);
+        return { id: docRef.id, ...newFolderData };
+    }
+}
+
+export async function addFolder(folderData: Omit<FolderData, 'id'>): Promise<FolderData> {
+  const db = await getDb();
+  const dataToSave = {
+    ...folderData,
+    parentId: folderData.parentId || null,
+  };
+  const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), dataToSave);
+  return { id: docRef.id, ...dataToSave };
+}
+
+export async function updateFolder(folderId: string, folderData: Partial<Omit<FolderData, 'id' | 'userId'>>): Promise<void> {
+    const db = await getDb();
+    const folderRef = doc(db, FOLDERS_COLLECTION, folderId);
+    await updateDoc(folderRef, folderData);
+}
+
+export async function deleteFoldersAndContents(userId: string, folderIds: string[]): Promise<void> {
+    const db = await getDb();
+    const batch = writeBatch(db);
+    const allFolders = await getFolders(userId);
+    
+    const folderIdsToDelete = new Set<string>(folderIds);
+    
+    const findDescendants = (parentId: string) => {
+        allFolders
+            .filter(f => f.parentId === parentId)
+            .forEach(child => {
+                folderIdsToDelete.add(child.id);
+                findDescendants(child.id);
+            });
+    };
+    
+    // Find all descendants for each initially selected folder
+    folderIds.forEach(id => findDescendants(id));
+
+    if (folderIdsToDelete.size > 0) {
+        // Firestore 'in' query supports up to 30 elements. For more, chunking is needed.
+        const folderIdArray = Array.from(folderIdsToDelete);
+        for (let i = 0; i < folderIdArray.length; i += 30) {
+            const chunk = folderIdArray.slice(i, i + 30);
+            const contactsQuery = query(collection(db, CONTACTS_COLLECTION), where('folderId', 'in', chunk));
+            const contactsSnapshot = await getDocs(contactsQuery);
+            contactsSnapshot.forEach(contactDoc => {
+                batch.delete(contactDoc.ref);
+            });
+        }
+    }
+
+    folderIdsToDelete.forEach(id => {
+        const folderRef = doc(db, FOLDERS_COLLECTION, id);
+        batch.delete(folderRef);
+    });
+
+    await batch.commit();
+}
+
+
+// --- Contact functions ---
+export async function getContacts(userId: string): Promise<Contact[]> {
+  const db = await getDb();
+  const q = query(collection(db, CONTACTS_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docToContact);
+}
+
+export async function addContact(contactData: Omit<Contact, 'id'>): Promise<Contact> {
+  const db = await getDb();
+  const docRef = await addDoc(collection(db, CONTACTS_COLLECTION), contactData);
+  
+  await createClientAccount(contactData.userId, docRef.id, contactData.name);
+
+  return { id: docRef.id, ...contactData };
+}
+
+export async function updateContact(contactId: string, contactData: Partial<Omit<Contact, 'id' | 'userId'>>): Promise<void> {
+    const db = await getDb();
+    const contactRef = doc(db, CONTACTS_COLLECTION, contactId);
+    await updateDoc(contactRef, contactData);
+}
+
+export async function deleteContacts(contactIds: string[]): Promise<void> {
+    const db = await getDb();
+    if (contactIds.length === 0) return;
+    const batch = writeBatch(db);
+    
+    // Firestore 'in' query supports up to 30 elements. For more, chunking is needed.
+    for (let i = 0; i < contactIds.length; i += 30) {
+      const chunk = contactIds.slice(i, i + 30);
+      const accountsQuery = query(collection(db, CLIENT_ACCOUNTS_COLLECTION), where('contactId', 'in', chunk));
+      const accountsSnapshot = await getDocs(accountsQuery);
+      accountsSnapshot.forEach(accountDoc => {
+          batch.delete(accountDoc.ref);
+      });
+    }
+    
+    contactIds.forEach(id => {
+        const contactRef = doc(db, CONTACTS_COLLECTION, id);
+        batch.delete(contactRef);
+    });
+
+    await batch.commit();
 }

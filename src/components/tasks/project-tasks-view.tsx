@@ -9,7 +9,8 @@ import { TaskColumn } from './TaskColumn';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getProjectById, getTasksForProject, addTask, updateTask, updateTaskPositions, type Project, type Event as TaskEvent, type TaskStatus } from '@/services/project-service';
+import { getProjectById, getTasksForProject, addTask, updateTask, updateTaskPositions } from '@/services/project-service';
+import { type Project, type Event as TaskEvent, type TaskStatus } from '@/types/calendar';
 import { getContacts, type Contact } from '@/services/contact-service';
 import { NewTaskDialog } from './NewTaskDialog';
 
