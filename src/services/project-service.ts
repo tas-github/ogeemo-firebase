@@ -17,8 +17,8 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
-import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData } from '@/types/calendar';
-import { addMinutes } from 'date-fns';
+import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData } from '@/types/calendar-types';
+import { addMinutes, addHours, startOfHour } from 'date-fns';
 import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -242,6 +242,36 @@ export async function deleteProject(projectId: string, taskIds: string[]): Promi
 }
 
 // --- Task/Event Functions ---
+const mockTasks = (userId: string): Omit<TaskEvent, 'id'>[] => {
+  const today = new Date();
+  return [
+    {
+      title: 'Weekly Team Sync',
+      start: set(today, { hours: 10, minutes: 0, seconds: 0, milliseconds: 0 }),
+      end: set(today, { hours: 11, minutes: 0, seconds: 0, milliseconds: 0 }),
+      status: 'todo',
+      position: 0,
+      userId,
+    },
+    {
+      title: 'Design Review',
+      start: addHours(startOfHour(set(today, { hours: 14, minutes: 0 })), 0),
+      end: addHours(startOfHour(set(today, { hours: 15, minutes: 30 })), 0),
+      status: 'todo',
+      position: 1,
+      userId,
+    },
+    {
+      title: 'Client Call - Project Phoenix',
+      start: addDays(set(today, { hours: 9, minutes: 30 }), 1),
+      end: addDays(set(today, { hours: 10, minutes: 0 }), 1),
+      status: 'todo',
+      position: 0,
+      userId,
+    },
+  ];
+};
+
 
 export async function getTasksForProject(projectId: string): Promise<TaskEvent[]> {
   const db = await getDb();
@@ -254,6 +284,19 @@ export async function getTasksForUser(userId: string): Promise<TaskEvent[]> {
     const db = await getDb();
     const q = query(collection(db, TASKS_COLLECTION), where("userId", "==", userId));
     const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+        const batch = writeBatch(db);
+        const newTasks: TaskEvent[] = [];
+        mockTasks(userId).forEach(task => {
+            const docRef = doc(collection(db, TASKS_COLLECTION));
+            batch.set(docRef, task);
+            newTasks.push({ ...task, id: docRef.id });
+        });
+        await batch.commit();
+        return newTasks;
+    }
+
     return snapshot.docs.map(docToTask);
 }
 
