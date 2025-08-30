@@ -106,12 +106,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!user && !isPublicPath && !isMarketingPath) {
         console.log('Redirecting to /login');
         router.push('/login');
-      } else if (user && isPublicPath) {
+      } else if (user && (isPublicPath || pathname === '/home')) {
         console.log('Redirecting to /action-manager');
         router.push('/action-manager');
       }
     }
-  }, [user, isLoading, pathname, router]);
+  }, [user, isLoading, router]);
   
   const signInWithGoogle = async () => {
     if (!firebaseServices) {
