@@ -1,6 +1,3 @@
-
-'use client';
-
 import Link from 'next/link';
 import { MainMenu } from '@/components/layout/main-menu';
 import { ClientLayout } from '@/components/layout/client-layout';
