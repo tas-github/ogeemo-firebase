@@ -1,6 +1,5 @@
 import Link from 'next/link';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
+import { DndProviderWrapper } from '@/components/layout/dnd-provider-wrapper';
 import { MainMenu } from '@/components/layout/main-menu';
 import { ClientLayout } from '@/components/layout/client-layout';
 import { ActiveTimerIndicator } from '@/components/layout/active-timer-indicator';
@@ -20,7 +19,7 @@ import { SidebarViewProvider } from '@/context/sidebar-view-context';
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClientLayout>
-      <DndProvider backend={HTML5Backend}>
+      <DndProviderWrapper>
         <SidebarViewProvider>
           <div className="flex h-screen w-full bg-muted">
             {/* Sidebar */}
@@ -101,7 +100,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
           <ActiveTimerIndicator />
         </SidebarViewProvider>
-      </DndProvider>
+      </DndProviderWrapper>
     </ClientLayout>
   );
 }
