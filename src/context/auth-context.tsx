@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push('/action-manager');
       }
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading]);
   
   const signInWithGoogle = async () => {
     if (!firebaseServices) {
