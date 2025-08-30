@@ -35,7 +35,7 @@ export function DraggableEvent({ event, style }: DraggableEventProps) {
       className={cn(
         'absolute w-full rounded-lg p-2 text-xs border cursor-move transition-opacity',
         isDragging ? 'opacity-50' : 'opacity-100',
-        'bg-primary/20 border-primary text-primary-foreground'
+        'bg-primary/20 border-black text-primary-foreground'
       )}
     >
       <p className="font-bold truncate">{event.title}</p>
