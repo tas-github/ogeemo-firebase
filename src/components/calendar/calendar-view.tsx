@@ -29,9 +29,8 @@ export function CalendarView() {
     const [startHour, setStartHour] = React.useState(8);
     const [endHour, setEndHour] = React.useState(17);
     
-    // State for per-hour slot increments
+    // State now stores the number of slots per hour (1-12)
     const [slotIncrements, setSlotIncrements] = React.useState<Record<number, number>>({});
-
 
     const { user } = useAuth();
     const { toast } = useToast();
@@ -42,7 +41,7 @@ export function CalendarView() {
         setSlotIncrements(prev => {
             const newIncrements: Record<number, number> = {};
             for (let i = startHour; i < endHour; i++) {
-                newIncrements[i] = prev[i] || 60; // Default to 60 or keep existing
+                newIncrements[i] = prev[i] || 1; // Default to 1 slot (60 minutes) or keep existing
             }
             return newIncrements;
         });
@@ -79,51 +78,51 @@ export function CalendarView() {
     const handleToday = () => setCurrentDate(new Date());
 
     const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
-    const slotOptions = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
+    // Options are now the number of slots
+    const slotOptions = Array.from({ length: 12 }, (_, i) => i + 1);
     
     const visibleHours = React.useMemo(() => {
         return Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
     }, [startHour, endHour]);
 
-    const handleSlotIncrementChange = (hour: number, minutes: number) => {
-        setSlotIncrements(prev => ({ ...prev, [hour]: minutes }));
+    const handleSlotIncrementChange = (hour: number, numberOfSlots: number) => {
+        setSlotIncrements(prev => ({ ...prev, [hour]: numberOfSlots }));
     };
     
     const totalHeight = React.useMemo(() => visibleHours.length * HOUR_HEIGHT, [visibleHours]);
     
-    // Function to calculate an event's top and height based on variable slots
     const getEventPosition = (event: Event) => {
         let top = 0;
         const eventStartHour = getHours(event.start);
         const eventStartMinutes = getMinutes(event.start);
 
-        // Calculate top position
+        // Calculate top position by summing heights of hours before the event
         for (let hour = startHour; hour < eventStartHour; hour++) {
             top += HOUR_HEIGHT;
         }
         
-        const startHourIncrement = slotIncrements[eventStartHour] || 60;
-        const slotsInStartHour = 60 / startHourIncrement;
-        const slotHeightInStartHour = HOUR_HEIGHT / slotsInStartHour;
-        top += Math.floor(eventStartMinutes / startHourIncrement) * slotHeightInStartHour;
+        // Calculate position within the starting hour
+        const slotsInStartHour = slotIncrements[eventStartHour] || 1;
+        const slotDurationInMinutes = 60 / slotsInStartHour;
+        const startingSlot = Math.floor(eventStartMinutes / slotDurationInMinutes);
+        top += startingSlot * (HOUR_HEIGHT / slotsInStartHour);
         
-        // Calculate height
+        // Calculate height based on duration, accounting for variable slot heights
         const durationMinutes = differenceInMinutes(event.end, event.start);
         let height = 0;
         let remainingDuration = durationMinutes;
         let currentHour = eventStartHour;
-        let minutesInHour = eventStartMinutes;
+        let minutesIntoCurrentHour = eventStartMinutes;
 
         while (remainingDuration > 0 && currentHour < endHour) {
-            const increment = slotIncrements[currentHour] || 60;
-            const minutesLeftInHour = 60 - minutesInHour;
+            const minutesLeftInHour = 60 - minutesIntoCurrentHour;
             const durationThisHour = Math.min(remainingDuration, minutesLeftInHour);
             
             height += (durationThisHour / 60) * HOUR_HEIGHT;
 
             remainingDuration -= durationThisHour;
             currentHour++;
-            minutesInHour = 0; // After the first hour, subsequent hours start at 0 minutes
+            minutesIntoCurrentHour = 0;
         }
 
         return { top, height };
@@ -161,7 +160,6 @@ export function CalendarView() {
             const dayIndex = Math.floor(x / (dropTargetRect.width / dayCount));
             const dropDate = visibleDates[dayIndex];
             
-            // Convert y-coordinate to minutes from the start of the visible day
             let minutesFromDayStart = 0;
             let accumulatedHeight = 0;
             for (let hour = startHour; hour < endHour; hour++) {
@@ -173,7 +171,7 @@ export function CalendarView() {
                 }
                 accumulatedHeight += HOUR_HEIGHT;
             }
-            if (minutesFromDayStart === 0 && y > 0) { // If dropped past the last hour
+            if (minutesFromDayStart === 0 && y > 0) {
                 minutesFromDayStart = endHour * 60;
             }
 
@@ -231,23 +229,23 @@ export function CalendarView() {
                                     <div key={hour} className="flex border-b border-black" style={{ height: `${HOUR_HEIGHT}px` }}>
                                         <div className="w-24 shrink-0 border-r border-black flex items-center justify-center gap-1">
                                             <span className="text-xs text-muted-foreground">{format(new Date(0,0,0,hour), 'h a')}</span>
-                                            <Select value={String(slotIncrements[hour] || 60)} onValueChange={(v) => handleSlotIncrementChange(hour, Number(v))}>
-                                                <SelectTrigger className="w-8 h-6 p-1 border-none bg-transparent shadow-none focus:ring-0">
-                                                    <ChevronDown className="h-3 w-3" />
+                                            <Select value={String(slotIncrements[hour] || 1)} onValueChange={(v) => handleSlotIncrementChange(hour, Number(v))}>
+                                                <SelectTrigger className="w-14 h-6 p-1 text-xs border-none bg-transparent shadow-none focus:ring-0">
+                                                    <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    {slotOptions.map(mins => <SelectItem key={mins} value={String(mins)}>{mins}</SelectItem>)}
+                                                    {slotOptions.map(slots => <SelectItem key={slots} value={String(slots)}>{slots} slot{slots > 1 ? 's' : ''}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         </div>
                                         <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
                                             {visibleDates.map(date => {
-                                                const totalSlotsForHour = 60 / (slotIncrements[hour] || 60);
-                                                const slotHeightForHour = HOUR_HEIGHT / totalSlotsForHour;
+                                                const numberOfSlots = slotIncrements[hour] || 1;
+                                                const slotHeight = HOUR_HEIGHT / numberOfSlots;
                                                 return (
                                                     <div key={date.toISOString()} className="h-full border-l border-black flex flex-col">
-                                                        {Array.from({ length: totalSlotsForHour }).map((_, slotIndex) => (
-                                                            <div key={slotIndex} className="flex-1 border-b border-black/20 bg-tan" style={{ height: `${slotHeightForHour}px`}}></div>
+                                                        {Array.from({ length: numberOfSlots }).map((_, slotIndex) => (
+                                                            <div key={slotIndex} className="flex-1 border-b border-black/20 bg-tan" style={{ height: `${slotHeight}px`}}></div>
                                                         ))}
                                                     </div>
                                                 )
@@ -262,7 +260,7 @@ export function CalendarView() {
                                  <div className="relative h-full flex">
                                     <div className="w-24 shrink-0" />
                                     <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
-                                        {visibleDates.map((date, dayIndex) => (
+                                        {visibleDates.map((date) => (
                                             <div key={date.toISOString()} className="relative h-full">
                                                 {events.filter(event => format(event.start, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')).map(event => {
                                                     const { top, height } = getEventPosition(event);
