@@ -137,12 +137,12 @@ export function CalendarView() {
                     </div>
                 </div>
                 
-                <div className="flex-1 min-h-0 flex flex-col overflow-hidden border rounded-lg">
+                <div className="flex-1 min-h-0 flex flex-col border border-black rounded-lg overflow-hidden">
                     <div className="flex items-center">
                         <div className="w-16 shrink-0 text-center py-2"></div>
                         <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))`}}>
                             {visibleDates.map((date, index) => (
-                                <div key={date.toISOString()} className={cn("text-center py-2 border-l")}>
+                                <div key={date.toISOString()} className={cn("text-center py-2 border-l border-black")}>
                                     <p className="text-sm font-semibold">{format(date, 'EEE')}</p>
                                     <p className="text-2xl font-bold">{format(date, 'd')}</p>
                                 </div>
@@ -151,7 +151,7 @@ export function CalendarView() {
                     </div>
 
                     <ScrollArea className="flex-1">
-                        <div className="relative flex border-t" style={{ height: `${totalHeight}px` }}>
+                        <div className="relative flex border-t border-black" style={{ height: `${totalHeight}px` }}>
                             <div className="w-16 shrink-0 pr-2">
                                 {visibleHours.map((hour) => (
                                     <div key={hour} className="relative text-right h-[120px]">
@@ -161,9 +161,9 @@ export function CalendarView() {
                             </div>
                             <div ref={dropRef} className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
                                 {visibleDates.map((date, index) => (
-                                    <div key={date.toISOString()} className={cn("relative h-full border-l")}>
+                                    <div key={date.toISOString()} className={cn("relative h-full border-l border-black")}>
                                         {visibleHours.map((hour) => (
-                                            <div key={hour} className="h-[120px] border-b"></div>
+                                            <div key={hour} className="h-[120px] border-b border-black/20"></div>
                                         ))}
                                         {events.filter(event => format(event.start, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')).map(event => {
                                             const eventStartHour = getHours(event.start);
