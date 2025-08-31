@@ -152,7 +152,12 @@ export function CalendarView() {
                 </p>
             </header>
             <div className="flex-1 min-h-0 flex flex-col">
-                <div className="flex items-center justify-end flex-wrap gap-4 pb-4">
+                <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b">
+                     <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon" aria-label="Previous period" onClick={handlePrev} className="h-8 w-8"><ChevronLeft className="h-4 w-4" /></Button>
+                         <h2 className="text-base font-semibold text-center w-32 truncate">{format(currentDate, 'MMMM yyyy')}</h2>
+                        <Button variant="outline" size="icon" aria-label="Next period" onClick={handleNext} className="h-8 w-8"><ChevronRight className="h-4 w-4" /></Button>
+                    </div>
                     <div className="flex items-center gap-2">
                         <Popover><PopoverTrigger asChild><Button variant="outline" className={cn(!currentDate && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" /><span>{format(currentDate, "PPP")}</span></Button></PopoverTrigger><PopoverContent className="w-auto p-0"><CalendarShadCN mode="single" selected={currentDate} onSelect={(date) => date && setCurrentDate(date)} initialFocus /></PopoverContent></Popover>
                         <Button variant="outline" onClick={handleToday}>Today</Button>
@@ -161,13 +166,12 @@ export function CalendarView() {
                     </div>
                 </div>
                 
-                <div className="flex-1 min-h-0 grid grid-cols-[6rem,1fr] border-t border-l border-black rounded-lg">
-                    {/* Gutter Headers */}
-                    <div className="border-r border-b border-black" />
-                    {/* Date Headers */}
+                <div className="flex-1 min-h-0 grid grid-cols-[6rem,1fr] rounded-lg">
+                    {/* Headers */}
+                    <div className="border-r border-b" />
                     <div className="grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
                         {visibleDates.map((date) => (
-                            <div key={date.toISOString()} className="text-center py-2 border-r border-b border-black">
+                            <div key={date.toISOString()} className="text-center py-2 border-r border-b">
                                 <p className="text-sm font-semibold">{format(date, 'EEE')}</p>
                                 <p className="text-2xl font-bold">{format(date, 'd')}</p>
                             </div>
@@ -175,47 +179,40 @@ export function CalendarView() {
                     </div>
                     
                     {/* Calendar Body */}
-                    <div className="border-r border-black flex flex-col">
-                        <ScrollArea className="flex-1">
-                            <div className="relative">
-                                {visibleHours.map(hour => (
-                                     <div key={hour} className="flex items-center justify-center border-b border-black p-1 text-center">
-                                         <Select onValueChange={(value) => handleSlotIncrementChange(hour, Number(value))}>
-                                             <SelectTrigger className="h-auto w-auto p-1 flex items-center gap-1 focus:ring-0 focus:ring-offset-0 border-none bg-transparent shadow-none">
-                                                 <span className="text-xs text-muted-foreground">{format(new Date(0, 0, 0, hour), 'h a')}</span>
-                                                 <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                                             </SelectTrigger>
-                                             <SelectContent>
-                                                 {slotOptions.map(opt => (
-                                                     <SelectItem key={opt} value={String(opt)}>{opt} slot{opt > 1 ? 's' : ''}</SelectItem>
-                                                 ))}
-                                             </SelectContent>
-                                         </Select>
-                                     </div>
-                                ))}
-                            </div>
-                        </ScrollArea>
-                        <div className="flex items-center justify-center gap-1 p-2 border-t border-black">
-                            <Button variant="outline" size="icon" aria-label="Previous period" onClick={handlePrev} className="h-8 w-8"><ChevronLeft className="h-4 w-4" /></Button>
-                             <h2 className="text-base font-semibold text-center w-24 truncate">{format(currentDate, 'MMMM yyyy')}</h2>
-                            <Button variant="outline" size="icon" aria-label="Next period" onClick={handleNext} className="h-8 w-8"><ChevronRight className="h-4 w-4" /></Button>
-                        </div>
-                    </div>
-                    <ScrollArea className="flex-1 min-h-0">
-                        <div ref={dropRef} className="relative h-full">
+                    <ScrollArea className="flex-1 min-h-0 border-r">
+                        <div className="relative">
                             {visibleHours.map(hour => (
-                                <div key={hour} className="grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
+                                <div key={hour} className="flex flex-col items-center justify-start p-1 text-center border-black" style={{ height: '120px' }}>
+                                    <span className="text-xs text-muted-foreground">{format(new Date(0, 0, 0, hour), 'h a')}</span>
+                                    <Select onValueChange={(value) => handleSlotIncrementChange(hour, Number(value))}>
+                                        <SelectTrigger className="h-auto w-auto p-1 flex items-center gap-1 focus:ring-0 focus:ring-offset-0 border-none bg-transparent shadow-none">
+                                            <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {slotOptions.map(opt => (
+                                                <SelectItem key={opt} value={String(opt)}>{opt} slot{opt > 1 ? 's' : ''}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                    <ScrollArea className="flex-1 min-h-0">
+                        <div ref={dropRef} className="relative h-full grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
+                            {visibleHours.map(hour => (
+                                <React.Fragment key={hour}>
                                     {visibleDates.map(date => (
-                                        <div key={date.toISOString()} className="relative flex flex-col border-r border-black">
+                                        <div key={date.toISOString()} className="relative flex flex-col border-r border-black" style={{ height: '120px' }}>
                                             {Array.from({ length: slotIncrements[hour] || 1 }).map((_, i) => (
                                                 <div 
                                                     key={i} 
-                                                    className="border border-black rounded-lg m-px box-border h-8"
+                                                    className="flex-1 border border-black rounded-lg m-px box-border"
                                                 ></div>
                                             ))}
                                         </div>
                                     ))}
-                                </div>
+                                </React.Fragment>
                             ))}
                              {/* Event rendering */}
                              <div className="absolute inset-0 right-0">
