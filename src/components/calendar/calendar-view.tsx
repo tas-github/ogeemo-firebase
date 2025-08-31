@@ -28,26 +28,18 @@ export function CalendarView() {
     const [isLoading, setIsLoading] = React.useState(true);
     const [startHour, setStartHour] = React.useState(8);
     const [endHour, setEndHour] = React.useState(17);
-    
-    // State now stores the number of slots per hour (1-12)
     const [slotIncrements, setSlotIncrements] = React.useState<Record<number, number>>({});
-
+    
     const { user } = useAuth();
     const { toast } = useToast();
     const dropRef = React.useRef<HTMLDivElement>(null);
+
+    const slotOptions = Array.from({ length: 12 }, (_, i) => i + 1);
+
+    const handleSlotIncrementChange = (hour: number, numberOfSlots: number) => {
+        setSlotIncrements(prev => ({ ...prev, [hour]: numberOfSlots }));
+    };
     
-    // Initialize slot increments when hours change
-    React.useEffect(() => {
-        setSlotIncrements(prev => {
-            const newIncrements: Record<number, number> = {};
-            for (let i = startHour; i < endHour; i++) {
-                newIncrements[i] = prev[i] || 1; // Default to 1 slot (60 minutes) or keep existing
-            }
-            return newIncrements;
-        });
-    }, [startHour, endHour]);
-
-
     React.useEffect(() => {
         const loadEvents = async () => {
             if (!user) {
@@ -78,55 +70,33 @@ export function CalendarView() {
     const handleToday = () => setCurrentDate(new Date());
 
     const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
-    // Options are now the number of slots
-    const slotOptions = Array.from({ length: 12 }, (_, i) => i + 1);
     
     const visibleHours = React.useMemo(() => {
         return Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
     }, [startHour, endHour]);
 
-    const handleSlotIncrementChange = (hour: number, numberOfSlots: number) => {
-        setSlotIncrements(prev => ({ ...prev, [hour]: numberOfSlots }));
-    };
-    
     const totalHeight = React.useMemo(() => visibleHours.length * HOUR_HEIGHT, [visibleHours]);
     
     const getEventPosition = (event: Event) => {
-        let top = 0;
         const eventStartHour = getHours(event.start);
-        const eventStartMinutes = getMinutes(event.start);
+        const slotsInHour = slotIncrements[eventStartHour] || 1;
+        const slotHeight = HOUR_HEIGHT / slotsInHour;
+        const eventStartMinutesInHour = getMinutes(event.start);
+        const slotIndex = Math.floor(eventStartMinutesInHour / (60 / slotsInHour));
 
-        // Calculate top position by summing heights of hours before the event
-        for (let hour = startHour; hour < eventStartHour; hour++) {
-            top += HOUR_HEIGHT;
-        }
+        const topOffsetFromHour = slotIndex * slotHeight;
+
+        const eventStartMinutesTotal = getHours(event.start) * 60 + getMinutes(event.start);
+        const calendarStartMinutesTotal = startHour * 60;
         
-        // Calculate position within the starting hour
-        const slotsInStartHour = slotIncrements[eventStartHour] || 1;
-        const slotDurationInMinutes = 60 / slotsInStartHour;
-        const startingSlot = Math.floor(eventStartMinutes / slotDurationInMinutes);
-        top += startingSlot * (HOUR_HEIGHT / slotsInStartHour);
-        
-        // Calculate height based on duration, accounting for variable slot heights
+        const top = ((eventStartMinutesTotal - calendarStartMinutesTotal) / 60) * HOUR_HEIGHT;
+
         const durationMinutes = differenceInMinutes(event.end, event.start);
-        let height = 0;
-        let remainingDuration = durationMinutes;
-        let currentHour = eventStartHour;
-        let minutesIntoCurrentHour = eventStartMinutes;
-
-        while (remainingDuration > 0 && currentHour < endHour) {
-            const minutesLeftInHour = 60 - minutesIntoCurrentHour;
-            const durationThisHour = Math.min(remainingDuration, minutesLeftInHour);
-            
-            height += (durationThisHour / 60) * HOUR_HEIGHT;
-
-            remainingDuration -= durationThisHour;
-            currentHour++;
-            minutesIntoCurrentHour = 0;
-        }
+        const height = (durationMinutes / 60) * HOUR_HEIGHT;
 
         return { top, height };
     };
+
 
     const handleEventDrop = (item: Event, dropDate: Date, dropTimeInMinutes: number) => {
         const duration = differenceInMinutes(item.end, item.start);
@@ -160,20 +130,7 @@ export function CalendarView() {
             const dayIndex = Math.floor(x / (dropTargetRect.width / dayCount));
             const dropDate = visibleDates[dayIndex];
             
-            let minutesFromDayStart = 0;
-            let accumulatedHeight = 0;
-            for (let hour = startHour; hour < endHour; hour++) {
-                if (y < accumulatedHeight + HOUR_HEIGHT) {
-                    const yInHour = y - accumulatedHeight;
-                    const minuteInHour = (yInHour / HOUR_HEIGHT) * 60;
-                    minutesFromDayStart = hour * 60 + minuteInHour;
-                    break;
-                }
-                accumulatedHeight += HOUR_HEIGHT;
-            }
-            if (minutesFromDayStart === 0 && y > 0) {
-                minutesFromDayStart = endHour * 60;
-            }
+            const minutesFromDayStart = startHour * 60 + (y / HOUR_HEIGHT) * 60;
 
             handleEventDrop(item, dropDate, minutesFromDayStart);
         },
@@ -196,7 +153,11 @@ export function CalendarView() {
             </header>
             <div className="flex-1 min-h-0 flex flex-col">
                 <div className="flex items-center justify-between flex-wrap gap-4 pb-4">
-                    <h2 className="text-xl font-semibold">{format(currentDate, 'MMMM yyyy')}</h2>
+                    <div className="flex items-center justify-center gap-2">
+                        <Button variant="outline" size="icon" aria-label="Previous period" onClick={handlePrev} className="h-8 w-8"><ChevronLeft className="h-4 w-4" /></Button>
+                        <h2 className="text-xl font-semibold text-center w-48">{format(currentDate, 'MMMM yyyy')}</h2>
+                        <Button variant="outline" size="icon" aria-label="Next period" onClick={handleNext} className="h-8 w-8"><ChevronRight className="h-4 w-4" /></Button>
+                    </div>
                     <div className="flex items-center gap-2">
                         <Popover><PopoverTrigger asChild><Button variant="outline" className={cn(!currentDate && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" /><span>{format(currentDate, "PPP")}</span></Button></PopoverTrigger><PopoverContent className="w-auto p-0"><CalendarShadCN mode="single" selected={currentDate} onSelect={(date) => date && setCurrentDate(date)} initialFocus /></PopoverContent></Popover>
                         <Button variant="outline" onClick={handleToday}>Today</Button>
@@ -205,15 +166,13 @@ export function CalendarView() {
                     </div>
                 </div>
                 
-                <div className="flex-1 min-h-0 flex flex-col border border-black rounded-lg overflow-hidden">
-                    <div className="flex items-center shrink-0">
-                        <div className="w-24 shrink-0 text-center py-2 flex items-center justify-center gap-1 border-b border-r border-black">
-                            <Button variant="outline" size="icon" aria-label="Previous period" onClick={handlePrev} className="h-6 w-6"><ChevronLeft className="h-4 w-4" /></Button>
-                            <Button variant="outline" size="icon" aria-label="Next period" onClick={handleNext} className="h-6 w-6"><ChevronRight className="h-4 w-4" /></Button>
-                        </div>
-                        <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))`}}>
+                <div className="flex-1 min-h-0 flex flex-col border-t border-l border-black rounded-lg">
+                    {/* Headers */}
+                    <div className="grid" style={{ gridTemplateColumns: '6rem 1fr' }}>
+                        <div className="border-r border-b border-black" />
+                        <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
                             {visibleDates.map((date) => (
-                                <div key={date.toISOString()} className={cn("text-center py-2 border-l border-b border-black")}>
+                                <div key={date.toISOString()} className="text-center py-2 border-r border-b border-black">
                                     <p className="text-sm font-semibold">{format(date, 'EEE')}</p>
                                     <p className="text-2xl font-bold">{format(date, 'd')}</p>
                                 </div>
@@ -221,64 +180,60 @@ export function CalendarView() {
                         </div>
                     </div>
 
-                    <ScrollArea className="flex-1">
-                        <div className="relative" style={{ height: `${totalHeight}px` }}>
-                            {/* Grid structure */}
-                            <div className="absolute inset-0">
-                                {visibleHours.map((hour) => (
-                                    <div key={hour} className="flex border-b border-black" style={{ height: `${HOUR_HEIGHT}px` }}>
-                                        <div className="w-24 shrink-0 border-r border-black flex items-center justify-center gap-1">
-                                            <span className="text-xs text-muted-foreground">{format(new Date(0,0,0,hour), 'h a')}</span>
-                                            <Select value={String(slotIncrements[hour] || 1)} onValueChange={(v) => handleSlotIncrementChange(hour, Number(v))}>
-                                                <SelectTrigger className="w-14 h-6 p-1 text-xs border-none bg-transparent shadow-none focus:ring-0">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {slotOptions.map(slots => <SelectItem key={slots} value={String(slots)}>{slots} slot{slots > 1 ? 's' : ''}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
-                                            {visibleDates.map(date => {
-                                                const numberOfSlots = slotIncrements[hour] || 1;
-                                                const slotHeight = HOUR_HEIGHT / numberOfSlots;
-                                                return (
-                                                    <div key={date.toISOString()} className="h-full border-l border-black flex flex-col">
-                                                        {Array.from({ length: numberOfSlots }).map((_, slotIndex) => (
-                                                            <div key={slotIndex} className="flex-1 border-b border-black/20 bg-tan" style={{ height: `${slotHeight}px`}}></div>
-                                                        ))}
-                                                    </div>
-                                                )
-                                            })}
-                                        </div>
+                    {/* Content */}
+                    <ScrollArea className="flex-1 min-h-0">
+                        <div className="relative">
+                            {visibleHours.map(hour => (
+                                <div key={hour} className="flex border-b border-black">
+                                    <div className="w-24 shrink-0 p-1 text-center flex items-center justify-center border-r border-black">
+                                        <Select onValueChange={(value) => handleSlotIncrementChange(hour, Number(value))}>
+                                            <SelectTrigger className="h-auto w-auto p-1 flex items-center gap-1 focus:ring-0 focus:ring-offset-0 border-none bg-transparent shadow-none">
+                                                <span className="text-xs text-muted-foreground">{format(new Date(0, 0, 0, hour), 'h a')}</span>
+                                                <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {slotOptions.map(opt => (
+                                                    <SelectItem key={opt} value={String(opt)}>{opt} slot{opt > 1 ? 's' : ''}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
-                                ))}
-                            </div>
-
-                            {/* Event rendering */}
-                            <div ref={dropRef} className="absolute inset-0">
-                                 <div className="relative h-full flex">
-                                    <div className="w-24 shrink-0" />
                                     <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
-                                        {visibleDates.map((date) => (
-                                            <div key={date.toISOString()} className="relative h-full">
-                                                {events.filter(event => format(event.start, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')).map(event => {
-                                                    const { top, height } = getEventPosition(event);
-                                                    if (top > totalHeight || top + height < 0) return null;
-                                                    return (
-                                                       <DraggableEvent
-                                                            key={event.id}
-                                                            event={event}
-                                                            style={{
-                                                                top: `${top}px`,
-                                                                height: `${height}px`,
-                                                            }}
-                                                        />
-                                                    );
-                                                })}
+                                        {visibleDates.map(date => (
+                                            <div key={date.toISOString()} className="relative flex flex-col border-r border-black">
+                                                {Array.from({ length: slotIncrements[hour] || 1 }).map((_, i) => (
+                                                    <div 
+                                                        key={i} 
+                                                        className="border border-black rounded-lg m-px box-border h-8"
+                                                    ></div>
+                                                ))}
                                             </div>
                                         ))}
                                     </div>
+                                </div>
+                            ))}
+                            
+                            {/* Event rendering */}
+                            <div ref={dropRef} className="absolute inset-0 right-0" style={{ left: '6rem' }}>
+                                <div className="relative h-full grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
+                                    {visibleDates.map((date) => (
+                                        <div key={date.toISOString()} className="relative h-full">
+                                            {events.filter(event => format(event.start, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')).map(event => {
+                                                const { top, height } = getEventPosition(event);
+                                                if (top > totalHeight || top + height < 0) return null;
+                                                return (
+                                                    <DraggableEvent
+                                                        key={event.id}
+                                                        event={event}
+                                                        style={{
+                                                            top: `${top}px`,
+                                                            height: `${height}px`,
+                                                        }}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -288,3 +243,5 @@ export function CalendarView() {
         </div>
     );
 }
+
+    
