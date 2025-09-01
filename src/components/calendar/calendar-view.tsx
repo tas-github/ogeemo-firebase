@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { format, addDays, startOfDay, set } from "date-fns"
-import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, ChevronDown, Plus, MoreVertical, BookOpen, Pencil, Trash2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, Plus, MoreVertical, BookOpen, Pencil, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
@@ -97,7 +97,17 @@ export function CalendarView() {
                                 <Plus className="mr-2 h-4 w-4" /> Add Event
                             </Link>
                         </Button>
-                        <Popover><PopoverTrigger asChild><Button variant="outline" className={cn(!currentDate && "text-muted-foreground")}><ChevronLeft className="h-4 w-4" /><span className="w-32">{format(currentDate, "PPP")}</span><ChevronRight className="h-4 w-4" /></Button></PopoverTrigger><PopoverContent className="w-auto p-0"><CalendarShadCN mode="single" selected={currentDate} onSelect={(date) => date && setCurrentDate(date)} initialFocus /></PopoverContent></Popover>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" className={cn("w-[260px] justify-start text-left font-normal", !currentDate && "text-muted-foreground")}>
+                                    <ChevronLeft onClick={(e) => { e.stopPropagation(); handlePrev(); }} className="mr-2 h-4 w-4" />
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    {format(currentDate, "PPP")}
+                                    <ChevronRight onClick={(e) => { e.stopPropagation(); handleNext(); }} className="ml-auto h-4 w-4" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0"><CalendarShadCN mode="single" selected={currentDate} onSelect={(date) => date && setCurrentDate(date)} initialFocus /></PopoverContent>
+                        </Popover>
                         <Button variant="outline" onClick={handleToday}>Today</Button>
                         <Select value={String(dayCount)} onValueChange={(value) => setDayCount(Number(value))}>
                             <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
@@ -132,7 +142,7 @@ export function CalendarView() {
                                     <span className="text-xs text-muted-foreground">{format(new Date(0, 0, 0, hour), 'h a')}</span>
                                     <Select onValueChange={(value) => handleSlotIncrementChange(hour, Number(value))}>
                                         <SelectTrigger className="h-auto w-auto p-1 flex items-center gap-1 focus:ring-0 focus:ring-offset-0 border-none bg-transparent shadow-none">
-                                            <ChevronDown className="h-4 w-4 text-primary stroke-2" />
+                                            <CalendarIcon className="h-4 w-4 text-primary" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {slotOptions.map(opt => (
