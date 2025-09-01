@@ -99,11 +99,17 @@ export function CalendarView() {
                         </Button>
                         <Popover>
                             <PopoverTrigger asChild>
-                                <Button variant="outline" className={cn("w-[260px] justify-start text-left font-normal", !currentDate && "text-muted-foreground")}>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                        "w-[280px] justify-center text-center font-normal",
+                                        !currentDate && "text-muted-foreground"
+                                    )}
+                                >
                                     <ChevronLeft onClick={(e) => { e.stopPropagation(); handlePrev(); }} className="mr-2 h-4 w-4" />
                                     <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {format(currentDate, "PPP")}
-                                    <ChevronRight onClick={(e) => { e.stopPropagation(); handleNext(); }} className="ml-auto h-4 w-4" />
+                                    <span>{format(currentDate, "PPP")}</span>
+                                    <ChevronRight onClick={(e) => { e.stopPropagation(); handleNext(); }} className="ml-2 h-4 w-4" />
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0"><CalendarShadCN mode="single" selected={currentDate} onSelect={(date) => date && setCurrentDate(date)} initialFocus /></PopoverContent>
