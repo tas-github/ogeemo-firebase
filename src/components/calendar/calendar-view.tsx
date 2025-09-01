@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { format, addDays, startOfDay, set } from "date-fns"
-import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, ChevronDown, Plus } from "lucide-react"
+import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, ChevronDown, Plus, MoreVertical, BookOpen, Pencil, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
@@ -17,6 +17,13 @@ import { getTasksForUser } from "@/services/project-service"
 import { type Event } from "@/types/calendar-types"
 import { Label } from "../ui/label"
 import Link from "next/link"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 
 export function CalendarView() {
     const [currentDate, setCurrentDate] = React.useState<Date>(new Date());
@@ -151,8 +158,22 @@ export function CalendarView() {
                                             {Array.from({ length: slotIncrements[hour] || 1 }).map((_, i) => (
                                                 <div
                                                     key={i}
-                                                    className="h-8 border border-black m-px rounded-lg p-1"
-                                                ></div>
+                                                    className="relative h-8 border border-black m-px rounded-lg p-1"
+                                                >
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="absolute top-0 right-0 h-6 w-6 p-1">
+                                                                <MoreVertical className="h-4 w-4" />
+                                                                <span className="sr-only">Time slot options</span>
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent>
+                                                            <DropdownMenuItem><BookOpen className="mr-2 h-4 w-4" /> Open</DropdownMenuItem>
+                                                            <DropdownMenuItem><Pencil className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
+                                                            <DropdownMenuItem className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
                                             ))}
                                         </div>
                                     ))}
