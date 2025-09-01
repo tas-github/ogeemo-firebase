@@ -92,17 +92,12 @@ export function CalendarView() {
             <div className="flex-1 min-h-0 flex flex-col">
                 <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b">
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" aria-label="Previous period" onClick={handlePrev} className="h-8 w-8"><ChevronLeft className="h-4 w-4" /></Button>
-                        <h2 className="text-base font-semibold text-center w-32 truncate">{format(currentDate, 'MMMM yyyy')}</h2>
-                        <Button variant="outline" size="icon" aria-label="Next period" onClick={handleNext} className="h-8 w-8"><ChevronRight className="h-4 w-4" /></Button>
-                    </div>
-                    <div className="flex items-center gap-2">
                         <Button asChild>
                             <Link href="/time">
                                 <Plus className="mr-2 h-4 w-4" /> Add Event
                             </Link>
                         </Button>
-                        <Popover><PopoverTrigger asChild><Button variant="outline" className={cn(!currentDate && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" /><span>{format(currentDate, "PPP")}</span></Button></PopoverTrigger><PopoverContent className="w-auto p-0"><CalendarShadCN mode="single" selected={currentDate} onSelect={(date) => date && setCurrentDate(date)} initialFocus /></PopoverContent></Popover>
+                        <Popover><PopoverTrigger asChild><Button variant="outline" className={cn(!currentDate && "text-muted-foreground")}><ChevronLeft className="h-4 w-4" /><span className="w-32">{format(currentDate, "PPP")}</span><ChevronRight className="h-4 w-4" /></Button></PopoverTrigger><PopoverContent className="w-auto p-0"><CalendarShadCN mode="single" selected={currentDate} onSelect={(date) => date && setCurrentDate(date)} initialFocus /></PopoverContent></Popover>
                         <Button variant="outline" onClick={handleToday}>Today</Button>
                         <Select value={String(dayCount)} onValueChange={(value) => setDayCount(Number(value))}>
                             <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
@@ -123,7 +118,7 @@ export function CalendarView() {
                     <div className="grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
                         {visibleDates.map((date) => (
                             <div key={date.toISOString()} className="h-8 flex items-center justify-center border-l border-b">
-                                <p className="text-sm font-semibold">{format(date, 'EEE d')}</p>
+                                <p className="text-sm font-semibold">{format(date, 'PPPP')}</p>
                             </div>
                         ))}
                     </div>
