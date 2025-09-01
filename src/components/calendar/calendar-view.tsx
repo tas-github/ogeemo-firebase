@@ -100,21 +100,21 @@ export function CalendarView() {
                                 <Button
                                     variant={"outline"}
                                     className={cn(
-                                        "w-[280px] justify-center text-center font-normal",
+                                        "w-[240px] justify-center text-center font-normal",
                                         !currentDate && "text-muted-foreground"
                                     )}
                                 >
-                                    <ChevronLeft onClick={(e) => { e.stopPropagation(); handlePrev(); }} className="mr-2 h-4 w-4" />
+                                    <ChevronLeft onClick={(e) => { e.stopPropagation(); handlePrev(); }} className="h-4 w-4" />
                                     <CalendarIcon className="mr-2 h-4 w-4" />
-                                    <span className="ml-2">{format(currentDate, "PPP")}</span>
-                                    <ChevronRight onClick={(e) => { e.stopPropagation(); handleNext(); }} className="ml-2 h-4 w-4" />
+                                    <span className="mx-2">{format(currentDate, "PPP")}</span>
+                                    <ChevronRight onClick={(e) => { e.stopPropagation(); handleNext(); }} className="h-4 w-4" />
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0"><CalendarShadCN mode="single" selected={currentDate} onSelect={(date) => date && setCurrentDate(date)} initialFocus /></PopoverContent>
                         </Popover>
                         <Button variant="outline" onClick={handleToday}>Today</Button>
                         <Select value={String(dayCount)} onValueChange={(value) => setDayCount(Number(value))}>
-                            <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 {dayOptions.map(day => (
                                     <SelectItem key={day} value={String(day)}>{day} Day{day > 1 ? 's' : ''}</SelectItem>
