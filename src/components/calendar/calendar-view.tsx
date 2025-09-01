@@ -91,13 +91,11 @@ export function CalendarView() {
             </header>
             <div className="flex-1 min-h-0 flex flex-col">
                 <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b">
-                    <div className="flex items-center gap-2">
-                        <Button asChild>
-                            <Link href="/time">
-                                <Plus className="mr-2 h-4 w-4" /> Add Event
-                            </Link>
-                        </Button>
-                        <Popover>
+                    <div className="w-1/4">
+                        {/* Left Spacer */}
+                    </div>
+                    <div className="flex-1 flex justify-center items-center gap-2">
+                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant={"outline"}
@@ -108,7 +106,7 @@ export function CalendarView() {
                                 >
                                     <ChevronLeft onClick={(e) => { e.stopPropagation(); handlePrev(); }} className="mr-2 h-4 w-4" />
                                     <CalendarIcon className="mr-2 h-4 w-4" />
-                                    <span>{format(currentDate, "PPP")}</span>
+                                    <span className="ml-2">{format(currentDate, "PPP")}</span>
                                     <ChevronRight onClick={(e) => { e.stopPropagation(); handleNext(); }} className="ml-2 h-4 w-4" />
                                 </Button>
                             </PopoverTrigger>
@@ -124,6 +122,13 @@ export function CalendarView() {
                             </SelectContent>
                         </Select>
                         <Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" aria-label="Settings"><Settings className="h-4 w-4" /></Button></PopoverTrigger><PopoverContent className="w-80"><div className="grid gap-4"><div className="space-y-2"><h4 className="font-medium leading-none">Display Settings</h4><p className="text-sm text-muted-foreground">Set the visible hours for your calendar day.</p></div><div className="grid gap-2"><div className="grid grid-cols-3 items-center gap-4"><Label htmlFor="start-time">Start Time</Label><Select value={String(startHour)} onValueChange={(v) => setStartHour(Number(v))}><SelectTrigger id="start-time" className="col-span-2 h-8"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div><div className="grid grid-cols-3 items-center gap-4"><Label htmlFor="end-time">End Time</Label><Select value={String(endHour)} onValueChange={(v) => setEndHour(Number(v))}><SelectTrigger id="end-time" className="col-span-2 h-8"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div></div></div></PopoverContent></Popover>
+                    </div>
+                    <div className="w-1/4 flex justify-end">
+                         <Button asChild>
+                            <Link href="/time">
+                                <Plus className="mr-2 h-4 w-4" /> Add Event
+                            </Link>
+                        </Button>
                     </div>
                 </div>
                 
