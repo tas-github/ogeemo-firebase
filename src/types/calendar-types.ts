@@ -6,8 +6,8 @@ export interface Event {
   id: string;
   title: string;
   description?: string;
-  start: Date;
-  end: Date;
+  start?: Date;
+  end?: Date;
   status: TaskStatus;
   position: number;
   projectId?: string | null;
@@ -26,6 +26,7 @@ export interface Project {
   name: string;
   description?: string;
   clientId?: string | null;
+  contactId?: string | null;
   userId: string;
   createdAt: Date;
   steps?: ProjectStep[];

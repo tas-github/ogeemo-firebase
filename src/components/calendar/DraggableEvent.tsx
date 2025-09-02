@@ -14,9 +14,10 @@ export const ItemTypes = {
 interface DraggableEventProps {
   event: Event;
   style: React.CSSProperties;
+  onClick: () => void;
 }
 
-export function DraggableEvent({ event, style }: DraggableEventProps) {
+export function DraggableEvent({ event, style, onClick }: DraggableEventProps) {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.EVENT,
     item: event,
@@ -25,21 +26,21 @@ export function DraggableEvent({ event, style }: DraggableEventProps) {
     }),
   }));
 
-  const startTime = format(event.start, 'h:mm a');
-  const endTime = format(event.end, 'h:mm a');
+  const startTime = format(event.start!, 'h:mm a');
 
   return (
     <div
       ref={drag}
       style={style}
+      onClick={onClick}
       className={cn(
         'absolute w-full rounded-lg p-2 text-xs border cursor-move transition-opacity',
         isDragging ? 'opacity-50' : 'opacity-100',
-        'bg-primary/20 border-black text-primary-foreground'
+        'bg-primary/20 border-primary text-primary-foreground'
       )}
     >
       <p className="font-bold truncate">{event.title}</p>
-      <p className="truncate">{startTime} - {endTime}</p>
+      <p className="truncate">{startTime}</p>
     </div>
   );
 }

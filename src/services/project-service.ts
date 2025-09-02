@@ -45,6 +45,7 @@ const docToProject = (doc: any): Project => {
     name: data.name,
     description: data.description || '',
     clientId: data.clientId || null,
+    contactId: data.contactId || null,
     userId: data.userId,
     createdAt: (data.createdAt as Timestamp)?.toDate ? (data.createdAt as Timestamp).toDate() : new Date(),
     steps: (data.steps || []).map((step: any) => ({

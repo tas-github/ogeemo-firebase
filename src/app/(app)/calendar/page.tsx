@@ -1,5 +1,6 @@
 
 import dynamic from 'next/dynamic';
+import { DndProviderWrapper } from '@/components/layout/dnd-provider-wrapper';
 import { CalendarSkeleton } from '@/components/calendar/calendar-skeleton';
 
 const CalendarView = dynamic(
@@ -11,5 +12,9 @@ const CalendarView = dynamic(
 );
 
 export default function CalendarPage() {
-  return <CalendarView />;
+  return (
+    <DndProviderWrapper>
+      <CalendarView />
+    </DndProviderWrapper>
+  );
 }

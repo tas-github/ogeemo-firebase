@@ -67,6 +67,10 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
         };
     }, [tasks]);
 
+    const handleAddTask = () => {
+        router.push(`/time?projectId=${projectId}`);
+    };
+
     const handleTaskCreated = (newTask: TaskEvent) => {
         setTasks(prev => [...prev, newTask]);
     };
@@ -147,7 +151,7 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                     <TaskColumn
                         status="todo"
                         tasks={tasksByStatus.todo}
-                        onAddTask={() => setIsNewTaskDialogOpen(true)}
+                        onAddTask={handleAddTask}
                         onMoveTask={handleMoveTask}
                         onTaskUpdate={handleTaskUpdated}
                         onTaskDelete={handleTaskDeleted}
@@ -155,7 +159,7 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                     <TaskColumn
                         status="inProgress"
                         tasks={tasksByStatus.inProgress}
-                        onAddTask={() => setIsNewTaskDialogOpen(true)}
+                        onAddTask={handleAddTask}
                         onMoveTask={handleMoveTask}
                         onTaskUpdate={handleTaskUpdated}
                         onTaskDelete={handleTaskDeleted}
@@ -163,7 +167,7 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                     <TaskColumn
                         status="done"
                         tasks={tasksByStatus.done}
-                        onAddTask={() => setIsNewTaskDialogOpen(true)}
+                        onAddTask={handleAddTask}
                         onMoveTask={handleMoveTask}
                         onTaskUpdate={handleTaskUpdated}
                         onTaskDelete={handleTaskDeleted}
