@@ -25,6 +25,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+const emptyInitialData = {};
+
 export function TasksView() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [contacts, setContacts] = useState<Contact[]>([]);
@@ -32,7 +34,7 @@ export function TasksView() {
     const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isNewItemDialogOpen, setIsNewItemDialogOpen] = useState(false);
-    const [initialDialogData, setInitialDialogData] = useState({});
+    const [initialDialogData, setInitialDialogData] = useState(emptyInitialData);
     
     const { user } = useAuth();
     const { toast } = useToast();
@@ -179,7 +181,7 @@ export function TasksView() {
                         setIsNewItemDialogOpen(open);
                         if (!open) {
                             setProjectToEdit(null);
-                            setInitialDialogData({});
+                            setInitialDialogData(emptyInitialData);
                         }
                     }}
                     onProjectCreate={handleProjectCreated}

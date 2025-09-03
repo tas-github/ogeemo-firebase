@@ -18,7 +18,7 @@ import {
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
 import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData } from '@/types/calendar-types';
-import { addMinutes, addHours, startOfHour } from 'date-fns';
+import { addMinutes, addHours, startOfHour, set, addDays } from 'date-fns';
 import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -243,32 +243,32 @@ export async function deleteProject(projectId: string, taskIds: string[]): Promi
 
 // --- Task/Event Functions ---
 const mockTasks = (userId: string): Omit<TaskEvent, 'id'>[] => {
-  const today = new Date();
+  const now = new Date();
   return [
     {
-      title: 'Weekly Team Sync',
-      start: set(today, { hours: 10, minutes: 0, seconds: 0, milliseconds: 0 }),
-      end: set(today, { hours: 11, minutes: 0, seconds: 0, milliseconds: 0 }),
+      title: 'Finalize Q3 Marketing Plan',
+      start: set(now, { hours: 9, minutes: 0, seconds: 0, milliseconds: 0 }),
+      end: set(now, { hours: 10, minutes: 30, seconds: 0, milliseconds: 0 }),
       status: 'todo',
       position: 0,
       userId,
     },
     {
-      title: 'Design Review',
-      start: addHours(startOfHour(set(today, { hours: 14, minutes: 0 })), 0),
-      end: addHours(startOfHour(set(today, { hours: 15, minutes: 30 })), 0),
+      title: 'Team Standup Meeting',
+      start: set(now, { hours: 11, minutes: 0, seconds: 0, milliseconds: 0 }),
+      end: set(now, { hours: 11, minutes: 15, seconds: 0, milliseconds: 0 }),
+      status: 'inProgress',
+      position: 0,
+      userId,
+    },
+    {
+      title: 'Review New UI Mockups',
+      start: set(addDays(now, 1), { hours: 14, minutes: 0, seconds: 0, milliseconds: 0 }),
+      end: set(addDays(now, 1), { hours: 15, minutes: 30, seconds: 0, milliseconds: 0 }),
       status: 'todo',
       position: 1,
       userId,
-    },
-    {
-      title: 'Client Call - Project Phoenix',
-      start: addDays(set(today, { hours: 9, minutes: 30 }), 1),
-      end: addDays(set(today, { hours: 10, minutes: 0 }), 1),
-      status: 'todo',
-      position: 0,
-      userId,
-    },
+    }
   ];
 };
 
@@ -286,9 +286,13 @@ export async function getTasksForUser(userId: string): Promise<TaskEvent[]> {
     const snapshot = await getDocs(q);
     
     if (snapshot.empty) {
+        const tasksToCreate = mockTasks(userId);
+        if (tasksToCreate.length === 0) {
+            return [];
+        }
         const batch = writeBatch(db);
         const newTasks: TaskEvent[] = [];
-        mockTasks(userId).forEach(task => {
+        tasksToCreate.forEach(task => {
             const docRef = doc(collection(db, TASKS_COLLECTION));
             batch.set(docRef, task);
             newTasks.push({ ...task, id: docRef.id });
@@ -331,6 +335,23 @@ export async function updateTaskPositions(tasksToUpdate: { id: string; position:
 export async function deleteTask(taskId: string): Promise<void> {
     const db = await getDb();
     await deleteDoc(doc(db, TASKS_COLLECTION, taskId));
+}
+
+export async function deleteAllTasksForUser(userId: string): Promise<void> {
+    const db = await getDb();
+    const batch = writeBatch(db);
+    const q = query(collection(db, TASKS_COLLECTION), where("userId", "==", userId));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+        return; // No tasks to delete
+    }
+
+    snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+
+    await batch.commit();
 }
 
 // --- Template Functions ---

@@ -61,13 +61,15 @@ const ProjectTaskList = ({ project, tasks, onToggle }: { project: Project, tasks
     );
 };
 
+const defaultDialogValues = {};
+
 export function TasksListView() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<TaskEvent[]>([]);
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
-    const [dialogDefaultValues, setDialogDefaultValues] = useState<Partial<EventFormData>>({});
+    const [dialogDefaultValues, setDialogDefaultValues] = useState<Partial<EventFormData>>(defaultDialogValues);
     const { user } = useAuth();
     const { toast } = useToast();
 

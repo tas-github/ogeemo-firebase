@@ -14,6 +14,8 @@ import { type Project, type Event as TaskEvent, type TaskStatus } from '@/types/
 import { getContacts, type Contact } from '@/services/contact-service';
 import { NewTaskDialog } from './NewTaskDialog';
 
+const defaultDialogValues = {};
+
 export function ProjectTasksView({ projectId }: { projectId: string }) {
     const [project, setProject] = useState<Project | null>(null);
     const [tasks, setTasks] = useState<TaskEvent[]>([]);
@@ -176,7 +178,7 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                 onTaskCreate={handleTaskCreated}
                 projectId={projectId}
                 contacts={contacts}
-                defaultValues={{}}
+                defaultValues={defaultDialogValues}
             />
         </>
     );
