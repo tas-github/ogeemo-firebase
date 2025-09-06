@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { getTasksForUser, addTask, updateTask, deleteAllTasksForUser, deleteTask } from "@/services/project-service"
@@ -72,11 +71,6 @@ export function CalendarView() {
         loadEvents();
     }, [loadEvents]);
 
-    const visibleDates = React.useMemo(() => {
-        const start = startOfDay(currentDate);
-        return Array.from({ length: dayCount }, (_, i) => addDays(start, i));
-    }, [currentDate, dayCount]);
-    
     const handlePrev = () => setCurrentDate(prev => addDays(prev, -dayCount));
     const handleNext = () => setCurrentDate(prev => addDays(prev, dayCount));
     const handleToday = () => setCurrentDate(new Date());

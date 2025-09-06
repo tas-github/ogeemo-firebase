@@ -2,21 +2,26 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Play, Pause, Square, LoaderCircle, Save } from 'lucide-react';
+import { Clock, Play, Pause, Square, LoaderCircle, Save, Calendar as CalendarIcon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
-import { type Project, type Event as TaskEvent } from '@/types/calendar';
+import { type Project, type Event as TaskEvent } from '@/types/calendar-types';
 import { type Contact } from '@/data/contacts';
 import { addTask, getProjects } from '@/services/project-service';
 import { getContacts } from '@/services/contact-service';
 import { Checkbox } from '../ui/checkbox';
 import { Textarea } from '../ui/textarea';
-import { NewTaskDialog } from '../tasks/NewTaskDialog';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { cn } from '@/lib/utils';
+import { format, set, addMinutes, parseISO } from 'date-fns';
+
 
 const TIMER_STORAGE_KEY = 'activeTimeManagerEntry';
 
@@ -60,11 +65,26 @@ export function TimeManagerView() {
     const [billableRate, setBillableRate] = useState<number | ''>(100);
     
     // State for scheduling
-    const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
-    const [scheduleInitialData, setScheduleInitialData] = useState({});
+    const [scheduleDate, setScheduleDate] = useState<Date | undefined>(new Date());
+    const [scheduleHour, setScheduleHour] = useState<string>(String(new Date().getHours()));
+    const [scheduleMinute, setScheduleMinute] = useState<string>("0");
+    const [durationHours, setDurationHours] = useState<number|''> (1);
+    const [durationMinutes, setDurationMinutes] = useState<number|''> (0);
 
     const { user } = useAuth();
     const { toast } = useToast();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+
+    // Pre-populate form from URL params (e.g., from calendar)
+    useEffect(() => {
+        const dateParam = searchParams.get('date');
+        const hourParam = searchParams.get('hour');
+        const minuteParam = searchParams.get('minute');
+        if (dateParam) setScheduleDate(parseISO(dateParam));
+        if (hourParam) setScheduleHour(hourParam);
+        if (minuteParam) setScheduleMinute(minuteParam);
+    }, [searchParams]);
 
     useEffect(() => {
         async function loadData() {
@@ -137,11 +157,11 @@ export function TimeManagerView() {
     }, [updateTimerState]);
 
     const handleStartTimer = () => {
-        if (!subject.trim() || !selectedContactId) {
+        if (!subject.trim()) {
             toast({
                 variant: 'destructive',
                 title: 'Missing Information',
-                description: 'Please select a client and enter a subject to start the timer.',
+                description: 'Please enter a subject to start the timer.',
             });
             return;
         }
@@ -208,10 +228,6 @@ export function TimeManagerView() {
         if (!user || elapsedSeconds <= 0) return;
         
         const contact = contacts.find(c => c.id === selectedContactId);
-        if (!contact) {
-            toast({ variant: 'destructive', title: 'Client Required', description: 'Please select a client to log time.' });
-            return;
-        }
         
         const finalBillableRate = isBillable ? (Number(billableRate) || 0) : 0;
 
@@ -224,15 +240,19 @@ export function TimeManagerView() {
             position: 0, // Default position
             projectId: selectedProjectId,
             contactId: selectedContactId,
-            isScheduled: false, // This was a live-timed event, not pre-scheduled
+            isScheduled: true, // This was a live-timed event, not pre-scheduled
             duration: elapsedSeconds,
+            isBillable,
             billableRate: finalBillableRate,
+            attendees: ['You'],
         };
         
         try {
             await addTask({ ...newTaskData, userId: user.uid });
-            toast({ title: 'Time Logged', description: `Logged ${formatTime(elapsedSeconds)} as a completed task for ${contact.name}` });
+            toast({ title: 'Time Logged', description: `Logged ${formatTime(elapsedSeconds)} as a completed task for ${contact?.name || 'Unassigned'}` });
             handleReset(false);
+            window.dispatchEvent(new Event('tasksUpdated'));
+            router.push('/calendar');
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Log Failed', description: error.message });
         }
@@ -286,30 +306,58 @@ export function TimeManagerView() {
         setSelectedContactId(contactId);
         if(isActive) updateStoredState('contactId', contactId);
     };
-    
-    const handleOpenScheduleDialog = () => {
-        setScheduleInitialData({
-            title: subject,
-            description: notes,
-            contactId: selectedContactId,
-            projectId: selectedProjectId,
-        });
-        setIsScheduleDialogOpen(true);
-    };
-    
-    const handleTaskCreate = async (taskData: Omit<TaskEvent, 'id' | 'userId'>) => {
-        if (!user) {
-            toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to create events.' });
+
+    const handleScheduleEvent = async () => {
+        if (!user || !subject.trim()) {
+            toast({ variant: 'destructive', title: 'Missing Information', description: 'Please enter a subject for the event.' });
             return;
         }
+        
+        const startDateTime = scheduleDate
+            ? set(scheduleDate, { hours: parseInt(scheduleHour), minutes: parseInt(scheduleMinute) })
+            : new Date();
+        
+        const durationInMinutes = (Number(durationHours) || 0) * 60 + (Number(durationMinutes) || 0);
+        const endDateTime = addMinutes(startDateTime, durationInMinutes);
+        
+        const duration = (endDateTime.getTime() - startDateTime.getTime()) / 1000; // in seconds
+        
+        const eventData: Omit<TaskEvent, 'id' | 'userId'> = {
+            title: subject,
+            description: notes,
+            start: startDateTime,
+            end: endDateTime,
+            status: 'todo',
+            position: 0,
+            projectId: selectedProjectId,
+            contactId: selectedContactId,
+            isScheduled: true,
+            duration,
+            isBillable,
+            billableRate: isBillable ? (Number(billableRate) || 0) : 0,
+            attendees: ['You'],
+        };
+
         try {
-            await addTask({ ...taskData, userId: user.uid });
-            toast({ title: "Event Scheduled", description: `"${taskData.title}" has been added to your calendar.` });
+            await addTask({ ...eventData, userId: user.uid });
+            toast({ title: "Event Scheduled", description: `"${eventData.title}" has been saved.` });
             handleReset(false);
+            window.dispatchEvent(new Event('tasksUpdated'));
+            router.push('/calendar');
         } catch (error: any) {
              toast({ variant: 'destructive', title: 'Failed to create event', description: error.message });
         }
     };
+
+    const hourOptions = Array.from({ length: 24 }, (_, i) => {
+        const date = set(new Date(), { hours: i });
+        return { value: String(i), label: format(date, 'h a') };
+    });
+    const minuteOptions = Array.from({ length: 12 }, (_, i) => {
+        const minutes = i * 5;
+        return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` };
+    });
+
 
     if (isLoadingData) {
         return (
@@ -320,7 +368,6 @@ export function TimeManagerView() {
     }
 
     return (
-        <>
         <div className="p-4 sm:p-6 space-y-6 flex flex-col items-center">
             <header className="relative w-full max-w-4xl">
                 <div className="relative flex justify-center items-center">
@@ -328,7 +375,7 @@ export function TimeManagerView() {
                         <Clock className="h-8 w-8 text-primary" />
                     </div>
                     <div className="text-center">
-                        <h1 className="text-2xl font-bold font-headline text-primary">Event Manager</h1>
+                        <h1 className="text-2xl font-bold font-headline text-primary">Event Task Manager</h1>
                         <p className="text-muted-foreground">
                             Track your time or schedule future events.
                         </p>
@@ -344,6 +391,11 @@ export function TimeManagerView() {
 
             <Card className="w-full max-w-4xl">
                 <CardContent className="pt-6 space-y-4">
+                     <div className="space-y-2">
+                        <Label htmlFor="subject">Subject Title <span className="text-destructive">*</span></Label>
+                        <Input id="subject" placeholder="What is the main task?" value={subject} onChange={handleSubjectChange} />
+                        <p className="text-xs text-muted-foreground">A subject is required to start the timer.</p>
+                    </div>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="project">Project</Label>
@@ -355,7 +407,7 @@ export function TimeManagerView() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="client">Client <span className="text-destructive">*</span></Label>
+                            <Label htmlFor="client">Client</Label>
                             <Select value={selectedContactId || ''} onValueChange={handleContactChange} disabled={isActive}>
                                 <SelectTrigger id="client"><SelectValue placeholder="Select a client..." /></SelectTrigger>
                                 <SelectContent>
@@ -364,16 +416,38 @@ export function TimeManagerView() {
                             </Select>
                         </div>
                     </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="subject">Subject <span className="text-destructive">*</span></Label>
-                        <Input id="subject" placeholder="What is the main task?" value={subject} onChange={handleSubjectChange} />
-                        <p className="text-xs text-muted-foreground">A subject is required to start the timer.</p>
-                    </div>
                     
                     <div className="space-y-2">
                         <Label htmlFor="notes">Notes / Details</Label>
-                        <Textarea id="notes" placeholder="Add more details about the work..." value={notes} onChange={handleNotesChange} rows={8} />
+                        <Textarea id="notes" placeholder="Add more details about the work..." value={notes} onChange={handleNotesChange} rows={4} />
                     </div>
+                    
+                    <div className="space-y-4 p-4 border rounded-md">
+                         <Label>Schedule for Later (Optional)</Label>
+                         <div className="flex items-center gap-2">
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}>
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {scheduleDate ? format(scheduleDate, "PPP") : <span>Pick a date</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={scheduleDate} onSelect={setScheduleDate} initialFocus /></PopoverContent>
+                            </Popover>
+                        </div>
+                         <div className="flex gap-2">
+                            <Select value={scheduleHour} onValueChange={setScheduleHour}><SelectTrigger><SelectValue placeholder="Hour"/></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+                            <Select value={scheduleMinute} onValueChange={setScheduleMinute}><SelectTrigger><SelectValue placeholder="Min"/></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Duration</Label>
+                            <div className="flex items-center gap-2">
+                                <Input type="number" placeholder="Hours" value={durationHours} onChange={e => setDurationHours(e.target.value === '' ? '' : Number(e.target.value))} />
+                                <Input type="number" placeholder="Minutes" value={durationMinutes} onChange={e => setDurationMinutes(e.target.value === '' ? '' : Number(e.target.value))} step="5" />
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div className="flex items-center gap-4 pt-2">
                         <div className="flex items-center space-x-2">
                             <Checkbox id="is-billable" checked={isBillable} onCheckedChange={handleIsBillableChange} />
@@ -397,8 +471,8 @@ export function TimeManagerView() {
                             <Button size="lg" onClick={handleStartTimer}>
                                 <Play className="mr-2 h-5 w-5" /> Start Timer Now
                             </Button>
-                            <Button size="lg" variant="outline" onClick={handleOpenScheduleDialog}>
-                                <Save className="mr-2 h-5 w-5" /> Save Event to Calendar
+                            <Button size="lg" variant="outline" onClick={handleScheduleEvent}>
+                                <Save className="mr-2 h-5 w-5" /> Save Event
                             </Button>
                             </>
                         ) : (
@@ -417,13 +491,5 @@ export function TimeManagerView() {
                 </CardFooter>
             </Card>
         </div>
-        <NewTaskDialog
-            isOpen={isScheduleDialogOpen}
-            onOpenChange={setIsScheduleDialogOpen}
-            onTaskCreate={handleTaskCreate}
-            contacts={contacts}
-            defaultValues={scheduleInitialData}
-        />
-        </>
     );
 }

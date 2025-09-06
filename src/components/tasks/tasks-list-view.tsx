@@ -8,13 +8,12 @@ import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getProjects, getTasksForUser, updateTask, type Project } from '@/services/project-service';
 import { type Event as TaskEvent } from '@/types/calendar';
-import { getContacts, type Contact } from '@/services/contact-service';
+import { type EventFormData } from './NewTaskDialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { format } from 'date-fns';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '../ui/button';
 import Link from 'next/link';
-import { NewTaskDialog, type EventFormData } from './NewTaskDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const TaskListItem = ({ task, onToggle }: { task: TaskEvent, onToggle: (task: TaskEvent) => void }) => (
@@ -66,7 +65,6 @@ const defaultDialogValues = {};
 export function TasksListView() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<TaskEvent[]>([]);
-    const [contacts, setContacts] = useState<Contact[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
     const [dialogDefaultValues, setDialogDefaultValues] = useState<Partial<EventFormData>>(defaultDialogValues);
@@ -80,14 +78,12 @@ export function TasksListView() {
         }
         setIsLoading(true);
         try {
-            const [fetchedProjects, fetchedTasks, fetchedContacts] = await Promise.all([
+            const [fetchedProjects, fetchedTasks] = await Promise.all([
                 getProjects(user.uid),
                 getTasksForUser(user.uid),
-                getContacts(user.uid),
             ]);
             setProjects(fetchedProjects);
             setTasks(fetchedTasks);
-            setContacts(fetchedContacts);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Failed to load tasks', description: error.message });
         } finally {
@@ -100,8 +96,8 @@ export function TasksListView() {
     }, [loadData]);
     
     const { scheduledTasks, unscheduledTasks } = useMemo(() => {
-        const scheduled = tasks.filter(t => t.isScheduled).sort((a,b) => a.start.getTime() - b.start.getTime());
-        const unscheduled = tasks.filter(t => !t.isScheduled).sort((a,b) => a.start.getTime() - b.start.getTime());
+        const scheduled = tasks.filter(t => t.isScheduled).sort((a,b) => a.start!.getTime() - b.start!.getTime());
+        const unscheduled = tasks.filter(t => !t.isScheduled).sort((a,b) => a.start!.getTime() - b.start!.getTime());
         return { scheduledTasks: scheduled, unscheduledTasks: unscheduled };
     }, [tasks]);
 
@@ -128,18 +124,6 @@ export function TasksListView() {
         }
     };
     
-    const handleDialogClose = (open: boolean) => {
-        setIsNewTaskDialogOpen(open);
-        if (!open) {
-            loadData();
-        }
-    };
-    
-    const handleOpenDialog = (defaults: Partial<EventFormData>) => {
-        setDialogDefaultValues(defaults);
-        setIsNewTaskDialogOpen(true);
-    };
-
     if (isLoading) {
         return <div className="flex h-full w-full items-center justify-center"><LoaderCircle className="h-10 w-10 animate-spin text-primary" /></div>;
     }
@@ -158,8 +142,10 @@ export function TasksListView() {
                         <CardTitle>Task Dashboard</CardTitle>
                         <CardDescription>View your projects and tasks in organized lists.</CardDescription>
                     </div>
-                    <Button onClick={() => handleOpenDialog({})}>
-                        <Plus className="mr-2 h-4 w-4" /> New Task
+                    <Button asChild>
+                        <Link href="/time">
+                            <Plus className="mr-2 h-4 w-4" /> New Task
+                        </Link>
                     </Button>
                 </CardHeader>
                 <CardContent>
@@ -202,12 +188,6 @@ export function TasksListView() {
                 </CardContent>
             </Card>
         </div>
-        <NewTaskDialog
-            isOpen={isNewTaskDialogOpen}
-            onOpenChange={handleDialogClose}
-            contacts={contacts}
-            defaultValues={dialogDefaultValues}
-        />
         </>
     );
 }
