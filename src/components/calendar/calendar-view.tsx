@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { getTasksForUser, addTask, updateTask, deleteAllTasksForUser, deleteTask } from "@/services/project-service"
@@ -71,6 +72,11 @@ export function CalendarView() {
         loadEvents();
     }, [loadEvents]);
 
+    const visibleDates = React.useMemo(() => {
+        const start = startOfDay(currentDate);
+        return Array.from({ length: dayCount }, (_, i) => addDays(start, i));
+    }, [currentDate, dayCount]);
+    
     const handlePrev = () => setCurrentDate(prev => addDays(prev, -dayCount));
     const handleNext = () => setCurrentDate(prev => addDays(prev, dayCount));
     const handleToday = () => setCurrentDate(new Date());
@@ -93,6 +99,7 @@ export function CalendarView() {
     };
     
     const handleEventDrop = React.useCallback(async (item: Event, newStartTime: Date) => {
+        if (!item.start || !item.end) return;
         const duration = differenceInMilliseconds(item.end, item.start);
         const newEndTime = new Date(newStartTime.getTime() + duration);
 
@@ -134,7 +141,8 @@ export function CalendarView() {
         const slotStart = set(date, { hours: hour, minutes: slotStartMinute, seconds: 0, milliseconds: 0 });
         const slotEnd = addMinutes(slotStart, slotDurationMinutes);
 
-        const eventsInSlot = events.filter(e => 
+        const eventsInSlot = events.filter(e =>
+            e.start && // This is the fix
             isSameDay(e.start, date) &&
             e.start >= slotStart &&
             e.start < slotEnd

@@ -33,7 +33,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Calendar as CalendarIcon, Save, Plus, ChevronsUpDown, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { type Event as TaskEvent, type Project } from '@/types/calendar';
+import { type Event as TaskEvent, type Project } from '@/types/calendar-types';
 import { type Contact } from '@/data/contacts';
 import { ScrollArea } from '../ui/scroll-area';
 import { getProjects, addProject, updateProject, addTask, updateTask } from '@/services/project-service';
@@ -131,7 +131,7 @@ export function NewTaskDialog({
             sessionStorage.removeItem('ogeemo-idea-to-project');
         }
     }
-  }, [isOpen, projectToEdit, eventToEdit, defaultValues, initialMode, defaultProjectId]);
+  }, [isOpen, projectToEdit, eventToEdit, defaultValues, initialMode, defaultProjectId, form]);
 
   React.useEffect(() => {
     async function loadProjects() {
@@ -162,8 +162,8 @@ export function NewTaskDialog({
                  await onProjectCreate?.(projectData as Omit<Project, 'id' | 'createdAt' | 'userId'>, []);
              }
         } else {
-            let startDateTime = new Date();
-            let endDateTime = addHours(startDateTime, 1);
+            let startDateTime: Date | undefined = undefined;
+            let endDateTime: Date | undefined = undefined;
 
             if (values.isScheduled && values.dateRange?.from && values.startTime && values.endTime) {
                 const [startHour, startMinute] = values.startTime.split(':').map(Number);

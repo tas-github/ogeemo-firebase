@@ -6,8 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LoaderCircle, Briefcase, Calendar, ListTodo, Plus } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getProjects, getTasksForUser, updateTask, type Project } from '@/services/project-service';
-import { type Event as TaskEvent } from '@/types/calendar';
+import { getProjects, getTasksForUser, updateTask } from '@/services/project-service';
+import { type Event as TaskEvent, type Project, type TaskStatus } from '@/types/calendar-types';
 import { type EventFormData } from './NewTaskDialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { format } from 'date-fns';
@@ -96,8 +96,8 @@ export function TasksListView() {
     }, [loadData]);
     
     const { scheduledTasks, unscheduledTasks } = useMemo(() => {
-        const scheduled = tasks.filter(t => t.isScheduled).sort((a,b) => a.start!.getTime() - b.start!.getTime());
-        const unscheduled = tasks.filter(t => !t.isScheduled).sort((a,b) => a.start!.getTime() - b.start!.getTime());
+        const scheduled = tasks.filter(t => t.isScheduled).sort((a,b) => (a.start?.getTime() ?? 0) - (b.start?.getTime() ?? 0));
+        const unscheduled = tasks.filter(t => !t.isScheduled).sort((a,b) => (a.start?.getTime() ?? 0) - (b.start?.getTime() ?? 0));
         return { scheduledTasks: scheduled, unscheduledTasks: unscheduled };
     }, [tasks]);
 
@@ -113,7 +113,7 @@ export function TasksListView() {
     }, [tasks, projects]);
 
     const handleTaskCompletion = async (task: TaskEvent) => {
-        const newStatus = task.status === 'done' ? 'todo' : 'done';
+        const newStatus: TaskStatus = task.status === 'done' ? 'todo' : 'done';
         const updatedTask = { ...task, status: newStatus };
         setTasks(prev => prev.map(t => t.id === task.id ? updatedTask : t));
         try {
