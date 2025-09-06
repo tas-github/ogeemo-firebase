@@ -2,7 +2,6 @@
 "use client"
 
 import * as React from "react"
-import { useDrop } from 'react-dnd';
 import { format, addDays, startOfDay, set, getMinutes, getHours, isSameDay, addMinutes, differenceInMilliseconds } from "date-fns"
 import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, MoreVertical, BookOpen, Pencil, Trash2, Plus, ChevronDown } from "lucide-react"
 
@@ -19,14 +18,6 @@ import { type Event } from "@/types/calendar-types"
 import { Label } from "../ui/label"
 import Link from "next/link"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -40,7 +31,7 @@ import { Input } from "@/components/ui/input";
 import { CalendarEvent, ItemTypes } from "./CalendarEvent"
 import { NewTaskDialog } from "../tasks/NewTaskDialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-
+import { Droppable } from './Droppable';
 
 export function CalendarView() {
     const [currentDate, setCurrentDate] = React.useState<Date>(new Date());
@@ -155,23 +146,12 @@ export function CalendarView() {
             e.start < slotEnd
         );
 
-        const [{ isOver, canDrop }, drop] = useDrop(() => ({
-            accept: ItemTypes.EVENT,
-            drop: (item: Event) => handleEventDrop(item, slotStart),
-            canDrop: () => eventsInSlot.length === 0,
-            collect: (monitor) => ({
-                isOver: !!monitor.isOver(),
-                canDrop: !!monitor.canDrop(),
-            }),
-        }));
-
         return (
-            <div 
-                ref={drop} 
-                className={cn(
-                    "h-8 border border-black rounded-md m-1 flex items-center justify-between p-1",
-                    isOver && canDrop && "bg-primary/20 ring-2 ring-primary"
-                )}
+            <Droppable
+                type={ItemTypes.EVENT}
+                onDrop={(item: Event) => handleEventDrop(item, slotStart)}
+                canDrop={() => eventsInSlot.length === 0}
+                className="h-8 border border-black rounded-md m-1 flex items-center justify-between p-1"
             >
                 <div className="flex-1 flex items-center h-full">
                     {eventsInSlot.map(event => (
@@ -183,7 +163,7 @@ export function CalendarView() {
                         />
                     ))}
                 </div>
-            </div>
+            </Droppable>
         );
     };
 
