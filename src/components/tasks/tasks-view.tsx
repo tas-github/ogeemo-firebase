@@ -174,24 +174,24 @@ export function TasksView() {
                         </ScrollArea>
                     </CardContent>
                 </Card>
-
-                <NewTaskDialog
-                    isOpen={isNewItemDialogOpen}
-                    onOpenChange={(open) => {
-                        setIsNewItemDialogOpen(open);
-                        if (!open) {
-                            setProjectToEdit(null);
-                            setInitialDialogData(emptyInitialData);
-                        }
-                    }}
-                    onProjectCreate={handleProjectCreated}
-                    onProjectUpdate={handleProjectUpdated}
-                    contacts={contacts}
-                    projectToEdit={projectToEdit}
-                    initialMode="project"
-                    initialData={initialDialogData}
-                />
             </div>
+            
+            <NewTaskDialog
+                isOpen={isNewItemDialogOpen}
+                onOpenChange={(open) => {
+                    setIsNewItemDialogOpen(open);
+                    if (!open) {
+                        setProjectToEdit(null);
+                        setInitialDialogData(emptyInitialData);
+                    }
+                }}
+                onProjectCreate={handleProjectCreated}
+                onProjectUpdate={handleProjectUpdated}
+                contacts={contacts}
+                projectToEdit={projectToEdit}
+                initialData={initialDialogData}
+            />
+
             <AlertDialog open={!!projectToDelete} onOpenChange={() => setProjectToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>

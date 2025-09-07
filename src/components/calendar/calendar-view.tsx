@@ -2,8 +2,9 @@
 "use client"
 
 import * as React from "react"
-import { format, addDays, startOfDay, set, getMinutes, getHours, isSameDay, addMinutes, differenceInMilliseconds } from "date-fns"
-import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, MoreVertical, BookOpen, Pencil, Trash2, Plus, ChevronDown } from "lucide-react"
+import { format, addDays, startOfDay, set, isSameDay, addMinutes, differenceInMilliseconds } from "date-fns"
+import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, MoreVertical, Pencil, Trash2, Plus, ChevronDown, X } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
@@ -13,7 +14,7 @@ import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { getTasksForUser, addTask, updateTask, deleteAllTasksForUser, deleteTask } from "@/services/project-service"
+import { getTasksForUser, updateTask, deleteTask } from "@/services/project-service"
 import { type Event } from "@/types/calendar-types"
 import { Label } from "../ui/label"
 import Link from "next/link"
@@ -27,27 +28,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
 import { CalendarEvent, ItemTypes } from "./CalendarEvent"
-import { NewTaskDialog } from "../tasks/NewTaskDialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Droppable } from './Droppable';
+import { CalendarSkeleton } from "./calendar-skeleton";
+
+const CALENDAR_DAY_COUNT_KEY = 'calendarDayCount';
 
 export function CalendarView() {
     const [currentDate, setCurrentDate] = React.useState<Date>(new Date());
-    const [dayCount, setDayCount] = React.useState<number>(1);
+    const [dayCount, setDayCount] = React.useState<number>(1); // Default to 1 to match common use
     const [events, setEvents] = React.useState<Event[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [isInitialLoading, setIsInitialLoading] = React.useState(true);
     const [startHour, setStartHour] = React.useState(8);
     const [endHour, setEndHour] = React.useState(17);
     
-    const [isMakeItHappenDialogOpen, setIsMakeItHappenDialogOpen] = React.useState(false);
-    const [eventToEdit, setEventToEdit] = React.useState<Event | null>(null);
     const [eventToDelete, setEventToDelete] = React.useState<Event | null>(null);
     const [hourSlots, setHourSlots] = React.useState<Record<number, number>>({});
 
     const { user } = useAuth();
     const { toast } = useToast();
+    const router = useRouter();
 
     const dayOptions = Array.from({ length: 7 }, (_, i) => i + 1);
 
@@ -72,6 +74,30 @@ export function CalendarView() {
         loadEvents();
     }, [loadEvents]);
 
+    // Effect to load dayCount from localStorage
+    React.useEffect(() => {
+        try {
+            const savedDayCount = localStorage.getItem(CALENDAR_DAY_COUNT_KEY);
+            if (savedDayCount) {
+                setDayCount(parseInt(savedDayCount, 10));
+            }
+        } catch (error) {
+            console.error("Failed to load calendar preferences:", error);
+        } finally {
+            setIsInitialLoading(false);
+        }
+    }, []);
+
+    const handleDayCountChange = (value: string) => {
+        const newDayCount = Number(value);
+        setDayCount(newDayCount);
+        try {
+            localStorage.setItem(CALENDAR_DAY_COUNT_KEY, String(newDayCount));
+        } catch (error) {
+            console.error("Failed to save calendar preferences:", error);
+        }
+    };
+
     const visibleDates = React.useMemo(() => {
         const start = startOfDay(currentDate);
         return Array.from({ length: dayCount }, (_, i) => addDays(start, i));
@@ -79,24 +105,16 @@ export function CalendarView() {
     
     const handlePrev = () => setCurrentDate(prev => addDays(prev, -dayCount));
     const handleNext = () => setCurrentDate(prev => addDays(prev, dayCount));
-    const handleToday = () => setCurrentDate(new Date());
+    const handleToday = () => {
+        setCurrentDate(new Date());
+    };
+    const handleAddEvent = () => router.push('/time');
 
     const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
 
     const visibleHours = React.useMemo(() => {
         return Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i);
     }, [startHour, endHour]);
-    
-    const handleEventCreated = (newEvent: Event) => {
-        setEvents(prev => [...prev, newEvent]);
-        loadEvents(); // Reload to get the latest state
-    };
-
-    const handleEventUpdated = (updatedEvent: Event) => {
-        setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
-        setEventToEdit(null);
-        loadEvents(); // Reload to get the latest state
-    };
     
     const handleEventDrop = React.useCallback(async (item: Event, newStartTime: Date) => {
         if (!item.start || !item.end) return;
@@ -135,6 +153,11 @@ export function CalendarView() {
         setHourSlots(prev => ({ ...prev, [hour]: slots }));
     };
 
+    const handleEditEvent = (event: Event) => {
+        // Navigate to the unified time manager page to edit
+        router.push(`/time?eventId=${event.id}`);
+    };
+
     const TimeSlot = ({ date, hour, slotIndex, totalSlots }: { date: Date, hour: number, slotIndex: number, totalSlots: number }) => {
         const slotDurationMinutes = 60 / totalSlots;
         const slotStartMinute = slotIndex * slotDurationMinutes;
@@ -142,7 +165,7 @@ export function CalendarView() {
         const slotEnd = addMinutes(slotStart, slotDurationMinutes);
 
         const eventsInSlot = events.filter(e =>
-            e.start && // This is the fix
+            e.start &&
             isSameDay(e.start, date) &&
             e.start >= slotStart &&
             e.start < slotEnd
@@ -160,7 +183,7 @@ export function CalendarView() {
                         <CalendarEvent
                             key={event.id}
                             event={event}
-                            onEdit={() => { setEventToEdit(event); setIsMakeItHappenDialogOpen(true); }}
+                            onEdit={handleEditEvent}
                             onDelete={() => setEventToDelete(event)}
                         />
                     ))}
@@ -169,19 +192,13 @@ export function CalendarView() {
         );
     };
 
-    return (
-        <>
-            <div className="p-4 sm:p-6 flex flex-col h-full">
-                <header className="text-center mb-6 print:hidden">
-                    <h1 className="text-3xl font-bold font-headline text-primary">
-                    Calendar
-                    </h1>
-                    <p className="text-muted-foreground">
-                    Manage your schedule, events and appointments.
-                    </p>
-                </header>
-                
-                <div className="flex-1 min-h-0 flex flex-col">
+    const renderCalendarContent = () => {
+        if (isInitialLoading) {
+            return <CalendarSkeleton />;
+        }
+
+        return (
+             <div className="flex-1 min-h-0 flex flex-col">
                     <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b">
                         <div />
                         <div className="flex-1 flex justify-center items-center gap-2">
@@ -203,7 +220,7 @@ export function CalendarView() {
                                 <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={currentDate} onSelect={(date) => date && setCurrentDate(date)} initialFocus /></PopoverContent>
                             </Popover>
                             <Button variant="outline" onClick={handleToday}>Today</Button>
-                            <Select value={String(dayCount)} onValueChange={(value) => setDayCount(Number(value))}>
+                            <Select value={String(dayCount)} onValueChange={handleDayCountChange}>
                                 <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {dayOptions.map(day => (
@@ -211,7 +228,7 @@ export function CalendarView() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <Button onClick={() => { setEventToEdit(null); setIsMakeItHappenDialogOpen(true); }}>
+                            <Button onClick={handleAddEvent}>
                                 <Plus className="mr-2 h-4 w-4" /> Add Event
                             </Button>
                         </div>
@@ -275,17 +292,30 @@ export function CalendarView() {
                         </div>
                     </ScrollArea>
                 </div>
-            </div>
+        );
+    };
 
-            <NewTaskDialog
-                isOpen={isMakeItHappenDialogOpen}
-                onOpenChange={setIsMakeItHappenDialogOpen}
-                onTaskCreate={handleEventCreated}
-                onTaskUpdate={handleEventUpdated}
-                eventToEdit={eventToEdit}
-                initialMode="task"
-                defaultValues={{ isScheduled: true }}
-            />
+    return (
+        <>
+            <div className="p-4 sm:p-6 flex flex-col h-full">
+                <header className="relative text-center mb-6 print:hidden">
+                    <h1 className="text-3xl font-bold font-headline text-primary">
+                    Calendar
+                    </h1>
+                    <p className="text-muted-foreground">
+                    Manage your schedule, events and appointments.
+                    </p>
+                    <div className="absolute top-0 right-0">
+                        <Button asChild variant="ghost" size="icon">
+                            <Link href="/action-manager">
+                                <X className="h-5 w-5" />
+                                <span className="sr-only">Close and go to Action Manager</span>
+                            </Link>
+                        </Button>
+                    </div>
+                </header>
+                {renderCalendarContent()}
+            </div>
 
             <AlertDialog open={!!eventToDelete} onOpenChange={() => setEventToDelete(null)}>
                 <AlertDialogContent>
