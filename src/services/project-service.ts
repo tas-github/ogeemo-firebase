@@ -281,6 +281,16 @@ export async function getTasksForProject(projectId: string): Promise<TaskEvent[]
   return snapshot.docs.map(docToTask);
 }
 
+export async function getTaskById(taskId: string): Promise<TaskEvent | null> {
+    const db = await getDb();
+    const taskRef = doc(db, TASKS_COLLECTION, taskId);
+    const taskSnap = await getDoc(taskRef);
+    if (taskSnap.exists()) {
+        return docToTask(taskSnap);
+    }
+    return null;
+}
+
 export async function getTasksForUser(userId: string): Promise<TaskEvent[]> {
     const db = await getDb();
     const q = query(collection(db, TASKS_COLLECTION), where("userId", "==", userId));

@@ -32,7 +32,7 @@ export function MainMenu() {
   const pathname = usePathname();
   const [menuItems, setMenuItems] = useState<MenuItem[]>(allMenuItems);
   const [actionChips, setActionChips] = useState<ActionChipData[]>([]);
-  const { preferences, isLoading: isLoadingPreferences } = useUserPreferences();
+  const { preferences, isLoading: isLoadingPreferences, updatePreferences } = useUserPreferences();
   const { user } = useAuth();
   const { toast } = useToast();
   const { view, setView } = useSidebarView();
@@ -97,6 +97,14 @@ export function MainMenu() {
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
     }
+  };
+
+  const handleSetDefaultView = () => {
+    updatePreferences({ defaultSidebarView: view });
+    toast({
+      title: 'Default View Saved',
+      description: `Your sidebar will now open to the "${view === 'dashboard' ? 'Favorite Actions' : view === 'fullMenu' ? 'Full Menu' : 'Groups'}" view.`,
+    });
   };
 
   const renderGroupedView = () => (
@@ -207,6 +215,19 @@ export function MainMenu() {
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom"><p>Favorite Actions</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="flex-1 h-8 w-full"
+                        onClick={handleSetDefaultView}
+                    >
+                        <Save className="h-4 w-4" />
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom"><p>Set as Default View</p></TooltipContent>
             </Tooltip>
         </TooltipProvider>
       </div>

@@ -1,7 +1,8 @@
 
 'use client';
 
-import React, { createContext, useState, useContext, ReactNode, Dispatch, SetStateAction } from 'react';
+import React, { createContext, useState, useContext, ReactNode, Dispatch, SetStateAction, useEffect } from 'react';
+import { useUserPreferences } from '@/hooks/use-user-preferences';
 
 export type SidebarViewType = 'fullMenu' | 'grouped' | 'dashboard';
 
@@ -14,6 +15,16 @@ const SidebarViewContext = createContext<SidebarViewContextType | undefined>(und
 
 export function SidebarViewProvider({ children }: { children: ReactNode }) {
   const [view, setView] = useState<SidebarViewType>('grouped');
+  const { preferences, isLoading } = useUserPreferences();
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && preferences && !isInitialized) {
+      setView(preferences.defaultSidebarView || 'grouped');
+      setIsInitialized(true);
+    }
+  }, [preferences, isLoading, isInitialized]);
+  
 
   const value = { view, setView };
 

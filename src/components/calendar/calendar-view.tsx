@@ -3,8 +3,8 @@
 
 import * as React from "react"
 import { format, addDays, startOfDay, set, isSameDay, addMinutes, differenceInMilliseconds } from "date-fns"
-import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, MoreVertical, Pencil, Trash2, Plus, ChevronDown, X } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, MoreVertical, Pencil, Trash2, Plus, ChevronDown, X, FilterX } from "lucide-react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
@@ -14,8 +14,8 @@ import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { getTasksForUser, updateTask, deleteTask } from "@/services/project-service"
-import { type Event } from "@/types/calendar-types"
+import { getTasksForUser, updateTask, deleteTask, getProjectById, type Project } from "@/services/project-service"
+import { type Event, type TaskStatus } from "@/types/calendar-types"
 import { Label } from "../ui/label"
 import Link from "next/link"
 import {
@@ -38,7 +38,7 @@ const CALENDAR_DAY_COUNT_KEY = 'calendarDayCount';
 export function CalendarView() {
     const [currentDate, setCurrentDate] = React.useState<Date>(new Date());
     const [dayCount, setDayCount] = React.useState<number>(1); // Default to 1 to match common use
-    const [events, setEvents] = React.useState<Event[]>([]);
+    const [allEvents, setAllEvents] = React.useState<Event[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isInitialLoading, setIsInitialLoading] = React.useState(true);
     const [startHour, setStartHour] = React.useState(8);
@@ -46,10 +46,14 @@ export function CalendarView() {
     
     const [eventToDelete, setEventToDelete] = React.useState<Event | null>(null);
     const [hourSlots, setHourSlots] = React.useState<Record<number, number>>({});
+    
+    const [filteredProject, setFilteredProject] = React.useState<Project | null>(null);
 
     const { user } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
 
     const dayOptions = Array.from({ length: 7 }, (_, i) => i + 1);
 
@@ -61,18 +65,34 @@ export function CalendarView() {
         setIsLoading(true);
         try {
             const fetchedTasks = await getTasksForUser(user.uid);
-            setEvents(fetchedTasks);
+            setAllEvents(fetchedTasks);
+
+            const projectId = searchParams.get('projectId');
+            if (projectId) {
+                const project = await getProjectById(projectId);
+                setFilteredProject(project);
+            } else {
+                setFilteredProject(null);
+            }
+
         } catch (error: any)
         {
             toast({ variant: 'destructive', title: 'Failed to load events', description: error.message });
         } finally {
             setIsLoading(false);
         }
-    }, [user, toast]);
+    }, [user, toast, searchParams]);
     
     React.useEffect(() => {
         loadEvents();
     }, [loadEvents]);
+    
+    const events = React.useMemo(() => {
+        if (filteredProject) {
+            return allEvents.filter(event => event.projectId === filteredProject.id);
+        }
+        return allEvents;
+    }, [allEvents, filteredProject]);
 
     // Effect to load dayCount from localStorage
     React.useEffect(() => {
@@ -124,14 +144,14 @@ export function CalendarView() {
         const updatedEvent = { ...item, start: newStartTime, end: newEndTime };
         
         // Optimistic UI update
-        setEvents(prev => prev.map(e => e.id === item.id ? updatedEvent : e));
+        setAllEvents(prev => prev.map(e => e.id === item.id ? updatedEvent : e));
 
         try {
             await updateTask(item.id, { start: newStartTime, end: newEndTime });
             toast({ title: 'Event Rescheduled', description: `"${item.title}" moved to ${format(newStartTime, 'PPp')}` });
         } catch (error: any) {
             // Revert on failure
-            setEvents(prev => prev.map(e => e.id === item.id ? item : e));
+            setAllEvents(prev => prev.map(e => e.id === item.id ? item : e));
             toast({ variant: 'destructive', title: 'Failed to move event', description: error.message });
         }
     }, [toast]);
@@ -140,7 +160,7 @@ export function CalendarView() {
         if (!eventToDelete) return;
         try {
             await deleteTask(eventToDelete.id);
-            setEvents(prev => prev.filter(e => e.id !== eventToDelete.id));
+            setAllEvents(prev => prev.filter(e => e.id !== eventToDelete.id));
             toast({ title: "Event Deleted" });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Failed to delete event', description: error.message });
@@ -156,6 +176,28 @@ export function CalendarView() {
     const handleEditEvent = (event: Event) => {
         // Navigate to the unified time manager page to edit
         router.push(`/time?eventId=${event.id}`);
+    };
+    
+    const handleToggleComplete = async (event: Event) => {
+        const newStatus: TaskStatus = event.status === 'done' ? 'todo' : 'done';
+        const updatedEvent = { ...event, status: newStatus };
+
+        // Optimistic UI update
+        setAllEvents(prev => prev.map(e => e.id === event.id ? updatedEvent : e));
+        
+        try {
+            await updateTask(event.id, { status: newStatus });
+            toast({ title: `Task ${newStatus === 'done' ? 'completed' : 'reopened'}` });
+        } catch (error: any) {
+            // Revert on failure
+            setAllEvents(prev => prev.map(e => e.id === event.id ? event : e));
+            toast({ variant: 'destructive', title: 'Failed to update task status' });
+        }
+    };
+
+    const clearFilter = () => {
+        setFilteredProject(null);
+        router.push(pathname); // Pushes the URL without query params
     };
 
     const TimeSlot = ({ date, hour, slotIndex, totalSlots }: { date: Date, hour: number, slotIndex: number, totalSlots: number }) => {
@@ -185,6 +227,7 @@ export function CalendarView() {
                             event={event}
                             onEdit={handleEditEvent}
                             onDelete={() => setEventToDelete(event)}
+                            onToggleComplete={handleToggleComplete}
                         />
                     ))}
                 </div>
@@ -192,13 +235,30 @@ export function CalendarView() {
         );
     };
 
-    const renderCalendarContent = () => {
-        if (isInitialLoading) {
-            return <CalendarSkeleton />;
-        }
+    if (isInitialLoading) {
+        return <CalendarSkeleton />;
+    }
 
-        return (
-             <div className="flex-1 min-h-0 flex flex-col">
+    return (
+        <>
+            <div className="p-4 sm:p-6 flex flex-col h-full">
+                <header className="relative text-center mb-6 print:hidden">
+                    <h1 className="text-3xl font-bold font-headline text-primary">
+                    Calendar
+                    </h1>
+                    <p className="text-muted-foreground">
+                    Manage your schedule, events and appointments.
+                    </p>
+                    <div className="absolute top-0 right-0">
+                        <Button asChild variant="ghost" size="icon">
+                            <Link href="/action-manager">
+                                <X className="h-5 w-5" />
+                                <span className="sr-only">Close and go to Action Manager</span>
+                            </Link>
+                        </Button>
+                    </div>
+                </header>
+                 <div className="flex-1 min-h-0 flex flex-col">
                     <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b">
                         <div />
                         <div className="flex-1 flex justify-center items-center gap-2">
@@ -236,6 +296,18 @@ export function CalendarView() {
                             <Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" aria-label="Settings"><Settings className="h-4 w-4" /></Button></PopoverTrigger><PopoverContent className="w-80"><div className="grid gap-4"><div className="space-y-2"><h4 className="font-medium leading-none">Display Settings</h4><p className="text-sm text-muted-foreground">Set the visible hours for your calendar day.</p></div><div className="grid gap-2"><div className="grid grid-cols-3 items-center gap-4"><Label htmlFor="start-time">Start Time</Label><Select value={String(startHour)} onValueChange={(v) => setStartHour(Number(v))}><SelectTrigger id="start-time" className="col-span-2 h-8"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div><div className="grid grid-cols-3 items-center gap-4"><Label htmlFor="end-time">End Time</Label><Select value={String(endHour)} onValueChange={(v) => setEndHour(Number(v))}><SelectTrigger id="end-time" className="col-span-2 h-8"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div></div></div></PopoverContent></Popover>
                         </div>
                     </div>
+                    
+                    {filteredProject && (
+                        <div className="py-2 px-4 bg-primary/10 text-primary-foreground rounded-md flex items-center justify-between">
+                            <p className="text-sm font-semibold text-foreground">
+                                Viewing schedule for: <strong>{filteredProject.name}</strong>
+                            </p>
+                            <Button variant="ghost" size="sm" onClick={clearFilter} className="text-foreground hover:bg-background/20">
+                                <FilterX className="mr-2 h-4 w-4" />
+                                Clear Filter
+                            </Button>
+                        </div>
+                    )}
                     
                     <div className="grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
                         {visibleDates.map((date) => (
@@ -292,29 +364,6 @@ export function CalendarView() {
                         </div>
                     </ScrollArea>
                 </div>
-        );
-    };
-
-    return (
-        <>
-            <div className="p-4 sm:p-6 flex flex-col h-full">
-                <header className="relative text-center mb-6 print:hidden">
-                    <h1 className="text-3xl font-bold font-headline text-primary">
-                    Calendar
-                    </h1>
-                    <p className="text-muted-foreground">
-                    Manage your schedule, events and appointments.
-                    </p>
-                    <div className="absolute top-0 right-0">
-                        <Button asChild variant="ghost" size="icon">
-                            <Link href="/action-manager">
-                                <X className="h-5 w-5" />
-                                <span className="sr-only">Close and go to Action Manager</span>
-                            </Link>
-                        </Button>
-                    </div>
-                </header>
-                {renderCalendarContent()}
             </div>
 
             <AlertDialog open={!!eventToDelete} onOpenChange={() => setEventToDelete(null)}>

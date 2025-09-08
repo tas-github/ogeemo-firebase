@@ -4,13 +4,14 @@
 import React from 'react';
 import { useDrag } from 'react-dnd';
 import { format } from 'date-fns';
-import { MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, CheckCircle, Briefcase } from 'lucide-react';
 import { type Event } from '@/types/calendar-types';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from '../ui/button';
@@ -24,10 +25,12 @@ interface CalendarEventProps {
   event: Event;
   onEdit: (event: Event) => void;
   onDelete: (event: Event) => void;
+  onToggleComplete: (event: Event) => void;
 }
 
-export function CalendarEvent({ event, onEdit, onDelete }: CalendarEventProps) {
+export function CalendarEvent({ event, onEdit, onDelete, onToggleComplete }: CalendarEventProps) {
   const startTime = format(event.start, 'h:mm a');
+  const isCompleted = event.status === 'done';
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.EVENT,
@@ -42,12 +45,12 @@ export function CalendarEvent({ event, onEdit, onDelete }: CalendarEventProps) {
       ref={drag}
       className={cn(
         'w-full h-full rounded-md p-1 text-xs transition-opacity group flex items-center justify-between cursor-move',
-        'bg-primary/20 text-black',
+        isCompleted ? 'bg-muted text-muted-foreground' : 'bg-primary/20 text-black',
         isDragging && 'opacity-50'
       )}
     >
-      <div className="flex-1 overflow-hidden">
-        <p className="truncate">
+      <div className="flex-1 overflow-hidden" onClick={() => onEdit(event)}>
+        <p className={cn("truncate", isCompleted && "line-through")}>
           <span className="font-bold">{event.title}</span> {startTime}
         </p>
       </div>
@@ -64,6 +67,18 @@ export function CalendarEvent({ event, onEdit, onDelete }: CalendarEventProps) {
             <DropdownMenuItem onSelect={() => onEdit(event)}>
               <Pencil className="mr-2 h-4 w-4" /> Open / Edit
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onToggleComplete(event)}>
+                <CheckCircle className="mr-2 h-4 w-4" /> 
+                {isCompleted ? "Mark as Not Completed" : "Mark as Completed"}
+            </DropdownMenuItem>
+            {event.projectId && (
+                <DropdownMenuItem asChild>
+                    <a href={`/projects/${event.projectId}/tasks`}>
+                        <Briefcase className="mr-2 h-4 w-4" /> Go to Project
+                    </a>
+                </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => onDelete(event)} className="text-destructive">
               <Trash2 className="mr-2 h-4 w-4" /> Delete
             </DropdownMenuItem>

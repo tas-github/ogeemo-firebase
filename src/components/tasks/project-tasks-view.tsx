@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LoaderCircle, ArrowLeft, Route } from 'lucide-react';
+import { LoaderCircle, ArrowLeft, Route, Calendar } from 'lucide-react';
 import { TaskColumn } from './TaskColumn';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
@@ -134,6 +134,12 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                         <p className="text-muted-foreground">Manage your project tasks on the Kanban board.</p>
                      </div>
                      <div className="flex items-center gap-2">
+                        <Button asChild variant="outline">
+                            <Link href={`/calendar?projectId=${projectId}`}>
+                                <Calendar className="mr-2 h-4 w-4" />
+                                Calendar View
+                            </Link>
+                        </Button>
                         <Button asChild variant="outline">
                             <Link href={`/projects/${projectId}/planning`}>
                                 <Route className="mr-2 h-4 w-4" />

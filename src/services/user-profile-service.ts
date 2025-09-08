@@ -3,6 +3,7 @@
 
 import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
+import type { SidebarViewType } from '@/context/sidebar-view-context';
 
 export interface UserProfile {
     id: string; // This will be the user's UID
@@ -20,6 +21,7 @@ export interface UserProfile {
         showDictationButton?: boolean;
         showDashboardFrame?: boolean;
         showMenuViewInstructions?: boolean;
+        defaultSidebarView?: SidebarViewType;
         menuOrder?: string[];
         googleAppsOrder?: string[];
         fileFolderOrder?: string[];
@@ -33,10 +35,11 @@ async function getDb() {
     return db;
 }
 
-const defaultPreferences = {
+const defaultPreferences: UserProfile['preferences'] = {
     showDictationButton: true,
     showDashboardFrame: true,
     showMenuViewInstructions: true,
+    defaultSidebarView: 'grouped',
     menuOrder: [],
     googleAppsOrder: [],
     fileFolderOrder: [],

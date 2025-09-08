@@ -1,19 +1,17 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { Plus, LoaderCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Plus, LoaderCircle, ListTodo, Route } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Progress } from "@/components/ui/progress";
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getProjects, deleteProject, getTasksForProject, addProject, updateProject } from '@/services/project-service';
+import { getProjects, deleteProject, getTasksForUser, addProject, updateProject } from '@/services/project-service';
 import { type Project, type Event as TaskEvent } from '@/types/calendar';
 import { getContacts, type Contact } from '@/services/contact-service';
 import { NewTaskDialog } from './NewTaskDialog';
-import { ProjectListItem } from './ProjectListItem';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,11 +22,46 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useRouter } from 'next/navigation';
 
 const emptyInitialData = {};
 
+const ProjectCard = ({ project, tasks, contacts, onEdit, onDelete }: { project: Project, tasks: TaskEvent[], contacts: Contact[], onEdit: (p: Project) => void, onDelete: (p: Project) => void }) => {
+    const router = useRouter();
+    const projectTasks = tasks.filter(t => t.projectId === project.id);
+    const completedTasks = projectTasks.filter(t => t.status === 'done').length;
+    const totalTasks = projectTasks.length;
+    const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+    const client = contacts.find(c => c.id === project.contactId);
+
+    return (
+        <Card className="flex flex-col">
+            <CardHeader>
+                <CardTitle>{project.name}</CardTitle>
+                <CardDescription>{client?.name || 'No client assigned'}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 space-y-4">
+                <div>
+                    <div className="flex justify-between items-center mb-1">
+                        <p className="text-sm font-medium">Progress</p>
+                        <p className="text-sm text-muted-foreground">{completedTasks} of {totalTasks} tasks complete</p>
+                    </div>
+                    <Progress value={progress} />
+                </div>
+            </CardContent>
+            <CardFooter className="grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={() => router.push(`/projects/${project.id}/tasks`)}><ListTodo className="mr-2 h-4 w-4" /> Task Board</Button>
+                <Button variant="outline" onClick={() => router.push(`/projects/${project.id}/planning`)}><Route className="mr-2 h-4 w-4" /> Planning</Button>
+                <Button variant="secondary" className="col-span-2" onClick={() => onEdit(project)}>Edit Details</Button>
+            </CardFooter>
+        </Card>
+    );
+};
+
+
 export function TasksView() {
     const [projects, setProjects] = useState<Project[]>([]);
+    const [tasks, setTasks] = useState<TaskEvent[]>([]);
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
     const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
@@ -48,12 +81,14 @@ export function TasksView() {
             }
             setIsLoading(true);
             try {
-                const [fetchedProjects, fetchedContacts] = await Promise.all([
+                const [fetchedProjects, fetchedContacts, fetchedTasks] = await Promise.all([
                     getProjects(user.uid),
                     getContacts(user.uid),
+                    getTasksForUser(user.uid),
                 ]);
                 setProjects(fetchedProjects);
                 setContacts(fetchedContacts);
+                setTasks(fetchedTasks);
 
                 const ideaToProjectRaw = sessionStorage.getItem('ogeemo-idea-to-project');
                 if (ideaToProjectRaw) {
@@ -111,17 +146,6 @@ export function TasksView() {
         }
     };
     
-    const onMoveProject = (dragIndex: number, hoverIndex: number) => {
-        const draggedProject = projects[dragIndex];
-        setProjects(prev => {
-            const newProjects = [...prev];
-            newProjects.splice(dragIndex, 1);
-            newProjects.splice(hoverIndex, 0, draggedProject);
-            return newProjects;
-        });
-        // Here you would call a service to update positions in the backend
-    };
-    
     const handleEditProject = (project: Project) => {
         setProjectToEdit(project);
         setIsNewItemDialogOpen(true);
@@ -135,45 +159,38 @@ export function TasksView() {
                     <p className="text-muted-foreground">Manage your projects, view tasks, or create a new project.</p>
                 </header>
 
-                <Card className="w-full max-w-4xl flex-1 flex flex-col">
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle>All Projects</CardTitle>
-                                <CardDescription>Click a project to view its tasks.</CardDescription>
-                            </div>
-                            <Button onClick={() => { setProjectToEdit(null); setInitialDialogData({}); setIsNewItemDialogOpen(true); }}>
-                                <Plus className="mr-2 h-4 w-4" /> New Project
-                            </Button>
+                <div className="w-full max-w-7xl flex-1">
+                    <div className="flex justify-end mb-4">
+                        <Button onClick={() => { setProjectToEdit(null); setInitialDialogData({}); setIsNewItemDialogOpen(true); }}>
+                            <Plus className="mr-2 h-4 w-4" /> New Project
+                        </Button>
+                    </div>
+
+                    {isLoading ? (
+                        <div className="flex items-center justify-center h-full pt-16">
+                            <LoaderCircle className="h-8 w-8 animate-spin" />
                         </div>
-                    </CardHeader>
-                    <CardContent className="flex-1 overflow-hidden p-2">
-                        <ScrollArea className="h-full">
-                            <div className="p-2 space-y-2">
-                                {isLoading ? (
-                                    <div className="flex items-center justify-center h-full pt-16">
-                                        <LoaderCircle className="h-8 w-8 animate-spin" />
-                                    </div>
-                                ) : projects.length > 0 ? (
-                                    projects.map((p, index) => (
-                                        <ProjectListItem
-                                            key={p.id}
-                                            project={p}
-                                            index={index}
-                                            onMoveProject={onMoveProject}
-                                            onEdit={handleEditProject}
-                                            onDelete={setProjectToDelete}
-                                        />
-                                    ))
-                                ) : (
-                                    <p className="text-sm text-muted-foreground text-center p-8">
-                                        No projects yet. Create one to get started.
-                                    </p>
-                                )}
-                            </div>
-                        </ScrollArea>
-                    </CardContent>
-                </Card>
+                    ) : projects.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {projects.map((p) => (
+                                <ProjectCard
+                                    key={p.id}
+                                    project={p}
+                                    tasks={tasks}
+                                    contacts={contacts}
+                                    onEdit={handleEditProject}
+                                    onDelete={setProjectToDelete}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg">
+                            <p className="text-sm text-muted-foreground text-center">
+                                No projects yet. Create one to get started.
+                            </p>
+                        </div>
+                    )}
+                </div>
             </div>
             
             <NewTaskDialog
@@ -188,6 +205,7 @@ export function TasksView() {
                 onProjectCreate={handleProjectCreated}
                 onProjectUpdate={handleProjectUpdated}
                 contacts={contacts}
+                onContactsChange={setContacts}
                 projectToEdit={projectToEdit}
                 initialData={initialDialogData}
             />
