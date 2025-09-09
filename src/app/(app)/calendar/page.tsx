@@ -1,6 +1,7 @@
 
 import dynamic from 'next/dynamic';
 import { CalendarSkeleton } from '@/components/calendar/calendar-skeleton';
+import { DndProviderWrapper } from '@/components/layout/dnd-provider-wrapper';
 
 const CalendarView = dynamic(
   () => import('@/components/calendar/calendar-view').then((mod) => mod.CalendarView),
@@ -11,6 +12,9 @@ const CalendarView = dynamic(
 );
 
 export default function CalendarPage() {
-  // DndProviderWrapper is removed from here as it's already in the root layout.
-  return <CalendarView />;
+  return (
+    <DndProviderWrapper>
+      <CalendarView />
+    </DndProviderWrapper>
+  );
 }

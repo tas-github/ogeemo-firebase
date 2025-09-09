@@ -72,8 +72,8 @@ export function TimeManagerView() {
     
     // State for scheduling
     const [scheduleDate, setScheduleDate] = React.useState<Date | undefined>(new Date());
-    const [scheduleHour, setScheduleHour] = React.useState<string>(String(new Date().getHours()));
-    const [scheduleMinute, setScheduleMinute] = React.useState<string>("0");
+    const [scheduleHour, setScheduleHour] = React.useState<string>('0');
+    const [scheduleMinute, setScheduleMinute] = React.useState<string>('0');
     const [durationHours, setDurationHours] = React.useState<number|''> (1);
     const [durationMinutes, setDurationMinutes] = React.useState<number|''> (0);
 
@@ -96,46 +96,56 @@ export function TimeManagerView() {
 
     // Pre-populate form from URL params
     React.useEffect(() => {
-        const loadEventToEdit = async () => {
+        const loadInitialData = async () => {
             const eventIdParam = searchParams.get('eventId');
-            if (!eventIdParam) return;
-            try {
-                const eventData = await getTaskById(eventIdParam);
-                if (eventData) {
-                    setEventToEdit(eventData);
-                    setSubject(eventData.title);
-                    setNotes(eventData.description || "");
-                    setSelectedProjectId(eventData.projectId || null);
-                    setSelectedContactId(eventData.contactId || null);
-                    setIsBillable(eventData.isBillable || false);
-                    setBillableRate(eventData.billableRate || 0);
-                    if (eventData.start) {
-                        setScheduleDate(eventData.start);
-                        setScheduleHour(String(eventData.start.getHours()));
-                        setScheduleMinute(String(eventData.start.getMinutes()));
+            const projectIdParam = searchParams.get('projectId');
+            const dateParam = searchParams.get('date');
+            const hourParam = searchParams.get('hour');
+            const minuteParam = searchParams.get('minute');
+
+            if (eventIdParam) {
+                try {
+                    const eventData = await getTaskById(eventIdParam);
+                    if (eventData) {
+                        setEventToEdit(eventData);
+                        setSubject(eventData.title);
+                        setNotes(eventData.description || "");
+                        setSelectedProjectId(eventData.projectId || null);
+                        setSelectedContactId(eventData.contactId || null);
+                        setIsBillable(eventData.isBillable || false);
+                        setBillableRate(eventData.billableRate || 0);
+                        if (eventData.start) {
+                            setScheduleDate(eventData.start);
+                            setScheduleHour(String(eventData.start.getHours()));
+                            setScheduleMinute(String(eventData.start.getMinutes()));
+                        }
+                        if (eventData.duration) {
+                            const hours = Math.floor(eventData.duration / 3600);
+                            const minutes = Math.floor((eventData.duration % 3600) / 60);
+                            setDurationHours(hours);
+                            setDurationMinutes(minutes);
+                        }
                     }
-                    if (eventData.duration) {
-                        const hours = Math.floor(eventData.duration / 3600);
-                        const minutes = Math.floor((eventData.duration % 3600) / 60);
-                        setDurationHours(hours);
-                        setDurationMinutes(minutes);
-                    }
+                } catch (error) {
+                    toast({ variant: 'destructive', title: 'Error', description: 'Could not load event data.' });
                 }
-            } catch (error) {
-                toast({ variant: 'destructive', title: 'Error', description: 'Could not load event data.' });
+            } else {
+                 const now = new Date();
+                let initialDate = dateParam ? parseISO(dateParam) : now;
+                let initialHour = hourParam || String(now.getHours());
+                let initialMinute = minuteParam || String(Math.floor(now.getMinutes() / 5) * 5); // Round down to nearest 5
+
+                setScheduleDate(initialDate);
+                setScheduleHour(initialHour);
+                setScheduleMinute(initialMinute);
+
+                if (projectIdParam) {
+                    setSelectedProjectId(projectIdParam);
+                }
             }
         };
 
-        const projectIdParam = searchParams.get('projectId');
-        const dateParam = searchParams.get('date');
-        const hourParam = searchParams.get('hour');
-        const minuteParam = searchParams.get('minute');
-        if (projectIdParam) setSelectedProjectId(projectIdParam);
-        if (dateParam) setScheduleDate(parseISO(dateParam));
-        if (hourParam) setScheduleHour(hourParam);
-        if (minuteParam) setScheduleMinute(minuteParam);
-        
-        loadEventToEdit();
+        loadInitialData();
     }, [searchParams, toast]);
 
     React.useEffect(() => {
@@ -551,15 +561,14 @@ export function TimeManagerView() {
                         </div>
                         
                         <div className="space-y-4 p-4 border rounded-md">
-                            <Label>Schedule for Later (*Required)</Label>
                             <div className="flex flex-col sm:flex-row items-center gap-4">
                                 <div className="space-y-2 flex-1 w-full">
-                                    <Label className="text-xs">Start Time</Label>
+                                    <Label className="text-base font-semibold">Set Time <span className="text-destructive">*</span></Label>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")} disabled={isActive}>
                                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {scheduleDate ? `${format(scheduleDate, "PPP")}, ${format(set(new Date(), { hours: parseInt(scheduleHour), minutes: parseInt(scheduleMinute)}), 'p')}` : <span>Pick a date & time</span>}
+                                                {scheduleDate ? `${format(scheduleDate, "PPP")}, ${format(set(new Date(), { hours: parseInt(scheduleHour), minutes: parseInt(scheduleMinute)}), 'p')}` : <span>Pick a date &amp; time</span>}
                                             </Button>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-auto p-0" align="start">
@@ -572,10 +581,16 @@ export function TimeManagerView() {
                                     </Popover>
                                 </div>
                                 <div className="space-y-2 w-full sm:w-auto">
-                                    <Label className="text-xs">Duration</Label>
-                                    <div className="flex items-center gap-2">
-                                        <Input type="number" placeholder="Hrs" value={durationHours} onChange={e => setDurationHours(e.target.value === '' ? '' : Number(e.target.value))} disabled={isActive} className="w-20" />
-                                        <Input type="number" placeholder="Mins" value={durationMinutes} onChange={e => setDurationMinutes(e.target.value === '' ? '' : Number(e.target.value))} step="5" disabled={isActive} className="w-20" />
+                                    <Label className="text-base font-semibold">Duration</Label>
+                                    <div className="flex items-end gap-2">
+                                        <div className="flex-1 space-y-1">
+                                            <Label htmlFor="duration-hours" className="text-xs text-muted-foreground">Hrs</Label>
+                                            <Input id="duration-hours" type="number" min="0" value={durationHours} onChange={(e) => setDurationHours(e.target.value === '' ? '' : Number(e.target.value))} disabled={isActive} />
+                                        </div>
+                                        <div className="flex-1 space-y-1">
+                                            <Label htmlFor="duration-minutes" className="text-xs text-muted-foreground">Mins</Label>
+                                            <Input id="duration-minutes" type="number" min="0" max="59" step="5" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value === '' ? '' : Number(e.target.value))} disabled={isActive} />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -604,7 +619,7 @@ export function TimeManagerView() {
                                 <Button size="lg" onClick={handleStartTimer}>
                                     <Play className="mr-2 h-5 w-5" /> Start Timer Now
                                 </Button>
-                                <Button size="lg" variant="outline" onClick={handleScheduleEvent}>
+                                <Button size="lg" onClick={handleScheduleEvent}>
                                     <Save className="mr-2 h-5 w-5" /> {eventToEdit ? 'Update Event' : 'Save Event'}
                                 </Button>
                                 </>
@@ -620,7 +635,7 @@ export function TimeManagerView() {
                                 </>
                             )}
                         </div>
-                        <Button variant="ghost" onClick={() => handleReset()}>Reset</Button>
+                        <Button onClick={() => handleReset()}>Reset</Button>
                     </CardFooter>
                 </Card>
             </div>

@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { format, addDays, startOfDay, set, isSameDay, addMinutes, differenceInMilliseconds } from "date-fns"
+import { format, addDays, startOfDay, set, isSameDay, addMinutes, differenceInMilliseconds, getHours, getMinutes } from "date-fns"
 import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, MoreVertical, Pencil, Trash2, Plus, ChevronDown, X, FilterX } from "lucide-react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
@@ -28,16 +28,35 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CalendarEvent, ItemTypes } from "./CalendarEvent"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { CalendarEvent, ItemTypes as EventItemTypes } from "./CalendarEvent"
 import { Droppable } from './Droppable';
 import { CalendarSkeleton } from "./calendar-skeleton";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const CALENDAR_DAY_COUNT_KEY = 'calendarDayCount';
+const CALENDAR_START_HOUR_KEY = 'calendarStartHour';
+const CALENDAR_END_HOUR_KEY = 'calendarEndHour';
 
-export function CalendarView() {
+
+function CalendarWrapper() {
+  const [isClient, setIsClient] = React.useState(false);
+  
+  React.useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return <CalendarSkeleton />;
+  }
+  
+  return <CalendarView />;
+}
+
+export { CalendarWrapper as CalendarView }
+
+function CalendarView() {
     const [currentDate, setCurrentDate] = React.useState<Date>(new Date());
-    const [dayCount, setDayCount] = React.useState<number>(1); // Default to 1 to match common use
+    const [dayCount, setDayCount] = React.useState<number>(1);
     const [allEvents, setAllEvents] = React.useState<Event[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isInitialLoading, setIsInitialLoading] = React.useState(true);
@@ -94,13 +113,18 @@ export function CalendarView() {
         return allEvents;
     }, [allEvents, filteredProject]);
 
-    // Effect to load dayCount from localStorage
+    // Effect to load preferences from localStorage
     React.useEffect(() => {
         try {
             const savedDayCount = localStorage.getItem(CALENDAR_DAY_COUNT_KEY);
-            if (savedDayCount) {
-                setDayCount(parseInt(savedDayCount, 10));
-            }
+            if (savedDayCount) setDayCount(parseInt(savedDayCount, 10));
+
+            const savedStartHour = localStorage.getItem(CALENDAR_START_HOUR_KEY);
+            if (savedStartHour) setStartHour(parseInt(savedStartHour, 10));
+
+            const savedEndHour = localStorage.getItem(CALENDAR_END_HOUR_KEY);
+            if (savedEndHour) setEndHour(parseInt(savedEndHour, 10));
+
         } catch (error) {
             console.error("Failed to load calendar preferences:", error);
         } finally {
@@ -118,6 +142,19 @@ export function CalendarView() {
         }
     };
 
+    const handleStartHourChange = (value: string) => {
+        const newStartHour = Number(value);
+        setStartHour(newStartHour);
+        localStorage.setItem(CALENDAR_START_HOUR_KEY, value);
+    };
+
+    const handleEndHourChange = (value: string) => {
+        const newEndHour = Number(value);
+        setEndHour(newEndHour);
+        localStorage.setItem(CALENDAR_END_HOUR_KEY, value);
+    };
+
+
     const visibleDates = React.useMemo(() => {
         const start = startOfDay(currentDate);
         return Array.from({ length: dayCount }, (_, i) => addDays(start, i));
@@ -128,8 +165,7 @@ export function CalendarView() {
     const handleToday = () => {
         setCurrentDate(new Date());
     };
-    const handleAddEvent = () => router.push('/time');
-
+    
     const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
 
     const visibleHours = React.useMemo(() => {
@@ -156,6 +192,13 @@ export function CalendarView() {
         }
     }, [toast]);
     
+    const handleAddNewEvent = (startTime: Date) => {
+        const date = format(startTime, 'yyyy-MM-dd');
+        const hour = getHours(startTime);
+        const minute = getMinutes(startTime);
+        router.push(`/time?date=${date}&hour=${hour}&minute=${minute}`);
+    };
+
     const handleConfirmDelete = async () => {
         if (!eventToDelete) return;
         try {
@@ -212,32 +255,38 @@ export function CalendarView() {
             e.start >= slotStart &&
             e.start < slotEnd
         );
+        
+        const isEmpty = eventsInSlot.length === 0;
 
         return (
-            <Droppable
-                type={ItemTypes.EVENT}
-                onDrop={(item: Event) => handleEventDrop(item, slotStart)}
-                canDrop={() => eventsInSlot.length === 0}
-                className="h-8 border border-black rounded-md m-1 flex items-center justify-between p-1"
+            <div
+                className={cn(
+                    "h-8 border border-black rounded-md m-1 flex items-center p-1 relative group",
+                    isEmpty && "cursor-pointer"
+                )}
+                onClick={() => {
+                    if (isEmpty) {
+                        handleAddNewEvent(slotStart);
+                    }
+                }}
             >
-                <div className="flex-1 flex items-center h-full">
-                    {eventsInSlot.map(event => (
-                        <CalendarEvent
-                            key={event.id}
-                            event={event}
-                            onEdit={handleEditEvent}
-                            onDelete={() => setEventToDelete(event)}
-                            onToggleComplete={handleToggleComplete}
-                        />
-                    ))}
-                </div>
-            </Droppable>
+                {isEmpty && (
+                    <div className="absolute inset-0 flex items-center opacity-0 group-hover:opacity-100 transition-opacity pl-2">
+                        <Plus className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                )}
+                {eventsInSlot.map(event => (
+                    <CalendarEvent
+                        key={event.id}
+                        event={event}
+                        onEdit={handleEditEvent}
+                        onDelete={() => setEventToDelete(event)}
+                        onToggleComplete={handleToggleComplete}
+                    />
+                ))}
+            </div>
         );
     };
-
-    if (isInitialLoading) {
-        return <CalendarSkeleton />;
-    }
 
     return (
         <>
@@ -288,12 +337,9 @@ export function CalendarView() {
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <Button onClick={handleAddEvent}>
-                                <Plus className="mr-2 h-4 w-4" /> Add Event
-                            </Button>
                         </div>
                         <div className="flex justify-end items-center gap-2">
-                            <Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" aria-label="Settings"><Settings className="h-4 w-4" /></Button></PopoverTrigger><PopoverContent className="w-80"><div className="grid gap-4"><div className="space-y-2"><h4 className="font-medium leading-none">Display Settings</h4><p className="text-sm text-muted-foreground">Set the visible hours for your calendar day.</p></div><div className="grid gap-2"><div className="grid grid-cols-3 items-center gap-4"><Label htmlFor="start-time">Start Time</Label><Select value={String(startHour)} onValueChange={(v) => setStartHour(Number(v))}><SelectTrigger id="start-time" className="col-span-2 h-8"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div><div className="grid grid-cols-3 items-center gap-4"><Label htmlFor="end-time">End Time</Label><Select value={String(endHour)} onValueChange={(v) => setEndHour(Number(v))}><SelectTrigger id="end-time" className="col-span-2 h-8"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div></div></div></PopoverContent></Popover>
+                            <Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" aria-label="Settings"><Settings className="h-4 w-4" /></Button></PopoverTrigger><PopoverContent className="w-80"><div className="grid gap-4"><div className="space-y-2"><h4 className="font-medium leading-none">Display Settings</h4><p className="text-sm text-muted-foreground">Set the visible hours for your calendar day.</p></div><div className="grid gap-2"><div className="grid grid-cols-3 items-center gap-4"><Label htmlFor="start-time">Start Time</Label><Select value={String(startHour)} onValueChange={handleStartHourChange}><SelectTrigger id="start-time" className="col-span-2 h-8"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div><div className="grid grid-cols-3 items-center gap-4"><Label htmlFor="end-time">End Time</Label><Select value={String(endHour)} onValueChange={handleEndHourChange}><SelectTrigger id="end-time" className="col-span-2 h-8"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div></div></div></PopoverContent></Popover>
                         </div>
                     </div>
                     
