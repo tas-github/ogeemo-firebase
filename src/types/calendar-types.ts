@@ -36,7 +36,7 @@ export interface ProjectStep {
     id: string;
     title: string;
     description?: string;
-    durationMinutes: number;
+    durationMinutes?: number;
     isBillable: boolean;
     connectToCalendar: boolean;
     startTime: Date | null;

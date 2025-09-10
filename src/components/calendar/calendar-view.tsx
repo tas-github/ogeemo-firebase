@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { format, addDays, startOfDay, set, isSameDay, addMinutes, differenceInMilliseconds, getHours, getMinutes } from "date-fns"
-import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, MoreVertical, Pencil, Trash2, Plus, ChevronDown, X, FilterX } from "lucide-react"
+import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, MoreVertical, Pencil, Trash2, Plus, ChevronDown, X, FilterX, Info } from "lucide-react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,7 @@ import { CalendarEvent, ItemTypes as EventItemTypes } from "./CalendarEvent"
 import { Droppable } from './Droppable';
 import { CalendarSkeleton } from "./calendar-skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip"
 
 const CALENDAR_DAY_COUNT_KEY = 'calendarDayCount';
 const CALENDAR_START_HOUR_KEY = 'calendarStartHour';
@@ -259,32 +260,30 @@ function CalendarView() {
         const isEmpty = eventsInSlot.length === 0;
 
         return (
-            <div
-                className={cn(
-                    "h-8 border border-black rounded-md m-1 flex items-center p-1 relative group",
-                    isEmpty && "cursor-pointer"
-                )}
-                onClick={() => {
-                    if (isEmpty) {
-                        handleAddNewEvent(slotStart);
-                    }
-                }}
+            <Droppable
+                type={EventItemTypes.EVENT}
+                onDrop={(item) => handleEventDrop(item as Event, slotStart)}
+                className="h-8 border border-black rounded-md m-1 flex items-center p-1 relative group"
             >
-                {isEmpty && (
-                    <div className="absolute inset-0 flex items-center opacity-0 group-hover:opacity-100 transition-opacity pl-2">
+                {isEmpty ? (
+                    <button
+                        className="absolute inset-0 flex items-center opacity-0 group-hover:opacity-100 transition-opacity pl-2 w-full text-left"
+                        onClick={() => handleAddNewEvent(slotStart)}
+                    >
                         <Plus className="h-4 w-4 text-muted-foreground" />
-                    </div>
+                    </button>
+                ) : (
+                    eventsInSlot.map(event => (
+                        <CalendarEvent
+                            key={event.id}
+                            event={event}
+                            onEdit={handleEditEvent}
+                            onDelete={() => setEventToDelete(event)}
+                            onToggleComplete={handleToggleComplete}
+                        />
+                    ))
                 )}
-                {eventsInSlot.map(event => (
-                    <CalendarEvent
-                        key={event.id}
-                        event={event}
-                        onEdit={handleEditEvent}
-                        onDelete={() => setEventToDelete(event)}
-                        onToggleComplete={handleToggleComplete}
-                    />
-                ))}
-            </div>
+            </Droppable>
         );
     };
 
@@ -339,6 +338,20 @@ function CalendarView() {
                             </Select>
                         </div>
                         <div className="flex justify-end items-center gap-2">
+                             <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button asChild variant="ghost" size="icon">
+                                            <Link href="/calendar/instructions">
+                                                <Info className="h-4 w-4" />
+                                            </Link>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom">
+                                        <p>How to use the calendar</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                             <Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" aria-label="Settings"><Settings className="h-4 w-4" /></Button></PopoverTrigger><PopoverContent className="w-80"><div className="grid gap-4"><div className="space-y-2"><h4 className="font-medium leading-none">Display Settings</h4><p className="text-sm text-muted-foreground">Set the visible hours for your calendar day.</p></div><div className="grid gap-2"><div className="grid grid-cols-3 items-center gap-4"><Label htmlFor="start-time">Start Time</Label><Select value={String(startHour)} onValueChange={handleStartHourChange}><SelectTrigger id="start-time" className="col-span-2 h-8"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div><div className="grid grid-cols-3 items-center gap-4"><Label htmlFor="end-time">End Time</Label><Select value={String(endHour)} onValueChange={handleEndHourChange}><SelectTrigger id="end-time" className="col-span-2 h-8"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div></div></div></PopoverContent></Popover>
                         </div>
                     </div>

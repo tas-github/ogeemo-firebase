@@ -4,7 +4,7 @@
 import React from 'react';
 import { useDrag } from 'react-dnd';
 import { format } from 'date-fns';
-import { MoreVertical, Pencil, Trash2, CheckCircle, Briefcase } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, CheckCircle, Briefcase, Clock, PlayCircle } from 'lucide-react';
 import { type Event } from '@/types/calendar-types';
 import { cn } from '@/lib/utils';
 import {
@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from '../ui/button';
+import Link from 'next/link';
 
 // Define item type for react-dnd
 export const ItemTypes = {
@@ -67,15 +68,25 @@ export function CalendarEvent({ event, onEdit, onDelete, onToggleComplete }: Cal
             <DropdownMenuItem onSelect={() => onEdit(event)}>
               <Pencil className="mr-2 h-4 w-4" /> Open / Edit
             </DropdownMenuItem>
+             <DropdownMenuItem asChild>
+                <Link href={`/time?eventId=${event.id}&startTimer=true`}>
+                    <PlayCircle className="mr-2 h-4 w-4" /> Start Timer
+                </Link>
+            </DropdownMenuItem>
+             <DropdownMenuItem asChild>
+                <Link href={`/time?logTimeFor=${event.id}`}>
+                    <Clock className="mr-2 h-4 w-4" /> Log Actual Time
+                </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => onToggleComplete(event)}>
                 <CheckCircle className="mr-2 h-4 w-4" /> 
                 {isCompleted ? "Mark as Not Completed" : "Mark as Completed"}
             </DropdownMenuItem>
             {event.projectId && (
                 <DropdownMenuItem asChild>
-                    <a href={`/projects/${event.projectId}/tasks`}>
+                    <Link href={`/projects/${event.projectId}/tasks`}>
                         <Briefcase className="mr-2 h-4 w-4" /> Go to Project
-                    </a>
+                    </Link>
                 </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />

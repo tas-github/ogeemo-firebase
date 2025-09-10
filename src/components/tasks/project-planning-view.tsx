@@ -15,22 +15,12 @@ import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getProjectById, updateProjectWithTasks, type Project, type ProjectStep } from '@/services/project-service';
 import { format, set } from 'date-fns';
+import { type DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Checkbox } from '../ui/checkbox';
-
-const formatDuration = (totalMinutes: number) => {
-    if (totalMinutes < 0) totalMinutes = 0;
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    const hourString = hours > 0 ? `${hours} hour${hours > 1 ? 's' : ''}` : '';
-    const minuteString = minutes > 0 ? `${minutes} minute${minutes > 1 ? 's' : ''}` : '';
-    
-    if (hourString && minuteString) return `${hourString}, ${minuteString}`;
-    return hourString || minuteString || '0 minutes';
-};
 
 export function ProjectPlanningView({ projectId }: { projectId: string }) {
     const [project, setProject] = useState<Project | null>(null);
@@ -39,8 +29,6 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
     
     const [newStepTitle, setNewStepTitle] = useState("");
     const [newStepDescription, setNewStepDescription] = useState("");
-    const [newStepHours, setNewStepHours] = useState<number | ''>(1);
-    const [newStepMinutes, setNewStepMinutes] = useState<number | ''>(0);
     const [newStepDate, setNewStepDate] = useState<Date | undefined>(new Date());
     const [newStepHour, setNewStepHour] = useState<string>(String(new Date().getHours()));
     const [newStepMinute, setNewStepMinute] = useState<string>("0");
@@ -85,12 +73,8 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
     });
     
     const handleAddStep = () => {
-        const hours = Number(newStepHours) || 0;
-        const minutes = Number(newStepMinutes) || 0;
-        const totalDurationMinutes = (hours * 60) + minutes;
-
-        if (!newStepTitle.trim() || totalDurationMinutes <= 0) {
-            toast({ variant: 'destructive', title: 'Missing Information', description: 'Please provide a title and a duration greater than 0.' });
+        if (!newStepTitle.trim()) {
+            toast({ variant: 'destructive', title: 'Missing Information', description: 'Please provide a title for the step.' });
             return;
         }
 
@@ -106,7 +90,6 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
             id: `temp_${Date.now()}`,
             title: newStepTitle,
             description: newStepDescription,
-            durationMinutes: totalDurationMinutes,
             isBillable: true,
             connectToCalendar: newStepConnectToCalendar,
             startTime: stepStartTime,
@@ -116,8 +99,6 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
         setSteps(prev => [...prev, newStep]);
         setNewStepTitle("");
         setNewStepDescription("");
-        setNewStepHours(1);
-        setNewStepMinutes(0);
     };
     
     const handleDeleteStep = (stepId: string) => {
@@ -185,19 +166,6 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
                             <Label htmlFor="step-desc">Description</Label>
                             <Textarea id="step-desc" value={newStepDescription} onChange={(e) => setNewStepDescription(e.target.value)} />
                         </div>
-                        <div className="space-y-2">
-                            <Label>Estimate Duration, Hrs. Min.</Label>
-                            <div className="flex items-center gap-2">
-                                <div className="flex-1 space-y-1">
-                                    <Label htmlFor="step-hours" className="text-xs text-muted-foreground">Hours</Label>
-                                    <Input id="step-hours" type="number" min="0" value={newStepHours} onChange={(e) => setNewStepHours(Number(e.target.value))} />
-                                </div>
-                                 <div className="flex-1 space-y-1">
-                                    <Label htmlFor="step-minutes" className="text-xs text-muted-foreground">Minutes</Label>
-                                    <Input id="step-minutes" type="number" min="0" max="59" step="5" value={newStepMinutes} onChange={(e) => setNewStepMinutes(Number(e.target.value))} />
-                                </div>
-                            </div>
-                        </div>
                         <div className="flex items-center space-x-2 pt-2">
                             <Checkbox 
                                 id="connect-to-calendar" 
@@ -219,7 +187,7 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
 
                          {newStepConnectToCalendar && (
                             <div className="space-y-2 animate-in fade-in-50 duration-300">
-                                <Label>Start Date & Time</Label>
+                                <Label className="text-base font-semibold">Set Time <span className="text-destructive">*</span></Label>
                                 <div className="flex gap-2">
                                      <Popover>
                                         <PopoverTrigger asChild>
@@ -256,7 +224,6 @@ export function ProjectPlanningView({ projectId }: { projectId: string }) {
                                        <div>
                                            <h4 className="font-semibold">{index + 1}. {step.title}</h4>
                                            <p className="text-sm text-muted-foreground">{step.description}</p>
-                                           <p className="text-xs text-muted-foreground mt-1">Est. Duration: {formatDuration(step.durationMinutes!)}</p>
                                            {step.connectToCalendar && step.startTime && (
                                                 <p className="text-xs text-primary mt-1 flex items-center gap-1">
                                                     <CalendarIcon className="h-3 w-3" />

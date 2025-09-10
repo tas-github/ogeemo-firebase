@@ -81,7 +81,7 @@ export function ActiveTimerIndicator() {
     }
 
     return (
-        <Card className="fixed bottom-4 right-4 z-50 w-80 shadow-lg animate-in fade-in-50 slide-in-from-bottom-5 duration-300">
+        <Card className="fixed bottom-4 left-4 z-50 w-80 shadow-lg animate-in fade-in-50 slide-in-from-bottom-5 duration-300">
             <CardContent className="p-3 flex items-center justify-between">
                 <div className="flex items-center gap-3 cursor-pointer flex-1 min-w-0" onClick={() => router.push('/time')}>
                     <Clock className={`h-6 w-6 text-primary ${!timerState.isPaused ? 'animate-pulse' : ''}`} />
