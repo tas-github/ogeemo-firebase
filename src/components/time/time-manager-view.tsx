@@ -31,6 +31,18 @@ import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 
 type TimerStatus = 'IDLE' | 'RUNNING' | 'PAUSED';
+export const TIMER_STORAGE_KEY = 'activeTimeManagerEntry';
+
+export interface StoredTimerState {
+    eventId: string;
+    isActive: boolean;
+    isPaused: boolean;
+    startTime: number; // Timestamp
+    pauseTime: number | null; // Timestamp
+    totalPausedDuration: number; // in seconds
+    subject: string;
+    notes?: string;
+}
 
 export function TimeManagerView() {
     const [projects, setProjects] = React.useState<Project[]>([]);
@@ -74,78 +86,38 @@ export function TimeManagerView() {
     const searchParams = useSearchParams();
     const router = useRouter();
 
-    // Pre-populate form from URL params
-    React.useEffect(() => {
-        const loadInitialData = async () => {
-            const eventIdParam = searchParams.get('eventId');
-            const projectIdParam = searchParams.get('projectId');
-            const dateParam = searchParams.get('date');
-            const hourParam = searchParams.get('hour');
-            const minuteParam = searchParams.get('minute');
-            
-            let eventData: TaskEvent | null = null;
-            if (eventIdParam) {
-                try {
-                    eventData = await getTaskById(eventIdParam);
-                } catch (error) {
-                    toast({ variant: 'destructive', title: 'Error', description: 'Could not load event data.' });
-                }
-            }
+    const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
+    const minuteOptions = Array.from({ length: 12 }, (_, i) => { const minutes = i * 5; return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` }; });
+    
+    const startTimer = useCallback((fromPause = false) => {
+        setTimerStatus('RUNNING');
+    }, []);
 
-            if (eventData) {
-                setEventToEdit(eventData);
-                setSubject(eventData.title);
-                setNotes(eventData.description || "");
-                setSelectedProjectId(eventData.projectId || null);
-                setSelectedContactId(eventData.contactId || null);
-                setIsBillable(eventData.isBillable || false);
-                setBillableRate(eventData.billableRate || 0);
-                setSessions(eventData.sessions || []);
-                if (eventData.start) {
-                    setScheduleDate(eventData.start);
-                    setScheduleHour(String(eventData.start.getHours()));
-                    setScheduleMinute(String(eventData.start.getMinutes()));
-                }
-            } else {
-                setScheduleDate(dateParam ? parseISO(dateParam) : new Date());
-                setScheduleHour(hourParam || String(new Date().getHours()));
-                setScheduleMinute(minuteParam || String(Math.floor(new Date().getMinutes() / 5) * 5));
+    const pauseTimer = useCallback(() => {
+        setTimerStatus('PAUSED');
+    }, []);
 
-                if (projectIdParam) {
-                    setSelectedProjectId(projectIdParam);
-                }
-            }
+    const stopAndLogSession = useCallback(async () => {
+        setTimerStatus('IDLE');
+        if (currentSessionSeconds <= 0) {
+            toast({ variant: 'destructive', title: "No Time Logged", description: "The current session timer is at zero." });
+            return;
+        }
+
+        const newSession: TimeSession = {
+            id: `session_${Date.now()}`,
+            startTime: new Date(Date.now() - currentSessionSeconds * 1000),
+            endTime: new Date(),
+            durationSeconds: currentSessionSeconds,
         };
 
-        loadInitialData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams, toast]);
+        setSessions(prev => [...prev, newSession]);
+        setCurrentSessionSeconds(0);
+        toast({ title: "Session Logged", description: `Added a session of ${formatTime(currentSessionSeconds)}.` });
+    }, [currentSessionSeconds, toast]);
 
-    React.useEffect(() => {
-        async function loadData() {
-            if (!user) {
-                setIsLoadingData(false);
-                return;
-            }
-            setIsLoadingData(true);
-            try {
-                const [fetchedProjects, fetchedContacts, fetchedFolders] = await Promise.all([
-                    getProjects(user.uid),
-                    getContacts(user.uid),
-                    getFolders(user.uid),
-                ]);
-                setProjects(fetchedProjects);
-                setContacts(fetchedContacts);
-                setContactFolders(fetchedFolders);
-            } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
-            } finally {
-                setIsLoadingData(false);
-            }
-        }
-        loadData();
-    }, [user, toast]);
-    
+
+    // Effect to manage the timer interval
     useEffect(() => {
         if (timerStatus === 'RUNNING') {
             sessionTimerRef.current = setInterval(() => {
@@ -157,13 +129,70 @@ export function TimeManagerView() {
                 sessionTimerRef.current = null;
             }
         }
-
         return () => {
-            if (sessionTimerRef.current) {
-                clearInterval(sessionTimerRef.current);
-            }
+            if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
         };
     }, [timerStatus]);
+
+
+    const loadData = useCallback(async () => {
+        if (!user) {
+            setIsLoadingData(false);
+            return;
+        }
+        setIsLoadingData(true);
+        try {
+            const [fetchedProjects, fetchedContacts, fetchedFolders] = await Promise.all([
+                getProjects(user.uid),
+                getContacts(user.uid),
+                getFolders(user.uid),
+            ]);
+            setProjects(fetchedProjects);
+            setContacts(fetchedContacts);
+            setContactFolders(fetchedFolders);
+            
+            const eventIdParam = searchParams.get('eventId');
+            if (eventIdParam) {
+                const eventData = await getTaskById(eventIdParam);
+                if (eventData) {
+                    setEventToEdit(eventData);
+                    setSubject(eventData.title);
+                    setNotes(eventData.description || "");
+                    setSelectedProjectId(eventData.projectId || null);
+                    setSelectedContactId(eventData.contactId || null);
+                    setIsBillable(eventData.isBillable || false);
+                    setBillableRate(eventData.billableRate || 0);
+                    setSessions(eventData.sessions || []);
+                    if (eventData.start) {
+                        setScheduleDate(eventData.start);
+                        setScheduleHour(String(eventData.start.getHours()));
+                        setScheduleMinute(String(eventData.start.getMinutes()));
+                    }
+                } else {
+                    toast({ variant: 'destructive', title: 'Error', description: 'Could not load event data.' });
+                }
+            } else {
+                const dateParam = searchParams.get('date');
+                const hourParam = searchParams.get('hour');
+                const minuteParam = searchParams.get('minute');
+                const projectIdParam = searchParams.get('projectId');
+                
+                setScheduleDate(dateParam ? parseISO(dateParam) : new Date());
+                setScheduleHour(hourParam || String(new Date().getHours()));
+                setScheduleMinute(minuteParam || String(Math.floor(new Date().getMinutes() / 5) * 5));
+                if (projectIdParam) setSelectedProjectId(projectIdParam);
+            }
+
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
+        } finally {
+            setIsLoadingData(false);
+        }
+    }, [user, searchParams, toast]);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
 
 
     const totalAccumulatedSeconds = useMemo(() => {
@@ -174,55 +203,27 @@ export function TimeManagerView() {
         return totalAccumulatedSeconds + currentSessionSeconds;
     }, [totalAccumulatedSeconds, currentSessionSeconds]);
 
-    const handleStartTimer = () => setTimerStatus('RUNNING');
-    const handleStopTimer = () => setTimerStatus('PAUSED');
-
-    const handleSaveSession = async () => {
-        if (currentSessionSeconds <= 0) {
-            toast({ variant: 'destructive', title: "No Time Logged", description: "The current session timer is at zero." });
-            return;
-        }
-
-        const newSession: TimeSession = {
-            id: `session_${Date.now()}`,
-            startTime: new Date(Date.now() - currentSessionSeconds * 1000), // Approximate start time
-            endTime: new Date(),
-            durationSeconds: currentSessionSeconds,
-        };
-        
-        const newSessions = [...sessions, newSession];
-        setSessions(newSessions);
-        setCurrentSessionSeconds(0);
-        setTimerStatus('IDLE');
-        toast({ title: "Session Logged", description: `Added a session of ${formatTime(currentSessionSeconds)}.` });
-        
-        // Auto-save the entire event after logging a session
-        await handleSaveEvent(newSessions);
-    };
-
-
-    const handleSaveEvent = async (sessionsToSave?: TimeSession[]) => {
+    const handleSaveAndClose = async () => {
         if (!user || !subject.trim()) {
             toast({ variant: 'destructive', title: 'Missing Information', description: 'Please enter a subject for the event.' });
             return;
         }
 
-        if (scheduleDate === undefined || scheduleHour === undefined || scheduleMinute === undefined) {
-            toast({ variant: 'destructive', title: 'Missing Time', description: 'A start date and time are required.' });
-            return;
+        if (timerStatus === 'RUNNING') {
+            pauseTimer();
         }
-        
-        const startDateTime = set(scheduleDate, { hours: parseInt(scheduleHour), minutes: parseInt(scheduleMinute) });
-        const endDateTime = addMinutes(startDateTime, 30); // Default 30 minute duration for simple events
-        
-        const finalSessions = sessionsToSave || sessions;
-        const finalTotalTime = finalSessions.reduce((acc, s) => acc + s.durationSeconds, 0) + currentSessionSeconds;
-        
+
+        const finalSessions = (timerStatus === 'PAUSED' && currentSessionSeconds > 0)
+            ? [...sessions, { id: `session_${Date.now()}`, startTime: new Date(Date.now() - currentSessionSeconds * 1000), endTime: new Date(), durationSeconds: currentSessionSeconds }]
+            : sessions;
+            
+        const finalTotalTime = finalSessions.reduce((acc, s) => acc + s.durationSeconds, 0);
+
         const eventData: Partial<Omit<TaskEvent, 'id' | 'userId'>> = {
             title: subject,
             description: notes,
-            start: startDateTime,
-            end: endDateTime,
+            start: scheduleDate && scheduleHour && scheduleMinute ? set(scheduleDate, { hours: parseInt(scheduleHour), minutes: parseInt(scheduleMinute) }) : new Date(),
+            end: scheduleDate && scheduleHour && scheduleMinute ? addMinutes(set(scheduleDate, { hours: parseInt(scheduleHour), minutes: parseInt(scheduleMinute) }), 30) : addMinutes(new Date(), 30),
             status: 'todo',
             position: 0,
             projectId: selectedProjectId,
@@ -241,13 +242,11 @@ export function TimeManagerView() {
                 toast({ title: "Event Updated", description: `"${eventData.title}" has been saved.` });
             } else {
                 const newTask = await addTask({ ...eventData as Omit<TaskEvent, 'id'>, userId: user.uid });
-                setEventToEdit(newTask); // Set the new event as the one being edited
                 toast({ title: "Event Scheduled", description: `"${eventData.title}" has been saved.` });
             }
-            window.dispatchEvent(new Event('tasksUpdated'));
-            // No longer navigating away automatically
+            router.push('/calendar');
         } catch (error: any) {
-             toast({ variant: 'destructive', title: 'Failed to create event', description: error.message });
+             toast({ variant: 'destructive', title: 'Failed to save event', description: error.message });
         }
     };
     
@@ -272,10 +271,6 @@ export function TimeManagerView() {
             })
             .catch(err => toast({ variant: 'destructive', title: 'Creation Failed', description: err.message }));
     };
-
-    const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
-    const minuteOptions = Array.from({ length: 12 }, (_, i) => { const minutes = i * 5; return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` }; });
-
 
     if (isLoadingData) {
         return (
@@ -449,9 +444,9 @@ export function TimeManagerView() {
                                                 <div className="font-mono text-2xl font-bold">{formatTime(currentSessionSeconds)}</div>
                                             </div>
                                             <div className="flex gap-2">
-                                                <Button onClick={handleStartTimer} disabled={timerStatus === 'RUNNING'}><Play className="mr-2 h-4 w-4"/> Start</Button>
-                                                <Button onClick={handleStopTimer} disabled={timerStatus !== 'RUNNING'} variant="outline"><Pause className="mr-2 h-4 w-4"/> Stop</Button>
-                                                <Button onClick={handleSaveSession} disabled={timerStatus === 'IDLE' && currentSessionSeconds === 0} variant="secondary"><Save className="mr-2 h-4 w-4"/> Save Session</Button>
+                                                <Button onClick={startTimer} disabled={timerStatus === 'RUNNING'}><Play className="mr-2 h-4 w-4"/> Start</Button>
+                                                <Button onClick={pauseTimer} disabled={timerStatus !== 'RUNNING'} variant="outline"><Pause className="mr-2 h-4 w-4"/> Pause</Button>
+                                                <Button onClick={stopAndLogSession} disabled={currentSessionSeconds === 0} variant="secondary"><Save className="mr-2 h-4 w-4"/> Log Session</Button>
                                             </div>
                                         </div>
                                         <div className="text-right">
@@ -470,11 +465,9 @@ export function TimeManagerView() {
                          )}
                     </CardContent>
                     <CardFooter className="flex items-center justify-end">
-                        <div className="flex items-center gap-2">
-                            <Button size="lg" onClick={() => handleSaveEvent()} variant="default">
-                                <Save className="mr-2 h-4 w-4" /> {eventToEdit ? 'Save & Close' : 'Save & Close'}
-                            </Button>
-                        </div>
+                        <Button size="lg" onClick={handleSaveAndClose} variant="default">
+                            <Save className="mr-2 h-4 w-4" /> Save & Close
+                        </Button>
                     </CardFooter>
                 </Card>
             </div>
@@ -499,4 +492,4 @@ export function TimeManagerView() {
     );
 }
 
-    
+```
