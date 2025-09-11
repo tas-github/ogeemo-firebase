@@ -230,38 +230,38 @@ export function TimeManagerView() {
     }, [pauseSessionTimer, currentSessionSeconds, toast]);
 
     React.useEffect(() => {
-        let timerInterval: NodeJS.Timeout | null = null;
-        if (eventToEdit) {
-            const savedTimerRaw = localStorage.getItem(DETAILED_TIMER_STORAGE_KEY);
-            if (savedTimerRaw) {
-                try {
-                    const savedTimer: StoredDetailedTimerState = JSON.parse(savedTimerRaw);
-                    if (savedTimer.eventId === eventToEdit.id) {
-                        const elapsed = Math.floor((Date.now() - savedTimer.startTime) / 1000);
-                        setCurrentSessionSeconds(elapsed > 0 ? elapsed : 0);
-                        setIsSessionTimerRunning(true);
-                        sessionStartRef.current = savedTimer.startTime;
+      let timerInterval: NodeJS.Timeout | null = null;
+      if (eventToEdit) {
+        const savedTimerRaw = localStorage.getItem(DETAILED_TIMER_STORAGE_KEY);
+        if (savedTimerRaw) {
+          try {
+            const savedTimer: StoredDetailedTimerState = JSON.parse(savedTimerRaw);
+            if (savedTimer.eventId === eventToEdit.id) {
+              const elapsed = Math.floor((Date.now() - savedTimer.startTime) / 1000);
+              setCurrentSessionSeconds(elapsed > 0 ? elapsed : 0);
+              setIsSessionTimerRunning(true);
+              sessionStartRef.current = savedTimer.startTime;
 
-                        timerInterval = setInterval(() => {
-                            const newElapsed = Math.floor((Date.now() - savedTimer.startTime) / 1000);
-                            setCurrentSessionSeconds(newElapsed);
-                        }, 1000);
-                        sessionTimerRef.current = timerInterval;
-                    } else {
-                        localStorage.removeItem(DETAILED_TIMER_STORAGE_KEY);
-                    }
-                } catch (e) {
-                    console.error("Failed to parse detailed timer state", e);
-                    localStorage.removeItem(DETAILED_TIMER_STORAGE_KEY);
-                }
+              timerInterval = setInterval(() => {
+                const newElapsed = Math.floor((Date.now() - savedTimer.startTime) / 1000);
+                setCurrentSessionSeconds(newElapsed);
+              }, 1000);
+              sessionTimerRef.current = timerInterval;
+            } else {
+              localStorage.removeItem(DETAILED_TIMER_STORAGE_KEY);
             }
+          } catch (e) {
+            console.error("Failed to parse detailed timer state", e);
+            localStorage.removeItem(DETAILED_TIMER_STORAGE_KEY);
+          }
         }
-        
-        return () => {
-            if (timerInterval) {
-                clearInterval(timerInterval);
-            }
-        };
+      }
+
+      return () => {
+        if (timerInterval) {
+          clearInterval(timerInterval);
+        }
+      };
     }, [eventToEdit]);
 
 
@@ -692,5 +692,7 @@ export function TimeManagerView() {
         </>
     );
 }
+
+    
 
     
