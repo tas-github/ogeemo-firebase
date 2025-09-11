@@ -156,6 +156,7 @@ export function TimeManagerView() {
         if (!isSessionTimerRunning) return;
         setIsSessionTimerRunning(false);
         if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
+        sessionTimerRef.current = null;
         localStorage.removeItem(DETAILED_TIMER_STORAGE_KEY);
     }, [isSessionTimerRunning]);
 
@@ -175,7 +176,6 @@ export function TimeManagerView() {
     }, [isSessionTimerRunning, eventToEdit]);
     
     const stopAndLogSession = useCallback(() => {
-        pauseSessionTimer();
         if (currentSessionSeconds > 0 && sessionStartRef.current) {
             const newSession: TimeSession = {
                 id: `session_${Date.now()}`,
@@ -184,45 +184,51 @@ export function TimeManagerView() {
                 durationSeconds: currentSessionSeconds,
             };
             setSessions(prev => [...prev, newSession]);
-            setCurrentSessionSeconds(0);
-            sessionStartRef.current = null;
             toast({ title: "Session Logged", description: `Added a session of ${formatTime(currentSessionSeconds)}.` });
         }
+        pauseSessionTimer();
+        setCurrentSessionSeconds(0);
+        sessionStartRef.current = null;
     }, [pauseSessionTimer, currentSessionSeconds, toast]);
 
     React.useEffect(() => {
-        let timerInterval: NodeJS.Timeout | null = null;
-        if (eventToEdit) {
-            const savedTimerRaw = localStorage.getItem(DETAILED_TIMER_STORAGE_KEY);
-            if (savedTimerRaw) {
-                try {
-                    const savedTimer: StoredDetailedTimerState = JSON.parse(savedTimerRaw);
-                    if (savedTimer.eventId === eventToEdit.id) {
-                        const elapsed = Math.floor((Date.now() - savedTimer.startTime) / 1000);
-                        setCurrentSessionSeconds(elapsed > 0 ? elapsed : 0);
-                        setIsSessionTimerRunning(true);
-                        sessionStartRef.current = savedTimer.startTime;
-
-                        timerInterval = setInterval(() => {
-                            const newElapsed = Math.floor((Date.now() - savedTimer.startTime) / 1000);
-                            setCurrentSessionSeconds(newElapsed);
-                        }, 1000);
-                        sessionTimerRef.current = timerInterval;
-                    } else {
-                        localStorage.removeItem(DETAILED_TIMER_STORAGE_KEY);
-                    }
-                } catch (e) {
-                    console.error("Failed to parse detailed timer state", e);
-                    localStorage.removeItem(DETAILED_TIMER_STORAGE_KEY);
-                }
+      let timerInterval: NodeJS.Timeout | null = null;
+  
+      const cleanup = () => {
+        if (timerInterval) clearInterval(timerInterval);
+        sessionTimerRef.current = null;
+      };
+  
+      if (eventToEdit) {
+        // Clear any orphaned timers before starting a new one
+        localStorage.removeItem(DETAILED_TIMER_STORAGE_KEY);
+  
+        const savedTimerRaw = localStorage.getItem(DETAILED_TIMER_STORAGE_KEY);
+        if (savedTimerRaw) {
+          try {
+            const savedTimer: StoredDetailedTimerState = JSON.parse(savedTimerRaw);
+            if (savedTimer.eventId === eventToEdit.id) {
+              const elapsed = Math.floor((Date.now() - savedTimer.startTime) / 1000);
+              setCurrentSessionSeconds(elapsed > 0 ? elapsed : 0);
+              setIsSessionTimerRunning(true);
+              sessionStartRef.current = savedTimer.startTime;
+  
+              timerInterval = setInterval(() => {
+                const newElapsed = Math.floor((Date.now() - savedTimer.startTime) / 1000);
+                setCurrentSessionSeconds(newElapsed > 0 ? newElapsed : 0);
+              }, 1000);
+              sessionTimerRef.current = timerInterval;
             }
+          } catch (e) {
+            console.error("Failed to parse detailed timer state", e);
+            localStorage.removeItem(DETAILED_TIMER_STORAGE_KEY);
+          }
         }
-
-        return () => {
-            if (timerInterval) {
-                clearInterval(timerInterval);
-            }
-        };
+      }
+  
+      // This is the cleanup function that runs when the component unmounts
+      // or when `eventToEdit` changes.
+      return cleanup;
     }, [eventToEdit]);
 
 
@@ -233,27 +239,6 @@ export function TimeManagerView() {
     const totalTime = useMemo(() => {
         return totalAccumulatedSeconds + currentSessionSeconds;
     }, [totalAccumulatedSeconds, currentSessionSeconds]);
-
-    const handleReset = (showToast = true) => {
-        setSubject("");
-        setNotes("");
-        setSelectedContactId(null);
-        setSelectedProjectId(searchParams.get('projectId') || null);
-        setIsBillable(true);
-        setBillableRate(100);
-        setEventToEdit(null);
-        setSessions([]);
-        pauseSessionTimer();
-        setCurrentSessionSeconds(0);
-        const now = new Date();
-        setScheduleDate(now);
-        setScheduleHour(String(now.getHours()));
-        setScheduleMinute(String(Math.floor(now.getMinutes() / 5) * 5));
-        router.push(window.location.pathname, { scroll: false });
-        if (showToast) {
-            toast({ title: 'Form Reset', description: 'All fields have been cleared.' });
-        }
-    }
 
     const handleSaveEvent = async () => {
         if (!user || !subject.trim()) {
@@ -268,6 +253,11 @@ export function TimeManagerView() {
                 description: 'A start date and time are required.',
             });
             return;
+        }
+        
+        // Ensure any running timer is stopped and logged before saving
+        if (isSessionTimerRunning) {
+            stopAndLogSession();
         }
         
         const startDateTime = set(scheduleDate, { hours: parseInt(scheduleHour), minutes: parseInt(scheduleMinute) });
@@ -298,9 +288,8 @@ export function TimeManagerView() {
                 await addTask({ ...eventData as Omit<TaskEvent, 'id'>, userId: user.uid });
                 toast({ title: "Event Scheduled", description: `"${eventData.title}" has been saved.` });
             }
-            handleReset(false);
-            window.dispatchEvent(new Event('tasksUpdated'));
             router.push('/calendar');
+            window.dispatchEvent(new Event('tasksUpdated'));
         } catch (error: any) {
              toast({ variant: 'destructive', title: 'Failed to create event', description: error.message });
         }
@@ -527,10 +516,7 @@ export function TimeManagerView() {
                             </Card>
                          )}
                     </CardContent>
-                    <CardFooter className="flex items-center justify-between">
-                         <div className="flex items-center gap-2">
-                           <Button onClick={() => handleReset()} variant="default">Reset</Button>
-                        </div>
+                    <CardFooter className="flex items-center justify-end">
                         <div className="flex items-center gap-2">
                             <Button size="lg" onClick={handleSaveEvent} variant="default">
                                 <Save className="mr-2 h-4 w-4" /> {eventToEdit ? 'Update Event' : 'Save Event'}
