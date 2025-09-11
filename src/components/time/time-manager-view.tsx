@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LoaderCircle, Save, Calendar as CalendarIcon, ChevronsUpDown, Check, Plus, X, Briefcase, Info, Timer, PlayCircle, Clock, Square, Pause, Play, Trash2 } from 'lucide-react';
+import { LoaderCircle, Save, Calendar as CalendarIcon, ChevronsUpDown, Check, Plus, X, Info, Timer, Play, Pause, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { type Project, type Event as TaskEvent, type TimeSession } from '@/types/calendar-types';
@@ -31,18 +31,6 @@ import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 
 type TimerStatus = 'IDLE' | 'RUNNING' | 'PAUSED';
-export const TIMER_STORAGE_KEY = 'activeTimeManagerEntry';
-
-export interface StoredTimerState {
-    eventId: string;
-    isActive: boolean;
-    isPaused: boolean;
-    startTime: number; // Timestamp
-    pauseTime: number | null; // Timestamp
-    totalPausedDuration: number; // in seconds
-    subject: string;
-    notes?: string;
-}
 
 export function TimeManagerView() {
     const [projects, setProjects] = React.useState<Project[]>([]);
@@ -89,33 +77,32 @@ export function TimeManagerView() {
     const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
     const minuteOptions = Array.from({ length: 12 }, (_, i) => { const minutes = i * 5; return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` }; });
     
-    const startTimer = useCallback((fromPause = false) => {
+    const startTimer = useCallback(() => {
         setTimerStatus('RUNNING');
     }, []);
 
-    const pauseTimer = useCallback(() => {
+    const stopTimer = useCallback(() => {
         setTimerStatus('PAUSED');
     }, []);
 
-    const stopAndLogSession = useCallback(async () => {
-        setTimerStatus('IDLE');
+    const handleLogSession = () => {
         if (currentSessionSeconds <= 0) {
             toast({ variant: 'destructive', title: "No Time Logged", description: "The current session timer is at zero." });
             return;
         }
-
+    
         const newSession: TimeSession = {
             id: `session_${Date.now()}`,
             startTime: new Date(Date.now() - currentSessionSeconds * 1000),
             endTime: new Date(),
             durationSeconds: currentSessionSeconds,
         };
-
+    
         setSessions(prev => [...prev, newSession]);
         setCurrentSessionSeconds(0);
+        setTimerStatus('IDLE'); // Ready for a new session
         toast({ title: "Session Logged", description: `Added a session of ${formatTime(currentSessionSeconds)}.` });
-    }, [currentSessionSeconds, toast]);
-
+    };
 
     // Effect to manage the timer interval
     useEffect(() => {
@@ -209,13 +196,16 @@ export function TimeManagerView() {
             return;
         }
 
-        if (timerStatus === 'RUNNING') {
-            pauseTimer();
+        // Finalize any running session before saving
+        let finalSessions = [...sessions];
+        if (timerStatus !== 'IDLE' && currentSessionSeconds > 0) {
+            finalSessions.push({
+                id: `session_${Date.now()}`,
+                startTime: new Date(Date.now() - currentSessionSeconds * 1000),
+                endTime: new Date(),
+                durationSeconds: currentSessionSeconds,
+            });
         }
-
-        const finalSessions = (timerStatus === 'PAUSED' && currentSessionSeconds > 0)
-            ? [...sessions, { id: `session_${Date.now()}`, startTime: new Date(Date.now() - currentSessionSeconds * 1000), endTime: new Date(), durationSeconds: currentSessionSeconds }]
-            : sessions;
             
         const finalTotalTime = finalSessions.reduce((acc, s) => acc + s.durationSeconds, 0);
 
@@ -241,7 +231,7 @@ export function TimeManagerView() {
                 await updateTask(eventToEdit.id, eventData);
                 toast({ title: "Event Updated", description: `"${eventData.title}" has been saved.` });
             } else {
-                const newTask = await addTask({ ...eventData as Omit<TaskEvent, 'id'>, userId: user.uid });
+                await addTask({ ...eventData as Omit<TaskEvent, 'id'>, userId: user.uid });
                 toast({ title: "Event Scheduled", description: `"${eventData.title}" has been saved.` });
             }
             router.push('/calendar');
@@ -388,7 +378,7 @@ export function TimeManagerView() {
                         
                         <div className="space-y-4 p-4 border rounded-md">
                             <div className="space-y-2">
-                                <Label className="text-base font-semibold">Set Time <span className="text-destructive">*</span></Label>
+                                <Label className="text-base font-semibold">Event Time</Label>
                                 <div className="flex gap-2">
                                      <Popover>
                                         <PopoverTrigger asChild>
@@ -439,14 +429,14 @@ export function TimeManagerView() {
                                 <CardContent className="p-4 pt-0 space-y-4">
                                     <div className="flex items-center justify-between p-4 border rounded-lg bg-background">
                                         <div className="flex items-center gap-4">
+                                            <div className="flex items-center gap-4">
+                                                <Button onClick={startTimer} disabled={timerStatus === 'RUNNING'}><Play className="mr-2 h-4 w-4"/> Start</Button>
+                                                <Button onClick={stopTimer} disabled={timerStatus !== 'RUNNING'} variant="outline"><Pause className="mr-2 h-4 w-4"/> Stop</Button>
+                                                <Button onClick={handleLogSession} disabled={currentSessionSeconds === 0} variant="secondary"><Save className="mr-2 h-4 w-4"/> Log Session</Button>
+                                            </div>
                                             <div>
                                                 <Label className="text-xs">Current Session</Label>
                                                 <div className="font-mono text-2xl font-bold">{formatTime(currentSessionSeconds)}</div>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <Button onClick={startTimer} disabled={timerStatus === 'RUNNING'}><Play className="mr-2 h-4 w-4"/> Start</Button>
-                                                <Button onClick={pauseTimer} disabled={timerStatus !== 'RUNNING'} variant="outline"><Pause className="mr-2 h-4 w-4"/> Pause</Button>
-                                                <Button onClick={stopAndLogSession} disabled={currentSessionSeconds === 0} variant="secondary"><Save className="mr-2 h-4 w-4"/> Log Session</Button>
                                             </div>
                                         </div>
                                         <div className="text-right">
@@ -491,5 +481,3 @@ export function TimeManagerView() {
         </>
     );
 }
-
-```
