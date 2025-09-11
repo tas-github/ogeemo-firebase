@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Info, X, Menu, Layers, LayoutDashboard } from "lucide-react";
+import { ArrowRight, Info, X, Menu, Layers, LayoutDashboard, Save } from "lucide-react";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -130,6 +130,16 @@ function MenuViewInstructionPanel({ onHide }: { onHide: () => void }) {
                         </AccordionTrigger>
                         <AccordionContent>
                             This view displays your custom "Action Chips" for quick access to your most-used pages and tools. You can add, remove, and reorder these shortcuts using the "Manage Your Favorite Actions" tool.
+                        </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="item-4">
+                        <AccordionTrigger>
+                            <div className="flex items-center gap-2">
+                                <Save className="h-4 w-4" /> Save Default View
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                            Click the "Save" icon in the view switcher at the top of the sidebar to set your currently selected view (Full Menu, Groups, or Favorite Actions) as the default whenever you log in.
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>

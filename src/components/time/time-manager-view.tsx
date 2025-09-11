@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Clock, Play, Pause, Square, LoaderCircle, Save, Calendar as CalendarIcon, ChevronsUpDown, Check, Plus, X, Briefcase, Info, ChevronDown } from 'lucide-react';
+import { LoaderCircle, Save, Calendar as CalendarIcon, ChevronsUpDown, Check, Plus, X, Briefcase, Info, Timer } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
-import { type Project, type Event as TaskEvent } from '@/types/calendar-types';
+import { type Project, type Event as TaskEvent, type TimeSession } from '@/types/calendar-types';
 import { type Contact, type FolderData } from '@/data/contacts';
 import { addTask, getProjects, addProject, updateProject, getTaskById, updateTask } from '@/services/project-service';
 import { getContacts, getFolders } from '@/services/contact-service';
@@ -20,40 +20,15 @@ import { Textarea } from '../ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
-import { format, set, addMinutes, parseISO, differenceInSeconds, differenceInMinutes } from 'date-fns';
+import { format, set, addMinutes, parseISO } from 'date-fns';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import ContactFormDialog from '@/components/contacts/contact-form-dialog';
 import { NewTaskDialog } from '@/components/tasks/NewTaskDialog';
 import Link from 'next/link';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { DetailedTimeTracker } from './DetailedTimeTracker';
 import { Separator } from '../ui/separator';
-
-
-const TIMER_STORAGE_KEY = 'activeTimeManagerEntry';
-
-interface StoredTimerState {
-    startTime: number;
-    isActive: boolean;
-    isPaused: boolean;
-    pauseTime: number | null;
-    totalPausedDuration: number;
-    projectId: string | null;
-    contactId: string | null;
-    subject: string;
-    notes: string;
-    isBillable: boolean;
-    billableRate: number;
-    taskId: string | null; // ID of the task being timed
-}
-
-const formatTime = (totalSeconds: number) => {
-    if (totalSeconds < 0) totalSeconds = 0;
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = Math.floor(totalSeconds % 60);
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-};
 
 export function TimeManagerView() {
     const [projects, setProjects] = React.useState<Project[]>([]);
@@ -61,10 +36,6 @@ export function TimeManagerView() {
     const [contactFolders, setContactFolders] = React.useState<FolderData[]>([]);
     const [isLoadingData, setIsLoadingData] = React.useState(true);
 
-    const [elapsedSeconds, setElapsedSeconds] = React.useState(0);
-    const [isActive, setIsActive] = React.useState(false);
-    const [isPaused, setIsPaused] = React.useState(false);
-    
     // Form state
     const [subject, setSubject] = React.useState("");
     const [notes, setNotes] = React.useState("");
@@ -74,18 +45,9 @@ export function TimeManagerView() {
     const [billableRate, setBillableRate] = React.useState<number | ''>(100);
     
     // State for scheduling
-    const [scheduleDate, setScheduleDate] = React.useState<Date | undefined>(undefined);
-    const [scheduleHour, setScheduleHour] = React.useState<string | undefined>(undefined);
-    const [scheduleMinute, setScheduleMinute] = React.useState<string | undefined>(undefined);
-    const [endScheduleDate, setEndScheduleDate] = React.useState<Date | undefined>(undefined);
-    const [endScheduleHour, setEndScheduleHour] = React.useState<string | undefined>(undefined);
-    const [endScheduleMinute, setEndScheduleMinute] = React.useState<string | undefined>(undefined);
-    
-    // New state for duration
-    const [durationHours, setDurationHours] = React.useState<number | ''>('');
-    const [durationMinutes, setDurationMinutes] = React.useState<number | ''>('');
-    const durationInputRef = useRef<'startEnd' | 'duration'>('startEnd');
-
+    const [scheduleDate, setScheduleDate] = React.useState<Date | undefined>(new Date());
+    const [scheduleHour, setScheduleHour] = React.useState<string | undefined>(String(new Date().getHours()));
+    const [scheduleMinute, setScheduleMinute] = React.useState<string | undefined>(String(Math.floor(new Date().getMinutes() / 5) * 5));
 
     // State for new client selection UI
     const [isContactPopoverOpen, setIsContactPopoverOpen] = React.useState(false);
@@ -98,99 +60,26 @@ export function TimeManagerView() {
     const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = React.useState(false);
     
     const [eventToEdit, setEventToEdit] = React.useState<TaskEvent | null>(null);
-    const [activeTimerTaskId, setActiveTimerTaskId] = React.useState<string | null>(null);
+    const [isTimeTrackerOpen, setIsTimeTrackerOpen] = React.useState(false);
 
     const { user } = useAuth();
     const { toast } = useToast();
     const searchParams = useSearchParams();
     const router = useRouter();
 
-    const handleStartTimer = useCallback(async (taskToStartTime?: TaskEvent) => {
-        const taskSubject = taskToStartTime?.title || subject.trim();
-        if (!taskSubject || !user) {
-            toast({
-                variant: 'destructive',
-                title: 'Missing Information',
-                description: 'Please enter a subject to start the timer.',
-            });
-            return;
-        }
-    
-        try {
-            let taskToTime: TaskEvent;
-    
-            // If an existing task is provided (from clicking "Start Timer" on an event)
-            // or if a task is already loaded in the form for editing, use that one.
-            const existingTask = taskToStartTime || eventToEdit;
-    
-            if (existingTask) {
-                // We're starting a timer for a pre-existing event
-                const updatedTaskData: Partial<TaskEvent> = { status: 'inProgress', start: new Date() };
-                await updateTask(existingTask.id, updatedTaskData);
-                taskToTime = { ...existingTask, ...updatedTaskData };
-                toast({ title: "Timer Started", description: `Timing has begun for "${taskToTime.title}".` });
-            } else {
-                // This is a brand new timed event
-                const newTaskData: Omit<TaskEvent, 'id' | 'userId'> = {
-                    title: subject,
-                    description: notes,
-                    start: new Date(),
-                    end: new Date(),
-                    status: 'inProgress',
-                    position: 0,
-                    projectId: selectedProjectId,
-                    contactId: selectedContactId,
-                    isScheduled: true,
-                    duration: 0,
-                    isBillable,
-                    billableRate: isBillable ? (Number(billableRate) || 0) : 0,
-                    attendees: ['You'],
-                };
-                
-                taskToTime = await addTask({ ...newTaskData, userId: user.uid });
-                window.dispatchEvent(new Event('tasksUpdated'));
-            }
-    
-            const now = Date.now();
-            const state: StoredTimerState = {
-                startTime: now,
-                isActive: true,
-                isPaused: false,
-                pauseTime: null,
-                totalPausedDuration: 0,
-                projectId: taskToTime.projectId,
-                contactId: taskToTime.contactId,
-                subject: taskToTime.title,
-                notes: taskToTime.description || "",
-                isBillable: taskToTime.isBillable || false,
-                billableRate: taskToTime.billableRate || 0,
-                taskId: taskToTime.id,
-            };
-            localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(state));
-            window.dispatchEvent(new Event('storage'));
-    
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Failed to start timer', description: error.message });
-        }
-    }, [user, subject, notes, selectedProjectId, selectedContactId, isBillable, billableRate, toast, eventToEdit]);
-
     // Pre-populate form from URL params
     React.useEffect(() => {
         const loadInitialData = async () => {
             const eventIdParam = searchParams.get('eventId');
-            const logTimeForEventId = searchParams.get('logTimeFor');
             const projectIdParam = searchParams.get('projectId');
             const dateParam = searchParams.get('date');
             const hourParam = searchParams.get('hour');
             const minuteParam = searchParams.get('minute');
-            const startTimerParam = searchParams.get('startTimer');
             
-            const eventIdToLoad = eventIdParam || logTimeForEventId;
-
             let eventData: TaskEvent | null = null;
-            if (eventIdToLoad) {
+            if (eventIdParam) {
                 try {
-                    eventData = await getTaskById(eventIdToLoad);
+                    eventData = await getTaskById(eventIdParam);
                 } catch (error) {
                     toast({ variant: 'destructive', title: 'Error', description: 'Could not load event data.' });
                 }
@@ -209,37 +98,10 @@ export function TimeManagerView() {
                     setScheduleHour(String(eventData.start.getHours()));
                     setScheduleMinute(String(eventData.start.getMinutes()));
                 }
-                if (eventData.end) {
-                    setEndScheduleDate(eventData.end);
-                    setEndScheduleHour(String(eventData.end.getHours()));
-                    setEndScheduleMinute(String(eventData.end.getMinutes()));
-                }
-                
-                if (startTimerParam === 'true') {
-                    await handleStartTimer(eventData);
-                    router.push('/time', { scroll: false });
-                }
-
             } else {
-                let initialDate = dateParam ? parseISO(dateParam) : undefined;
-                let initialHour = hourParam;
-                let initialMinute = minuteParam;
-                
-                setScheduleDate(initialDate);
-                setScheduleHour(initialHour || undefined);
-                setScheduleMinute(initialMinute || undefined);
-                
-                if (initialDate && initialHour && initialMinute) {
-                    const startDate = set(initialDate, { hours: Number(initialHour), minutes: Number(initialMinute) });
-                    const endDate = addMinutes(startDate, 60);
-                    setEndScheduleDate(endDate);
-                    setEndScheduleHour(String(endDate.getHours()));
-                    setEndScheduleMinute(String(endDate.getMinutes()));
-                } else {
-                    setEndScheduleDate(undefined);
-                    setEndScheduleHour(undefined);
-                    setEndScheduleMinute(undefined);
-                }
+                setScheduleDate(dateParam ? parseISO(dateParam) : new Date());
+                setScheduleHour(hourParam || String(new Date().getHours()));
+                setScheduleMinute(minuteParam || String(Math.floor(new Date().getMinutes() / 5) * 5));
 
                 if (projectIdParam) {
                     setSelectedProjectId(projectIdParam);
@@ -275,114 +137,8 @@ export function TimeManagerView() {
         }
         loadData();
     }, [user, toast]);
-    
-    // Effect to calculate duration from start/end times
-    useEffect(() => {
-        if (durationInputRef.current === 'duration') return;
-
-        if (scheduleDate && scheduleHour !== undefined && scheduleMinute !== undefined && endScheduleDate && endScheduleHour !== undefined && endScheduleMinute !== undefined) {
-            const startDateTime = set(scheduleDate, { hours: parseInt(scheduleHour), minutes: parseInt(scheduleMinute) });
-            const endDateTime = set(endScheduleDate, { hours: parseInt(endScheduleHour), minutes: parseInt(endScheduleMinute) });
-            if (endDateTime > startDateTime) {
-                const diffMinutes = differenceInMinutes(endDateTime, startDateTime);
-                setDurationHours(Math.floor(diffMinutes / 60));
-                setDurationMinutes(diffMinutes % 60);
-            }
-        }
-    }, [scheduleDate, scheduleHour, scheduleMinute, endScheduleDate, endScheduleHour, endScheduleMinute]);
-
-    // Effect to calculate end time from duration
-    useEffect(() => {
-        if (durationInputRef.current === 'startEnd') return;
-
-        if (scheduleDate && scheduleHour !== undefined && scheduleMinute !== undefined) {
-            const totalMinutes = (Number(durationHours) || 0) * 60 + (Number(durationMinutes) || 0);
-            if (totalMinutes > 0) {
-                const startDateTime = set(scheduleDate, { hours: parseInt(scheduleHour), minutes: parseInt(scheduleMinute) });
-                const newEndDateTime = addMinutes(startDateTime, totalMinutes);
-                
-                setEndScheduleDate(newEndDateTime);
-                setEndScheduleHour(String(newEndDateTime.getHours()));
-                setEndScheduleMinute(String(newEndDateTime.getMinutes()));
-            }
-        }
-    }, [durationHours, durationMinutes, scheduleDate, scheduleHour, scheduleMinute]);
-
-
-    const updateTimerState = React.useCallback(() => {
-        try {
-            const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
-            if (savedStateRaw) {
-                const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-                if (savedState.isActive) {
-                    setIsActive(true);
-                    setIsPaused(savedState.isPaused);
-                    setSubject(savedState.subject);
-                    setNotes(savedState.notes);
-                    setSelectedProjectId(savedState.projectId);
-                    setSelectedContactId(savedState.contactId);
-                    setIsBillable(savedState.isBillable);
-                    setBillableRate(savedState.billableRate);
-                    setActiveTimerTaskId(savedState.taskId);
-
-                    if (!savedState.isPaused) {
-                        const now = Date.now();
-                        const elapsed = Math.floor((now - savedState.startTime) / 1000) - savedState.totalPausedDuration;
-                        setElapsedSeconds(elapsed > 0 ? elapsed : 0);
-                    } else {
-                        const elapsed = Math.floor((savedState.pauseTime! - savedState.startTime) / 1000) - savedState.totalPausedDuration;
-                        setElapsedSeconds(elapsed > 0 ? elapsed : 0);
-                    }
-                } else {
-                    setIsActive(false);
-                }
-            } else {
-                setIsActive(false);
-                setActiveTimerTaskId(null);
-                setElapsedSeconds(0);
-            }
-        } catch (e) {
-            console.error("Error reading timer state", e);
-            setIsActive(false);
-        }
-    }, []);
-
-    React.useEffect(() => {
-        updateTimerState();
-        window.addEventListener('storage', updateTimerState);
-        const interval = setInterval(updateTimerState, 1000);
-
-        return () => {
-            clearInterval(interval);
-            window.removeEventListener('storage', updateTimerState);
-        };
-    }, [updateTimerState]);
-
-    const handlePauseTimer = () => {
-        const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
-        if (!savedStateRaw) return;
-        const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-        savedState.isPaused = true;
-        savedState.pauseTime = Date.now();
-        localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
-        window.dispatchEvent(new Event('storage'));
-    };
-    
-    const handleResumeTimer = () => {
-        const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
-        if (!savedStateRaw) return;
-        const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-        if (savedState.pauseTime) {
-            savedState.totalPausedDuration += Math.floor((Date.now() - savedState.pauseTime) / 1000);
-        }
-        savedState.isPaused = false;
-        savedState.pauseTime = null;
-        localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
-        window.dispatchEvent(new Event('storage'));
-    };
 
     const handleReset = (showToast = true) => {
-        setElapsedSeconds(0);
         setSubject("");
         setNotes("");
         setSelectedContactId(null);
@@ -390,96 +146,17 @@ export function TimeManagerView() {
         setIsBillable(true);
         setBillableRate(100);
         setEventToEdit(null);
-        setActiveTimerTaskId(null);
+        const now = new Date();
+        setScheduleDate(now);
+        setScheduleHour(String(now.getHours()));
+        setScheduleMinute(String(Math.floor(now.getMinutes() / 5) * 5));
         router.push(window.location.pathname, { scroll: false });
-        localStorage.removeItem(TIMER_STORAGE_KEY);
-        window.dispatchEvent(new Event('storage'));
         if (showToast) {
-            toast({ title: 'Timer Reset', description: 'The timer and fields have been cleared.' });
+            toast({ title: 'Form Reset', description: 'All fields have been cleared.' });
         }
     }
 
-    const handleLogTime = async () => {
-        if (!user || !activeTimerTaskId) {
-             toast({ variant: 'destructive', title: 'Log Failed', description: 'No active task to log time against.' });
-            return;
-        }
-        
-        try {
-            const taskToUpdate = await getTaskById(activeTimerTaskId);
-            if (!taskToUpdate) {
-                throw new Error("Task not found.");
-            }
-            
-            const previousDuration = taskToUpdate.duration || 0;
-            const newTotalDuration = previousDuration + elapsedSeconds;
-
-            const updatedTaskData: Partial<TaskEvent> = {
-                end: new Date(),
-                duration: newTotalDuration,
-                status: 'done',
-            };
-            
-            await updateTask(activeTimerTaskId, updatedTaskData);
-            toast({ title: 'Time Logged', description: `Logged ${formatTime(elapsedSeconds)} as a completed task. Total time is now ${formatTime(newTotalDuration)}.` });
-            handleReset(false);
-            window.dispatchEvent(new Event('tasksUpdated'));
-            router.push('/calendar');
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Log Failed', description: error.message });
-        }
-    };
-    
-    const updateStoredState = (key: keyof StoredTimerState, value: any) => {
-        const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
-        if (savedStateRaw) {
-            const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-            (savedState as any)[key] = value;
-            localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(savedState));
-            window.dispatchEvent(new Event('storage'));
-        }
-    };
-
-    const handleSubjectChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newSubject = e.target.value;
-        setSubject(newSubject);
-        if(isActive) updateStoredState('subject', newSubject);
-    };
-
-    const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const newNotes = e.target.value;
-        setNotes(newNotes);
-        if(isActive) updateStoredState('notes', newNotes);
-    };
-    
-    const handleIsBillableChange = (checked: boolean | 'indeterminate') => {
-        const newIsBillable = !!checked;
-        setIsBillable(newIsBillable);
-        if(isActive) {
-            updateStoredState('isBillable', newIsBillable);
-            if (!newIsBillable) {
-                updateStoredState('billableRate', 0);
-            }
-        }
-    };
-
-    const handleBillableRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newRate = e.target.value === '' ? '' : Number(e.target.value);
-        setBillableRate(newRate);
-        if(isActive) updateStoredState('billableRate', Number(newRate) || 0);
-    };
-    
-    const handleProjectChange = (projectId: string) => {
-        setSelectedProjectId(projectId);
-        if(isActive) updateStoredState('projectId', projectId);
-    };
-
-    const handleContactChange = (contactId: string) => {
-        setSelectedContactId(contactId);
-        if(isActive) updateStoredState('contactId', contactId);
-    };
-
-    const handleScheduleEvent = async () => {
+    const handleSaveEvent = async () => {
         if (!user || !subject.trim()) {
             toast({ variant: 'destructive', title: 'Missing Information', description: 'Please enter a subject for the event.' });
             return;
@@ -495,20 +172,7 @@ export function TimeManagerView() {
         }
         
         const startDateTime = set(scheduleDate, { hours: parseInt(scheduleHour), minutes: parseInt(scheduleMinute) });
-        
-        let endDateTime: Date;
-        if (endScheduleDate && endScheduleHour !== undefined && endScheduleMinute !== undefined) {
-             endDateTime = set(endScheduleDate, { hours: parseInt(endScheduleHour), minutes: parseInt(endScheduleMinute) });
-        } else {
-             endDateTime = addMinutes(startDateTime, 60);
-        }
-        
-        if (endDateTime <= startDateTime) {
-            toast({ variant: 'destructive', title: 'Invalid Time', description: 'End time must be after the start time.'});
-            return;
-        }
-
-        const duration = differenceInSeconds(endDateTime, startDateTime);
+        const endDateTime = addMinutes(startDateTime, 30); // Default 30 minute duration for simple events
         
         const eventData: Partial<Omit<TaskEvent, 'id' | 'userId'>> = {
             title: subject,
@@ -520,7 +184,7 @@ export function TimeManagerView() {
             projectId: selectedProjectId,
             contactId: selectedContactId,
             isScheduled: true,
-            duration,
+            duration: 1800, // 30 minutes in seconds
             isBillable,
             billableRate: isBillable ? (Number(billableRate) || 0) : 0,
             attendees: ['You'],
@@ -548,7 +212,7 @@ export function TimeManagerView() {
         } else {
             setContacts(prev => [...prev, contact]);
         }
-        handleContactChange(contact.id);
+        setSelectedContactId(contact.id);
         setClientAction('select');
     };
 
@@ -557,11 +221,33 @@ export function TimeManagerView() {
         addProject({ ...projectData, userId: user.uid, createdAt: new Date() })
             .then(newProject => {
                 setProjects(prev => [newProject, ...prev]);
-                handleProjectChange(newProject.id);
+                setSelectedProjectId(newProject.id);
                 setProjectAction('select');
                 toast({ title: 'Project Created', description: `Project "${newProject.name}" has been added.` });
             })
             .catch(err => toast({ variant: 'destructive', title: 'Creation Failed', description: err.message }));
+    };
+
+    const handleTimeLog = async (totalSeconds: number, sessions: TimeSession[]) => {
+        if (!user || !eventToEdit) {
+            toast({ variant: 'destructive', title: 'Error', description: 'No event selected to log time against.' });
+            return;
+        }
+        
+        try {
+            const updatedData = { 
+                duration: totalSeconds, 
+                sessions: sessions,
+                // If we log time, we consider it worked on, so it's not just a plan
+                isScheduled: false, 
+            };
+            await updateTask(eventToEdit.id, updatedData);
+            setEventToEdit(prev => prev ? { ...prev, ...updatedData } : null);
+            toast({ title: "Time Logged Successfully" });
+            window.dispatchEvent(new Event('tasksUpdated'));
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Failed to log time', description: error.message });
+        }
     };
 
     const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
@@ -583,7 +269,7 @@ export function TimeManagerView() {
                     <div className="flex justify-between items-center">
                         <div className="flex-1" />
                         <div className="flex-1 text-center flex items-center justify-center gap-2">
-                            <h1 className="text-2xl font-bold font-headline text-primary">Time & Task Manager</h1>
+                            <h1 className="text-2xl font-bold font-headline text-primary">Event Manager</h1>
                              <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -600,19 +286,6 @@ export function TimeManagerView() {
                             </TooltipProvider>
                         </div>
                         <div className="flex-1 text-right flex items-center justify-end gap-2">
-                            {eventToEdit && eventToEdit.projectId && (
-                                <Button asChild variant="outline">
-                                    <Link href={`/projects/${eventToEdit.projectId}/tasks`}>
-                                        <Briefcase className="mr-2 h-4 w-4" /> Go to Project
-                                    </Link>
-                                </Button>
-                            )}
-                            <div>
-                                <p className="text-muted-foreground text-sm">Time Logged</p>
-                                <p className="text-2xl font-mono font-bold text-primary tracking-tighter">
-                                    {formatTime(elapsedSeconds)}
-                                </p>
-                            </div>
                             <Button asChild variant="ghost" size="icon">
                                 <Link href="/calendar">
                                     <X className="h-5 w-5" />
@@ -627,7 +300,7 @@ export function TimeManagerView() {
                     <CardContent className="pt-6 space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="subject">Subject Title <span className="text-destructive">*</span></Label>
-                            <Input id="subject" placeholder="What is the main task?" value={subject} onChange={handleSubjectChange} />
+                            <Input id="subject" placeholder="What is the main task or event?" value={subject} onChange={(e) => setSubject(e.target.value)} />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Card>
@@ -642,17 +315,17 @@ export function TimeManagerView() {
                                         {clientAction === 'select' ? (
                                             <Popover open={isContactPopoverOpen} onOpenChange={setIsContactPopoverOpen}>
                                                 <PopoverTrigger asChild>
-                                                    <Button variant="outline" role="combobox" className="w-full justify-between mt-2" disabled={isActive}>
+                                                    <Button variant="outline" role="combobox" className="w-full justify-between mt-2">
                                                         {selectedContactId ? contacts.find(c => c.id === selectedContactId)?.name : "Select client..."}
                                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                     </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                    <Command><CommandInput placeholder="Search clients..." /><CommandList><CommandEmpty>No client found.</CommandEmpty><CommandGroup>{contacts.map(c => (<CommandItem key={c.id} value={c.name} onSelect={() => { handleContactChange(c.id); setIsContactPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", selectedContactId === c.id ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command>
+                                                    <Command><CommandInput placeholder="Search clients..." /><CommandList><CommandEmpty>No client found.</CommandEmpty><CommandGroup>{contacts.map(c => (<CommandItem key={c.id} value={c.name} onSelect={() => { setSelectedContactId(c.id); setIsContactPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", selectedContactId === c.id ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command>
                                                 </PopoverContent>
                                             </Popover>
                                         ) : (
-                                            <Button variant="outline" onClick={() => setIsContactFormOpen(true)} className="w-full mt-2" disabled={isActive}>
+                                            <Button variant="outline" onClick={() => setIsContactFormOpen(true)} className="w-full mt-2">
                                                 <Plus className="mr-2 h-4 w-4" /> Create New Contact
                                             </Button>
                                         )}
@@ -671,17 +344,17 @@ export function TimeManagerView() {
                                         {projectAction === 'select' ? (
                                             <Popover open={isProjectPopoverOpen} onOpenChange={setIsProjectPopoverOpen}>
                                                 <PopoverTrigger asChild>
-                                                    <Button variant="outline" role="combobox" className="w-full justify-between mt-2" disabled={isActive}>
+                                                    <Button variant="outline" role="combobox" className="w-full justify-between mt-2">
                                                         {selectedProjectId ? projects.find(p => p.id === selectedProjectId)?.name : "Select project..."}
                                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                     </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                    <Command><CommandInput placeholder="Search projects..." /><CommandList><CommandEmpty>No project found.</CommandEmpty><CommandGroup>{projects.map(p => (<CommandItem key={p.id} value={p.name} onSelect={() => { handleProjectChange(p.id); setIsProjectPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", selectedProjectId === p.id ? "opacity-100" : "opacity-0")}/>{p.name}</CommandItem>))}</CommandGroup></CommandList></Command>
+                                                    <Command><CommandInput placeholder="Search projects..." /><CommandList><CommandEmpty>No project found.</CommandEmpty><CommandGroup>{projects.map(p => (<CommandItem key={p.id} value={p.name} onSelect={() => { setSelectedProjectId(p.id); setIsProjectPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", selectedProjectId === p.id ? "opacity-100" : "opacity-0")}/>{p.name}</CommandItem>))}</CommandGroup></CommandList></Command>
                                                 </PopoverContent>
                                             </Popover>
                                         ) : (
-                                            <Button variant="outline" onClick={() => setIsNewProjectDialogOpen(true)} className="w-full mt-2" disabled={isActive}>
+                                            <Button variant="outline" onClick={() => setIsNewProjectDialogOpen(true)} className="w-full mt-2">
                                                 <Plus className="mr-2 h-4 w-4" /> Create New Project
                                             </Button>
                                         )}
@@ -692,119 +365,66 @@ export function TimeManagerView() {
                         
                         <div className="space-y-2">
                             <Label htmlFor="notes">Notes / Details</Label>
-                            <Textarea id="notes" placeholder="Add more details about the work..." value={notes} onChange={handleNotesChange} rows={4} />
+                            <Textarea id="notes" placeholder="Add more details about the work..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} />
                         </div>
                         
                         <div className="space-y-4 p-4 border rounded-md">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-base font-semibold">Start Time <span className="text-destructive">*</span></Label>
-                                    <div className="flex gap-2">
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")} disabled={isActive}>
-                                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                                    {scheduleDate ? format(scheduleDate, "PPP") : <span>Pick a date</span>}
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar mode="single" selected={scheduleDate} onSelect={(d) => { setScheduleDate(d); durationInputRef.current = 'startEnd'; }} initialFocus />
-                                            </PopoverContent>
-                                        </Popover>
-                                        <Select value={scheduleHour} onValueChange={(v) => { setScheduleHour(v); durationInputRef.current = 'startEnd'; }} disabled={isActive}>
-                                            <SelectTrigger><SelectValue placeholder="Hour" /></SelectTrigger>
-                                            <SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-                                        </Select>
-                                        <Select value={scheduleMinute} onValueChange={(v) => { setScheduleMinute(v); durationInputRef.current = 'startEnd'; }} disabled={isActive}>
-                                            <SelectTrigger><SelectValue placeholder="Min" /></SelectTrigger>
-                                            <SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                                 <div className="space-y-2">
-                                    <Label className="text-base font-semibold">End Time</Label>
-                                    <div className="flex gap-2">
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !endScheduleDate && "text-muted-foreground")} disabled={isActive}>
-                                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                                    {endScheduleDate ? format(endScheduleDate, "PPP") : <span>Pick a date</span>}
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar mode="single" selected={endScheduleDate} onSelect={(d) => { setEndScheduleDate(d); durationInputRef.current = 'startEnd'; }} initialFocus />
-                                            </PopoverContent>
-                                        </Popover>
-                                        <Select value={endScheduleHour} onValueChange={(v) => { setEndScheduleHour(v); durationInputRef.current = 'startEnd'; }} disabled={isActive}>
-                                            <SelectTrigger><SelectValue placeholder="Hour" /></SelectTrigger>
-                                            <SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-                                        </Select>
-                                        <Select value={endScheduleMinute} onValueChange={(v) => { setEndScheduleMinute(v); durationInputRef.current = 'startEnd'; }} disabled={isActive}>
-                                            <SelectTrigger><SelectValue placeholder="Min" /></SelectTrigger>
-                                            <SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                            </div>
                             <div className="space-y-2">
-                                <Label>Total Time Elapsed</Label>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex-1 space-y-1">
-                                        <Label htmlFor="duration-hours" className="text-xs text-muted-foreground">Hours</Label>
-                                        <Input id="duration-hours" type="number" min="0" value={durationHours} onChange={(e) => { setDurationHours(e.target.value === '' ? '' : Number(e.target.value)); durationInputRef.current = 'duration'; }} disabled={isActive} />
-                                    </div>
-                                    <div className="flex-1 space-y-1">
-                                        <Label htmlFor="duration-minutes" className="text-xs text-muted-foreground">Minutes</Label>
-                                        <Input id="duration-minutes" type="number" min="0" step="1" value={durationMinutes} onChange={(e) => { setDurationMinutes(e.target.value === '' ? '' : Number(e.target.value)); durationInputRef.current = 'duration'; }} disabled={isActive} />
-                                    </div>
+                                <Label className="text-base font-semibold">Set Time <span className="text-destructive">*</span></Label>
+                                <div className="flex gap-2">
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}>
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {scheduleDate ? format(scheduleDate, "PPP") : <span>Pick a date</span>}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar mode="single" selected={scheduleDate} onSelect={setScheduleDate} initialFocus />
+                                        </PopoverContent>
+                                    </Popover>
+                                    <Select value={scheduleHour} onValueChange={setScheduleHour}>
+                                        <SelectTrigger><SelectValue placeholder="Hour" /></SelectTrigger>
+                                        <SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                                    </Select>
+                                    <Select value={scheduleMinute} onValueChange={setScheduleMinute}>
+                                        <SelectTrigger><SelectValue placeholder="Min" /></SelectTrigger>
+                                        <SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+                                    </Select>
                                 </div>
                             </div>
                         </div>
                         
-                         <div className="flex items-center gap-4 pt-2">
-                            <div className="flex items-center space-x-2">
-                                <Checkbox id="is-billable" checked={isBillable} onCheckedChange={handleIsBillableChange} />
-                                <Label htmlFor="is-billable" className="font-medium">Billable</Label>
-                            </div>
-                            {isBillable && (
-                                <div className="flex items-center gap-2 animate-in fade-in-50 duration-300">
-                                    <Label htmlFor="billable-rate">Rate ($/hr)</Label>
-                                    <div className="relative w-32">
-                                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                                        <Input id="billable-rate" type="number" placeholder="100" value={billableRate} onChange={handleBillableRateChange} className="pl-7" />
-                                    </div>
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                             <div className="flex items-center gap-4 pt-2">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox id="is-billable" checked={isBillable} onCheckedChange={(c) => setIsBillable(!!c)} />
+                                    <Label htmlFor="is-billable" className="font-medium">Billable</Label>
                                 </div>
-                            )}
+                                {isBillable && (
+                                    <div className="flex items-center gap-2 animate-in fade-in-50 duration-300">
+                                        <Label htmlFor="billable-rate">Rate ($/hr)</Label>
+                                        <div className="relative w-32">
+                                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                                            <Input id="billable-rate" type="number" placeholder="100" value={billableRate} onChange={(e) => setBillableRate(e.target.value === '' ? '' : Number(e.target.value))} className="pl-7" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                             <Button className="font-bold" onClick={() => setIsTimeTrackerOpen(true)} disabled={!eventToEdit}>
+                                <Timer className="mr-2 h-4 w-4"/> Detailed Time Tracking
+                            </Button>
                         </div>
                     </CardContent>
                     <CardFooter className="flex items-center justify-between">
                          <div className="flex items-center gap-2">
                            <Button onClick={() => handleReset()} variant="default">Reset</Button>
-                           <Button asChild variant="default">
-                                <Link href="/calendar">Close</Link>
-                           </Button>
                         </div>
                         <div className="flex items-center gap-2">
-                            {!isActive ? (
-                                <>
-                                    <Button size="lg" onClick={handleScheduleEvent} disabled={isActive} variant="default">
-                                        <Save className="mr-2 h-4 w-4" /> {eventToEdit ? 'Update Event' : 'Save Event'}
-                                    </Button>
-                                    <Button size="lg" onClick={() => handleStartTimer()} variant="default">
-                                        <Play className="mr-2 h-4 w-4" /> Start Timer Now
-                                    </Button>
-                                </>
-                            ) : (
-                                <>
-                                    <Button size="lg" variant="outline" onClick={isPaused ? handleResumeTimer : handlePauseTimer}>
-                                        {isPaused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
-                                        {isPaused ? 'Resume' : 'Pause'}
-                                    </Button>
-                                    <Button size="lg" variant="destructive" onClick={handleLogTime}>
-                                        <Square className="mr-2 h-4 w-4" /> Stop & Log Time
-                                    </Button>
-                                </>
-                            )}
+                            <Button size="lg" onClick={handleSaveEvent} variant="default">
+                                <Save className="mr-2 h-4 w-4" /> {eventToEdit ? 'Update Event' : 'Save Event'}
+                            </Button>
                         </div>
                     </CardFooter>
                 </Card>
@@ -824,6 +444,14 @@ export function TimeManagerView() {
                     onOpenChange={setIsNewProjectDialogOpen}
                     onProjectCreate={handleProjectCreated}
                     contacts={contacts}
+                />
+            )}
+             {isTimeTrackerOpen && (
+                <DetailedTimeTracker
+                    isOpen={isTimeTrackerOpen}
+                    onOpenChange={setIsTimeTrackerOpen}
+                    event={eventToEdit}
+                    onLogTime={handleTimeLog}
                 />
             )}
         </>

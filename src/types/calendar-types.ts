@@ -1,6 +1,15 @@
+
 import type { LucideIcon } from 'lucide-react';
 
 export type TaskStatus = 'todo' | 'inProgress' | 'done';
+
+export interface TimeSession {
+  id: string;
+  startTime: Date;
+  endTime: Date;
+  durationSeconds: number;
+  notes?: string;
+}
 
 export interface Event {
   id: string;
@@ -16,9 +25,10 @@ export interface Event {
   attendees?: string[];
   contactId?: string | null;
   isScheduled?: boolean;
-  duration?: number; // in seconds
+  duration?: number; // in seconds, CUMULATIVE total
   isBillable?: boolean;
   billableRate?: number; // rate per hour
+  sessions?: TimeSession[];
 }
 
 export interface Project {
