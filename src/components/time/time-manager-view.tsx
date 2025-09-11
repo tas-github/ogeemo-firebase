@@ -77,30 +77,30 @@ export function TimeManagerView() {
     const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
     const minuteOptions = Array.from({ length: 12 }, (_, i) => { const minutes = i * 5; return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` }; });
     
-    const startTimer = useCallback(() => {
+    const handleStartTimer = useCallback(() => {
         setTimerStatus('RUNNING');
     }, []);
 
-    const stopTimer = useCallback(() => {
+    const handleStopTimer = useCallback(() => {
         setTimerStatus('PAUSED');
     }, []);
 
-    const handleLogSession = () => {
+    const handleSaveSession = () => {
         if (currentSessionSeconds <= 0) {
             toast({ variant: 'destructive', title: "No Time Logged", description: "The current session timer is at zero." });
             return;
         }
-    
+
         const newSession: TimeSession = {
             id: `session_${Date.now()}`,
             startTime: new Date(Date.now() - currentSessionSeconds * 1000),
             endTime: new Date(),
             durationSeconds: currentSessionSeconds,
         };
-    
+
         setSessions(prev => [...prev, newSession]);
         setCurrentSessionSeconds(0);
-        setTimerStatus('IDLE'); // Ready for a new session
+        setTimerStatus('IDLE');
         toast({ title: "Session Logged", description: `Added a session of ${formatTime(currentSessionSeconds)}.` });
     };
 
@@ -196,7 +196,6 @@ export function TimeManagerView() {
             return;
         }
 
-        // Finalize any running session before saving
         let finalSessions = [...sessions];
         if (timerStatus !== 'IDLE' && currentSessionSeconds > 0) {
             finalSessions.push({
@@ -430,9 +429,9 @@ export function TimeManagerView() {
                                     <div className="flex items-center justify-between p-4 border rounded-lg bg-background">
                                         <div className="flex items-center gap-4">
                                             <div className="flex items-center gap-4">
-                                                <Button onClick={startTimer} disabled={timerStatus === 'RUNNING'}><Play className="mr-2 h-4 w-4"/> Start</Button>
-                                                <Button onClick={stopTimer} disabled={timerStatus !== 'RUNNING'} variant="outline"><Pause className="mr-2 h-4 w-4"/> Stop</Button>
-                                                <Button onClick={handleLogSession} disabled={currentSessionSeconds === 0} variant="secondary"><Save className="mr-2 h-4 w-4"/> Log Session</Button>
+                                                <Button onClick={handleStartTimer} disabled={timerStatus === 'RUNNING'}><Play className="mr-2 h-4 w-4"/> Start</Button>
+                                                <Button onClick={handleStopTimer} disabled={timerStatus !== 'RUNNING'} variant="outline"><Pause className="mr-2 h-4 w-4"/> Stop</Button>
+                                                <Button onClick={handleSaveSession} disabled={currentSessionSeconds === 0} variant="secondary"><Save className="mr-2 h-4 w-4"/> Log Session</Button>
                                             </div>
                                             <div>
                                                 <Label className="text-xs">Current Session</Label>
@@ -456,7 +455,7 @@ export function TimeManagerView() {
                     </CardContent>
                     <CardFooter className="flex items-center justify-end">
                         <Button size="lg" onClick={handleSaveAndClose} variant="default">
-                            <Save className="mr-2 h-4 w-4" /> Save & Close
+                            <Save className="mr-2 h-4 w-4" /> Save to Data Base & Close
                         </Button>
                     </CardFooter>
                 </Card>
