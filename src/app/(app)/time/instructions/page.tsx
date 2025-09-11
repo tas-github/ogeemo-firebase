@@ -24,7 +24,7 @@ export default function TimeManagerInstructionsPage() {
                         How to Use the Event Manager
                     </h1>
                     <p className="text-muted-foreground max-w-2xl mx-auto">
-                        Your central hub for scheduling future work, logging past work, and tracking time as it happens.
+                        Your central hub for scheduling future work and logging past work.
                     </p>
                 </div>
                 <div className="w-1/4 flex justify-end">
@@ -41,28 +41,6 @@ export default function TimeManagerInstructionsPage() {
                 <CardContent className="p-6">
                     <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
                         <AccordionItem value="item-1">
-                            <AccordionTrigger>
-                                <div className="flex items-center gap-3">
-                                    <Play className="h-5 w-5 text-primary"/>
-                                    <span className="font-semibold">Tracking Live Work (Real-Time Timer)</span>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent>
-                                <div className="prose prose-sm dark:prose-invert max-w-none pl-8">
-                                    <p>
-                                        Use the timer to track work as it happens. This is ideal for tasks where you want to capture the exact time spent.
-                                    </p>
-                                    <ol>
-                                        <li>Fill in the <strong>Subject Title</strong> for the task.</li>
-                                        <li>Optionally, link it to a Client and Project.</li>
-                                        <li>Click the <strong>"Start Timer Now"</strong> button. The timer will begin counting up.</li>
-                                        <li>You can close this window; a small indicator will appear at the bottom of your screen showing the active timer.</li>
-                                        <li>When you're finished, return to this page and click <strong>"Stop & Log Time"</strong>. This creates a completed task record with the exact duration.</li>
-                                    </ol>
-                                </div>
-                            </AccordionContent>
-                        </AccordionItem>
-                        <AccordionItem value="item-2">
                             <AccordionTrigger>
                                 <div className="flex items-center gap-3">
                                     <Save className="h-5 w-5 text-primary"/>
@@ -82,7 +60,7 @@ export default function TimeManagerInstructionsPage() {
                                 </div>
                             </AccordionContent>
                         </AccordionItem>
-                        <AccordionItem value="item-3">
+                        <AccordionItem value="item-2">
                             <AccordionTrigger>
                                 <div className="flex items-center gap-3">
                                     <Calendar className="h-5 w-5 text-primary"/>
@@ -98,12 +76,12 @@ export default function TimeManagerInstructionsPage() {
                                         <li>Fill in the <strong>Subject Title</strong> for the future event.</li>
                                         <li>Set the <strong>Start Time</strong> to when you plan to do the work.</li>
                                         <li>Click the <strong>"Save Event"</strong> button. This will add an event to your calendar.</li>
-                                        <li>Later, you can find this event on your calendar and use the "Log Time" option to record the actual time spent.</li>
+                                        <li>Later, you can find this event on your calendar and use the detailed timer to log the actual time spent.</li>
                                     </ol>
                                 </div>
                             </AccordionContent>
                         </AccordionItem>
-                         <AccordionItem value="item-4" className="border-b-0">
+                         <AccordionItem value="item-3" className="border-b-0">
                             <AccordionTrigger>
                                 <div className="flex items-center gap-3">
                                     <LinkIcon className="h-5 w-5 text-primary"/>
