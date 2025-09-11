@@ -28,7 +28,7 @@ import { NewTaskDialog } from '@/components/tasks/NewTaskDialog';
 import Link from 'next/link';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '../ui/separator';
-import { ScrollArea } from '../ui/scroll-area';
+import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 
 type TimerStatus = 'IDLE' | 'RUNNING' | 'PAUSED';
 
@@ -85,8 +85,8 @@ export function TimeManagerView() {
         setTimerStatus('PAUSED');
     }, []);
 
-    const handleSaveSession = () => {
-        if (currentSessionSeconds <= 0) {
+    const handleLogSession = () => {
+        if (currentSessionSeconds <= 0 && timerStatus === 'IDLE') {
             toast({ variant: 'destructive', title: "No Time Logged", description: "The current session timer is at zero." });
             return;
         }
@@ -197,8 +197,9 @@ export function TimeManagerView() {
         }
 
         let finalSessions = [...sessions];
+        // If the timer is running or paused with time on it, log it before saving
         if (timerStatus !== 'IDLE' && currentSessionSeconds > 0) {
-            finalSessions.push({
+             finalSessions.push({
                 id: `session_${Date.now()}`,
                 startTime: new Date(Date.now() - currentSessionSeconds * 1000),
                 endTime: new Date(),
@@ -431,7 +432,7 @@ export function TimeManagerView() {
                                             <div className="flex items-center gap-4">
                                                 <Button onClick={handleStartTimer} disabled={timerStatus === 'RUNNING'}><Play className="mr-2 h-4 w-4"/> Start</Button>
                                                 <Button onClick={handleStopTimer} disabled={timerStatus !== 'RUNNING'} variant="outline"><Pause className="mr-2 h-4 w-4"/> Stop</Button>
-                                                <Button onClick={handleSaveSession} disabled={currentSessionSeconds === 0} variant="secondary"><Save className="mr-2 h-4 w-4"/> Log Session</Button>
+                                                <Button onClick={handleLogSession} variant="secondary"><Save className="mr-2 h-4 w-4"/> Log Session</Button>
                                             </div>
                                             <div>
                                                 <Label className="text-xs">Current Session</Label>
@@ -446,6 +447,7 @@ export function TimeManagerView() {
                                     <div className="space-y-2">
                                         <Label>Logged Sessions</Label>
                                         <ScrollArea className="h-24 w-full rounded-md border bg-background">
+                                           <ScrollBar forceMount />
                                            <div className="p-2">{sessions.length > 0 ? (sessions.map((session, index) => (<div key={session.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50"><p className="font-medium text-sm">Session {index + 1}</p><div className="flex items-center gap-4"><span className="font-mono text-sm">{formatTime(session.durationSeconds)}</span><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSessions(prev => prev.filter(s => s.id !== session.id))}><Trash2 className="h-4 w-4 text-destructive"/></Button></div></div>))) : (<div className="text-center text-sm text-muted-foreground p-4">No sessions logged yet.</div>)}</div>
                                         </ScrollArea>
                                     </div>
