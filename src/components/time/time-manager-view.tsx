@@ -30,12 +30,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import { Separator } from '../ui/separator';
 import { ScrollArea } from '../ui/scroll-area';
 
-const DETAILED_TIMER_STORAGE_KEY = 'detailedTimeTrackerState';
-
-export interface StoredDetailedTimerState {
-    eventId: string;
-    startTime: number;
-}
+type TimerStatus = 'IDLE' | 'RUNNING' | 'PAUSED';
 
 export function TimeManagerView() {
     const [projects, setProjects] = React.useState<Project[]>([]);
@@ -69,11 +64,10 @@ export function TimeManagerView() {
     const [eventToEdit, setEventToEdit] = React.useState<TaskEvent | null>(null);
     
     // Integrated Detailed Time Tracking State
-    const [isSessionTimerRunning, setIsSessionTimerRunning] = React.useState(false);
+    const [timerStatus, setTimerStatus] = React.useState<TimerStatus>('IDLE');
     const [currentSessionSeconds, setCurrentSessionSeconds] = React.useState(0);
     const [sessions, setSessions] = React.useState<TimeSession[]>([]);
     const sessionTimerRef = React.useRef<NodeJS.Timeout | null>(null);
-    const sessionStartRef = React.useRef<number | null>(null);
 
     const { user } = useAuth();
     const { toast } = useToast();
@@ -152,84 +146,24 @@ export function TimeManagerView() {
         loadData();
     }, [user, toast]);
     
-    const pauseSessionTimer = useCallback(() => {
-        if (!isSessionTimerRunning) return;
-        setIsSessionTimerRunning(false);
-        if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
-        sessionTimerRef.current = null;
-        localStorage.removeItem(DETAILED_TIMER_STORAGE_KEY);
-    }, [isSessionTimerRunning]);
-
-    const startSessionTimer = useCallback(() => {
-        if (isSessionTimerRunning || !eventToEdit) return;
-        setIsSessionTimerRunning(true);
-        const startTime = Date.now();
-        sessionStartRef.current = startTime;
-        
-        const timerState: StoredDetailedTimerState = { eventId: eventToEdit.id, startTime };
-        localStorage.setItem(DETAILED_TIMER_STORAGE_KEY, JSON.stringify(timerState));
-
-        sessionTimerRef.current = setInterval(() => {
-            const newElapsed = Math.floor((Date.now() - startTime) / 1000);
-            setCurrentSessionSeconds(newElapsed);
-        }, 1000);
-    }, [isSessionTimerRunning, eventToEdit]);
-    
-    const stopAndLogSession = useCallback(() => {
-        if (currentSessionSeconds > 0 && sessionStartRef.current) {
-            const newSession: TimeSession = {
-                id: `session_${Date.now()}`,
-                startTime: new Date(sessionStartRef.current!),
-                endTime: new Date(),
-                durationSeconds: currentSessionSeconds,
-            };
-            setSessions(prev => [...prev, newSession]);
-            toast({ title: "Session Logged", description: `Added a session of ${formatTime(currentSessionSeconds)}.` });
-        }
-        pauseSessionTimer();
-        setCurrentSessionSeconds(0);
-        sessionStartRef.current = null;
-    }, [pauseSessionTimer, currentSessionSeconds, toast]);
-
-    React.useEffect(() => {
-      let timerInterval: NodeJS.Timeout | null = null;
-  
-      const cleanup = () => {
-        if (timerInterval) clearInterval(timerInterval);
-        sessionTimerRef.current = null;
-      };
-  
-      if (eventToEdit) {
-        // Clear any orphaned timers before starting a new one
-        localStorage.removeItem(DETAILED_TIMER_STORAGE_KEY);
-  
-        const savedTimerRaw = localStorage.getItem(DETAILED_TIMER_STORAGE_KEY);
-        if (savedTimerRaw) {
-          try {
-            const savedTimer: StoredDetailedTimerState = JSON.parse(savedTimerRaw);
-            if (savedTimer.eventId === eventToEdit.id) {
-              const elapsed = Math.floor((Date.now() - savedTimer.startTime) / 1000);
-              setCurrentSessionSeconds(elapsed > 0 ? elapsed : 0);
-              setIsSessionTimerRunning(true);
-              sessionStartRef.current = savedTimer.startTime;
-  
-              timerInterval = setInterval(() => {
-                const newElapsed = Math.floor((Date.now() - savedTimer.startTime) / 1000);
-                setCurrentSessionSeconds(newElapsed > 0 ? newElapsed : 0);
-              }, 1000);
-              sessionTimerRef.current = timerInterval;
+    useEffect(() => {
+        if (timerStatus === 'RUNNING') {
+            sessionTimerRef.current = setInterval(() => {
+                setCurrentSessionSeconds(prev => prev + 1);
+            }, 1000);
+        } else {
+            if (sessionTimerRef.current) {
+                clearInterval(sessionTimerRef.current);
+                sessionTimerRef.current = null;
             }
-          } catch (e) {
-            console.error("Failed to parse detailed timer state", e);
-            localStorage.removeItem(DETAILED_TIMER_STORAGE_KEY);
-          }
         }
-      }
-  
-      // This is the cleanup function that runs when the component unmounts
-      // or when `eventToEdit` changes.
-      return cleanup;
-    }, [eventToEdit]);
+
+        return () => {
+            if (sessionTimerRef.current) {
+                clearInterval(sessionTimerRef.current);
+            }
+        };
+    }, [timerStatus]);
 
 
     const totalAccumulatedSeconds = useMemo(() => {
@@ -240,28 +174,49 @@ export function TimeManagerView() {
         return totalAccumulatedSeconds + currentSessionSeconds;
     }, [totalAccumulatedSeconds, currentSessionSeconds]);
 
-    const handleSaveEvent = async () => {
+    const handleStartTimer = () => setTimerStatus('RUNNING');
+    const handleStopTimer = () => setTimerStatus('PAUSED');
+
+    const handleSaveSession = async () => {
+        if (currentSessionSeconds <= 0) {
+            toast({ variant: 'destructive', title: "No Time Logged", description: "The current session timer is at zero." });
+            return;
+        }
+
+        const newSession: TimeSession = {
+            id: `session_${Date.now()}`,
+            startTime: new Date(Date.now() - currentSessionSeconds * 1000), // Approximate start time
+            endTime: new Date(),
+            durationSeconds: currentSessionSeconds,
+        };
+        
+        const newSessions = [...sessions, newSession];
+        setSessions(newSessions);
+        setCurrentSessionSeconds(0);
+        setTimerStatus('IDLE');
+        toast({ title: "Session Logged", description: `Added a session of ${formatTime(currentSessionSeconds)}.` });
+        
+        // Auto-save the entire event after logging a session
+        await handleSaveEvent(newSessions);
+    };
+
+
+    const handleSaveEvent = async (sessionsToSave?: TimeSession[]) => {
         if (!user || !subject.trim()) {
             toast({ variant: 'destructive', title: 'Missing Information', description: 'Please enter a subject for the event.' });
             return;
         }
 
         if (scheduleDate === undefined || scheduleHour === undefined || scheduleMinute === undefined) {
-            toast({
-                variant: 'destructive',
-                title: 'Missing Time',
-                description: 'A start date and time are required.',
-            });
+            toast({ variant: 'destructive', title: 'Missing Time', description: 'A start date and time are required.' });
             return;
-        }
-        
-        // Ensure any running timer is stopped and logged before saving
-        if (isSessionTimerRunning) {
-            stopAndLogSession();
         }
         
         const startDateTime = set(scheduleDate, { hours: parseInt(scheduleHour), minutes: parseInt(scheduleMinute) });
         const endDateTime = addMinutes(startDateTime, 30); // Default 30 minute duration for simple events
+        
+        const finalSessions = sessionsToSave || sessions;
+        const finalTotalTime = finalSessions.reduce((acc, s) => acc + s.durationSeconds, 0) + currentSessionSeconds;
         
         const eventData: Partial<Omit<TaskEvent, 'id' | 'userId'>> = {
             title: subject,
@@ -273,8 +228,8 @@ export function TimeManagerView() {
             projectId: selectedProjectId,
             contactId: selectedContactId,
             isScheduled: true,
-            duration: totalTime,
-            sessions: sessions,
+            duration: finalTotalTime,
+            sessions: finalSessions,
             isBillable,
             billableRate: isBillable ? (Number(billableRate) || 0) : 0,
             attendees: ['You'],
@@ -285,11 +240,12 @@ export function TimeManagerView() {
                 await updateTask(eventToEdit.id, eventData);
                 toast({ title: "Event Updated", description: `"${eventData.title}" has been saved.` });
             } else {
-                await addTask({ ...eventData as Omit<TaskEvent, 'id'>, userId: user.uid });
+                const newTask = await addTask({ ...eventData as Omit<TaskEvent, 'id'>, userId: user.uid });
+                setEventToEdit(newTask); // Set the new event as the one being edited
                 toast({ title: "Event Scheduled", description: `"${eventData.title}" has been saved.` });
             }
-            router.push('/calendar');
             window.dispatchEvent(new Event('tasksUpdated'));
+            // No longer navigating away automatically
         } catch (error: any) {
              toast({ variant: 'destructive', title: 'Failed to create event', description: error.message });
         }
@@ -487,17 +443,20 @@ export function TimeManagerView() {
                                 </CardHeader>
                                 <CardContent className="p-4 pt-0 space-y-4">
                                     <div className="flex items-center justify-between p-4 border rounded-lg bg-background">
-                                        <div>
-                                            <Label className="text-xs">Current Session</Label>
-                                            <div className="font-mono text-2xl font-bold">{formatTime(currentSessionSeconds)}</div>
+                                        <div className="flex items-center gap-4">
+                                            <div>
+                                                <Label className="text-xs">Current Session</Label>
+                                                <div className="font-mono text-2xl font-bold">{formatTime(currentSessionSeconds)}</div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <Button onClick={handleStartTimer} disabled={timerStatus === 'RUNNING'}><Play className="mr-2 h-4 w-4"/> Start</Button>
+                                                <Button onClick={handleStopTimer} disabled={timerStatus !== 'RUNNING'} variant="outline"><Pause className="mr-2 h-4 w-4"/> Stop</Button>
+                                                <Button onClick={handleSaveSession} disabled={timerStatus === 'IDLE' && currentSessionSeconds === 0} variant="secondary"><Save className="mr-2 h-4 w-4"/> Save Session</Button>
+                                            </div>
                                         </div>
-                                        <div className="flex gap-2">
-                                            {!isSessionTimerRunning ? (
-                                                <Button onClick={startSessionTimer}><Play className="mr-2 h-4 w-4"/> Start</Button>
-                                            ) : (
-                                                <Button onClick={pauseSessionTimer} variant="outline"><Pause className="mr-2 h-4 w-4"/> Pause</Button>
-                                            )}
-                                            <Button onClick={stopAndLogSession} disabled={!isSessionTimerRunning && currentSessionSeconds === 0} variant="secondary"><Square className="mr-2 h-4 w-4"/> Stop</Button>
+                                        <div className="text-right">
+                                            <Label className="text-xs">Total Logged Time</Label>
+                                            <p className="font-mono text-lg font-bold text-primary">{formatTime(totalTime)}</p>
                                         </div>
                                     </div>
                                     <div className="space-y-2">
@@ -507,19 +466,13 @@ export function TimeManagerView() {
                                         </ScrollArea>
                                     </div>
                                 </CardContent>
-                                <CardFooter className="p-4 pt-0 flex justify-end">
-                                    <div className="text-right">
-                                        <Label className="text-xs">Total Logged Time</Label>
-                                        <p className="font-mono text-lg font-bold text-primary">{formatTime(totalTime)}</p>
-                                    </div>
-                                </CardFooter>
                             </Card>
                          )}
                     </CardContent>
                     <CardFooter className="flex items-center justify-end">
                         <div className="flex items-center gap-2">
-                            <Button size="lg" onClick={handleSaveEvent} variant="default">
-                                <Save className="mr-2 h-4 w-4" /> {eventToEdit ? 'Update Event' : 'Save Event'}
+                            <Button size="lg" onClick={() => handleSaveEvent()} variant="default">
+                                <Save className="mr-2 h-4 w-4" /> {eventToEdit ? 'Save & Close' : 'Save & Close'}
                             </Button>
                         </div>
                     </CardFooter>
@@ -545,3 +498,5 @@ export function TimeManagerView() {
         </>
     );
 }
+
+    
