@@ -34,3 +34,11 @@ export async function triggerBrowserDownload(url: string, fileName: string) {
         throw error;
     }
 }
+
+export const formatTime = (totalSeconds: number) => {
+    if (totalSeconds < 0 || isNaN(totalSeconds)) totalSeconds = 0;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = Math.floor(totalSeconds % 60);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};

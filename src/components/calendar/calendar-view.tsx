@@ -39,28 +39,12 @@ const CALENDAR_START_HOUR_KEY = 'calendarStartHour';
 const CALENDAR_END_HOUR_KEY = 'calendarEndHour';
 
 
-function CalendarWrapper() {
-  const [isClient, setIsClient] = React.useState(false);
-  
-  React.useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  if (!isClient) {
-    return <CalendarSkeleton />;
-  }
-  
-  return <CalendarView />;
-}
-
-export { CalendarWrapper as CalendarView }
-
-function CalendarView() {
+export function CalendarView() {
+    const [isClient, setIsClient] = React.useState(false);
     const [currentDate, setCurrentDate] = React.useState<Date>(new Date());
     const [dayCount, setDayCount] = React.useState<number>(1);
     const [allEvents, setAllEvents] = React.useState<Event[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
-    const [isInitialLoading, setIsInitialLoading] = React.useState(true);
     const [startHour, setStartHour] = React.useState(8);
     const [endHour, setEndHour] = React.useState(17);
     
@@ -74,6 +58,12 @@ function CalendarView() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const pathname = usePathname();
+
+    // This is the permanent fix for the flash.
+    // The component will render a skeleton until it has mounted on the client.
+    React.useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     const dayOptions = Array.from({ length: 7 }, (_, i) => i + 1);
 
@@ -116,6 +106,7 @@ function CalendarView() {
 
     // Effect to load preferences from localStorage
     React.useEffect(() => {
+        if (!isClient) return; // Only run on the client
         try {
             const savedDayCount = localStorage.getItem(CALENDAR_DAY_COUNT_KEY);
             if (savedDayCount) setDayCount(parseInt(savedDayCount, 10));
@@ -128,10 +119,8 @@ function CalendarView() {
 
         } catch (error) {
             console.error("Failed to load calendar preferences:", error);
-        } finally {
-            setIsInitialLoading(false);
         }
-    }, []);
+    }, [isClient]);
 
     const handleDayCountChange = (value: string) => {
         const newDayCount = Number(value);
@@ -286,6 +275,10 @@ function CalendarView() {
             </Droppable>
         );
     };
+    
+    if (!isClient) {
+        return <CalendarSkeleton />;
+    }
 
     return (
         <>

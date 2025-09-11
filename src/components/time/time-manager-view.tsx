@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LoaderCircle, Save, Calendar as CalendarIcon, ChevronsUpDown, Check, Plus, X, Briefcase, Info, Timer } from 'lucide-react';
+import { LoaderCircle, Save, Calendar as CalendarIcon, ChevronsUpDown, Check, Plus, X, Briefcase, Info, Timer, PlayCircle, Clock, Square, Pause, Play, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { type Project, type Event as TaskEvent, type TimeSession } from '@/types/calendar-types';
@@ -19,7 +19,7 @@ import { Checkbox } from '../ui/checkbox';
 import { Textarea } from '../ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
-import { cn } from '@/lib/utils';
+import { cn, formatTime } from '@/lib/utils';
 import { format, set, addMinutes, parseISO } from 'date-fns';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -27,14 +27,41 @@ import ContactFormDialog from '@/components/contacts/contact-form-dialog';
 import { NewTaskDialog } from '@/components/tasks/NewTaskDialog';
 import Link from 'next/link';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { DetailedTimeTracker } from './DetailedTimeTracker';
 import { Separator } from '../ui/separator';
+import { ScrollArea } from '../ui/scroll-area';
+
+const TIMER_STORAGE_KEY = 'activeTimeManagerEntry';
+const DETAILED_TIMER_STORAGE_KEY = 'detailedTimeTrackerState';
+
+export interface StoredTimerState {
+    startTime: number;
+    isActive: boolean;
+    isPaused: boolean;
+    pauseTime: number | null;
+    totalPausedDuration: number;
+    notes: string; // This is the 'subject' from the form
+    eventId?: string; // To link timer to an existing event
+    
+    // The following fields are for recreating a task if one isn't being edited
+    subject: string;
+    projectId: string | null;
+    contactId: string | null;
+    isBillable: boolean;
+    billableRate: number | '';
+}
+
+interface StoredDetailedTimerState {
+    eventId: string;
+    startTime: number;
+}
+
 
 export function TimeManagerView() {
     const [projects, setProjects] = React.useState<Project[]>([]);
     const [contacts, setContacts] = React.useState<Contact[]>([]);
     const [contactFolders, setContactFolders] = React.useState<FolderData[]>([]);
     const [isLoadingData, setIsLoadingData] = React.useState(true);
+    const [activeTimerState, setActiveTimerState] = React.useState<StoredTimerState | null>(null);
 
     // Form state
     const [subject, setSubject] = React.useState("");
@@ -60,12 +87,37 @@ export function TimeManagerView() {
     const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = React.useState(false);
     
     const [eventToEdit, setEventToEdit] = React.useState<TaskEvent | null>(null);
-    const [isTimeTrackerOpen, setIsTimeTrackerOpen] = React.useState(false);
+    
+    // Integrated Detailed Time Tracking State
+    const [isSessionTimerRunning, setIsSessionTimerRunning] = React.useState(false);
+    const [currentSessionSeconds, setCurrentSessionSeconds] = React.useState(0);
+    const [sessions, setSessions] = React.useState<TimeSession[]>([]);
+    const sessionTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+    const sessionStartRef = React.useRef<number | null>(null);
 
     const { user } = useAuth();
     const { toast } = useToast();
     const searchParams = useSearchParams();
     const router = useRouter();
+
+    // Effect to sync with global timer state in localStorage
+    React.useEffect(() => {
+        const updateTimerState = () => {
+            const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+            if (savedStateRaw) {
+                setActiveTimerState(JSON.parse(savedStateRaw));
+            } else {
+                setActiveTimerState(null);
+            }
+        };
+
+        updateTimerState();
+        window.addEventListener('storage', updateTimerState);
+
+        return () => {
+            window.removeEventListener('storage', updateTimerState);
+        };
+    }, []);
 
     // Pre-populate form from URL params
     React.useEffect(() => {
@@ -93,6 +145,7 @@ export function TimeManagerView() {
                 setSelectedContactId(eventData.contactId || null);
                 setIsBillable(eventData.isBillable || false);
                 setBillableRate(eventData.billableRate || 0);
+                setSessions(eventData.sessions || []);
                 if (eventData.start) {
                     setScheduleDate(eventData.start);
                     setScheduleHour(String(eventData.start.getHours()));
@@ -137,6 +190,88 @@ export function TimeManagerView() {
         }
         loadData();
     }, [user, toast]);
+    
+    const startSessionTimer = useCallback(() => {
+        if (isSessionTimerRunning || !eventToEdit) return;
+        setIsSessionTimerRunning(true);
+        const startTime = Date.now();
+        sessionStartRef.current = startTime;
+        
+        const timerState: StoredDetailedTimerState = { eventId: eventToEdit.id, startTime };
+        localStorage.setItem(DETAILED_TIMER_STORAGE_KEY, JSON.stringify(timerState));
+
+        sessionTimerRef.current = setInterval(() => {
+            const newElapsed = Math.floor((Date.now() - startTime) / 1000);
+            setCurrentSessionSeconds(newElapsed);
+        }, 1000);
+    }, [isSessionTimerRunning, eventToEdit]);
+    
+    const pauseSessionTimer = useCallback(() => {
+        if (!isSessionTimerRunning) return;
+        setIsSessionTimerRunning(false);
+        if (sessionTimerRef.current) clearInterval(sessionTimerRef.current);
+        localStorage.removeItem(DETAILED_TIMER_STORAGE_KEY);
+    }, [isSessionTimerRunning]);
+    
+    const stopAndLogSession = useCallback(() => {
+        pauseSessionTimer();
+        if (currentSessionSeconds > 0 && sessionStartRef.current) {
+            const newSession: TimeSession = {
+                id: `session_${Date.now()}`,
+                startTime: new Date(sessionStartRef.current!),
+                endTime: new Date(),
+                durationSeconds: currentSessionSeconds,
+            };
+            setSessions(prev => [...prev, newSession]);
+            setCurrentSessionSeconds(0);
+            sessionStartRef.current = null;
+            toast({ title: "Session Logged", description: `Added a session of ${formatTime(currentSessionSeconds)}.` });
+        }
+    }, [pauseSessionTimer, currentSessionSeconds, toast]);
+
+    React.useEffect(() => {
+        let timerInterval: NodeJS.Timeout | null = null;
+        if (eventToEdit) {
+            const savedTimerRaw = localStorage.getItem(DETAILED_TIMER_STORAGE_KEY);
+            if (savedTimerRaw) {
+                try {
+                    const savedTimer: StoredDetailedTimerState = JSON.parse(savedTimerRaw);
+                    if (savedTimer.eventId === eventToEdit.id) {
+                        const elapsed = Math.floor((Date.now() - savedTimer.startTime) / 1000);
+                        setCurrentSessionSeconds(elapsed > 0 ? elapsed : 0);
+                        setIsSessionTimerRunning(true);
+                        sessionStartRef.current = savedTimer.startTime;
+
+                        timerInterval = setInterval(() => {
+                            const newElapsed = Math.floor((Date.now() - savedTimer.startTime) / 1000);
+                            setCurrentSessionSeconds(newElapsed);
+                        }, 1000);
+                        sessionTimerRef.current = timerInterval;
+                    } else {
+                        localStorage.removeItem(DETAILED_TIMER_STORAGE_KEY);
+                    }
+                } catch (e) {
+                    console.error("Failed to parse detailed timer state", e);
+                    localStorage.removeItem(DETAILED_TIMER_STORAGE_KEY);
+                }
+            }
+        }
+        
+        return () => {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+        };
+    }, [eventToEdit]);
+
+
+    const totalAccumulatedSeconds = useMemo(() => {
+        return sessions.reduce((acc, session) => acc + session.durationSeconds, 0);
+    }, [sessions]);
+
+    const totalTime = useMemo(() => {
+        return totalAccumulatedSeconds + currentSessionSeconds;
+    }, [totalAccumulatedSeconds, currentSessionSeconds]);
 
     const handleReset = (showToast = true) => {
         setSubject("");
@@ -146,6 +281,9 @@ export function TimeManagerView() {
         setIsBillable(true);
         setBillableRate(100);
         setEventToEdit(null);
+        setSessions([]);
+        pauseSessionTimer();
+        setCurrentSessionSeconds(0);
         const now = new Date();
         setScheduleDate(now);
         setScheduleHour(String(now.getHours()));
@@ -184,7 +322,8 @@ export function TimeManagerView() {
             projectId: selectedProjectId,
             contactId: selectedContactId,
             isScheduled: true,
-            duration: 1800, // 30 minutes in seconds
+            duration: totalTime,
+            sessions: sessions,
             isBillable,
             billableRate: isBillable ? (Number(billableRate) || 0) : 0,
             attendees: ['You'],
@@ -228,27 +367,90 @@ export function TimeManagerView() {
             .catch(err => toast({ variant: 'destructive', title: 'Creation Failed', description: err.message }));
     };
 
-    const handleTimeLog = async (totalSeconds: number, sessions: TimeSession[]) => {
-        if (!user || !eventToEdit) {
-            toast({ variant: 'destructive', title: 'Error', description: 'No event selected to log time against.' });
+    const handleStartTimer = () => {
+        if (!subject.trim()) {
+            toast({ variant: 'destructive', title: 'Subject Required', description: 'Please enter a subject before starting the timer.' });
             return;
         }
+        const activeTimerRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+        if (activeTimerRaw) {
+            const activeTimer: StoredTimerState = JSON.parse(activeTimerRaw);
+            if(activeTimer.isActive) {
+                toast({ variant: 'destructive', title: 'Timer Already Running', description: 'Another timer is already active.' });
+                return;
+            }
+        }
+        const state: StoredTimerState = {
+            startTime: Date.now(),
+            isActive: true,
+            isPaused: false,
+            pauseTime: null,
+            totalPausedDuration: 0,
+            notes: subject,
+            eventId: eventToEdit?.id,
+            subject: subject,
+            projectId: selectedProjectId,
+            contactId: selectedContactId,
+            isBillable: isBillable,
+            billableRate: billableRate,
+        };
+        localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(state));
+        window.dispatchEvent(new Event('storage')); // Notify other components
+    };
+
+    const handleStopAndLogTimer = async () => {
+        if (!user) return;
+        const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
+        if (!savedStateRaw) return;
         
+        const savedState: StoredTimerState = JSON.parse(savedStateRaw);
+        if (!savedState.isActive) return;
+        
+        let finalElapsed = 0;
+        if (savedState.isPaused) {
+            finalElapsed = Math.floor((savedState.pauseTime! - savedState.startTime) / 1000) - savedState.totalPausedDuration;
+        } else {
+            finalElapsed = Math.floor((Date.now() - savedState.startTime) / 1000) - savedState.totalPausedDuration;
+        }
+        finalElapsed = Math.max(0, finalElapsed);
+
         try {
-            const updatedData = { 
-                duration: totalSeconds, 
-                sessions: sessions,
-                // If we log time, we consider it worked on, so it's not just a plan
-                isScheduled: false, 
-            };
-            await updateTask(eventToEdit.id, updatedData);
-            setEventToEdit(prev => prev ? { ...prev, ...updatedData } : null);
-            toast({ title: "Time Logged Successfully" });
-            window.dispatchEvent(new Event('tasksUpdated'));
+            if (savedState.eventId) { // Update existing event
+                const existingEvent = await getTaskById(savedState.eventId);
+                if (existingEvent) {
+                    const newSessions = [...(existingEvent.sessions || []), { id: `session_${Date.now()}`, startTime: new Date(savedState.startTime), endTime: new Date(), durationSeconds: finalElapsed }];
+                    const newDuration = (existingEvent.duration || 0) + finalElapsed;
+                    await updateTask(savedState.eventId, { duration: newDuration, sessions: newSessions, status: 'done' });
+                    toast({ title: "Time Logged", description: `Added ${formatTime(finalElapsed)} to "${existingEvent.title}".` });
+                }
+            } else { // Create new event
+                const eventData: Omit<TaskEvent, 'id'> = {
+                    title: savedState.subject,
+                    description: notes,
+                    start: new Date(savedState.startTime),
+                    end: new Date(),
+                    status: 'done',
+                    position: 0,
+                    userId: user.uid,
+                    projectId: savedState.projectId,
+                    contactId: savedState.contactId,
+                    isScheduled: false,
+                    duration: finalElapsed,
+                    isBillable: savedState.isBillable,
+                    billableRate: savedState.isBillable ? (Number(savedState.billableRate) || 0) : 0,
+                };
+                await addTask(eventData);
+                toast({ title: "Time Logged", description: `Task "${eventData.title}" logged with a duration of ${formatTime(finalElapsed)}.` });
+            }
+            
+            localStorage.removeItem(TIMER_STORAGE_KEY);
+            window.dispatchEvent(new Event('storage'));
+            handleReset(false);
         } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Failed to log time', description: error.message });
+            toast({ variant: 'destructive', title: 'Failed to Log Time', description: error.message });
         }
     };
+
 
     const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
     const minuteOptions = Array.from({ length: 12 }, (_, i) => { const minutes = i * 5; return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` }; });
@@ -372,7 +574,7 @@ export function TimeManagerView() {
                             <div className="space-y-2">
                                 <Label className="text-base font-semibold">Set Time <span className="text-destructive">*</span></Label>
                                 <div className="flex gap-2">
-                                    <Popover>
+                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}>
                                                 <CalendarIcon className="mr-2 h-4 w-4" />
@@ -412,16 +614,57 @@ export function TimeManagerView() {
                                     </div>
                                 )}
                             </div>
-                             <Button className="font-bold" onClick={() => setIsTimeTrackerOpen(true)} disabled={!eventToEdit}>
-                                <Timer className="mr-2 h-4 w-4"/> Detailed Time Tracking
-                            </Button>
                         </div>
+                         {eventToEdit && (
+                            <Card className="bg-muted/50">
+                                <CardHeader className="p-4">
+                                    <CardTitle className="text-base">Time Log</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-4 pt-0 space-y-4">
+                                    <div className="flex items-center justify-between p-4 border rounded-lg bg-background">
+                                        <div>
+                                            <Label className="text-xs">Current Session</Label>
+                                            <div className="font-mono text-2xl font-bold">{formatTime(currentSessionSeconds)}</div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {!isSessionTimerRunning ? (
+                                                <Button onClick={startSessionTimer}><Play className="mr-2 h-4 w-4"/> Start</Button>
+                                            ) : (
+                                                <Button onClick={pauseSessionTimer} variant="outline"><Pause className="mr-2 h-4 w-4"/> Pause</Button>
+                                            )}
+                                            <Button onClick={stopAndLogSession} disabled={!isSessionTimerRunning && currentSessionSeconds === 0} variant="secondary"><Square className="mr-2 h-4 w-4"/> Stop</Button>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Logged Sessions</Label>
+                                        <ScrollArea className="h-24 w-full rounded-md border bg-background">
+                                           <div className="p-2">{sessions.length > 0 ? (sessions.map((session, index) => (<div key={session.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50"><p className="font-medium text-sm">Session {index + 1}</p><div className="flex items-center gap-4"><span className="font-mono text-sm">{formatTime(session.durationSeconds)}</span><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSessions(prev => prev.filter(s => s.id !== session.id))}><Trash2 className="h-4 w-4 text-destructive"/></Button></div></div>))) : (<div className="text-center text-sm text-muted-foreground p-4">No sessions logged yet.</div>)}</div>
+                                        </ScrollArea>
+                                    </div>
+                                </CardContent>
+                                <CardFooter className="p-4 pt-0 flex justify-end">
+                                    <div className="text-right">
+                                        <Label className="text-xs">Total Logged Time</Label>
+                                        <p className="font-mono text-lg font-bold text-primary">{formatTime(totalTime)}</p>
+                                    </div>
+                                </CardFooter>
+                            </Card>
+                         )}
                     </CardContent>
                     <CardFooter className="flex items-center justify-between">
                          <div className="flex items-center gap-2">
                            <Button onClick={() => handleReset()} variant="default">Reset</Button>
                         </div>
                         <div className="flex items-center gap-2">
+                           {activeTimerState?.isActive ? (
+                                <Button onClick={handleStopAndLogTimer} variant="destructive">
+                                    <Square className="mr-2 h-4 w-4"/> Stop & Log Time
+                                </Button>
+                            ) : (
+                                <Button onClick={handleStartTimer} disabled={!!activeTimerState?.isActive}>
+                                    <PlayCircle className="mr-2 h-4 w-4"/> Start Timer Now
+                                </Button>
+                            )}
                             <Button size="lg" onClick={handleSaveEvent} variant="default">
                                 <Save className="mr-2 h-4 w-4" /> {eventToEdit ? 'Update Event' : 'Save Event'}
                             </Button>
@@ -446,14 +689,8 @@ export function TimeManagerView() {
                     contacts={contacts}
                 />
             )}
-             {isTimeTrackerOpen && (
-                <DetailedTimeTracker
-                    isOpen={isTimeTrackerOpen}
-                    onOpenChange={setIsTimeTrackerOpen}
-                    event={eventToEdit}
-                    onLogTime={handleTimeLog}
-                />
-            )}
         </>
     );
 }
+
+    

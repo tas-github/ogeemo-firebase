@@ -21,17 +21,17 @@ export default function TimeManagerInstructionsPage() {
                 </div>
                 <div className="text-center flex-1">
                     <h1 className="text-2xl font-bold font-headline text-primary">
-                        How to Use the Time & Task Manager
+                        How to Use the Event Manager
                     </h1>
                     <p className="text-muted-foreground max-w-2xl mx-auto">
-                        Your central hub for both scheduling future work and logging time that has already been completed.
+                        Your central hub for scheduling future work, logging past work, and tracking time as it happens.
                     </p>
                 </div>
                 <div className="w-1/4 flex justify-end">
                     <Button asChild variant="outline">
                         <Link href="/time">
                             <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Time Manager
+                            Back to Event Manager
                         </Link>
                     </Button>
                 </div>
@@ -43,8 +43,8 @@ export default function TimeManagerInstructionsPage() {
                         <AccordionItem value="item-1">
                             <AccordionTrigger>
                                 <div className="flex items-center gap-3">
-                                    <Clock className="h-5 w-5 text-primary"/>
-                                    <span className="font-semibold">Logging Time with the Real-Time Timer</span>
+                                    <Play className="h-5 w-5 text-primary"/>
+                                    <span className="font-semibold">Tracking Live Work (Real-Time Timer)</span>
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent>
@@ -56,8 +56,8 @@ export default function TimeManagerInstructionsPage() {
                                         <li>Fill in the <strong>Subject Title</strong> for the task.</li>
                                         <li>Optionally, link it to a Client and Project.</li>
                                         <li>Click the <strong>"Start Timer Now"</strong> button. The timer will begin counting up.</li>
-                                        <li>You can close this window; a small indicator will appear at the bottom of your screen.</li>
-                                        <li>When you're finished, click <strong>"Stop & Log Time"</strong>. This creates a completed task record with the exact duration.</li>
+                                        <li>You can close this window; a small indicator will appear at the bottom of your screen showing the active timer.</li>
+                                        <li>When you're finished, return to this page and click <strong>"Stop & Log Time"</strong>. This creates a completed task record with the exact duration.</li>
                                     </ol>
                                 </div>
                             </AccordionContent>
@@ -72,11 +72,11 @@ export default function TimeManagerInstructionsPage() {
                             <AccordionContent>
                                 <div className="prose prose-sm dark:prose-invert max-w-none pl-8">
                                     <p>
-                                        If you've already completed the work, you can log it manually.
+                                        If you've already completed the work, you can log it by specifying when it happened.
                                     </p>
                                      <ol>
                                         <li>Fill in the <strong>Subject Title</strong> and other details.</li>
-                                        <li>Set the <strong>Start Time</strong> and <strong>End Time</strong> to reflect when the work was done.</li>
+                                        <li>Set the <strong>Start Time</strong> to reflect when the work was done. The end time is set automatically.</li>
                                         <li>Click the <strong>"Save Event"</strong> button. This will create a completed task directly on your calendar for the time you specified.</li>
                                     </ol>
                                 </div>
@@ -96,7 +96,7 @@ export default function TimeManagerInstructionsPage() {
                                     </p>
                                      <ol>
                                         <li>Fill in the <strong>Subject Title</strong> for the future event.</li>
-                                        <li>Set the <strong>Start Time</strong> and <strong>End Time</strong> to when you plan to do the work.</li>
+                                        <li>Set the <strong>Start Time</strong> to when you plan to do the work.</li>
                                         <li>Click the <strong>"Save Event"</strong> button. This will add an event to your calendar.</li>
                                         <li>Later, you can find this event on your calendar and use the "Log Time" option to record the actual time spent.</li>
                                     </ol>

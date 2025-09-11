@@ -17,7 +17,7 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
-import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData } from '@/types/calendar-types';
+import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData, TimeSession } from '@/types/calendar-types';
 import { addMinutes, addHours, startOfHour, set, addDays } from 'date-fns';
 import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -74,6 +74,11 @@ const docToTask = (doc: any): TaskEvent => {
     duration: data.duration,
     isBillable: data.isBillable,
     billableRate: data.billableRate,
+    sessions: (data.sessions || []).map((session: any) => ({
+        ...session,
+        startTime: (session.startTime as Timestamp)?.toDate() || new Date(),
+        endTime: (session.endTime as Timestamp)?.toDate() || new Date(),
+    })),
   };
 };
 
@@ -553,3 +558,4 @@ export const managerOptions: ManagerOption[] = [
     { label: 'Hytexercise', icon: HeartPulse, href: '/hytexercise' },
     { label: 'Alerts', icon: Bell, href: '/alerts' },
 ];
+
