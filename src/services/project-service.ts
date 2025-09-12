@@ -84,12 +84,10 @@ const docToTask = (doc: any): TaskEvent => {
 
 const docToTemplate = (doc: any): ProjectTemplate => ({ id: doc.id, ...doc.data() } as ProjectTemplate);
 const docToFolder = (doc: any): ProjectFolder => ({ id: doc.id, ...doc.data() } as ProjectFolder);
-const docToActionChip = (doc: any): ActionChipData => {
-    const data = doc.data();
-    const iconName = data.iconName as keyof typeof iconMap;
+const docToActionChip = (chipData: any): ActionChipData => {
+    const iconName = chipData.iconName as keyof typeof iconMap;
     return { 
-        id: doc.id, 
-        ...data,
+        ...chipData,
         icon: iconMap[iconName] || Wand2, // Fallback icon
     } as ActionChipData;
 };
@@ -402,10 +400,7 @@ async function getChipsFromCollection(userId: string, collectionName: string): P
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
         const data = docSnap.data();
-        const chips = (data.chips || []).map((chip: any) => ({
-            ...chip,
-            icon: iconMap[chip.iconName as keyof typeof iconMap] || Wand2,
-        }));
+        const chips = (data.chips || []).map(docToActionChip);
         // Ensure position exists if it doesn't, then sort
         return chips
             .map((chip: any, index: number) => ({ ...chip, position: chip.position ?? index }))
@@ -428,7 +423,8 @@ async function updateChipsInCollection(userId: string, collectionName: string, c
 export async function getActionChips(userId: string): Promise<ActionChipData[]> {
     const chips = await getChipsFromCollection(userId, ACTION_CHIPS_COLLECTION);
     if (chips.length === 0) {
-        const docRef = doc(getFirestore(), ACTION_CHIPS_COLLECTION, userId);
+        const db = await getDb();
+        const docRef = doc(db, ACTION_CHIPS_COLLECTION, userId);
         const docSnap = await getDoc(docRef);
         if (!docSnap.exists()) {
             await updateActionChips(userId, defaultChips);
@@ -557,5 +553,4 @@ export const managerOptions: ManagerOption[] = [
     { label: 'Reports', icon: BarChart3, href: '/reports' },
     { label: 'Hytexercise', icon: HeartPulse, href: '/hytexercise' },
     { label: 'Alerts', icon: Bell, href: '/alerts' },
-];
-
+]

@@ -84,5 +84,5 @@ export const allMenuItems: MenuItem[] = [
   { href: "/ideas", label: "Ideas", icon: Lightbulb },
   { href: "/research", label: "Research", icon: Beaker },
   { href: "/accounting", label: "Accounting", icon: Calculator },
-  { href: "/time", label: "Event Manager", icon: Clock },
+  { href: "/time", label: "Event Time Manager", icon: Clock },
 ];

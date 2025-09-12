@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -53,7 +54,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon: Icon, title, descriptio
 
 export default function MasterMindPage() {
   const features = [
-    { icon: Clock, title: "Event Manager", description: "Your command center for all time-based activities. Track live work with a real-time timer, log past hours, or schedule future appointments and events.", href: "/time", cta: "Manage Time & Events" },
+    { icon: Clock, title: "Event Time Manager", description: "Your command center for all time-based activities. Track live work with a real-time timer, log past hours, or schedule future appointments and events.", href: "/time", cta: "Manage Time & Events" },
     { icon: Calendar, title: "Calendar View", description: "See all your scheduled tasks and events in a visual, drag-and-drop calendar.", href: "/calendar", cta: "Open Calendar" },
   ];
 

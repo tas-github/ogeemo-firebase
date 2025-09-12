@@ -8,14 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LoaderCircle, Save, Calendar as CalendarIcon, ChevronsUpDown, Check, Plus, X, Info, Timer, Play, Pause, Trash2 } from 'lucide-react';
+import { LoaderCircle, Save, Calendar as CalendarIcon, ChevronsUpDown, Check, Plus, X, Info, Timer, Play, Pause, Trash2, MoreVertical, Edit, MessageSquare, RefreshCw } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { type Project, type Event as TaskEvent, type TimeSession } from '@/types/calendar-types';
 import { type Contact, type FolderData } from '@/data/contacts';
 import { addTask, getProjects, addProject, updateProject, getTaskById, updateTask } from '@/services/project-service';
 import { getContacts, getFolders } from '@/services/contact-service';
-import { Checkbox } from '../ui/checkbox';
 import { Textarea } from '../ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
@@ -27,10 +26,36 @@ import ContactFormDialog from '@/components/contacts/contact-form-dialog';
 import { NewTaskDialog } from '@/components/tasks/NewTaskDialog';
 import Link from 'next/link';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Separator } from '../ui/separator';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type TimerStatus = 'IDLE' | 'RUNNING' | 'PAUSED';
+
+export interface StoredTimerState {
+    eventId: string;
+    notes: string;
+    isActive: boolean;
+    isPaused: boolean;
+    startTime: number; // Timestamp
+    pauseTime: number | null; // Timestamp
+    totalPausedDuration: number; // in seconds
+}
+
+const TIMER_STORAGE_KEY = 'activeTimeManagerEntry';
+
 
 export function TimeManagerView() {
     const [projects, setProjects] = React.useState<Project[]>([]);
@@ -43,7 +68,7 @@ export function TimeManagerView() {
     const [notes, setNotes] = React.useState("");
     const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null);
     const [selectedContactId, setSelectedContactId] = React.useState<string | null>(null);
-    const [isBillable, setIsBillable] = React.useState(true);
+    const [isBillable, setIsBillable] = React.useState(false);
     const [billableRate, setBillableRate] = React.useState<number | ''>(100);
     
     // State for scheduling
@@ -68,6 +93,14 @@ export function TimeManagerView() {
     const [currentSessionSeconds, setCurrentSessionSeconds] = React.useState(0);
     const [sessions, setSessions] = React.useState<TimeSession[]>([]);
     const sessionTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+    const [currentSessionNotes, setCurrentSessionNotes] = React.useState('');
+    
+    // State for editing a session
+    const [isEditSessionDialogOpen, setIsEditSessionDialogOpen] = React.useState(false);
+    const [sessionToEdit, setSessionToEdit] = React.useState<TimeSession | null>(null);
+    const [editSessionHours, setEditSessionHours] = React.useState<number | ''>('');
+    const [editSessionMinutes, setEditSessionMinutes] = React.useState<number | ''>('');
+    const [editSessionNotes, setEditSessionNotes] = React.useState('');
 
     const { user } = useAuth();
     const { toast } = useToast();
@@ -85,24 +118,38 @@ export function TimeManagerView() {
         setTimerStatus('PAUSED');
     }, []);
 
-    const handleLogSession = () => {
-        if (currentSessionSeconds <= 0 && timerStatus === 'IDLE') {
-            toast({ variant: 'destructive', title: "No Time Logged", description: "The current session timer is at zero." });
+    const handleResetTimer = () => {
+        setCurrentSessionSeconds(0);
+        setCurrentSessionNotes('');
+    };
+    
+    const handleOpenEditSession = (session: TimeSession) => {
+        setSessionToEdit(session);
+        const hours = Math.floor(session.durationSeconds / 3600);
+        const minutes = Math.floor((session.durationSeconds % 3600) / 60);
+        setEditSessionHours(hours);
+        setEditSessionMinutes(minutes);
+        setEditSessionNotes(session.notes || '');
+        setIsEditSessionDialogOpen(true);
+    };
+
+    const handleSaveSession = () => {
+        if (!sessionToEdit) return;
+
+        const hours = Number(editSessionHours) || 0;
+        const minutes = Number(editSessionMinutes) || 0;
+        const newDurationSeconds = (hours * 3600) + (minutes * 60);
+
+        if (newDurationSeconds <= 0) {
+            toast({ variant: 'destructive', title: 'Invalid Duration', description: 'Duration must be greater than zero.'});
             return;
         }
 
-        const newSession: TimeSession = {
-            id: `session_${Date.now()}`,
-            startTime: new Date(Date.now() - currentSessionSeconds * 1000),
-            endTime: new Date(),
-            durationSeconds: currentSessionSeconds,
-        };
-
-        setSessions(prev => [...prev, newSession]);
-        setCurrentSessionSeconds(0);
-        setTimerStatus('IDLE');
-        toast({ title: "Session Logged", description: `Added a session of ${formatTime(currentSessionSeconds)}.` });
+        const updatedSession = { ...sessionToEdit, durationSeconds: newDurationSeconds, notes: editSessionNotes };
+        setSessions(prev => prev.map(s => s.id === sessionToEdit.id ? updatedSession : s));
+        setIsEditSessionDialogOpen(false);
     };
+
 
     // Effect to manage the timer interval
     useEffect(() => {
@@ -190,21 +237,22 @@ export function TimeManagerView() {
         return totalAccumulatedSeconds + currentSessionSeconds;
     }, [totalAccumulatedSeconds, currentSessionSeconds]);
 
-    const handleSaveAndClose = async () => {
+    const handleSave = async () => {
         if (!user || !subject.trim()) {
             toast({ variant: 'destructive', title: 'Missing Information', description: 'Please enter a subject for the event.' });
             return;
         }
 
-        let finalSessions = [...sessions];
-        // If the timer is running or paused with time on it, log it before saving
-        if (timerStatus !== 'IDLE' && currentSessionSeconds > 0) {
-             finalSessions.push({
+        const finalSessions = [...sessions];
+        if (currentSessionSeconds > 0) {
+             const newSession: TimeSession = {
                 id: `session_${Date.now()}`,
                 startTime: new Date(Date.now() - currentSessionSeconds * 1000),
                 endTime: new Date(),
                 durationSeconds: currentSessionSeconds,
-            });
+                notes: currentSessionNotes,
+            };
+            finalSessions.push(newSession);
         }
             
         const finalTotalTime = finalSessions.reduce((acc, s) => acc + s.durationSeconds, 0);
@@ -231,10 +279,17 @@ export function TimeManagerView() {
                 await updateTask(eventToEdit.id, eventData);
                 toast({ title: "Event Updated", description: `"${eventData.title}" has been saved.` });
             } else {
-                await addTask({ ...eventData as Omit<TaskEvent, 'id'>, userId: user.uid });
+                const newEvent = await addTask({ ...eventData as Omit<TaskEvent, 'id'>, userId: user.uid });
+                setEventToEdit(newEvent); // Set the new event as the one being edited
                 toast({ title: "Event Scheduled", description: `"${eventData.title}" has been saved.` });
             }
-            router.push('/calendar');
+            
+            // After successful save, reset timer and sessions
+            setTimerStatus('IDLE');
+            setCurrentSessionSeconds(0);
+            setCurrentSessionNotes('');
+            setSessions(finalSessions);
+
         } catch (error: any) {
              toast({ variant: 'destructive', title: 'Failed to save event', description: error.message });
         }
@@ -277,7 +332,7 @@ export function TimeManagerView() {
                     <div className="flex justify-between items-center">
                         <div className="flex-1" />
                         <div className="flex-1 text-center flex items-center justify-center gap-2">
-                            <h1 className="text-2xl font-bold font-headline text-primary">Event Manager</h1>
+                            <h1 className="text-2xl font-bold font-headline text-primary">Event Time Manager</h1>
                              <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -294,11 +349,8 @@ export function TimeManagerView() {
                             </TooltipProvider>
                         </div>
                         <div className="flex-1 text-right flex items-center justify-end gap-2">
-                            <Button asChild variant="ghost" size="icon">
-                                <Link href="/calendar">
-                                    <X className="h-5 w-5" />
-                                    <span className="sr-only">Close and go to Calendar</span>
-                                </Link>
+                            <Button variant="ghost" onClick={() => router.push('/calendar')}>
+                                Close
                             </Button>
                         </div>
                     </div>
@@ -377,38 +429,27 @@ export function TimeManagerView() {
                         </div>
                         
                         <div className="space-y-4 p-4 border rounded-md">
-                            <div className="space-y-2">
-                                <Label className="text-base font-semibold">Event Time</Label>
-                                <div className="flex gap-2">
-                                     <Popover>
+                            <div className="flex flex-wrap items-center justify-between gap-4">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <Label className="font-semibold">Set Start Time</Label>
+                                    <Popover>
                                         <PopoverTrigger asChild>
-                                            <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}>
+                                            <Button variant={"outline"} className={cn("w-auto justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}>
                                                 <CalendarIcon className="mr-2 h-4 w-4" />
                                                 {scheduleDate ? format(scheduleDate, "PPP") : <span>Pick a date</span>}
                                             </Button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar mode="single" selected={scheduleDate} onSelect={setScheduleDate} initialFocus />
-                                        </PopoverContent>
+                                        <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={scheduleDate} onSelect={setScheduleDate} initialFocus /></PopoverContent>
                                     </Popover>
-                                    <Select value={scheduleHour} onValueChange={setScheduleHour}>
-                                        <SelectTrigger><SelectValue placeholder="Hour" /></SelectTrigger>
-                                        <SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-                                    </Select>
-                                    <Select value={scheduleMinute} onValueChange={setScheduleMinute}>
-                                        <SelectTrigger><SelectValue placeholder="Min" /></SelectTrigger>
-                                        <SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
-                                    </Select>
+                                    <Select value={scheduleHour} onValueChange={setScheduleHour}><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+                                    <Select value={scheduleMinute} onValueChange={setScheduleMinute}><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <Separator />
-                        <div className="flex items-center justify-between">
-                             <div className="flex items-center gap-4 pt-2">
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox id="is-billable" checked={isBillable} onCheckedChange={(c) => setIsBillable(!!c)} />
-                                    <Label htmlFor="is-billable" className="font-medium">Billable</Label>
+                                <div className="space-y-2">
+                                    <Label className="font-semibold">Billing Status</Label>
+                                    <RadioGroup value={isBillable ? 'billable' : 'non-billable'} onValueChange={(value) => setIsBillable(value === 'billable')} className="flex items-center gap-4">
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="non-billable" id="r-nonbillable" /><Label htmlFor="r-nonbillable">Non-Billable</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="billable" id="r-billable" /><Label htmlFor="r-billable">Billable</Label></div>
+                                    </RadioGroup>
                                 </div>
                                 {isBillable && (
                                     <div className="flex items-center gap-2 animate-in fade-in-50 duration-300">
@@ -421,43 +462,51 @@ export function TimeManagerView() {
                                 )}
                             </div>
                         </div>
-                         {eventToEdit && (
-                            <Card className="bg-muted/50">
-                                <CardHeader className="p-4">
-                                    <CardTitle className="text-base">Time Log</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-4 pt-0 space-y-4">
-                                    <div className="flex items-center justify-between p-4 border rounded-lg bg-background">
+                        <Card className="bg-muted/50">
+                            <CardHeader className="p-4">
+                                <CardTitle className="text-base">Time Log</CardTitle>
+                                <CardDescription>Start a timer to log time for this event and edit logged sessions as needed.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-4 pt-0 space-y-4">
+                                <div className="space-y-4 p-4 border rounded-lg bg-background">
+                                    <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-4">
-                                                <Button onClick={handleStartTimer} disabled={timerStatus === 'RUNNING'}><Play className="mr-2 h-4 w-4"/> Start</Button>
-                                                <Button onClick={handleStopTimer} disabled={timerStatus !== 'RUNNING'} variant="outline"><Pause className="mr-2 h-4 w-4"/> Stop</Button>
-                                                <Button onClick={handleLogSession} variant="secondary"><Save className="mr-2 h-4 w-4"/> Log Session</Button>
-                                            </div>
-                                            <div>
-                                                <Label className="text-xs">Current Session</Label>
-                                                <div className="font-mono text-2xl font-bold">{formatTime(currentSessionSeconds)}</div>
-                                            </div>
+                                             <Button onClick={handleStartTimer} disabled={timerStatus === 'RUNNING'} className="bg-green-600 hover:bg-green-700"><Play className="mr-2 h-4 w-4"/> Start</Button>
+                                             <Button onClick={handleStopTimer} disabled={timerStatus !== 'RUNNING'} variant="destructive" className="bg-orange-500 hover:bg-orange-600"><Pause className="mr-2 h-4 w-4"/> Stop</Button>
+                                             <Button onClick={handleResetTimer} variant="outline"><RefreshCw className="mr-2 h-4 w-4"/> Reset</Button>
                                         </div>
                                         <div className="text-right">
+                                            <Label className="text-xs">Current Session</Label>
+                                            <div className="font-mono text-2xl font-bold">{formatTime(currentSessionSeconds)}</div>
+                                        </div>
+                                         <div className="text-right">
                                             <Label className="text-xs">Total Logged Time</Label>
                                             <p className="font-mono text-lg font-bold text-primary">{formatTime(totalTime)}</p>
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label>Logged Sessions</Label>
-                                        <ScrollArea className="h-24 w-full rounded-md border bg-background">
-                                           <ScrollBar forceMount />
-                                           <div className="p-2">{sessions.length > 0 ? (sessions.map((session, index) => (<div key={session.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50"><p className="font-medium text-sm">Session {index + 1}</p><div className="flex items-center gap-4"><span className="font-mono text-sm">{formatTime(session.durationSeconds)}</span><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSessions(prev => prev.filter(s => s.id !== session.id))}><Trash2 className="h-4 w-4 text-destructive"/></Button></div></div>))) : (<div className="text-center text-sm text-muted-foreground p-4">No sessions logged yet.</div>)}</div>
-                                        </ScrollArea>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                         )}
+                                    {(timerStatus === 'RUNNING' || timerStatus === 'PAUSED') && (
+                                        <div className="space-y-2 animate-in fade-in-50 duration-300">
+                                            <Label htmlFor="session-notes">Session Notes</Label>
+                                            <Textarea id="session-notes" placeholder="What are you working on right now?" value={currentSessionNotes} onChange={(e) => setCurrentSessionNotes(e.target.value)} />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Logged Sessions</Label>
+                                    <ScrollArea className="h-24 w-full rounded-md border bg-background">
+                                       <ScrollBar forceMount />
+                                       <div className="p-2">{sessions.length > 0 ? (sessions.map((session, index) => (<div key={session.id} className="p-2 rounded-md hover:bg-muted/50 group"><div className="flex items-center justify-between"><p className="font-medium text-sm">Session {index + 1}</p><div className="flex items-center gap-4"><span className="font-mono text-sm">{formatTime(session.durationSeconds)}</span><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => handleOpenEditSession(session)}><Edit className="mr-2 h-4 w-4"/> Edit</DropdownMenuItem><DropdownMenuItem className="text-destructive" onSelect={() => setSessions(prev => prev.filter(s => s.id !== session.id))}><Trash2 className="mr-2 h-4 w-4"/> Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></div>{session.notes && <p className="text-xs text-muted-foreground mt-1 pl-2 whitespace-pre-wrap">{session.notes}</p>}</div>))) : (<div className="text-center text-sm text-muted-foreground p-4">No sessions logged yet.</div>)}</div>
+                                    </ScrollArea>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </CardContent>
-                    <CardFooter className="flex items-center justify-end">
-                        <Button size="lg" onClick={handleSaveAndClose} variant="default">
-                            <Save className="mr-2 h-4 w-4" /> Save to Data Base & Close
+                    <CardFooter className="flex items-center justify-end gap-2">
+                         <Button size="lg" onClick={() => router.push('/calendar')} variant="ghost">
+                            Close
+                        </Button>
+                        <Button size="lg" onClick={handleSave} variant="default">
+                            <Save className="mr-2 h-4 w-4" /> Save
                         </Button>
                     </CardFooter>
                 </Card>
@@ -479,6 +528,41 @@ export function TimeManagerView() {
                     contacts={contacts}
                 />
             )}
+             <Dialog open={isEditSessionDialogOpen} onOpenChange={setIsEditSessionDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Time Session</DialogTitle>
+                        <DialogDescription>Adjust the duration and add notes for this session.</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-4">
+                        <div className="space-y-2">
+                            <Label>Duration</Label>
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1 space-y-1">
+                                    <Label htmlFor="edit-hours" className="text-xs">Hours</Label>
+                                    <Input id="edit-hours" type="number" value={editSessionHours} onChange={(e) => setEditSessionHours(e.target.value === '' ? '' : Number(e.target.value))} />
+                                </div>
+                                <div className="flex-1 space-y-1">
+                                    <Label htmlFor="edit-minutes" className="text-xs">Minutes</Label>
+                                    <Input id="edit-minutes" type="number" value={editSessionMinutes} onChange={(e) => setEditSessionMinutes(e.target.value === '' ? '' : Number(e.target.value))} />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-notes">Notes</Label>
+                            <Textarea id="edit-notes" value={editSessionNotes} onChange={(e) => setEditSessionNotes(e.target.value)} placeholder="Add a description of the work done during this session..." className="border-2 border-black" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsEditSessionDialogOpen(false)}>Cancel</Button>
+                        <Button onClick={handleSaveSession}>Save Changes</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }
+
+    
+
+    

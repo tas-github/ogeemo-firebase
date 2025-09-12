@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect } from 'react';
@@ -41,14 +40,19 @@ const addActionSchema = z.object({
   label: z.string().min(1, { message: "Label is required." }),
   linkType: z.enum(['page', 'url', 'none']).default('page'),
   targetPage: z.string().optional(),
-  targetUrl: z.string().optional(),
+  targetUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
 }).refine(data => {
     if (data.linkType === 'page') return !!data.targetPage;
-    if (data.linkType === 'url') return !!data.targetUrl;
-    return true; // 'none' is always valid
+    return true;
 }, {
-    message: "A target is required for this link type.",
+    message: "Please select a page from the dropdown.",
     path: ['targetPage'],
+}).refine(data => {
+    if (data.linkType === 'url') return !!data.targetUrl;
+    return true;
+}, {
+    message: "Please enter a URL.",
+    path: ['targetUrl'],
 });
 
 
@@ -95,7 +99,7 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
             label: chipToEdit.label,
             linkType,
             targetPage,
-            targetUrl,
+            targetUrl: targetUrl || "",
         });
     } else {
         form.reset({
@@ -249,7 +253,7 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
                         <FormItem>
                         <FormLabel>Target Page or URL</FormLabel>
                         <FormControl>
-                            <Input placeholder="/accounting/accounts-receivable or https://example.com" {...field} />
+                            <Input placeholder="https://example.com" {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
