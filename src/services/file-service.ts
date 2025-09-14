@@ -208,9 +208,6 @@ export async function addFileFromDataUrl(options: { dataUrl: string; fileName: s
     
     const storage = await getAppStorage();
     
-    // **THE FIX IS HERE**: The logic to find or create the "Site Images" folder
-    // was missing from this specific function. Adding it ensures the folder exists
-    // before the upload is attempted, preventing the save dialog from hanging.
     let finalFolderId = folderId;
     if (folderId === SITE_IMAGES_FOLDER_ID) {
         const siteImagesFolder = await findOrCreateFileFolder(userId, SITE_IMAGES_FOLDER_NAME, null, SITE_IMAGES_FOLDER_ID);
@@ -248,13 +245,11 @@ export async function deleteFiles(fileIds: string[]): Promise<void> {
         if (fileDoc.exists()) {
             const fileData = fileDoc.data() as Omit<FileItem, 'id'>;
             
-            // Delete from Storage if a path exists
             if (fileData.storagePath) {
                 const fileRef = storageRef(storage, fileData.storagePath);
                 try {
                     await deleteObject(fileRef);
                 } catch (error: any) {
-                    // If the object doesn't exist, we can ignore the error and proceed with DB deletion.
                     if (error.code !== 'storage/object-not-found') {
                         console.error(`Failed to delete file from storage at path ${fileData.storagePath}:`, error);
                         throw new Error(`Failed to delete file from storage: ${error.message}`);
@@ -262,7 +257,6 @@ export async function deleteFiles(fileIds: string[]): Promise<void> {
                 }
             }
             
-            // Delete from Firestore
             batch.delete(fileDoc.ref);
         }
     }
@@ -271,18 +265,14 @@ export async function deleteFiles(fileIds: string[]): Promise<void> {
 }
 
 
-// A special function to save text content (like an email) as a file in a contact's subfolder
 export async function saveEmailForContact(userId: string, contactName: string, email: { subject: string; body: string }): Promise<void> {
     const db = await getDb();
     const storage = await getAppStorage();
 
-    // 1. Find or create the main "Contacts" folder
     const contactsRootFolder = await findOrCreateFileFolder(userId, "Contacts");
     
-    // 2. Find or create the subfolder for this specific contact
     const contactFolder = await findOrCreateFileFolder(userId, contactName, contactsRootFolder.id);
 
-    // 3. Create the file content
     const timestamp = new Date().toISOString();
     const fileName = `${email.subject.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.html`;
     const fileContent = `
@@ -301,12 +291,10 @@ export async function saveEmailForContact(userId: string, contactName: string, e
     `;
     const fileBlob = new Blob([fileContent], { type: 'text/html' });
 
-    // 4. Upload to Firebase Storage
     const storagePath = `${userId}/${contactFolder.id}/${fileName}`;
     const fileRef = storageRef(storage, storagePath);
     await uploadBytes(fileRef, fileBlob);
 
-    // 5. Create Firestore record
     const newFileRecord: Omit<FileItem, 'id'> = {
         name: fileName,
         type: 'text/html',
@@ -320,26 +308,53 @@ export async function saveEmailForContact(userId: string, contactName: string, e
     await addFileRecord(newFileRecord);
 }
 
-// Function to save a chat archive
-export async function saveChatArchive(userId: string, fileName: string, content: string): Promise<void> {
+export async function archiveIdeaAsFile(userId: string, title: string, content: string): Promise<void> {
     const db = await getDb();
     const storage = await getAppStorage();
 
-    const chatArchiveFolder = await findOrCreateFileFolder(userId, "Chat Archives");
+    const archiveFolder = await findOrCreateFileFolder(userId, "Archived Ideas");
+    
+    const finalFileName = `${title.replace(/[^a-zA-Z0-9]/g, '_')}.md`;
+    const fileContent = `# ${title}\n\n${content.replace(/<[^>]+>/g, '\n')}`; // Basic HTML to Markdown
+    const fileBlob = new Blob([fileContent], { type: 'text/markdown' });
 
-    const finalFileName = fileName.endsWith('.txt') ? fileName : `${fileName}.txt`;
-    const fileBlob = new Blob([content], { type: 'text/plain' });
-
-    const storagePath = `${userId}/${chatArchiveFolder.id}/${Date.now()}-${finalFileName}`;
+    const storagePath = `${userId}/${archiveFolder.id}/${Date.now()}-${finalFileName}`;
     const fileRef = storageRef(storage, storagePath);
     await uploadBytes(fileRef, fileBlob);
     
     const newFileRecord: Omit<FileItem, 'id'> = {
         name: finalFileName,
-        type: 'text/plain',
+        type: 'text/markdown',
         size: fileBlob.size,
         modifiedAt: new Date(),
-        folderId: chatArchiveFolder.id,
+        folderId: archiveFolder.id,
+        userId,
+        storagePath,
+    };
+
+    await addFileRecord(newFileRecord);
+}
+
+export async function saveIdeaAsFile(userId: string, title: string, content: string): Promise<void> {
+    const db = await getDb();
+    const storage = await getAppStorage();
+
+    const savedIdeasFolder = await findOrCreateFileFolder(userId, "Saved Ideas");
+    
+    const finalFileName = `${title.replace(/[^a-zA-Z0-9]/g, '_')}.md`;
+    const fileContent = `# ${title}\n\n${content.replace(/<[^>]+>/g, '\n')}`;
+    const fileBlob = new Blob([fileContent], { type: 'text/markdown' });
+
+    const storagePath = `${userId}/${savedIdeasFolder.id}/${Date.now()}-${finalFileName}`;
+    const fileRef = storageRef(storage, storagePath);
+    await uploadBytes(fileRef, fileBlob);
+
+    const newFileRecord: Omit<FileItem, 'id'> = {
+        name: finalFileName,
+        type: 'text/markdown',
+        size: fileBlob.size,
+        modifiedAt: new Date(),
+        folderId: savedIdeasFolder.id,
         userId,
         storagePath,
     };

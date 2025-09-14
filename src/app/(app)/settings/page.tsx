@@ -24,7 +24,6 @@ function PreferencesCard() {
             </CardHeader>
             <CardContent className="space-y-4">
                 <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-8 w-full" />
             </CardContent>
         </Card>
     )
@@ -48,19 +47,6 @@ function PreferencesCard() {
                 id="dictation-switch"
                 checked={preferences?.showDictationButton}
                 onCheckedChange={(checked) => handleTogglePreference('showDictationButton', checked)}
-            />
-        </div>
-         <div className="flex items-center justify-between space-x-2 rounded-lg border p-4">
-            <div className="space-y-0.5">
-                <Label htmlFor="dashboard-frame-switch" className="text-base">Show Dashboard Info Panel</Label>
-                <p className="text-sm text-muted-foreground">
-                    Display the "About the Action Manager" panel on your main dashboard.
-                </p>
-            </div>
-            <Switch
-                id="dashboard-frame-switch"
-                checked={preferences?.showDashboardFrame}
-                onCheckedChange={(checked) => handleTogglePreference('showDashboardFrame', checked)}
             />
         </div>
       </CardContent>

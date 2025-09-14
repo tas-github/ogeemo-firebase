@@ -5,7 +5,7 @@ import React, { useRef, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { Card, CardContent } from '@/components/ui/card';
 import { MoreVertical, Edit, Trash2 } from 'lucide-react';
-import { type Event as TaskEvent } from '@/types/calendar';
+import { type Event as TaskEvent } from '@/types/calendar-types';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -71,7 +71,7 @@ export function TaskCard({ task, onMoveCard, onTaskUpdate, onTaskDelete }: TaskC
             </div>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 flex-shrink-0">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
                         <MoreVertical className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>

@@ -16,10 +16,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bold, Italic, Underline, List, ListOrdered, Quote, Strikethrough, Link as LinkIcon, Mic, Square } from "lucide-react";
+import { Bold, Italic, Underline, List, ListOrdered, Quote, Strikethrough, Link as LinkIcon, Mic, Square, Archive, LoaderCircle } from "lucide-react";
 import { useSpeechToText } from "@/hooks/use-speech-to-text";
 import { cn } from "@/lib/utils";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
+import { archiveIdeaAsFile } from "@/services/file-service";
+import { useAuth } from "@/context/auth-context";
+import { useToast } from "@/hooks/use-toast";
 
 interface Idea {
   id: number;
@@ -32,15 +35,19 @@ interface EditIdeaDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onSave: (updatedIdea: Idea) => void;
+  onDelete: (id: number) => void;
 }
 
-export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: EditIdeaDialogProps) {
+export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave, onDelete }: EditIdeaDialogProps) {
   const [title, setTitle] = useState(idea.title);
   const [content, setContent] = useState(idea.content);
   const editorRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const [contentBeforeSpeech, setContentBeforeSpeech] = useState('');
+  const [isArchiving, setIsArchiving] = useState(false);
   const { preferences } = useUserPreferences();
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
     onTranscript: (transcript) => {
@@ -99,16 +106,6 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
     }
   };
 
-  const handleCreateProject = () => {
-    try {
-      sessionStorage.setItem('ogeemo-idea-to-project', JSON.stringify({ title, description: content }));
-      onOpenChange(false);
-      router.push('/projects');
-    } catch (error) {
-      console.error("Failed to save idea to session storage", error);
-    }
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
@@ -157,14 +154,9 @@ export default function EditIdeaDialog({ idea, isOpen, onOpenChange, onSave }: E
           </ScrollArea>
         </div>
 
-        <DialogFooter className="p-4 border-t flex-col sm:flex-row sm:justify-between items-center gap-2">
-          <Button onClick={handleCreateProject} className="bg-orange-500 hover:bg-orange-600 text-white">
-            Make it a project
-          </Button>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button onClick={handleSaveClick}>Save Idea</Button>
-          </div>
+        <DialogFooter className="p-4 border-t flex-row sm:justify-end items-center gap-2">
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={handleSaveClick}>Save Idea</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
