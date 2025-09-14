@@ -19,7 +19,7 @@ import {
 import { initializeFirebase } from '@/lib/firebase';
 import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData, TimeSession } from '@/types/calendar-types';
 import { addMinutes, addHours, startOfHour, set, addDays } from 'date-fns';
-import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info } from 'lucide-react';
+import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info, BrainCircuit } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const PROJECTS_COLLECTION = 'projects';
@@ -385,7 +385,7 @@ export async function addProjectTemplate(templateData: Omit<ProjectTemplate, 'id
 
 // --- Action Chip Functions ---
 
-const iconMap: { [key: string]: LucideIcon } = { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info };
+const iconMap: { [key: string]: LucideIcon } = { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info, BrainCircuit };
 
 const defaultChips: Omit<ActionChipData, 'id' | 'userId'>[] = [
   { label: 'OgeeMail', icon: Mail, href: '/ogeemail' },
@@ -529,6 +529,7 @@ export async function updateActionChip(userId: string, updatedChip: ActionChipDa
 // --- Data for Dialogs ---
 export type ManagerOption = { label: string; href: string; icon: LucideIcon };
 export const managerOptions: ManagerOption[] = [
+    { label: 'Master Mind', icon: BrainCircuit, href: '/master-mind' },
     { label: 'OgeeMail', icon: Mail, href: '/ogeemail' },
     { label: 'Compose Email', icon: Mail, href: '/ogeemail/compose' },
     { label: 'Communications', icon: MessageSquare, href: '/communications' },

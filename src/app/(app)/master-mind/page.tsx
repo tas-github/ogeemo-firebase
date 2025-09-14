@@ -17,6 +17,7 @@ import {
   Clock,
   Calendar,
   BrainCircuit,
+  BookOpen,
 } from 'lucide-react';
 
 interface FeatureCardProps {
@@ -56,6 +57,7 @@ export default function MasterMindPage() {
   const features = [
     { icon: Clock, title: "Event Time Manager", description: "Your command center for all time-based activities. Track live work with a real-time timer, log past hours, or schedule future appointments and events.", href: "/time", cta: "Manage Time & Events" },
     { icon: Calendar, title: "Calendar View", description: "See all your scheduled tasks and events in a visual, drag-and-drop calendar.", href: "/calendar", cta: "Open Calendar" },
+    { icon: BookOpen, title: "The Ogeemo Method (TOM) Guide", description: "Learn how to implement our productivity method using your Ogeemo workspace for stress-free productivity.", href: "/master-mind/gtd-instructions", cta: "Read the Guide" },
   ];
 
   return (
@@ -72,7 +74,7 @@ export default function MasterMindPage() {
         </p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 max-w-4xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
         {features.map((feature) => (
           <FeatureCard key={feature.title} {...feature} />
         ))}

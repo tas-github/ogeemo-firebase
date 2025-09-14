@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, LoaderCircle, ListTodo, Route } from 'lucide-react';
+import { Plus, LoaderCircle, ListTodo, Route, Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Progress } from "@/components/ui/progress";
@@ -25,10 +25,12 @@ import {
 import { useRouter } from 'next/navigation';
 
 const emptyInitialData = {};
+export const INBOX_PROJECT_ID = 'inbox';
 
 const ProjectCard = ({ project, tasks, contacts, onEdit, onDelete }: { project: Project, tasks: TaskEvent[], contacts: Contact[], onEdit: (p: Project) => void, onDelete: (p: Project) => void }) => {
     const router = useRouter();
-    const projectTasks = tasks.filter(t => t.projectId === project.id);
+    const isInbox = project.id === INBOX_PROJECT_ID;
+    const projectTasks = tasks.filter(t => t.projectId === project.id || (isInbox && !t.projectId));
     const completedTasks = projectTasks.filter(t => t.status === 'done').length;
     const totalTasks = projectTasks.length;
     const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
@@ -37,8 +39,11 @@ const ProjectCard = ({ project, tasks, contacts, onEdit, onDelete }: { project: 
     return (
         <Card className="flex flex-col">
             <CardHeader>
-                <CardTitle>{project.name}</CardTitle>
-                <CardDescription>{client?.name || 'No client assigned'}</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                    {isInbox ? <Inbox className="h-5 w-5" /> : <ListTodo className="h-5 w-5" />}
+                    {project.name}
+                </CardTitle>
+                <CardDescription>{isInbox ? 'Your central place to capture new tasks.' : (client?.name || 'No client assigned')}</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 space-y-4">
                 <div>
@@ -51,8 +56,12 @@ const ProjectCard = ({ project, tasks, contacts, onEdit, onDelete }: { project: 
             </CardContent>
             <CardFooter className="grid grid-cols-2 gap-2">
                 <Button variant="outline" onClick={() => router.push(`/projects/${project.id}/tasks`)}><ListTodo className="mr-2 h-4 w-4" /> Task Board</Button>
-                <Button variant="outline" onClick={() => router.push(`/projects/${project.id}/planning`)}><Route className="mr-2 h-4 w-4" /> Planning</Button>
-                <Button variant="secondary" className="col-span-2" onClick={() => onEdit(project)}>Edit Details</Button>
+                {!isInbox ? (
+                  <Button variant="outline" onClick={() => router.push(`/projects/${project.id}/planning`)}><Route className="mr-2 h-4 w-4" /> Planning</Button>
+                ) : <div />}
+                {!isInbox && (
+                    <Button variant="secondary" className="col-span-2" onClick={() => onEdit(project)}>Edit Details</Button>
+                )}
             </CardFooter>
         </Card>
     );
@@ -72,6 +81,21 @@ export function TasksView() {
     const { user } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
+
+    const inboxProject: Project = useMemo(() => ({
+        id: INBOX_PROJECT_ID,
+        name: "Inbox",
+        description: "A place to capture all your incoming tasks and ideas before organizing them.",
+        userId: user?.uid || '',
+        createdAt: new Date(0), // Puts it at the top when sorting
+    }), [user]);
+
+    const allProjectsWithInbox = useMemo(() => {
+        // Ensure Inbox is always at the start and not duplicated if fetched
+        const userProjects = projects.filter(p => p.id !== INBOX_PROJECT_ID);
+        return [inboxProject, ...userProjects];
+    }, [projects, inboxProject]);
+
 
     useEffect(() => {
         async function loadInitialData() {
@@ -170,9 +194,9 @@ export function TasksView() {
                         <div className="flex items-center justify-center h-full pt-16">
                             <LoaderCircle className="h-8 w-8 animate-spin" />
                         </div>
-                    ) : projects.length > 0 ? (
+                    ) : allProjectsWithInbox.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {projects.map((p) => (
+                            {allProjectsWithInbox.map((p) => (
                                 <ProjectCard
                                     key={p.id}
                                     project={p}

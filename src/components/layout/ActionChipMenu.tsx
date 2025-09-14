@@ -41,9 +41,9 @@ export function ActionChipMenu({ chips, isLoading }: ActionChipMenuProps) {
     return (
         <div className="space-y-1">
             {chips.map(chip => {
-                const Icon = chip.icon || Wand2;
-                const href = typeof chip.href === 'string' ? chip.href : chip.href.pathname;
-                const isActive = pathname === href;
+                const Icon = chip.icon || Wand2; // Use Wand2 as a fallback icon
+                const hrefValue = typeof chip.href === 'string' ? chip.href : chip.href?.pathname || '#';
+                const isActive = pathname === hrefValue;
 
                 return (
                     <Button
@@ -56,7 +56,7 @@ export function ActionChipMenu({ chips, isLoading }: ActionChipMenuProps) {
                             isActive ? "border-sidebar-primary" : "border-black"
                         )}
                     >
-                        <Link href={href}>
+                        <Link href={chip.href}>
                             <Icon className="h-4 w-4" />
                             <span>{chip.label}</span>
                         </Link>

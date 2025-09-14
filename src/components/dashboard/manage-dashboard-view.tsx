@@ -165,14 +165,10 @@ export function ManageDashboardView() {
     });
   }, [handleStateUpdate]);
 
-  const handleActionAdded = (newChip: ActionChipData) => {
-    setChipsState(prevState => {
-      const newAvailable = [...prevState.availableChips, newChip];
-      if(user) {
-        updateAvailableActionChips(user.uid, newAvailable);
-      }
-      return { ...prevState, availableChips: newAvailable };
-    });
+  const handleActionAdded = () => {
+    // After a chip is added via the dialog, reload all chips from the DB
+    // to ensure the UI is in sync with the source of truth.
+    loadChips();
   };
   
   const handleActionEdited = (editedChip: ActionChipData) => {

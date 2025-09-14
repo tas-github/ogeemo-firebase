@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Info, X, Menu, Layers, LayoutDashboard, Save } from "lucide-react";
+import { ArrowRight, Info, X, Menu, Layers, LayoutDashboard, Save, PlayCircle } from "lucide-react";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -190,13 +190,12 @@ export default function ActionManagerPage() {
               <p className="text-muted-foreground max-w-2xl mx-auto">
                   Your central command for all Ogeemo actions.
               </p>
-              <div className="mt-4">
-                <LayoutDashboard className="h-10 w-10 text-primary mx-auto" />
-              </div>
             </div>
             <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-2">
               <Button asChild className="bg-slate-900 text-white hover:bg-slate-900/90 h-6 px-2 py-1 text-xs">
-                  <Link href="/action-manager/manage">Manage Dashboard</Link>
+                <Link href="/calendar">
+                    <PlayCircle className="mr-2 h-4 w-4" /> Start
+                </Link>
               </Button>
               <Button onClick={handleToggleInfoPanel} className="bg-slate-900 text-white hover:bg-slate-900/90 h-6 px-2 py-1 text-xs">
                 <Info className="mr-2 h-4 w-4" /> Info

@@ -1,22 +1,8 @@
 
-import dynamic from 'next/dynamic';
-import { LoaderCircle } from 'lucide-react';
+import { redirect } from 'next/navigation';
 
-const TasksView = dynamic(
-  () => import('@/components/tasks/tasks-view').then((mod) => mod.TasksView),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-full w-full items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4">
-          <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading Project Manager...</p>
-        </div>
-      </div>
-    ),
-  }
-);
-
-export default function ProjectsPage() {
-  return <TasksView />;
+export default function ProjectsRedirectPage() {
+  // This page is now obsolete. The primary view for projects
+  // is now the unified Task List view.
+  redirect('/tasks');
 }
