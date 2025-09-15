@@ -2,14 +2,14 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, LoaderCircle, ListTodo, Route, Inbox } from 'lucide-react';
+import { Plus, LoaderCircle, ListTodo, Route, Inbox, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getProjects, deleteProject, getTasksForUser, addProject, updateProject } from '@/services/project-service';
-import { type Project, type Event as TaskEvent } from '@/types/calendar';
+import { type Project, type Event as TaskEvent, type ProjectUrgency, type ProjectImportance } from '@/types/calendar';
 import { getContacts, type Contact } from '@/services/contact-service';
 import { NewTaskDialog } from './NewTaskDialog';
 import {
@@ -23,14 +23,35 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useRouter } from 'next/navigation';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const emptyInitialData = {};
-export const INBOX_PROJECT_ID = 'inbox';
+export const ACTION_ITEMS_PROJECT_ID = 'inbox'; // Using 'inbox' to match legacy task data if any exists
 
-const ProjectCard = ({ project, tasks, contacts, onEdit, onDelete }: { project: Project, tasks: TaskEvent[], contacts: Contact[], onEdit: (p: Project) => void, onDelete: (p: Project) => void }) => {
+const getPrioritySortValue = (p: Project) => {
+    let score = 0;
+    // Time Urgency: Urgent > Important > Optional
+    if (p.urgency === 'urgent') score += 1000;
+    if (p.urgency === 'important') score += 500;
+    if (p.urgency === 'optional') score += 100;
+    
+    // Time Urgency Importance: A > B > C
+    if (p.urgencyImportance === 'A') score += 10;
+    if (p.urgencyImportance === 'B') score += 5;
+    if (p.urgencyImportance === 'C') score += 1;
+    
+    // Task Importance: A > B > C
+    if (p.importance === 'A') score += 0.1;
+    if (p.importance === 'B') score += 0.05;
+    if (p.importance === 'C') score += 0.01;
+
+    return score;
+};
+
+const ProjectCard = ({ project, tasks, contacts, onEdit, onDelete, onPriorityChange }: { project: Project, tasks: TaskEvent[], contacts: Contact[], onEdit: (p: Project) => void, onDelete: (p: Project) => void, onPriorityChange: (projectId: string, priority: 'urgency' | 'importance' | 'urgencyImportance', value: ProjectUrgency | ProjectImportance) => void }) => {
     const router = useRouter();
-    const isInbox = project.id === INBOX_PROJECT_ID;
-    const projectTasks = tasks.filter(t => t.projectId === project.id || (isInbox && !t.projectId));
+    const isActionItems = project.id === ACTION_ITEMS_PROJECT_ID;
+    const projectTasks = tasks.filter(t => t.projectId === project.id || (isActionItems && !t.projectId));
     const completedTasks = projectTasks.filter(t => t.status === 'done').length;
     const totalTasks = projectTasks.length;
     const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
@@ -40,10 +61,10 @@ const ProjectCard = ({ project, tasks, contacts, onEdit, onDelete }: { project: 
         <Card className="flex flex-col">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                    {isInbox ? <Inbox className="h-5 w-5" /> : <ListTodo className="h-5 w-5" />}
+                    {isActionItems ? <Inbox className="h-5 w-5" /> : <ListTodo className="h-5 w-5" />}
                     {project.name}
                 </CardTitle>
-                <CardDescription>{isInbox ? 'Your central place to capture new tasks.' : (client?.name || 'No client assigned')}</CardDescription>
+                <CardDescription>{isActionItems ? 'Your central place to capture new tasks.' : (client?.name || 'No client assigned')}</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 space-y-4">
                 <div>
@@ -54,13 +75,56 @@ const ProjectCard = ({ project, tasks, contacts, onEdit, onDelete }: { project: 
                     <Progress value={progress} />
                 </div>
             </CardContent>
-            <CardFooter className="grid grid-cols-2 gap-2">
-                <Button variant="outline" onClick={() => router.push(`/projects/${project.id}/tasks`)}><ListTodo className="mr-2 h-4 w-4" /> Task Board</Button>
-                {!isInbox ? (
-                  <Button variant="outline" onClick={() => router.push(`/projects/${project.id}/planning`)}><Route className="mr-2 h-4 w-4" /> Planning</Button>
-                ) : <div />}
-                {!isInbox && (
-                    <Button variant="secondary" className="col-span-2" onClick={() => onEdit(project)}>Edit Details</Button>
+            <CardFooter className="flex flex-col gap-2 items-stretch">
+                <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" onClick={() => router.push(`/projects/${project.id}/tasks`)}><ListTodo className="mr-2 h-4 w-4" /> Task Board</Button>
+                    {!isActionItems ? (
+                      <Button variant="outline" onClick={() => router.push(`/projects/${project.id}/planning`)}><Route className="mr-2 h-4 w-4" /> Planning</Button>
+                    ) : <div />}
+                </div>
+                {!isActionItems && (
+                  <div className="grid grid-cols-3 gap-2 items-center">
+                    <div className="col-span-2">
+                        <Select value={project.urgency || 'important'} onValueChange={(v) => onPriorityChange(project.id, 'urgency', v as ProjectUrgency)}>
+                            <SelectTrigger><SelectValue/></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="urgent">Urgent</SelectItem>
+                                <SelectItem value="important">Important</SelectItem>
+                                <SelectItem value="optional">Optional</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div>
+                         <Select value={project.urgencyImportance || 'B'} onValueChange={(v) => onPriorityChange(project.id, 'urgencyImportance', v as ProjectImportance)}>
+                            <SelectTrigger><SelectValue/></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="A">A</SelectItem>
+                                <SelectItem value="B">B</SelectItem>
+                                <SelectItem value="C">C</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                  </div>
+                )}
+                {!isActionItems && (
+                     <div className="grid grid-cols-3 gap-2 items-center">
+                        <div className="col-span-2">
+                            <p className="text-sm font-medium text-center pr-2">Task Importance</p>
+                        </div>
+                        <div>
+                            <Select value={project.importance || 'B'} onValueChange={(v) => onPriorityChange(project.id, 'importance', v as ProjectImportance)}>
+                                <SelectTrigger><SelectValue/></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="A">A - Critical</SelectItem>
+                                    <SelectItem value="B">B - Important</SelectItem>
+                                    <SelectItem value="C">C - Optional</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                     </div>
+                )}
+                 {!isActionItems && (
+                    <Button variant="secondary" className="w-full" onClick={() => onEdit(project)}>Edit Details</Button>
                 )}
             </CardFooter>
         </Card>
@@ -68,7 +132,7 @@ const ProjectCard = ({ project, tasks, contacts, onEdit, onDelete }: { project: 
 };
 
 
-export function TasksView() {
+export function ProjectsView() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<TaskEvent[]>([]);
     const [contacts, setContacts] = useState<Contact[]>([]);
@@ -83,18 +147,12 @@ export function TasksView() {
     const router = useRouter();
 
     const inboxProject: Project = useMemo(() => ({
-        id: INBOX_PROJECT_ID,
-        name: "Inbox",
+        id: ACTION_ITEMS_PROJECT_ID,
+        name: "Action Items",
         description: "A place to capture all your incoming tasks and ideas before organizing them.",
         userId: user?.uid || '',
         createdAt: new Date(0), // Puts it at the top when sorting
     }), [user]);
-
-    const allProjectsWithInbox = useMemo(() => {
-        // Ensure Inbox is always at the start and not duplicated if fetched
-        const userProjects = projects.filter(p => p.id !== INBOX_PROJECT_ID);
-        return [inboxProject, ...userProjects];
-    }, [projects, inboxProject]);
 
 
     useEffect(() => {
@@ -117,9 +175,8 @@ export function TasksView() {
                 const ideaToProjectRaw = sessionStorage.getItem('ogeemo-idea-to-project');
                 if (ideaToProjectRaw) {
                     const ideaData = JSON.parse(ideaToProjectRaw);
-                    setInitialDialogData({ title: ideaData.title, description: ideaData.description });
+                    setInitialDialogData({ name: ideaData.title, description: ideaData.description });
                     setIsNewItemDialogOpen(true);
-                    // No need to remove item here, dialog useEffect will handle it
                 }
 
             } catch (error: any) {
@@ -136,7 +193,7 @@ export function TasksView() {
         try {
             const newProject = await addProject({ ...projectData, userId: user.uid, createdAt: new Date() });
             setProjects(prev => [newProject, ...prev]);
-            toast({ title: "Project Created", description: `"${newProject.name}" has been successfully created.` });
+            toast({ title: "Project Created", description: `"${newProject.name}" has been successfully created and placed in 'Planning'.` });
         } catch (error: any) {
             toast({ variant: "destructive", title: "Failed to create project", description: error.message });
         }
@@ -153,6 +210,24 @@ export function TasksView() {
         }
     };
     
+    const handlePriorityChange = async (projectId: string, priority: 'urgency' | 'importance' | 'urgencyImportance', value: ProjectUrgency | ProjectImportance) => {
+        const projectToUpdate = projects.find(p => p.id === projectId);
+        if (!projectToUpdate) return;
+        
+        const updatedProject = { ...projectToUpdate, [priority]: value };
+        
+        // Optimistic UI update
+        setProjects(prev => prev.map(p => p.id === projectId ? updatedProject : p));
+        
+        try {
+            await updateProject(projectId, { [priority]: value });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not save priority change.'});
+            // Revert on failure
+            setProjects(prev => prev.map(p => p.id === projectId ? projectToUpdate : p));
+        }
+    };
+
     const handleConfirmDelete = async () => {
         if (!projectToDelete) return;
         try {
@@ -175,15 +250,18 @@ export function TasksView() {
         setIsNewItemDialogOpen(true);
     };
 
+    const planningProjects = projects.filter(p => p.status === 'planning');
+    const activeProjects = projects.filter(p => p.status !== 'planning' && p.id !== ACTION_ITEMS_PROJECT_ID).sort((a, b) => getPrioritySortValue(b) - getPrioritySortValue(a));
+
     return (
         <>
             <div className="p-4 sm:p-6 flex flex-col h-full items-center">
                 <header className="text-center mb-6">
-                    <h1 className="text-3xl font-bold font-headline text-primary">Project Manager</h1>
+                    <h1 className="text-3xl font-bold font-headline text-primary">Project Manager (The "YES" Bin)</h1>
                     <p className="text-muted-foreground">Manage your projects, view tasks, or create a new project.</p>
                 </header>
 
-                <div className="w-full max-w-7xl flex-1">
+                <div className="w-full max-w-7xl flex-1 space-y-8">
                     <div className="flex justify-end mb-4">
                         <Button onClick={() => { setProjectToEdit(null); setInitialDialogData({}); setIsNewItemDialogOpen(true); }}>
                             <Plus className="mr-2 h-4 w-4" /> New Project
@@ -194,25 +272,52 @@ export function TasksView() {
                         <div className="flex items-center justify-center h-full pt-16">
                             <LoaderCircle className="h-8 w-8 animate-spin" />
                         </div>
-                    ) : allProjectsWithInbox.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {allProjectsWithInbox.map((p) => (
+                    ) : (
+                        <>
+                            {planningProjects.length > 0 && (
+                                <div>
+                                    <h2 className="text-xl font-semibold mb-4 text-center">In Planning</h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {planningProjects.map((p) => (
+                                            <ProjectCard
+                                                key={p.id}
+                                                project={p}
+                                                tasks={tasks}
+                                                contacts={contacts}
+                                                onEdit={handleEditProject}
+                                                onDelete={setProjectToDelete}
+                                                onPriorityChange={handlePriorityChange}
+                                            />
+                                        ))}
+                                    </div>
+                                    <hr className="my-8" />
+                                </div>
+                            )}
+
+                            <h2 className="text-xl font-semibold mb-4 text-center">Active Projects & Action Items</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <ProjectCard
-                                    key={p.id}
-                                    project={p}
+                                    key={inboxProject.id}
+                                    project={inboxProject}
                                     tasks={tasks}
                                     contacts={contacts}
                                     onEdit={handleEditProject}
                                     onDelete={setProjectToDelete}
+                                    onPriorityChange={handlePriorityChange}
                                 />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg">
-                            <p className="text-sm text-muted-foreground text-center">
-                                No projects yet. Create one to get started.
-                            </p>
-                        </div>
+                                {activeProjects.map((p) => (
+                                    <ProjectCard
+                                        key={p.id}
+                                        project={p}
+                                        tasks={tasks}
+                                        contacts={contacts}
+                                        onEdit={handleEditProject}
+                                        onDelete={setProjectToDelete}
+                                        onPriorityChange={handlePriorityChange}
+                                    />
+                                ))}
+                            </div>
+                        </>
                     )}
                 </div>
             </div>

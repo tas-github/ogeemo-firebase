@@ -1,19 +1,31 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LoaderCircle, ArrowLeft, Route, Calendar, Inbox } from 'lucide-react';
+import { LoaderCircle, ArrowLeft, Route, Calendar, Inbox, Trash2, Plus } from 'lucide-react';
 import { TaskColumn } from './TaskColumn';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getProjectById, getTasksForProject, getTasksForUser, addTask, updateTask, updateTaskPositions } from '@/services/project-service';
+import { getProjectById, getTasksForProject, getTasksForUser, addTask, updateTask, updateTaskPositions, deleteTask, deleteTasks } from '@/services/project-service';
 import { type Project, type Event as TaskEvent, type TaskStatus } from '@/types/calendar';
 import { getContacts, type Contact } from '@/services/contact-service';
-import { NewTaskDialog } from './NewTaskDialog';
-import { INBOX_PROJECT_ID } from './tasks-view';
+import { NewTaskDialog } from '@/components/tasks/NewTaskDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+export const ACTION_ITEMS_PROJECT_ID = 'inbox';
+
 
 const defaultDialogValues = {};
 
@@ -22,12 +34,14 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
     const [tasks, setTasks] = useState<TaskEvent[]>([]);
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
+    const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+    const [isBulkDeleteAlertOpen, setIsBulkDeleteAlertOpen] = useState(false);
+    const lastSelectedTaskIndex = useRef<number | null>(null);
     
     const { user } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
-    const isInboxView = projectId === INBOX_PROJECT_ID;
+    const isActionItemsView = projectId === ACTION_ITEMS_PROJECT_ID;
 
     const loadData = useCallback(async () => {
         if (!user) {
@@ -39,17 +53,16 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
             let projectData: Project | null;
             let tasksData: TaskEvent[];
             
-            if (isInboxView) {
+            if (isActionItemsView) {
                 projectData = {
-                    id: INBOX_PROJECT_ID,
-                    name: "Inbox",
+                    id: ACTION_ITEMS_PROJECT_ID,
+                    name: "Action Items",
                     description: "A place for all your uncategorized tasks.",
                     userId: user.uid,
                     createdAt: new Date(),
                 };
-                // For inbox, we fetch all tasks that are NOT assigned to a project.
                 const allUserTasks = await getTasksForUser(user.uid);
-                tasksData = allUserTasks.filter(task => !task.projectId);
+                tasksData = allUserTasks.filter(task => !task.projectId || task.projectId === ACTION_ITEMS_PROJECT_ID);
             } else {
                 [projectData, tasksData] = await Promise.all([
                     getProjectById(projectId),
@@ -73,11 +86,18 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
         } finally {
             setIsLoading(false);
         }
-    }, [projectId, isInboxView, user, router, toast]);
+    }, [projectId, isActionItemsView, user, router, toast]);
 
     useEffect(() => {
         loadData();
     }, [loadData]);
+    
+    const sortedTasksForShiftClick = useMemo(() => {
+        const todo = tasks.filter(t => t.status === 'todo').sort((a,b) => a.position - b.position);
+        const inProgress = tasks.filter(t => t.status === 'inProgress').sort((a,b) => a.position - b.position);
+        const done = tasks.filter(t => t.status === 'done').sort((a,b) => a.position - b.position);
+        return [...todo, ...inProgress, ...done];
+    }, [tasks]);
 
     const tasksByStatus = useMemo(() => {
         const sortedTasks = [...tasks].sort((a, b) => a.position - b.position);
@@ -92,16 +112,74 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
         router.push(`/time?projectId=${projectId}`);
     };
 
-    const handleTaskCreated = (newTask: TaskEvent) => {
-        setTasks(prev => [...prev, newTask]);
-    };
-
     const handleTaskUpdated = (updatedTask: TaskEvent) => {
         setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
     };
 
-    const handleTaskDeleted = (taskId: string) => {
+    const handleTaskDeleted = async (taskId: string) => {
+        const originalTasks = [...tasks];
         setTasks(prev => prev.filter(t => t.id !== taskId));
+        try {
+            await deleteTask(taskId);
+            toast({ title: "Task Deleted" });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Delete Failed', description: error.message });
+            setTasks(originalTasks);
+        }
+    };
+    
+    const handleDeleteSelected = async () => {
+        if (selectedTaskIds.length === 0) return;
+        
+        const originalTasks = [...tasks];
+        setTasks(prev => prev.filter(t => !selectedTaskIds.includes(t.id)));
+
+        try {
+            await deleteTasks(selectedTaskIds);
+            toast({ title: `${selectedTaskIds.length} Task(s) Deleted` });
+            setSelectedTaskIds([]);
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Bulk Delete Failed', description: error.message });
+            setTasks(originalTasks);
+        } finally {
+            setIsBulkDeleteAlertOpen(false);
+        }
+    };
+    
+    const handleToggleSelect = (taskId: string, event?: React.MouseEvent) => {
+        const currentIndex = sortedTasksForShiftClick.findIndex(t => t.id === taskId);
+
+        if (event?.shiftKey && lastSelectedTaskIndex.current !== null) {
+            const start = Math.min(lastSelectedTaskIndex.current, currentIndex);
+            const end = Math.max(lastSelectedTaskIndex.current, currentIndex);
+            const rangeIds = sortedTasksForShiftClick.slice(start, end + 1).map(t => t.id);
+            
+            const currentTaskIsSelected = selectedTaskIds.includes(taskId);
+
+            if (currentTaskIsSelected) {
+                 setSelectedTaskIds(prev => prev.filter(id => !rangeIds.includes(id)));
+            } else {
+                 setSelectedTaskIds(prev => [...new Set([...prev, ...rangeIds])]);
+            }
+        } else {
+            setSelectedTaskIds((prev) =>
+              prev.includes(taskId)
+                ? prev.filter((id) => id !== taskId)
+                : [...prev, taskId]
+            );
+            lastSelectedTaskIndex.current = currentIndex;
+        }
+    };
+
+    const handleToggleSelectAll = (status: TaskStatus) => {
+        const columnTaskIds = tasksByStatus[status].map(t => t.id);
+        const allSelected = columnTaskIds.every(id => selectedTaskIds.includes(id));
+
+        if (allSelected) {
+            setSelectedTaskIds(prev => prev.filter(id => !columnTaskIds.includes(id)));
+        } else {
+            setSelectedTaskIds(prev => [...new Set([...prev, ...columnTaskIds])]);
+        }
     };
     
     const handleMoveTask = useCallback(async (taskId: string, newStatus: TaskStatus, newPosition: number) => {
@@ -147,16 +225,38 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
     return (
         <>
             <div className="p-4 sm:p-6 h-full flex flex-col">
-                <header className="flex items-center justify-between pb-4">
+                <header className="flex flex-col items-center text-center pb-4">
                      <div>
                         <h1 className="text-2xl font-bold font-headline text-primary flex items-center gap-2">
-                            {isInboxView && <Inbox className="h-6 w-6" />}
-                            {project.name}
+                            {isActionItemsView ? (
+                                <>
+                                    <Inbox className="h-6 w-6" />
+                                    Task Board Action Items
+                                </>
+                            ) : (
+                                project.name
+                            )}
                         </h1>
-                        <p className="text-muted-foreground">Manage your project tasks on the Kanban board.</p>
+                        <p className="text-muted-foreground">
+                            {isActionItemsView
+                                ? "Manage your task action items here."
+                                : "Manage your project tasks on the Kanban board."
+                            }
+                        </p>
                      </div>
-                     <div className="flex items-center gap-2">
-                        {!isInboxView && (
+                     <div className="flex items-center gap-2 mt-4">
+                        <Button
+                            onClick={() => setIsBulkDeleteAlertOpen(true)}
+                            disabled={selectedTaskIds.length === 0}
+                        >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Bulk Delete
+                        </Button>
+                        <Button onClick={handleAddTask} variant="outline">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Task
+                        </Button>
+                        {!isActionItemsView && (
                             <>
                                 <Button asChild variant="outline">
                                     <Link href={`/calendar?projectId=${projectId}`}>
@@ -189,6 +289,9 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                         onMoveTask={handleMoveTask}
                         onTaskUpdate={handleTaskUpdated}
                         onTaskDelete={handleTaskDeleted}
+                        selectedTaskIds={selectedTaskIds}
+                        onToggleSelect={handleToggleSelect}
+                        onToggleSelectAll={handleToggleSelectAll}
                     />
                     <TaskColumn
                         status="inProgress"
@@ -197,6 +300,9 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                         onMoveTask={handleMoveTask}
                         onTaskUpdate={handleTaskUpdated}
                         onTaskDelete={handleTaskDeleted}
+                        selectedTaskIds={selectedTaskIds}
+                        onToggleSelect={handleToggleSelect}
+                        onToggleSelectAll={handleToggleSelectAll}
                     />
                     <TaskColumn
                         status="done"
@@ -205,17 +311,31 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                         onMoveTask={handleMoveTask}
                         onTaskUpdate={handleTaskUpdated}
                         onTaskDelete={handleTaskDeleted}
+                        selectedTaskIds={selectedTaskIds}
+                        onToggleSelect={handleToggleSelect}
+                        onToggleSelectAll={handleToggleSelectAll}
                     />
                 </div>
             </div>
-            <NewTaskDialog
-                isOpen={isNewTaskDialogOpen}
-                onOpenChange={setIsNewTaskDialogOpen}
-                onTaskCreate={handleTaskCreated}
-                projectId={projectId}
-                contacts={contacts}
-                defaultValues={defaultDialogValues}
-            />
+            <AlertDialog open={isBulkDeleteAlertOpen} onOpenChange={setIsBulkDeleteAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action will permanently delete {selectedTaskIds.length} selected task(s). This cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteSelected}
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }

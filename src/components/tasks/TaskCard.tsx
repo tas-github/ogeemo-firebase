@@ -4,7 +4,7 @@
 import React, { useRef, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { Card, CardContent } from '@/components/ui/card';
-import { MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, FolderGit2 } from 'lucide-react';
 import { type Event as TaskEvent } from '@/types/calendar-types';
 import { cn } from '@/lib/utils';
 import {
@@ -14,21 +14,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from '../ui/button';
-import { NewTaskDialog } from './NewTaskDialog';
-import { deleteTask } from '@/services/project-service';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+import { Checkbox } from '../ui/checkbox';
 
 interface TaskCardProps {
   task: TaskEvent;
   onMoveCard: (dragId: string, hoverId: string) => void;
   onTaskUpdate: (task: TaskEvent) => void;
   onTaskDelete: (taskId: string) => void;
+  isSelected: boolean;
+  onToggleSelect: (taskId: string, event?: React.MouseEvent) => void;
 }
 
-export function TaskCard({ task, onMoveCard, onTaskUpdate, onTaskDelete }: TaskCardProps) {
+export function TaskCard({ task, onMoveCard, onTaskUpdate, onTaskDelete, isSelected, onToggleSelect }: TaskCardProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
 
   const [{ isDragging }, drag] = useDrag({
     type: 'task',
@@ -48,24 +50,27 @@ export function TaskCard({ task, onMoveCard, onTaskUpdate, onTaskDelete }: TaskC
 
   drag(drop(ref));
   
-  const handleDelete = async () => {
-    if (window.confirm(`Are you sure you want to delete the task "${task.title}"?`)) {
-        try {
-            await deleteTask(task.id);
-            onTaskDelete(task.id);
-            toast({ title: "Task Deleted" });
-        } catch (error) {
-            toast({ variant: 'destructive', title: 'Failed to delete task' });
-        }
-    }
+  const handleEdit = () => {
+      router.push(`/time?eventId=${task.id}`);
   };
 
   return (
     <>
       <div ref={ref} style={{ opacity: isDragging ? 0.5 : 1 }}>
-        <Card className="group">
+        <Card className={cn("group", isSelected && "bg-primary/20 border-primary")}>
           <CardContent className="p-3 flex items-start gap-2">
-            <div className="flex-1">
+            <Checkbox
+              checked={isSelected}
+              onClick={(e) => onToggleSelect(task.id, e)}
+              onKeyDown={(e) => {
+                if (e.key === ' ') {
+                   onToggleSelect(task.id, e as unknown as React.MouseEvent);
+                }
+              }}
+              className="mt-1"
+              aria-label={`Select task ${task.title}`}
+            />
+            <div className="flex-1 cursor-pointer" onClick={handleEdit}>
               <p className="font-semibold text-sm">{task.title}</p>
               <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
             </div>
@@ -76,10 +81,10 @@ export function TaskCard({ task, onMoveCard, onTaskUpdate, onTaskDelete }: TaskC
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => setIsEditDialogOpen(true)}>
-                        <Edit className="mr-2 h-4 w-4" /> Edit Task
+                    <DropdownMenuItem onSelect={handleEdit}>
+                        <Edit className="mr-2 h-4 w-4" /> Edit / View Details
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={handleDelete} className="text-destructive">
+                    <DropdownMenuItem onSelect={() => onTaskDelete(task.id)} className="text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" /> Delete Task
                     </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -87,14 +92,6 @@ export function TaskCard({ task, onMoveCard, onTaskUpdate, onTaskDelete }: TaskC
           </CardContent>
         </Card>
       </div>
-
-      <NewTaskDialog
-        isOpen={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
-        onTaskUpdate={onTaskUpdate}
-        eventToEdit={task}
-        projectId={task.projectId}
-      />
     </>
   );
 }

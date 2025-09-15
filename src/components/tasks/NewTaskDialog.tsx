@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { type Project, type Event as TaskEvent } from '@/types/calendar-types';
+import { type Project, type Event as TaskEvent, type ProjectUrgency, type ProjectImportance } from '@/types/calendar-types';
 import { type Contact, type FolderData } from '@/data/contacts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
@@ -38,7 +38,11 @@ const projectSchema = z.object({
   name: z.string().min(2, { message: "Project name must be at least 2 characters." }),
   description: z.string().optional(),
   contactId: z.string().optional(),
+  urgency: z.enum(['urgent', 'important', 'optional']).default('important'),
+  urgencyImportance: z.enum(['A', 'B', 'C']).default('B'),
+  importance: z.enum(['A', 'B', 'C']).default('B'),
 });
+
 
 type ProjectFormData = z.infer<typeof projectSchema>;
 
@@ -72,7 +76,7 @@ export function NewTaskDialog({
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
-    defaultValues: { name: "", description: "", contactId: "" },
+    defaultValues: { name: "", description: "", contactId: "", urgency: 'important', urgencyImportance: 'B', importance: 'B' },
   });
   
   useEffect(() => {
@@ -84,15 +88,21 @@ export function NewTaskDialog({
                 name: projectToEdit.name,
                 description: projectToEdit.description || "",
                 contactId: projectToEdit.contactId || "",
+                urgency: projectToEdit.urgency || 'important',
+                urgencyImportance: projectToEdit.urgencyImportance || 'B',
+                importance: projectToEdit.importance || 'B',
             });
         } else if (initialData) {
             form.reset({
                 name: initialData.title || "",
                 description: initialData.description || "",
                 contactId: initialData.contactId || "",
+                urgency: 'important',
+                urgencyImportance: 'B',
+                importance: 'B',
             });
         } else {
-            form.reset({ name: "", description: "", contactId: "" });
+            form.reset({ name: "", description: "", contactId: "", urgency: 'important', urgencyImportance: 'B', importance: 'B' });
         }
         
         setClientAction('select'); // Always default to select
@@ -121,6 +131,10 @@ export function NewTaskDialog({
             name: values.name,
             description: values.description,
             contactId: values.contactId || null,
+            status: 'planning',
+            urgency: values.urgency as ProjectUrgency,
+            urgencyImportance: values.urgencyImportance as ProjectImportance,
+            importance: values.importance as ProjectImportance,
         }, []);
     }
     onOpenChange(false);
@@ -218,6 +232,61 @@ export function NewTaskDialog({
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="urgency"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Time Urgency</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    <SelectItem value="urgent">Urgent</SelectItem>
+                                    <SelectItem value="important">Important</SelectItem>
+                                    <SelectItem value="optional">Optional</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="urgencyImportance"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Time Importance</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    <SelectItem value="A">A</SelectItem>
+                                    <SelectItem value="B">B</SelectItem>
+                                    <SelectItem value="C">C</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="importance"
+                    render={({ field }) => (
+                        <FormItem className="col-span-2">
+                            <FormLabel>Task Importance</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    <SelectItem value="A">A - Critical</SelectItem>
+                                    <SelectItem value="B">B - Important</SelectItem>
+                                    <SelectItem value="C">C - Optional</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </FormItem>
+                    )}
+                />
+              </div>
+
               <DialogFooter className="pt-4">
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
                 <Button type="submit">{projectToEdit ? 'Save Changes' : 'Create Project'}</Button>

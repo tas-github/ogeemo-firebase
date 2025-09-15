@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { type Event as TaskEvent, type TaskStatus } from '@/types/calendar';
 import { TaskCard } from './TaskCard';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '../ui/checkbox';
 
 interface TaskColumnProps {
   status: TaskStatus;
@@ -18,6 +19,9 @@ interface TaskColumnProps {
   onMoveTask: (taskId: string, newStatus: TaskStatus, newPosition: number) => void;
   onTaskUpdate: (task: TaskEvent) => void;
   onTaskDelete: (taskId: string) => void;
+  selectedTaskIds: string[];
+  onToggleSelect: (taskId: string, event?: React.MouseEvent) => void;
+  onToggleSelectAll: (status: TaskStatus) => void;
 }
 
 const columnTitles: Record<TaskStatus, string> = {
@@ -26,7 +30,17 @@ const columnTitles: Record<TaskStatus, string> = {
   done: 'Done',
 };
 
-export function TaskColumn({ status, tasks, onAddTask, onMoveTask, onTaskUpdate, onTaskDelete }: TaskColumnProps) {
+export function TaskColumn({
+  status,
+  tasks,
+  onAddTask,
+  onMoveTask,
+  onTaskUpdate,
+  onTaskDelete,
+  selectedTaskIds,
+  onToggleSelect,
+  onToggleSelectAll,
+}: TaskColumnProps) {
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: 'task',
     drop: (item: TaskEvent) => {
@@ -45,11 +59,20 @@ export function TaskColumn({ status, tasks, onAddTask, onMoveTask, onTaskUpdate,
         onMoveTask(dragTask.id, status, hoverTask.position);
     }
   };
+  
+  const areAllInColumnSelected = tasks.length > 0 && tasks.every(t => selectedTaskIds.includes(t.id));
 
   return (
     <Card ref={drop} className={cn("flex flex-col", isOver && canDrop && "bg-primary/10 ring-2 ring-primary")}>
       <CardHeader className="flex flex-row items-center justify-between p-4">
-        <CardTitle className="text-lg">{columnTitles[status]} <span className="text-sm font-normal text-muted-foreground">({tasks.length})</span></CardTitle>
+        <div className="flex items-center gap-2">
+            <Checkbox
+              checked={areAllInColumnSelected}
+              onCheckedChange={() => onToggleSelectAll(status)}
+              aria-label={`Select all tasks in ${columnTitles[status]}`}
+            />
+            <CardTitle className="text-lg">{columnTitles[status]} <span className="text-sm font-normal text-muted-foreground">({tasks.length})</span></CardTitle>
+        </div>
         <Button size="icon" variant="ghost" className="h-8 w-8" onClick={onAddTask}>
           <Plus className="h-4 w-4" />
         </Button>
@@ -63,6 +86,8 @@ export function TaskColumn({ status, tasks, onAddTask, onMoveTask, onTaskUpdate,
                 onMoveCard={moveCard}
                 onTaskUpdate={onTaskUpdate}
                 onTaskDelete={onTaskDelete}
+                isSelected={selectedTaskIds.includes(task.id)}
+                onToggleSelect={onToggleSelect}
             />
           ))}
         </CardContent>

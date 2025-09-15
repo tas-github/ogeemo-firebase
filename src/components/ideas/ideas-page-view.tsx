@@ -94,10 +94,19 @@ export default function IdeasPage() {
 
   const handleCreateProject = (idea: Idea) => {
     try {
+      // Save the idea details to session storage to be picked up by the projects page
       sessionStorage.setItem('ogeemo-idea-to-project', JSON.stringify({ title: idea.title, description: idea.content }));
+      // After saving, delete the idea from the board
+      handleDeleteIdea(idea.id);
+      // Navigate to the projects page
       router.push('/projects');
     } catch (error) {
       console.error("Failed to save idea to session storage", error);
+      toast({
+        variant: 'destructive',
+        title: 'Could not create project',
+        description: 'There was an issue preparing the idea data.',
+      });
     }
   };
 
@@ -139,10 +148,10 @@ export default function IdeasPage() {
       <div className="p-4 sm:p-6 flex flex-col h-full">
         <header className="text-center mb-6">
           <h1 className="text-2xl font-bold font-headline text-primary">
-            Idea Board
+            Idea Board (The "MAYBE" Bin)
           </h1>
           <p className="text-muted-foreground">
-            Capture and develop your creative thoughts.
+            Capture and develop your creative thoughts before committing them to a project.
           </p>
         </header>
 
@@ -188,13 +197,14 @@ export default function IdeasPage() {
                           </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => handleCreateProject(idea)} className="cursor-pointer font-semibold text-green-600 focus:text-green-700">
+                              <Briefcase className="mr-2 h-4 w-4" />
+                              <span>Make it a project (YES)</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem onSelect={() => handleOpenEditDialog(idea)} className="cursor-pointer">
                               <Pencil className="mr-2 h-4 w-4" />
                               <span>Edit / Develop</span>
-                            </DropdownMenuItem>
-                             <DropdownMenuItem onSelect={() => handleCreateProject(idea)} className="cursor-pointer">
-                              <Briefcase className="mr-2 h-4 w-4" />
-                              <span>Make it a project</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => handleSaveToFileManager(idea)} className="cursor-pointer">
                                 <Folder className="mr-2 h-4 w-4" />
@@ -210,7 +220,7 @@ export default function IdeasPage() {
                                 className="text-destructive cursor-pointer focus:text-destructive focus:bg-destructive/10"
                             >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                <span>Delete</span>
+                                <span>Delete (NO)</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                       </DropdownMenu>

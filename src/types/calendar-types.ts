@@ -31,6 +31,11 @@ export interface Event {
   sessions?: TimeSession[];
 }
 
+export type ProjectStatus = 'planning' | 'active' | 'on-hold' | 'completed';
+export type ProjectImportance = 'A' | 'B' | 'C';
+export type ProjectUrgency = 'urgent' | 'important' | 'optional';
+
+
 export interface Project {
   id: string;
   name: string;
@@ -40,6 +45,10 @@ export interface Project {
   userId: string;
   createdAt: Date;
   steps?: ProjectStep[];
+  status?: ProjectStatus;
+  importance?: ProjectImportance;
+  urgency?: ProjectUrgency;
+  urgencyImportance?: ProjectImportance;
 }
 
 export interface ProjectStep {

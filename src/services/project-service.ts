@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -17,7 +16,7 @@ import {
   setDoc,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
-import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData, TimeSession } from '@/types/calendar-types';
+import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData, TimeSession, type ProjectUrgency, type ProjectImportance } from '@/types/calendar-types';
 import { addMinutes, addHours, startOfHour, set, addDays } from 'date-fns';
 import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info, BrainCircuit } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -52,6 +51,10 @@ const docToProject = (doc: any): Project => {
         ...step,
         startTime: (step.startTime as Timestamp)?.toDate ? (step.startTime as Timestamp).toDate() : null,
     })),
+    status: data.status || 'planning',
+    urgency: data.urgency || 'important',
+    importance: data.importance || 'B',
+    urgencyImportance: data.urgencyImportance || 'B',
   };
 };
 
@@ -246,37 +249,6 @@ export async function deleteProject(projectId: string, taskIds: string[]): Promi
 }
 
 // --- Task/Event Functions ---
-const mockTasks = (userId: string): Omit<TaskEvent, 'id'>[] => {
-  const now = new Date();
-  return [
-    {
-      title: 'Finalize Q3 Marketing Plan',
-      start: set(now, { hours: 9, minutes: 0, seconds: 0, milliseconds: 0 }),
-      end: set(now, { hours: 10, minutes: 30, seconds: 0, milliseconds: 0 }),
-      status: 'todo',
-      position: 0,
-      userId,
-    },
-    {
-      title: 'Team Standup Meeting',
-      start: set(now, { hours: 11, minutes: 0, seconds: 0, milliseconds: 0 }),
-      end: set(now, { hours: 11, minutes: 15, seconds: 0, milliseconds: 0 }),
-      status: 'inProgress',
-      position: 0,
-      userId,
-    },
-    {
-      title: 'Review New UI Mockups',
-      start: set(addDays(now, 1), { hours: 14, minutes: 0, seconds: 0, milliseconds: 0 }),
-      end: set(addDays(now, 1), { hours: 15, minutes: 30, seconds: 0, milliseconds: 0 }),
-      status: 'todo',
-      position: 1,
-      userId,
-    }
-  ];
-};
-
-
 export async function getTasksForProject(projectId: string): Promise<TaskEvent[]> {
   const db = await getDb();
   const q = query(collection(db, TASKS_COLLECTION), where("projectId", "==", projectId));
@@ -294,28 +266,39 @@ export async function getTaskById(taskId: string): Promise<TaskEvent | null> {
     return null;
 }
 
+// Titles of the original mock tasks to identify them for deletion.
+const mockTaskTitlesForDeletion = new Set([
+  'Finalize Q3 budget',
+  'Draft marketing email for new feature launch',
+  'Design new dashboard layout',
+  'Write documentation for the API',
+  'Plan company offsite event'
+]);
+
 export async function getTasksForUser(userId: string): Promise<TaskEvent[]> {
     const db = await getDb();
     const q = query(collection(db, TASKS_COLLECTION), where("userId", "==", userId));
     const snapshot = await getDocs(q);
-    
-    if (snapshot.empty) {
-        const tasksToCreate = mockTasks(userId);
-        if (tasksToCreate.length === 0) {
-            return [];
-        }
+
+    const allTasks = snapshot.docs.map(docToTask);
+
+    // One-time cleanup of old mock tasks
+    const tasksToDelete = allTasks.filter(task => mockTaskTitlesForDeletion.has(task.title));
+
+    if (tasksToDelete.length > 0) {
+        console.log(`Found and deleting ${tasksToDelete.length} old mock tasks...`);
         const batch = writeBatch(db);
-        const newTasks: TaskEvent[] = [];
-        tasksToCreate.forEach(task => {
-            const docRef = doc(collection(db, TASKS_COLLECTION));
-            batch.set(docRef, task);
-            newTasks.push({ ...task, id: docRef.id });
+        tasksToDelete.forEach(task => {
+            const taskRef = doc(db, TASKS_COLLECTION, task.id);
+            batch.delete(taskRef);
         });
         await batch.commit();
-        return newTasks;
+        console.log("Cleanup complete.");
+        // Return the list of tasks without the ones we just deleted.
+        return allTasks.filter(task => !mockTaskTitlesForDeletion.has(task.title));
     }
-
-    return snapshot.docs.map(docToTask);
+    
+    return allTasks;
 }
 
 export async function addTask(taskData: Omit<TaskEvent, 'id'>): Promise<TaskEvent> {
@@ -350,6 +333,18 @@ export async function deleteTask(taskId: string): Promise<void> {
     const db = await getDb();
     await deleteDoc(doc(db, TASKS_COLLECTION, taskId));
 }
+
+export async function deleteTasks(taskIds: string[]): Promise<void> {
+    if (taskIds.length === 0) return;
+    const db = await getDb();
+    const batch = writeBatch(db);
+    taskIds.forEach(id => {
+        const taskRef = doc(db, TASKS_COLLECTION, id);
+        batch.delete(taskRef);
+    });
+    await batch.commit();
+}
+
 
 export async function deleteAllTasksForUser(userId: string): Promise<void> {
     const db = await getDb();
