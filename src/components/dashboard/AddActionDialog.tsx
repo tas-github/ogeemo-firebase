@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect } from 'react';
@@ -38,7 +39,7 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 const addActionSchema = z.object({
   label: z.string().min(1, { message: "Label is required." }),
-  linkType: z.enum(['page', 'url', 'none']).default('page'),
+  linkType: z.enum(['page', 'url']).default('page'),
   targetPage: z.string().optional(),
   targetUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
 }).refine(data => {
@@ -81,7 +82,7 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
   
   useEffect(() => {
     if (chipToEdit) {
-        let linkType: 'page' | 'url' | 'none' = 'none';
+        let linkType: 'page' | 'url' = 'page';
         let targetPage: string | undefined = undefined;
         let targetUrl: string | undefined = undefined;
 
@@ -92,6 +93,8 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
             } else if (chipToEdit.href.startsWith('http')) {
                 linkType = 'url';
                 targetUrl = chipToEdit.href;
+            } else {
+                linkType = 'page'; // Default if href is empty or invalid
             }
         }
 
@@ -205,10 +208,6 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
                                     <FormControl><RadioGroupItem value="url" /></FormControl>
                                     <FormLabel className="font-normal">Enter a URL</FormLabel>
                                 </FormItem>
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                    <FormControl><RadioGroupItem value="none" /></FormControl>
-                                    <FormLabel className="font-normal">No Link</FormLabel>
-                                </FormItem>
                             </RadioGroup>
                         </FormControl>
                     </FormItem>
@@ -260,7 +259,7 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
                     )}
                 />
             )}
-
+            
              <DialogFooter className="pt-4">
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
                 <Button type="submit">{chipToEdit ? 'Save Changes' : 'Add Action'}</Button>

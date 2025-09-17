@@ -35,7 +35,6 @@ export type ProjectStatus = 'planning' | 'active' | 'on-hold' | 'completed';
 export type ProjectImportance = 'A' | 'B' | 'C';
 export type ProjectUrgency = 'urgent' | 'important' | 'optional';
 
-
 export interface Project {
   id: string;
   name: string;
@@ -48,7 +47,6 @@ export interface Project {
   status?: ProjectStatus;
   importance?: ProjectImportance;
   urgency?: ProjectUrgency;
-  urgencyImportance?: ProjectImportance;
 }
 
 export interface ProjectStep {
@@ -83,4 +81,14 @@ export interface ActionChipData {
   icon: LucideIcon;
   href: string | { pathname: string; query?: { [key: string]: string } };
   userId: string;
+}
+
+export interface Idea {
+    id: string;
+    title: string;
+    description?: string;
+    status: 'Yes' | 'No' | 'Maybe';
+    position: number;
+    userId: string;
+    createdAt: Date;
 }

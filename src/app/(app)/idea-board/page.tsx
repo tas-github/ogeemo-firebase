@@ -1,6 +1,6 @@
 
 import IdeasPage from "@/components/ideas/ideas-page-view";
 
-export default function Ideas() {
+export default function IdeaBoard() {
     return <IdeasPage />;
 }

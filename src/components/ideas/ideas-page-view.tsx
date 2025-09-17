@@ -1,262 +1,344 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useDrag, useDrop, type XYCoord } from 'react-dnd';
+import { MoreVertical, Calendar, Briefcase, Pencil, Trash2, Archive, LoaderCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Lightbulb, MoreVertical, Trash2, Pencil, Briefcase, Archive, LoaderCircle, Folder } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import EditIdeaDialog from '@/components/ideas/edit-idea-dialog';
-import { useAuth } from '@/context/auth-context';
+} from "@/components/ui/dropdown-menu";
+import EditIdeaDialog from './edit-idea-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { archiveIdeaAsFile } from '@/services/file-service';
-import ImageSaveDialog from '@/components/image-generator/image-save-dialog';
+import { useAuth } from '@/context/auth-context';
+import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { getIdeas, addIdea as saveIdea, updateIdea as updateIdeaInDb, deleteIdea as deleteIdeaFromDb, updateIdeaPositions } from '@/services/ideas-service';
+import { type Idea } from '@/types/calendar-types';
 
-interface Idea {
-  id: number;
-  title: string;
-  content: string;
+const ItemTypes = {
+    IDEA: 'idea',
+};
+
+interface IdeaCardProps {
+    idea: Idea;
+    onDelete: (id: string) => void;
+    onEdit: (idea: Idea) => void;
+    onSchedule: (idea: Idea) => void;
+    onMakeProject: (idea: Idea) => void;
+    onArchive: (idea: Idea) => void;
+    onMoveCard: (id: string, toIndex: number, toStatus: 'Yes' | 'No' | 'Maybe') => void;
 }
 
-const IDEAS_STORAGE_KEY = 'ogeemo-ideas';
+const IdeaCard = ({ idea, onDelete, onEdit, onSchedule, onMakeProject, onArchive, onMoveCard }: IdeaCardProps) => {
+    const ref = useRef<HTMLDivElement>(null);
 
-export default function IdeasPage() {
-  const [ideas, setIdeas] = useState<Idea[]>([]);
-  const [newIdea, setNewIdea] = useState('');
-  const [editingIdea, setEditingIdea] = useState<Idea | null>(null);
-  const [isArchiving, setIsArchiving] = useState<number | null>(null);
-  
-  const [ideaToSave, setIdeaToSave] = useState<Idea | null>(null);
+    const [{ isDragging }, drag] = useDrag({
+        type: ItemTypes.IDEA,
+        item: () => ({ ...idea }),
+        collect: (monitor) => ({
+            isDragging: !!monitor.isDragging(),
+        }),
+    });
 
-  const router = useRouter();
-  const { user } = useAuth();
-  const { toast } = useToast();
+    const [, drop] = useDrop({
+        accept: ItemTypes.IDEA,
+        hover(item: Idea, monitor) {
+            if (!ref.current || item.id === idea.id) {
+                return;
+            }
+            const hoverIndex = ideas.findIndex(i => i.id === idea.id);
+            onMoveCard(item.id, hoverIndex, idea.status);
+        },
+    });
 
-  useEffect(() => {
-    try {
-      const savedIdeasRaw = localStorage.getItem(IDEAS_STORAGE_KEY);
-      if (savedIdeasRaw) {
-        let savedIdeas = JSON.parse(savedIdeasRaw);
-        const migratedIdeas = savedIdeas.map((idea: any) => {
-          if (typeof idea.text === 'string' && typeof idea.content === 'undefined') {
-            return { id: idea.id, title: idea.text, content: '' };
-          }
-          return idea;
-        });
-        setIdeas(migratedIdeas);
-      }
-    } catch (error) {
-      console.error("Failed to parse ideas from localStorage", error);
-      setIdeas([]);
-    }
-  }, []);
+    drag(drop(ref));
 
-  const updateIdeas = (newIdeas: Idea[]) => {
-    setIdeas(newIdeas);
-    try {
-      localStorage.setItem(IDEAS_STORAGE_KEY, JSON.stringify(newIdeas));
-    } catch (error) {
-      console.error("Failed to save ideas to localStorage", error);
-    }
-  };
-
-  const handleAddIdea = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newIdea.trim()) {
-      const newIdeasArray = [...ideas, { id: Date.now(), title: newIdea.trim(), content: '' }];
-      updateIdeas(newIdeasArray);
-      setNewIdea('');
-    }
-  };
-
-  const handleDeleteIdea = (id: number) => {
-    const newIdeasArray = ideas.filter((idea) => idea.id !== id);
-    updateIdeas(newIdeasArray);
-  };
-
-  const handleSaveIdea = (updatedIdea: Idea) => {
-    const newIdeasArray = ideas.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea);
-    updateIdeas(newIdeasArray);
-    setEditingIdea(null);
-  };
-  
-  const handleOpenEditDialog = (idea: Idea) => {
-    setEditingIdea(idea);
-  };
-
-  const handleCreateProject = (idea: Idea) => {
-    try {
-      // Save the idea details to session storage to be picked up by the projects page
-      sessionStorage.setItem('ogeemo-idea-to-project', JSON.stringify({ title: idea.title, description: idea.content }));
-      // After saving, delete the idea from the board
-      handleDeleteIdea(idea.id);
-      // Navigate to the projects page
-      router.push('/projects');
-    } catch (error) {
-      console.error("Failed to save idea to session storage", error);
-      toast({
-        variant: 'destructive',
-        title: 'Could not create project',
-        description: 'There was an issue preparing the idea data.',
-      });
-    }
-  };
-
-  const handleArchive = async (idea: Idea) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to archive an idea.'});
-        return;
-    }
-    setIsArchiving(idea.id);
-    try {
-        await archiveIdeaAsFile(user.uid, idea.title, idea.content);
-        toast({
-            title: "Idea Archived",
-            description: `"${idea.title}" has been saved to your "Archived Ideas" folder in the File Manager.`
-        });
-        handleDeleteIdea(idea.id);
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Archiving Failed', description: error.message });
-    } finally {
-        setIsArchiving(null);
-    }
-  };
-  
-  const handleSaveToFileManager = (idea: Idea) => {
-    setIdeaToSave(idea);
-  };
-
-  const convertIdeaToDataUrl = useCallback(async (idea: Idea): Promise<string> => {
-    // Create a markdown-like string from the idea
-    const plainTextContent = idea.content.replace(/<[^>]+>/g, '\n').trim();
-    const fileContent = `# ${idea.title}\n\n${plainTextContent}`;
-    const base64Content = btoa(unescape(encodeURIComponent(fileContent)));
-    return `data:text/markdown;base64,${base64Content}`;
-  }, []);
-
-
-  return (
-    <>
-      <div className="p-4 sm:p-6 flex flex-col h-full">
-        <header className="text-center mb-6">
-          <h1 className="text-2xl font-bold font-headline text-primary">
-            Idea Board (The "MAYBE" Bin)
-          </h1>
-          <p className="text-muted-foreground">
-            Capture and develop your creative thoughts before committing them to a project.
-          </p>
-        </header>
-
-        <div className="max-w-xl mx-auto w-full mb-8">
-          <form onSubmit={handleAddIdea} className="flex items-center gap-2">
-            <Input
-              type="text"
-              placeholder="What's your next big idea?"
-              value={newIdea}
-              onChange={(e) => setNewIdea(e.target.value)}
-            />
-            <Button type="submit">Add Idea</Button>
-          </form>
-        </div>
-
-        <div className="flex-1">
-          {ideas.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {ideas.map((idea) => (
-                <Card key={idea.id} className="h-full flex flex-col">
-                  <CardHeader className="flex-row items-center gap-3 space-y-0">
-                    <div className="p-2 bg-primary/10 rounded-full">
-                        <Lightbulb className="h-5 w-5 text-primary" />
+    return (
+        <div ref={ref} style={{ opacity: isDragging ? 0.5 : 1 }}>
+            <Card className="mt-4 cursor-move">
+                <CardContent className="p-3 flex items-center justify-between">
+                    <div>
+                        <p className="font-semibold">{idea.title}</p>
+                        {idea.description && <p className="text-xs text-muted-foreground line-clamp-1">{idea.description}</p>}
                     </div>
-                    <h4 className="font-bold truncate flex-1">{idea.title}</h4>
-                  </CardHeader>
-                  <CardContent className="flex-1">
-                      <div className="prose prose-sm dark:prose-invert max-w-none break-words line-clamp-3">
-                        <div dangerouslySetInnerHTML={{ __html: idea.content }} />
-                      </div>
-                  </CardContent>
-                  <CardFooter className="justify-end">
-                      <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                          <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              disabled={isArchiving === idea.id}
-                          >
-                              {isArchiving === idea.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <MoreVertical className="h-4 w-4" />}
-                              <span className="sr-only">More options</span>
-                          </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => handleCreateProject(idea)} className="cursor-pointer font-semibold text-green-600 focus:text-green-700">
-                              <Briefcase className="mr-2 h-4 w-4" />
-                              <span>Make it a project (YES)</span>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => onSchedule(idea)}>
+                                <Calendar className="mr-2 h-4 w-4" />
+                                <span>Schedule Item to calendar</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => onMakeProject(idea)}>
+                                <Briefcase className="mr-2 h-4 w-4" />
+                                <span>Create New Project</span>
+                            </DropdownMenuItem>
+                             <DropdownMenuItem onSelect={() => onArchive(idea)}>
+                                <Archive className="mr-2 h-4 w-4" />
+                                <span>Archive as Reference</span>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => handleOpenEditDialog(idea)} className="cursor-pointer">
-                              <Pencil className="mr-2 h-4 w-4" />
-                              <span>Edit / Develop</span>
+                            <DropdownMenuItem onSelect={() => onEdit(idea)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                <span>Edit</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleSaveToFileManager(idea)} className="cursor-pointer">
-                                <Folder className="mr-2 h-4 w-4" />
-                                <span>Save File to Folder</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleArchive(idea)} className="cursor-pointer">
-                              <Archive className="mr-2 h-4 w-4" />
-                              <span>Archive as Reference</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
                             <DropdownMenuItem
-                                onClick={() => handleDeleteIdea(idea.id)}
-                                className="text-destructive cursor-pointer focus:text-destructive focus:bg-destructive/10"
+                                className="text-destructive"
+                                onSelect={() => onDelete(idea.id)}
                             >
                                 <Trash2 className="mr-2 h-4 w-4" />
-                                <span>Delete (NO)</span>
+                                <span>Delete</span>
                             </DropdownMenuItem>
-                          </DropdownMenuContent>
-                      </DropdownMenu>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center text-muted-foreground py-16">
-              <Lightbulb className="mx-auto h-12 w-12 " />
-              <p className="mt-4">Your idea board is empty. Add your first idea to get started!</p>
-            </div>
-          )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </CardContent>
+            </Card>
         </div>
-      </div>
-      
-      {editingIdea && (
-        <EditIdeaDialog
-            idea={editingIdea}
-            isOpen={!!editingIdea}
-            onOpenChange={(isOpen) => !isOpen && setEditingIdea(null)}
-            onSave={handleSaveIdea}
-            onDelete={handleDeleteIdea}
-        />
-      )}
-      
-      {ideaToSave && (
-        <ImageSaveDialog
-            isOpen={!!ideaToSave}
-            onOpenChange={() => setIdeaToSave(null)}
-            imageDataUrl="" // Not needed since we provide convertFileToDataUrl
-            defaultFileName={`${ideaToSave.title.replace(/[^a-zA-Z0-9]/g, '_')}.md`}
-            convertFileToDataUrl={() => convertIdeaToDataUrl(ideaToSave)}
-            onSaveSuccess={() => toast({ title: 'Idea Saved', description: `A copy of "${ideaToSave.title}" was saved to your File Manager.`})}
-        />
-      )}
-    </>
-  );
+    );
+};
+
+
+export default function IdeasPage() {
+    const [ideas, setIdeas] = useState<Idea[]>([]);
+    const [ideaToEdit, setIdeaToEdit] = useState<Idea | null>(null);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [inputMode, setInputMode] = useState<'Yes' | 'No' | 'Maybe' | null>(null);
+    const [newIdeaTitle, setNewIdeaTitle] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
+    const router = useRouter();
+    const { toast } = useToast();
+    const { user } = useAuth();
+    
+    useEffect(() => {
+        async function loadData() {
+            if (!user) {
+                setIsLoading(false);
+                return;
+            };
+            setIsLoading(true);
+            try {
+                const fetchedIdeas = await getIdeas(user.uid);
+                setIdeas(fetchedIdeas);
+            } catch (error) {
+                console.error("Failed to load ideas from Firestore", error);
+                toast({ variant: 'destructive', title: 'Error', description: 'Could not load your ideas.' });
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        loadData();
+    }, [user, toast]);
+
+    const addIdea = async (status: 'Yes' | 'No' | 'Maybe') => {
+        if (!newIdeaTitle.trim() || !user) {
+            setInputMode(null);
+            return;
+        }
+        const position = ideas.filter(i => i.status === status).length;
+        try {
+            const newIdeaData: Omit<Idea, 'id'> = {
+                title: newIdeaTitle.trim(),
+                status,
+                position,
+                userId: user.uid,
+                createdAt: new Date(),
+            };
+            const savedIdea = await saveIdea(newIdeaData);
+            setIdeas(prevIdeas => [...prevIdeas, savedIdea]);
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not save the new idea.' });
+        } finally {
+            setNewIdeaTitle('');
+            setInputMode(null);
+        }
+    };
+
+    const deleteIdea = async (idToDelete: string) => {
+        const originalIdeas = ideas;
+        setIdeas(prevIdeas => prevIdeas.filter(idea => idea.id !== idToDelete));
+        try {
+            await deleteIdeaFromDb(idToDelete);
+        } catch (error) {
+            setIdeas(originalIdeas);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the idea.' });
+        }
+    };
+
+    const handleEdit = (idea: Idea) => {
+        setIdeaToEdit(idea);
+        setIsEditDialogOpen(true);
+    };
+
+    const handleSave = async (updatedIdea: Idea) => {
+        const originalIdeas = ideas;
+        setIdeas(prevIdeas => prevIdeas.map(idea => idea.id === updatedIdea.id ? updatedIdea : idea));
+        try {
+            const { id, ...dataToUpdate } = updatedIdea;
+            await updateIdeaInDb(id, dataToUpdate);
+            toast({ title: "Idea Updated" });
+        } catch (error) {
+            setIdeas(originalIdeas);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not save your changes.' });
+        }
+    };
+
+    const handleSchedule = (idea: Idea) => {
+        const scheduleData = {
+            title: idea.title,
+            description: idea.description,
+        };
+        sessionStorage.setItem('ogeemo-idea-to-schedule', JSON.stringify(scheduleData));
+        router.push('/time');
+    };
+    
+    const handleMakeProject = (idea: Idea) => {
+        const projectData = {
+            title: idea.title,
+            description: idea.description,
+        };
+        sessionStorage.setItem('ogeemo-idea-to-project', JSON.stringify(projectData));
+        router.push('/projects');
+    };
+    
+    const handleArchive = async (idea: Idea) => {
+        if (!user) {
+            toast({ variant: "destructive", title: "You must be logged in to archive ideas." });
+            return;
+        }
+        try {
+            await archiveIdeaAsFile(user.uid, idea.title, idea.description || '');
+            toast({
+                title: "Idea Archived",
+                description: `"${idea.title}" has been saved to your File Manager.`,
+            });
+            await deleteIdea(idea.id); // Remove from board after archiving
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Archive Failed", description: error.message });
+        }
+    };
+
+    const moveCard = useCallback((id: string, toIndex: number, toStatus: 'Yes' | 'No' | 'Maybe') => {
+        setIdeas(prev => {
+            const ideaToMove = prev.find(i => i.id === id);
+            if (!ideaToMove) return prev;
+            
+            const listWithoutItem = prev.filter(i => i.id !== id);
+            
+            listWithoutItem.splice(toIndex, 0, { ...ideaToMove, status: toStatus });
+
+            const positionUpdates = listWithoutItem.map((idea, index) => ({
+                id: idea.id,
+                position: index,
+                status: idea.status
+            }));
+            
+            updateIdeaPositions(positionUpdates);
+            
+            return listWithoutItem;
+        });
+    }, []);
+
+    const renderColumn = (status: 'Yes' | 'No' | 'Maybe') => {
+        const columnIdeas = ideas.filter(idea => idea.status === status).sort((a,b) => a.position - b.position);
+        
+        const [{ isOver, canDrop }, drop] = useDrop(() => ({
+            accept: ItemTypes.IDEA,
+            drop: (item: Idea) => {
+                if (item.status !== status) {
+                    moveCard(item.id, columnIdeas.length, status);
+                }
+            },
+            collect: (monitor) => ({
+                isOver: monitor.isOver(),
+                canDrop: monitor.canDrop(),
+            }),
+        }));
+        
+        return (
+            <Card className="flex flex-col">
+                <CardHeader>
+                    {inputMode === status ? (
+                        <div className="flex items-center gap-2">
+                            <Input
+                                autoFocus
+                                value={newIdeaTitle}
+                                onChange={(e) => setNewIdeaTitle(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') addIdea(status);
+                                    if (e.key === 'Escape') setInputMode(null);
+                                }}
+                                onBlur={() => setInputMode(null)}
+                                placeholder="Enter idea title..."
+                            />
+                            <Button size="sm" onMouseDown={(e) => { e.preventDefault(); addIdea(status); }}>Add</Button>
+                        </div>
+                    ) : (
+                        <div className="w-1/2 mx-auto">
+                            <Button
+                                onClick={() => {
+                                    setInputMode(status);
+                                    setNewIdeaTitle('');
+                                }}
+                                className="w-full h-8 py-1 text-sm bg-gradient-to-r from-[#C3FFF9] to-[#62C1B6] text-black border-b-4 border-black/30 shadow-lg hover:from-[#C3FFF9]/90 hover:to-[#62C1B6]/90 active:mt-1 active:border-b-2">
+                                {status}
+                            </Button>
+                        </div>
+                    )}
+                </CardHeader>
+                <CardContent ref={drop} className={cn("flex-1", isOver && canDrop && 'bg-primary/10')}>
+                    {isLoading ? <LoaderCircle className="mx-auto h-6 w-6 animate-spin" /> : columnIdeas
+                        .map((idea, index) => (
+                            <IdeaCard
+                                key={idea.id}
+                                idea={idea}
+                                onDelete={deleteIdea}
+                                onEdit={handleEdit}
+                                onSchedule={handleSchedule}
+                                onMakeProject={handleMakeProject}
+                                onArchive={handleArchive}
+                                onMoveCard={moveCard}
+                            />
+                        ))}
+                </CardContent>
+            </Card>
+        );
+    };
+
+    return (
+        <>
+            <div className="p-4 sm:p-6 flex flex-col h-full items-center">
+                <header className="text-center mb-6">
+                    <h1 className="text-3xl font-bold font-headline text-primary">
+                        Idea Board
+                    </h1>
+                    <p className="text-muted-foreground max-w-2xl mx-auto">
+                        A digital whiteboard to capture and triage your ideas.
+                    </p>
+                </header>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mt-6">
+                    {renderColumn('Yes')}
+                    {renderColumn('No')}
+                    {renderColumn('Maybe')}
+                </div>
+            </div>
+            <EditIdeaDialog 
+                isOpen={isEditDialogOpen}
+                onOpenChange={setIsEditDialogOpen}
+                idea={ideaToEdit}
+                onSave={handleSave}
+            />
+        </>
+    );
 }

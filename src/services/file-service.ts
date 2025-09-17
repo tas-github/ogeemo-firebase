@@ -334,30 +334,3 @@ export async function archiveIdeaAsFile(userId: string, title: string, content: 
 
     await addFileRecord(newFileRecord);
 }
-
-export async function saveIdeaAsFile(userId: string, title: string, content: string): Promise<void> {
-    const db = await getDb();
-    const storage = await getAppStorage();
-
-    const savedIdeasFolder = await findOrCreateFileFolder(userId, "Saved Ideas");
-    
-    const finalFileName = `${title.replace(/[^a-zA-Z0-9]/g, '_')}.md`;
-    const fileContent = `# ${title}\n\n${content.replace(/<[^>]+>/g, '\n')}`;
-    const fileBlob = new Blob([fileContent], { type: 'text/markdown' });
-
-    const storagePath = `${userId}/${savedIdeasFolder.id}/${Date.now()}-${finalFileName}`;
-    const fileRef = storageRef(storage, storagePath);
-    await uploadBytes(fileRef, fileBlob);
-
-    const newFileRecord: Omit<FileItem, 'id'> = {
-        name: finalFileName,
-        type: 'text/markdown',
-        size: fileBlob.size,
-        modifiedAt: new Date(),
-        folderId: savedIdeasFolder.id,
-        userId,
-        storagePath,
-    };
-
-    await addFileRecord(newFileRecord);
-}

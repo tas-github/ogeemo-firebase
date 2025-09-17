@@ -80,7 +80,7 @@ export const allMenuItems: MenuItem[] = [
   { href: "/projects", label: "Projects", icon: Briefcase },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/files", label: "Files", icon: Folder },
-  { href: "/ideas", label: "Ideas", icon: Lightbulb },
+  { href: "/idea-board", label: "Idea Board", icon: Lightbulb },
   { href: "/research", label: "Research", icon: Beaker },
   { href: "/accounting", label: "Accounting", icon: Calculator },
   { href: "/time", label: "Event Time Manager", icon: Clock },

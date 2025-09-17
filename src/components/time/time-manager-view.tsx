@@ -258,36 +258,46 @@ export function TimeManagerView() {
             setContacts(fetchedContacts);
             setContactFolders(fetchedFolders);
             
-            const eventIdParam = searchParams.get('eventId');
-            if (eventIdParam) {
-                const eventData = await getTaskById(eventIdParam);
-                if (eventData) {
-                    setEventToEdit(eventData);
-                    setSubject(eventData.title);
-                    setNotes(eventData.description || "");
-                    setSelectedProjectId(eventData.projectId || null);
-                    setSelectedContactId(eventData.contactId || null);
-                    setIsBillable(eventData.isBillable || false);
-                    setBillableRate(eventData.billableRate || 0);
-                    setSessions(eventData.sessions || []);
-                    if (eventData.start) {
-                        setScheduleDate(eventData.start);
-                        setScheduleHour(String(eventData.start.getHours()));
-                        setScheduleMinute(String(eventData.start.getMinutes()));
+            // Check for data from Idea Board
+            const ideaToScheduleRaw = sessionStorage.getItem('ogeemo-idea-to-schedule');
+            if (ideaToScheduleRaw) {
+                const ideaData = JSON.parse(ideaToScheduleRaw);
+                setSubject(ideaData.title);
+                setNotes(ideaData.description || "");
+                sessionStorage.removeItem('ogeemo-idea-to-schedule');
+                toast({ title: "Idea Loaded", description: "Your idea has been imported. Please review and save." });
+            } else {
+                const eventIdParam = searchParams.get('eventId');
+                if (eventIdParam) {
+                    const eventData = await getTaskById(eventIdParam);
+                    if (eventData) {
+                        setEventToEdit(eventData);
+                        setSubject(eventData.title);
+                        setNotes(eventData.description || "");
+                        setSelectedProjectId(eventData.projectId || null);
+                        setSelectedContactId(eventData.contactId || null);
+                        setIsBillable(eventData.isBillable || false);
+                        setBillableRate(eventData.billableRate || 0);
+                        setSessions(eventData.sessions || []);
+                        if (eventData.start) {
+                            setScheduleDate(eventData.start);
+                            setScheduleHour(String(eventData.start.getHours()));
+                            setScheduleMinute(String(eventData.start.getMinutes()));
+                        }
+                    } else {
+                        toast({ variant: 'destructive', title: 'Error', description: 'Could not load event data.' });
                     }
                 } else {
-                    toast({ variant: 'destructive', title: 'Error', description: 'Could not load event data.' });
+                    const dateParam = searchParams.get('date');
+                    const hourParam = searchParams.get('hour');
+                    const minuteParam = searchParams.get('minute');
+                    const projectIdParam = searchParams.get('projectId');
+                    
+                    setScheduleDate(dateParam ? parseISO(dateParam) : new Date());
+                    setScheduleHour(hourParam || String(new Date().getHours()));
+                    setScheduleMinute(minuteParam || String(Math.floor(new Date().getMinutes() / 5) * 5));
+                    if (projectIdParam) setSelectedProjectId(projectIdParam);
                 }
-            } else {
-                const dateParam = searchParams.get('date');
-                const hourParam = searchParams.get('hour');
-                const minuteParam = searchParams.get('minute');
-                const projectIdParam = searchParams.get('projectId');
-                
-                setScheduleDate(dateParam ? parseISO(dateParam) : new Date());
-                setScheduleHour(hourParam || String(new Date().getHours()));
-                setScheduleMinute(minuteParam || String(Math.floor(new Date().getMinutes() / 5) * 5));
-                if (projectIdParam) setSelectedProjectId(projectIdParam);
             }
 
         } catch (error: any) {

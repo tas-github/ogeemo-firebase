@@ -35,20 +35,62 @@ const getPrioritySortValue = (p: Project) => {
     if (p.urgency === 'important') score += 500;
     if (p.urgency === 'optional') score += 100;
     
-    // Time Urgency Importance: A > B > C
-    if (p.urgencyImportance === 'A') score += 10;
-    if (p.urgencyImportance === 'B') score += 5;
-    if (p.urgencyImportance === 'C') score += 1;
-    
     // Task Importance: A > B > C
-    if (p.importance === 'A') score += 0.1;
-    if (p.importance === 'B') score += 0.05;
-    if (p.importance === 'C') score += 0.01;
+    if (p.importance === 'A') score += 10;
+    if (p.importance === 'B') score += 5;
+    if (p.importance === 'C') score += 1;
 
     return score;
 };
 
-const ProjectCard = ({ project, tasks, contacts, onEdit, onDelete, onPriorityChange }: { project: Project, tasks: TaskEvent[], contacts: Contact[], onEdit: (p: Project) => void, onDelete: (p: Project) => void, onPriorityChange: (projectId: string, priority: 'urgency' | 'importance' | 'urgencyImportance', value: ProjectUrgency | ProjectImportance) => void }) => {
+// This new, dedicated component handles the logic for creating a project from an idea.
+// This isolates the state and effects, preventing the race conditions that caused the bug.
+const ProjectInitializer = ({ onProjectCreate, contacts, onContactsChange, projects, setProjects }: { 
+    onProjectCreate: (projectData: Omit<Project, 'id' | 'createdAt' | 'userId'>, tasks: []) => void, 
+    contacts: Contact[], 
+    onContactsChange: (contacts: Contact[]) => void,
+    projects: Project[],
+    setProjects: React.Dispatch<React.SetStateAction<Project[]>>
+}) => {
+    const [isNewItemDialogOpen, setIsNewItemDialogOpen] = useState(false);
+    const [initialDialogData, setInitialDialogData] = useState(emptyInitialData);
+
+    useEffect(() => {
+        const ideaToProjectRaw = sessionStorage.getItem('ogeemo-idea-to-project');
+        if (ideaToProjectRaw) {
+            try {
+                const ideaData = JSON.parse(ideaToProjectRaw);
+                setInitialDialogData({ name: ideaData.title, description: ideaData.description });
+                setIsNewItemDialogOpen(true);
+            } catch (error) {
+                console.error("Failed to parse idea data from sessionStorage", error);
+            } finally {
+                // CRUCIAL FIX: Clean up immediately after reading.
+                sessionStorage.removeItem('ogeemo-idea-to-project');
+            }
+        }
+    }, []);
+
+    return (
+        <NewTaskDialog
+            isOpen={isNewItemDialogOpen}
+            onOpenChange={(open) => {
+                setIsNewItemDialogOpen(open);
+                if (!open) {
+                    setInitialDialogData(emptyInitialData);
+                }
+            }}
+            onProjectCreate={onProjectCreate}
+            contacts={contacts}
+            onContactsChange={onContactsChange}
+            projectToEdit={null}
+            initialData={initialDialogData}
+        />
+    );
+};
+
+
+const ProjectCard = ({ project, tasks, contacts, onEdit, onDelete, onPriorityChange }: { project: Project, tasks: TaskEvent[], contacts: Contact[], onEdit: (p: Project) => void, onDelete: (p: Project) => void, onPriorityChange: (projectId: string, priority: 'urgency' | 'importance', value: ProjectUrgency | ProjectImportance) => void }) => {
     const router = useRouter();
     const isActionItems = project.id === ACTION_ITEMS_PROJECT_ID;
     const projectTasks = tasks.filter(t => t.projectId === project.id || (isActionItems && !t.projectId));
@@ -83,8 +125,8 @@ const ProjectCard = ({ project, tasks, contacts, onEdit, onDelete, onPriorityCha
                     ) : <div />}
                 </div>
                 {!isActionItems && (
-                  <div className="grid grid-cols-3 gap-2 items-center">
-                    <div className="col-span-2">
+                  <div className="grid grid-cols-2 gap-2 items-center">
+                    <div>
                         <Select value={project.urgency || 'important'} onValueChange={(v) => onPriorityChange(project.id, 'urgency', v as ProjectUrgency)}>
                             <SelectTrigger><SelectValue/></SelectTrigger>
                             <SelectContent>
@@ -95,33 +137,16 @@ const ProjectCard = ({ project, tasks, contacts, onEdit, onDelete, onPriorityCha
                         </Select>
                     </div>
                     <div>
-                         <Select value={project.urgencyImportance || 'B'} onValueChange={(v) => onPriorityChange(project.id, 'urgencyImportance', v as ProjectImportance)}>
+                         <Select value={project.importance || 'B'} onValueChange={(v) => onPriorityChange(project.id, 'importance', v as ProjectImportance)}>
                             <SelectTrigger><SelectValue/></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="A">A</SelectItem>
-                                <SelectItem value="B">B</SelectItem>
-                                <SelectItem value="C">C</SelectItem>
+                                <SelectItem value="A">A - Critical</SelectItem>
+                                <SelectItem value="B">B - Important</SelectItem>
+                                <SelectItem value="C">C - Optional</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                   </div>
-                )}
-                {!isActionItems && (
-                     <div className="grid grid-cols-3 gap-2 items-center">
-                        <div className="col-span-2">
-                            <p className="text-sm font-medium text-center pr-2">Task Importance</p>
-                        </div>
-                        <div>
-                            <Select value={project.importance || 'B'} onValueChange={(v) => onPriorityChange(project.id, 'importance', v as ProjectImportance)}>
-                                <SelectTrigger><SelectValue/></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="A">A - Critical</SelectItem>
-                                    <SelectItem value="B">B - Important</SelectItem>
-                                    <SelectItem value="C">C - Optional</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                     </div>
                 )}
                  {!isActionItems && (
                     <Button variant="secondary" className="w-full" onClick={() => onEdit(project)}>Edit Details</Button>
@@ -140,7 +165,6 @@ export function ProjectsView() {
     const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isNewItemDialogOpen, setIsNewItemDialogOpen] = useState(false);
-    const [initialDialogData, setInitialDialogData] = useState(emptyInitialData);
     
     const { user } = useAuth();
     const { toast } = useToast();
@@ -171,13 +195,6 @@ export function ProjectsView() {
                 setProjects(fetchedProjects);
                 setContacts(fetchedContacts);
                 setTasks(fetchedTasks);
-
-                const ideaToProjectRaw = sessionStorage.getItem('ogeemo-idea-to-project');
-                if (ideaToProjectRaw) {
-                    const ideaData = JSON.parse(ideaToProjectRaw);
-                    setInitialDialogData({ name: ideaData.title, description: ideaData.description });
-                    setIsNewItemDialogOpen(true);
-                }
 
             } catch (error: any) {
                  toast({ variant: 'destructive', title: 'Failed to load initial data', description: error.message });
@@ -210,7 +227,7 @@ export function ProjectsView() {
         }
     };
     
-    const handlePriorityChange = async (projectId: string, priority: 'urgency' | 'importance' | 'urgencyImportance', value: ProjectUrgency | ProjectImportance) => {
+    const handlePriorityChange = async (projectId: string, priority: 'urgency' | 'importance', value: ProjectUrgency | ProjectImportance) => {
         const projectToUpdate = projects.find(p => p.id === projectId);
         if (!projectToUpdate) return;
         
@@ -255,6 +272,15 @@ export function ProjectsView() {
 
     return (
         <>
+            {/* The ProjectInitializer component now handles the logic from the idea board */}
+            <ProjectInitializer 
+                onProjectCreate={handleProjectCreated} 
+                contacts={contacts}
+                onContactsChange={setContacts}
+                projects={projects}
+                setProjects={setProjects}
+            />
+            
             <div className="p-4 sm:p-6 flex flex-col h-full items-center">
                 <header className="text-center mb-6">
                     <h1 className="text-3xl font-bold font-headline text-primary">Project Manager (The "YES" Bin)</h1>
@@ -263,7 +289,7 @@ export function ProjectsView() {
 
                 <div className="w-full max-w-7xl flex-1 space-y-8">
                     <div className="flex justify-end mb-4">
-                        <Button onClick={() => { setProjectToEdit(null); setInitialDialogData({}); setIsNewItemDialogOpen(true); }}>
+                        <Button onClick={() => { setProjectToEdit(null); setIsNewItemDialogOpen(true); }}>
                             <Plus className="mr-2 h-4 w-4" /> New Project
                         </Button>
                     </div>
@@ -323,12 +349,11 @@ export function ProjectsView() {
             </div>
             
             <NewTaskDialog
-                isOpen={isNewItemDialogOpen}
+                isOpen={isNewItemDialogOpen && !sessionStorage.getItem('ogeemo-idea-to-project')}
                 onOpenChange={(open) => {
                     setIsNewItemDialogOpen(open);
                     if (!open) {
                         setProjectToEdit(null);
-                        setInitialDialogData(emptyInitialData);
                     }
                 }}
                 onProjectCreate={handleProjectCreated}
@@ -336,7 +361,7 @@ export function ProjectsView() {
                 contacts={contacts}
                 onContactsChange={setContacts}
                 projectToEdit={projectToEdit}
-                initialData={initialDialogData}
+                initialData={emptyInitialData}
             />
 
             <AlertDialog open={!!projectToDelete} onOpenChange={() => setProjectToDelete(null)}>

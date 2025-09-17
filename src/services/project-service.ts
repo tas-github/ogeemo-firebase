@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -54,7 +55,6 @@ const docToProject = (doc: any): Project => {
     status: data.status || 'planning',
     urgency: data.urgency || 'important',
     importance: data.importance || 'B',
-    urgencyImportance: data.urgencyImportance || 'B',
   };
 };
 
@@ -533,7 +533,7 @@ export const managerOptions: ManagerOption[] = [
     { label: 'Tasks', icon: ListTodo, href: '/tasks' },
     { label: 'Calendar', icon: Calendar, href: '/calendar' },
     { label: 'Files', icon: Folder, href: '/files' },
-    { label: 'Ideas', icon: Lightbulb, href: '/ideas' },
+    { label: 'Idea Board', icon: Lightbulb, href: '/idea-board' },
     { label: 'Research', icon: Beaker, href: '/research' },
     { label: 'Accounting', icon: Calculator, href: '/accounting' },
     { label: 'BKS', icon: Info, href: '/accounting/bks' },

@@ -33,13 +33,13 @@ import { Plus } from 'lucide-react';
 import ContactFormDialog from '../contacts/contact-form-dialog';
 import { getFolders } from '@/services/contact-service';
 import { useAuth } from '@/context/auth-context';
+import { ScrollArea } from '../ui/scroll-area';
 
 const projectSchema = z.object({
   name: z.string().min(2, { message: "Project name must be at least 2 characters." }),
   description: z.string().optional(),
   contactId: z.string().optional(),
   urgency: z.enum(['urgent', 'important', 'optional']).default('important'),
-  urgencyImportance: z.enum(['A', 'B', 'C']).default('B'),
   importance: z.enum(['A', 'B', 'C']).default('B'),
 });
 
@@ -76,33 +76,31 @@ export function NewTaskDialog({
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
-    defaultValues: { name: "", description: "", contactId: "", urgency: 'important', urgencyImportance: 'B', importance: 'B' },
+    defaultValues: { name: "", description: "", contactId: "", urgency: 'important', importance: 'B' },
   });
   
+  const importanceValue = form.watch('importance');
+
   useEffect(() => {
     if (isOpen) {
-        sessionStorage.removeItem('ogeemo-idea-to-project');
-        
         if (projectToEdit) {
             form.reset({
                 name: projectToEdit.name,
                 description: projectToEdit.description || "",
                 contactId: projectToEdit.contactId || "",
                 urgency: projectToEdit.urgency || 'important',
-                urgencyImportance: projectToEdit.urgencyImportance || 'B',
                 importance: projectToEdit.importance || 'B',
             });
         } else if (initialData) {
             form.reset({
-                name: initialData.title || "",
+                name: initialData.name || "",
                 description: initialData.description || "",
                 contactId: initialData.contactId || "",
                 urgency: 'important',
-                urgencyImportance: 'B',
                 importance: 'B',
             });
         } else {
-            form.reset({ name: "", description: "", contactId: "", urgency: 'important', urgencyImportance: 'B', importance: 'B' });
+            form.reset({ name: "", description: "", contactId: "", urgency: 'important', importance: 'B' });
         }
         
         setClientAction('select'); // Always default to select
@@ -133,7 +131,6 @@ export function NewTaskDialog({
             contactId: values.contactId || null,
             status: 'planning',
             urgency: values.urgency as ProjectUrgency,
-            urgencyImportance: values.urgencyImportance as ProjectImportance,
             importance: values.importance as ProjectImportance,
         }, []);
     }
@@ -158,139 +155,134 @@ export function NewTaskDialog({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{projectToEdit ? 'Edit Project' : 'Create New Project'}</DialogTitle>
+        <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
+          <DialogHeader className="p-6 pb-4 border-b text-center sm:text-center">
+            <DialogTitle className="text-2xl font-bold font-headline text-primary">
+                {projectToEdit ? 'Edit Project' : 'Create New Project'}
+            </DialogTitle>
             <DialogDescription>
               {projectToEdit ? 'Update the details for your project.' : 'Fill in the details to create a new project.'}
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Project Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Website Redesign" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="space-y-2">
-                <FormLabel>Client</FormLabel>
-                <RadioGroup onValueChange={(value: 'select' | 'add') => setClientAction(value)} value={clientAction} className="flex space-x-4">
-                    <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="select" /></FormControl><FormLabel className="font-normal">Select Existing Client</FormLabel></FormItem>
-                    <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="add" /></FormControl><FormLabel className="font-normal">Create New Client</FormLabel></FormItem>
-                </RadioGroup>
-              </div>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
+                <ScrollArea className="flex-1">
+                    <div className="p-6 space-y-4 max-w-2xl mx-auto">
+                      <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Project Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g., Website Redesign" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="space-y-2">
+                        <FormLabel>Client</FormLabel>
+                        <RadioGroup onValueChange={(value: 'select' | 'add') => setClientAction(value)} value={clientAction} className="flex space-x-4">
+                            <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="select" /></FormControl><FormLabel className="font-normal">Select Existing Client</FormLabel></FormItem>
+                            <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="add" /></FormControl><FormLabel className="font-normal">Create New Client</FormLabel></FormItem>
+                        </RadioGroup>
+                      </div>
 
-              {clientAction === 'select' ? (
-                <FormField
-                    control={form.control}
-                    name="contactId"
-                    render={({ field }) => (
-                    <FormItem>
-                        <Select onValueChange={field.onChange} value={field.value || ""}>
-                        <FormControl>
-                            <SelectTrigger>
-                            <SelectValue placeholder="Assign a client (optional)" />
-                            </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                            {contacts.map(contact => (
-                            <SelectItem key={contact.id} value={contact.id}>
-                                {contact.name}
-                            </SelectItem>
-                            ))}
-                        </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-              ) : (
-                <Button variant="outline" className="w-full" onClick={() => setIsContactFormOpen(true)}>
-                    <Plus className="mr-2 h-4 w-4" /> Add New Contact
-                </Button>
-              )}
-
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Describe the project goals and objectives..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                    control={form.control}
-                    name="urgency"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Time Urgency</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                      {clientAction === 'select' ? (
+                        <FormField
+                            control={form.control}
+                            name="contactId"
+                            render={({ field }) => (
+                            <FormItem>
+                                <Select onValueChange={field.onChange} value={field.value || ""}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                    <SelectValue placeholder="Assign a client (optional)" />
+                                    </SelectTrigger>
+                                </FormControl>
                                 <SelectContent>
-                                    <SelectItem value="urgent">Urgent</SelectItem>
-                                    <SelectItem value="important">Important</SelectItem>
-                                    <SelectItem value="optional">Optional</SelectItem>
+                                    {contacts.map(contact => (
+                                    <SelectItem key={contact.id} value={contact.id}>
+                                        {contact.name}
+                                    </SelectItem>
+                                    ))}
                                 </SelectContent>
-                            </Select>
-                        </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="urgencyImportance"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Time Importance</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    <SelectItem value="A">A</SelectItem>
-                                    <SelectItem value="B">B</SelectItem>
-                                    <SelectItem value="C">C</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="importance"
-                    render={({ field }) => (
-                        <FormItem className="col-span-2">
-                            <FormLabel>Task Importance</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    <SelectItem value="A">A - Critical</SelectItem>
-                                    <SelectItem value="B">B - Important</SelectItem>
-                                    <SelectItem value="C">C - Optional</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </FormItem>
-                    )}
-                />
-              </div>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                      ) : (
+                        <Button variant="outline" className="w-full" onClick={() => setIsContactFormOpen(true)}>
+                            <Plus className="mr-2 h-4 w-4" /> Add New Contact
+                        </Button>
+                      )}
 
-              <DialogFooter className="pt-4">
-                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                <Button type="submit">{projectToEdit ? 'Save Changes' : 'Create Project'}</Button>
-              </DialogFooter>
+                      <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                              <Textarea placeholder="Describe the project goals and objectives..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="w-1/2 mx-auto">
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="urgency"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Urgency</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue>
+                                                        {`${importanceValue} - ${field.value.charAt(0).toUpperCase() + field.value.slice(1)}`}
+                                                    </SelectValue>
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="urgent">Urgent</SelectItem>
+                                                <SelectItem value="important">Important</SelectItem>
+                                                <SelectItem value="optional">Optional</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="importance"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Importance</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="A">A - Critical</SelectItem>
+                                                <SelectItem value="B">B - Important</SelectItem>
+                                                <SelectItem value="C">C - Optional</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                      </div>
+                    </div>
+                </ScrollArea>
+                <DialogFooter className="p-6 border-t mt-auto">
+                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button type="submit">{projectToEdit ? 'Save Changes' : 'Create Project'}</Button>
+                </DialogFooter>
             </form>
           </Form>
         </DialogContent>

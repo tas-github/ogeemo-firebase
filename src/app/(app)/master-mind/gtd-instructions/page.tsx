@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,7 +84,7 @@ export default function GtdInstructionsPage() {
                                     </p>
                                     <ul>
                                         <li><strong>For Actionable Items:</strong> Use the dedicated <strong><Link href="/projects/inbox/tasks">"Action Items"</Link></strong> project as your primary inbox. This is for anything that needs to be done or decided upon.</li>
-                                        <li><strong>For Ideas ("Maybe" Bin):</strong> For less-defined thoughts or future possibilities, use the <strong><Link href="/ideas">Idea Board</Link></strong>. You can easily convert an idea into a project later.</li>
+                                        <li><strong>For Ideas ("Maybe" Bin):</strong> For less-defined thoughts or future possibilities, use the <strong><Link href="/idea-board">Idea Board</Link></strong>. You can easily convert an idea into a project later.</li>
                                         <li><strong>For Scheduled Events:</strong> For a specific meeting or appointment, create it directly in the <strong><Link href="/time">Event Time Manager</Link></strong>. This places it on your calendar immediately.</li>
                                     </ul>
                                 </div>
@@ -127,7 +128,7 @@ export default function GtdInstructionsPage() {
                                         <li>Use the <Link href="/projects">Project Manager</Link> to get a high-level view of all active projects. Are they still relevant?</li>
                                         <li>Review your <Link href="/calendar">Calendar</Link> for the upcoming week.</li>
                                         <li>Process any remaining items in your <Link href="/projects/inbox/tasks">"Action Items"</Link> project.</li>
-                                        <li>Review your <Link href="/ideas">Idea Board</Link>. Promote ideas to projects or delete them.</li>
+                                        <li>Review your <Link href="/idea-board">Idea Board</Link>. Promote ideas to projects or delete them.</li>
                                     </ul>
                                </div>
                             </AccordionContent>

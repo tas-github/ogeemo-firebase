@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -111,7 +112,7 @@ export default function ActionManagerDashboardPage() {
                       <Tooltip>
                         <TooltipTrigger asChild>
                             <Button asChild className="h-9">
-                                <Link href="/ideas">
+                                <Link href="/idea-board">
                                     <Lightbulb className="mr-2 h-4 w-4" />
                                     Ideas
                                 </Link>
