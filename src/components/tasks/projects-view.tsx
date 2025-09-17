@@ -2,6 +2,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useDrag, useDrop } from 'react-dnd';
 import { Plus, LoaderCircle, ListTodo, Route, Inbox, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -9,7 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getProjects, deleteProject, getTasksForUser, addProject, updateProject } from '@/services/project-service';
-import { type Project, type Event as TaskEvent, type ProjectUrgency, type ProjectImportance } from '@/types/calendar';
+import { type Project, type Event as TaskEvent, type ProjectStatus, type ProjectUrgency, type ProjectImportance } from '@/types/calendar';
 import { getContacts, type Contact } from '@/services/contact-service';
 import { NewTaskDialog } from './NewTaskDialog';
 import {
@@ -22,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useRouter } from 'next/navigation';
+import { useRouter as useNextRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const emptyInitialData = {};
@@ -36,59 +39,12 @@ const getPrioritySortValue = (p: Project) => {
     if (p.urgency === 'optional') score += 100;
     
     // Task Importance: A > B > C
-    if (p.importance === 'A') score += 10;
-    if (p.importance === 'B') score += 5;
-    if (p.importance === 'C') score += 1;
+    if (p.importance === 'A') score += 0.1;
+    if (p.importance === 'B') score += 0.05;
+    if (p.importance === 'C') score += 0.01;
 
     return score;
 };
-
-// This new, dedicated component handles the logic for creating a project from an idea.
-// This isolates the state and effects, preventing the race conditions that caused the bug.
-const ProjectInitializer = ({ onProjectCreate, contacts, onContactsChange, projects, setProjects }: { 
-    onProjectCreate: (projectData: Omit<Project, 'id' | 'createdAt' | 'userId'>, tasks: []) => void, 
-    contacts: Contact[], 
-    onContactsChange: (contacts: Contact[]) => void,
-    projects: Project[],
-    setProjects: React.Dispatch<React.SetStateAction<Project[]>>
-}) => {
-    const [isNewItemDialogOpen, setIsNewItemDialogOpen] = useState(false);
-    const [initialDialogData, setInitialDialogData] = useState(emptyInitialData);
-
-    useEffect(() => {
-        const ideaToProjectRaw = sessionStorage.getItem('ogeemo-idea-to-project');
-        if (ideaToProjectRaw) {
-            try {
-                const ideaData = JSON.parse(ideaToProjectRaw);
-                setInitialDialogData({ name: ideaData.title, description: ideaData.description });
-                setIsNewItemDialogOpen(true);
-            } catch (error) {
-                console.error("Failed to parse idea data from sessionStorage", error);
-            } finally {
-                // CRUCIAL FIX: Clean up immediately after reading.
-                sessionStorage.removeItem('ogeemo-idea-to-project');
-            }
-        }
-    }, []);
-
-    return (
-        <NewTaskDialog
-            isOpen={isNewItemDialogOpen}
-            onOpenChange={(open) => {
-                setIsNewItemDialogOpen(open);
-                if (!open) {
-                    setInitialDialogData(emptyInitialData);
-                }
-            }}
-            onProjectCreate={onProjectCreate}
-            contacts={contacts}
-            onContactsChange={onContactsChange}
-            projectToEdit={null}
-            initialData={initialDialogData}
-        />
-    );
-};
-
 
 const ProjectCard = ({ project, tasks, contacts, onEdit, onDelete, onPriorityChange }: { project: Project, tasks: TaskEvent[], contacts: Contact[], onEdit: (p: Project) => void, onDelete: (p: Project) => void, onPriorityChange: (projectId: string, priority: 'urgency' | 'importance', value: ProjectUrgency | ProjectImportance) => void }) => {
     const router = useRouter();
@@ -165,6 +121,7 @@ export function ProjectsView() {
     const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isNewItemDialogOpen, setIsNewItemDialogOpen] = useState(false);
+    const [initialDialogData, setInitialDialogData] = useState(emptyInitialData);
     
     const { user } = useAuth();
     const { toast } = useToast();
@@ -195,6 +152,13 @@ export function ProjectsView() {
                 setProjects(fetchedProjects);
                 setContacts(fetchedContacts);
                 setTasks(fetchedTasks);
+
+                const ideaToProjectRaw = sessionStorage.getItem('ogeemo-idea-to-project');
+                if (ideaToProjectRaw) {
+                    const ideaData = JSON.parse(ideaToProjectRaw);
+                    setInitialDialogData({ name: ideaData.title, description: ideaData.description });
+                    setIsNewItemDialogOpen(true);
+                }
 
             } catch (error: any) {
                  toast({ variant: 'destructive', title: 'Failed to load initial data', description: error.message });
@@ -248,7 +212,7 @@ export function ProjectsView() {
     const handleConfirmDelete = async () => {
         if (!projectToDelete) return;
         try {
-            const tasksToDelete = await getTasksForProject(projectToDelete.id);
+            const tasksToDelete = await getTasksForUser(user!.uid).then(allTasks => allTasks.filter(t => t.projectId === projectToDelete.id));
             await deleteProject(projectToDelete.id, tasksToDelete.map(t => t.id));
             
             const newProjects = projects.filter(p => p.id !== projectToDelete.id);
@@ -272,24 +236,40 @@ export function ProjectsView() {
 
     return (
         <>
-            {/* The ProjectInitializer component now handles the logic from the idea board */}
-            <ProjectInitializer 
-                onProjectCreate={handleProjectCreated} 
+            <NewTaskDialog
+                isOpen={isNewItemDialogOpen}
+                onOpenChange={(open) => {
+                    setIsNewItemDialogOpen(open);
+                    if (!open) {
+                        setProjectToEdit(null);
+                        if (sessionStorage.getItem('ogeemo-idea-to-project')) {
+                             sessionStorage.removeItem('ogeemo-idea-to-project');
+                        }
+                    }
+                }}
+                onProjectCreate={handleProjectCreated}
+                onProjectUpdate={handleProjectUpdated}
                 contacts={contacts}
                 onContactsChange={setContacts}
-                projects={projects}
-                setProjects={setProjects}
+                projectToEdit={projectToEdit}
+                initialData={initialDialogData}
             />
             
             <div className="p-4 sm:p-6 flex flex-col h-full items-center">
                 <header className="text-center mb-6">
-                    <h1 className="text-3xl font-bold font-headline text-primary">Project Manager (The "YES" Bin)</h1>
+                    <h1 className="text-3xl font-bold font-headline text-primary">Project Manager</h1>
                     <p className="text-muted-foreground">Manage your projects, view tasks, or create a new project.</p>
                 </header>
 
-                <div className="w-full max-w-7xl flex-1 space-y-8">
-                    <div className="flex justify-end mb-4">
-                        <Button onClick={() => { setProjectToEdit(null); setIsNewItemDialogOpen(true); }}>
+                <div className="w-full max-w-7xl flex-1 flex flex-col space-y-8">
+                    <div className="flex justify-end mb-4 gap-2">
+                        <Button asChild variant="outline">
+                            <Link href="/tasks">Task Board</Link>
+                        </Button>
+                        <Button asChild variant="outline">
+                            <Link href="/project-status">Project Status</Link>
+                        </Button>
+                        <Button onClick={() => { setProjectToEdit(null); setInitialDialogData({}); setIsNewItemDialogOpen(true); }}>
                             <Plus className="mr-2 h-4 w-4" /> New Project
                         </Button>
                     </div>
@@ -348,21 +328,6 @@ export function ProjectsView() {
                 </div>
             </div>
             
-            <NewTaskDialog
-                isOpen={isNewItemDialogOpen && !sessionStorage.getItem('ogeemo-idea-to-project')}
-                onOpenChange={(open) => {
-                    setIsNewItemDialogOpen(open);
-                    if (!open) {
-                        setProjectToEdit(null);
-                    }
-                }}
-                onProjectCreate={handleProjectCreated}
-                onProjectUpdate={handleProjectUpdated}
-                contacts={contacts}
-                onContactsChange={setContacts}
-                projectToEdit={projectToEdit}
-                initialData={emptyInitialData}
-            />
 
             <AlertDialog open={!!projectToDelete} onOpenChange={() => setProjectToDelete(null)}>
                 <AlertDialogContent>

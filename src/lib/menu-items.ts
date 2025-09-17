@@ -39,6 +39,7 @@ import {
   ImageIcon,
   BookText,
   BrainCircuit,
+  ListChecks, // Added for Project Status
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -78,6 +79,8 @@ export const allMenuItems: MenuItem[] = [
   { href: "/communications", label: "Communications", icon: MessageSquare },
   { href: "/contacts", label: "Contacts", icon: Contact },
   { href: "/projects", label: "Projects", icon: Briefcase },
+  { href: "/project-status", label: "Project Status", icon: ListChecks },
+  { href: "/tasks", label: "Tasks", icon: ListTodo },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/files", label: "Files", icon: Folder },
   { href: "/idea-board", label: "Idea Board", icon: Lightbulb },

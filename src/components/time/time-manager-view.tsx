@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LoaderCircle, Save, Calendar as CalendarIcon, ChevronsUpDown, Check, Plus, X, Info, Timer, Play, Pause, Trash2, MoreVertical, Edit, MessageSquare, RefreshCw } from 'lucide-react';
+import { LoaderCircle, Save, Calendar as CalendarIcon, ChevronsUpDown, Check, Plus, X, Info, Timer, Play, Pause, Trash2, MoreVertical, Edit, MessageSquare, RefreshCw, BellRing } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { type Project, type Event as TaskEvent, type TimeSession } from '@/types/calendar-types';
@@ -423,6 +423,14 @@ export function TimeManagerView() {
             })
             .catch(err => toast({ variant: 'destructive', title: 'Creation Failed', description: err.message }));
     };
+    
+    const handleSetReminder = () => {
+        if (subject.trim()) {
+            router.push(`/calendar/reminders?title=${encodeURIComponent(subject)}`);
+        } else {
+            router.push('/calendar/reminders');
+        }
+    };
 
     if (isLoadingData) {
         return (
@@ -609,13 +617,18 @@ export function TimeManagerView() {
                             </CardContent>
                         </Card>
                     </CardContent>
-                    <CardFooter className="flex items-center justify-end gap-2">
-                         <Button size="lg" onClick={() => router.push('/calendar')} variant="ghost">
-                            Close
+                    <CardFooter className="flex items-center justify-between">
+                         <Button size="lg" onClick={handleSetReminder} variant="outline">
+                            <BellRing className="mr-2 h-4 w-4" /> Set Reminder
                         </Button>
-                        <Button size="lg" onClick={handleSave} variant="default">
-                            <Save className="mr-2 h-4 w-4" /> Log Events & Save to Database
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button size="lg" onClick={() => router.push('/calendar')} variant="ghost">
+                                Close
+                            </Button>
+                            <Button size="lg" onClick={handleSave} variant="default">
+                                <Save className="mr-2 h-4 w-4" /> Log Events & Save to Database
+                            </Button>
+                        </div>
                     </CardFooter>
                 </Card>
             </div>

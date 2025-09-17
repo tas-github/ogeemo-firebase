@@ -231,15 +231,15 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                             {isActionItemsView ? (
                                 <>
                                     <Inbox className="h-6 w-6" />
-                                    Task Board Action Items
+                                    Task Board
                                 </>
                             ) : (
-                                project.name
+                                `${project.name} - Task Board`
                             )}
                         </h1>
                         <p className="text-muted-foreground">
                             {isActionItemsView
-                                ? "Manage your task action items here."
+                                ? "Manage your unscheduled Tasks here."
                                 : "Manage your project tasks on the Kanban board."
                             }
                         </p>

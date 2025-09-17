@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { format, addDays, startOfDay, set, isSameDay, addMinutes, differenceInMilliseconds, getHours, getMinutes } from "date-fns"
-import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, MoreVertical, Pencil, Trash2, Plus, ChevronDown, X, FilterX, Info, BookOpen } from "lucide-react"
+import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, MoreVertical, Pencil, Trash2, Plus, ChevronDown, X, FilterX, Info, BookOpen, BellRing } from "lucide-react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -332,6 +332,18 @@ export function CalendarView() {
                         </div>
                         <div className="flex justify-end items-center gap-2">
                              <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button asChild variant="ghost" size="icon">
+                                            <Link href="/calendar/reminders">
+                                                <BellRing className="h-4 w-4" />
+                                            </Link>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom">
+                                        <p>Create a Reminder</p>
+                                    </TooltipContent>
+                                </Tooltip>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <Button asChild variant="ghost" size="icon">

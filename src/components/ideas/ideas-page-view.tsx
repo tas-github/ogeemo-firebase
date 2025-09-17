@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDrag, useDrop, type XYCoord } from 'react-dnd';
-import { MoreVertical, Calendar, Briefcase, Pencil, Trash2, Archive, LoaderCircle } from 'lucide-react';
+import { MoreVertical, Calendar, Briefcase, Pencil, Trash2, Archive, LoaderCircle, Info, Lightbulb } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import EditIdeaDialog from './edit-idea-dialog';
+import IdeaBoardInstructionsDialog from './idea-board-instructions-dialog'; // Import the new component
 import { useToast } from '@/hooks/use-toast';
 import { archiveIdeaAsFile } from '@/services/file-service';
 import { useAuth } from '@/context/auth-context';
@@ -29,6 +30,7 @@ const ItemTypes = {
 
 interface IdeaCardProps {
     idea: Idea;
+    ideas: Idea[]; // Pass the full list to calculate hover index
     onDelete: (id: string) => void;
     onEdit: (idea: Idea) => void;
     onSchedule: (idea: Idea) => void;
@@ -37,7 +39,7 @@ interface IdeaCardProps {
     onMoveCard: (id: string, toIndex: number, toStatus: 'Yes' | 'No' | 'Maybe') => void;
 }
 
-const IdeaCard = ({ idea, onDelete, onEdit, onSchedule, onMakeProject, onArchive, onMoveCard }: IdeaCardProps) => {
+const IdeaCard = ({ idea, ideas, onDelete, onEdit, onSchedule, onMakeProject, onArchive, onMoveCard }: IdeaCardProps) => {
     const ref = useRef<HTMLDivElement>(null);
 
     const [{ isDragging }, drag] = useDrag({
@@ -113,6 +115,7 @@ export default function IdeasPage() {
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [ideaToEdit, setIdeaToEdit] = useState<Idea | null>(null);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [isInstructionsOpen, setIsInstructionsOpen] = useState(false); // State for instructions dialog
     const [inputMode, setInputMode] = useState<'Yes' | 'No' | 'Maybe' | null>(null);
     const [newIdeaTitle, setNewIdeaTitle] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -302,6 +305,7 @@ export default function IdeasPage() {
                             <IdeaCard
                                 key={idea.id}
                                 idea={idea}
+                                ideas={columnIdeas}
                                 onDelete={deleteIdea}
                                 onEdit={handleEdit}
                                 onSchedule={handleSchedule}
@@ -319,9 +323,15 @@ export default function IdeasPage() {
         <>
             <div className="p-4 sm:p-6 flex flex-col h-full items-center">
                 <header className="text-center mb-6">
-                    <h1 className="text-3xl font-bold font-headline text-primary">
-                        Idea Board
-                    </h1>
+                    <div className="flex items-center justify-center gap-2">
+                        <Lightbulb className="h-8 w-8 text-primary" />
+                        <h1 className="text-3xl font-bold font-headline text-primary">
+                            Idea Board
+                        </h1>
+                        <Button variant="ghost" size="icon" onClick={() => setIsInstructionsOpen(true)}>
+                            <Info className="h-5 w-5 text-muted-foreground" />
+                        </Button>
+                    </div>
                     <p className="text-muted-foreground max-w-2xl mx-auto">
                         A digital whiteboard to capture and triage your ideas.
                     </p>
@@ -338,6 +348,10 @@ export default function IdeasPage() {
                 onOpenChange={setIsEditDialogOpen}
                 idea={ideaToEdit}
                 onSave={handleSave}
+            />
+            <IdeaBoardInstructionsDialog
+                isOpen={isInstructionsOpen}
+                onOpenChange={setIsInstructionsOpen}
             />
         </>
     );
