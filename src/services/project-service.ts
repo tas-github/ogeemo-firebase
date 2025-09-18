@@ -55,6 +55,10 @@ const docToProject = (doc: any): Project => {
     status: data.status || 'planning',
     urgency: data.urgency || 'important',
     importance: data.importance || 'B',
+    projectManagerId: data.projectManagerId || null,
+    startDate: (data.startDate as Timestamp)?.toDate() || null,
+    endDate: (data.endDate as Timestamp)?.toDate() || null,
+    projectValue: data.projectValue || null,
   };
 };
 

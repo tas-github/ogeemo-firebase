@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getProjects, getTasksForUser, updateProject, deleteProject } from '@/services/project-service';
 import { useAuth } from '@/context/auth-context';
 import { type Project, type Event as TaskEvent, type ProjectStatus } from '@/types/calendar-types';
-import { LoaderCircle, MoreVertical, Edit, Trash2, ArrowLeft } from 'lucide-react';
+import { LoaderCircle, MoreVertical, Edit, Trash2, ArrowLeft, X } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
@@ -108,13 +108,13 @@ function ProjectColumn({ status, projects, tasks, onDropProject, onEditProject, 
     }));
 
     const titleMap: Record<ProjectStatus, string> = {
-        planning: 'Active',
+        planning: 'In Planning',
         active: 'Active',
         'on-hold': 'On-Hold',
         completed: 'Completed',
     };
     
-    const displayTitle = (status === 'planning' || status === 'active') ? 'Active' : titleMap[status];
+    const displayTitle = titleMap[status];
 
     return (
         <Card ref={drop} className={cn("bg-muted/30 transition-colors", isOver && canDrop && "bg-primary/10")}>
@@ -164,21 +164,16 @@ export function ProjectStatusView() {
   
   const handleDropProject = async (projectId: string, newStatus: ProjectStatus) => {
     const projectToMove = projects.find(p => p.id === projectId);
-    if (!projectToMove) return;
-
-    // Determine the true status to save, especially for the 'Active' column
-    const statusToSave = (newStatus === 'planning' || newStatus === 'active') ? 'active' : newStatus;
-
-    if (projectToMove.status === statusToSave) return;
+    if (!projectToMove || projectToMove.status === newStatus) return;
     
     const originalProjects = projects;
     const updatedProjects = projects.map(p => 
-        p.id === projectId ? { ...p, status: statusToSave } : p
+        p.id === projectId ? { ...p, status: newStatus } : p
     );
     setProjects(updatedProjects);
     
     try {
-        await updateProject(projectId, { status: statusToSave });
+        await updateProject(projectId, { status: newStatus });
         toast({
             title: "Project Status Updated",
             description: `"${projectToMove.name}" has been moved to ${newStatus}.`,
@@ -221,6 +216,7 @@ export function ProjectStatusView() {
   };
 
   const projectsByStatus = React.useMemo(() => {
+    const planning: Project[] = [];
     const active: Project[] = [];
     const onHold: Project[] = [];
     const completed: Project[] = [];
@@ -230,11 +226,13 @@ export function ProjectStatusView() {
             completed.push(p);
         } else if (p.status === 'on-hold') {
             onHold.push(p);
-        } else { // 'active' and 'planning' go into the Active column
+        } else if (p.status === 'planning') {
+            planning.push(p);
+        } else {
             active.push(p);
         }
     });
-    return { active, onHold, completed };
+    return { planning, active, onHold, completed };
   }, [projects]);
   
   if (isLoading) {
@@ -248,7 +246,7 @@ export function ProjectStatusView() {
   return (
     <>
         <div className="space-y-6 p-4 sm:p-6">
-          <header className="text-center">
+          <header className="relative text-center">
             <div className="flex flex-col">
                 <h1 className="text-3xl font-bold font-headline text-primary">Project Status</h1>
                 <p className="text-muted-foreground">An interactive overview of your workspace.</p>
@@ -261,9 +259,18 @@ export function ProjectStatusView() {
                     </Link>
                 </Button>
             </div>
+            <div className="absolute top-0 right-0">
+                <Button asChild variant="ghost" size="icon">
+                    <Link href="/action-manager">
+                        <X className="h-5 w-5" />
+                        <span className="sr-only">Close and go to Action Manager</span>
+                    </Link>
+                </Button>
+            </div>
           </header>
           
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <ProjectColumn status="planning" projects={projectsByStatus.planning} tasks={tasks} onDropProject={handleDropProject} onEditProject={handleEditProject} onDeleteProject={setProjectToDelete} />
             <ProjectColumn status="active" projects={projectsByStatus.active} tasks={tasks} onDropProject={handleDropProject} onEditProject={handleEditProject} onDeleteProject={setProjectToDelete} />
             <ProjectColumn status="on-hold" projects={projectsByStatus.onHold} tasks={tasks} onDropProject={handleDropProject} onEditProject={handleEditProject} onDeleteProject={setProjectToDelete} />
             <ProjectColumn status="completed" projects={projectsByStatus.completed} tasks={tasks} onDropProject={handleDropProject} onEditProject={handleEditProject} onDeleteProject={setProjectToDelete} />

@@ -48,6 +48,10 @@ export interface Project {
   status?: ProjectStatus;
   importance?: ProjectImportance;
   urgency?: ProjectUrgency;
+  projectManagerId?: string | null;
+  startDate?: Date | null;
+  endDate?: Date | null;
+  projectValue?: number | null;
 }
 
 export interface ProjectStep {

@@ -1,8 +1,23 @@
+'use client';
 
-import { redirect } from 'next/navigation';
+import dynamic from 'next/dynamic';
+import { LoaderCircle } from 'lucide-react';
 
-// This is a temporary redirect to handle an old, hardcoded link.
-// The new primary task board is at /tasks.
-export default function ObsoleteTaskBoardRedirectPage() {
-    redirect('/tasks');
+const ProjectTasksView = dynamic(
+  () => import('@/components/tasks/project-tasks-view').then((mod) => mod.ProjectTasksView),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full w-full items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4">
+          <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading Project Workspace...</p>
+        </div>
+      </div>
+    ),
+  }
+);
+
+export default function ProjectTaskPage({ params }: { params: { projectId: string } }) {
+  return <ProjectTasksView projectId={params.projectId} />;
 }

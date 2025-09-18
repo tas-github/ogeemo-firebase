@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LoaderCircle, ArrowLeft, Route, Calendar, Inbox, Trash2, Plus } from 'lucide-react';
+import { LoaderCircle, ArrowLeft, Route, Calendar, Inbox, Trash2, Plus, ListChecks } from 'lucide-react';
 import { TaskColumn } from './TaskColumn';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
@@ -12,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 import { getProjectById, getTasksForProject, getTasksForUser, addTask, updateTask, updateTaskPositions, deleteTask, deleteTasks } from '@/services/project-service';
 import { type Project, type Event as TaskEvent, type TaskStatus } from '@/types/calendar';
 import { getContacts, type Contact } from '@/services/contact-service';
-import { NewTaskDialog } from '@/components/tasks/NewTaskDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -231,7 +230,7 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                             {isActionItemsView ? (
                                 <>
                                     <Inbox className="h-6 w-6" />
-                                    Task Board
+                                    Action Items
                                 </>
                             ) : (
                                 `${project.name} - Task Board`
@@ -239,7 +238,7 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                         </h1>
                         <p className="text-muted-foreground">
                             {isActionItemsView
-                                ? "Manage your unscheduled Tasks here."
+                                ? "Manage your uncategorized tasks here."
                                 : "Manage your project tasks on the Kanban board."
                             }
                         </p>
@@ -262,12 +261,6 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                                     <Link href={`/calendar?projectId=${projectId}`}>
                                         <Calendar className="mr-2 h-4 w-4" />
                                         Calendar View
-                                    </Link>
-                                </Button>
-                                <Button asChild variant="outline">
-                                    <Link href={`/projects/${projectId}/planning`}>
-                                        <Route className="mr-2 h-4 w-4" />
-                                        Planning View
                                     </Link>
                                 </Button>
                             </>
