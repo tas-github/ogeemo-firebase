@@ -44,7 +44,7 @@ export interface Project {
   contactId?: string | null;
   userId: string;
   createdAt: Date;
-  steps?: ProjectStep[];
+  steps?: Partial<ProjectStep>[];
   status?: ProjectStatus;
   importance?: ProjectImportance;
   urgency?: ProjectUrgency;

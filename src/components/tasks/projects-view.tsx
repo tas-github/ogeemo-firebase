@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, LoaderCircle, Inbox, MoreVertical, Edit, Trash2, ListChecks, ArrowUpDown, ListTodo } from 'lucide-react';
+import { Plus, LoaderCircle, Inbox, MoreVertical, Edit, Trash2, ListChecks, ArrowUpDown, ListTodo, Briefcase, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/context/auth-context';
@@ -30,8 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from '@/lib/utils';
-
+import { ProjectManagementHeader } from './ProjectManagementHeader';
 
 const emptyInitialData = {};
 
@@ -44,7 +43,7 @@ const statusDisplayMap: Record<string, string> = {
 
 const ProjectListItem = ({ project, contacts, onEdit, onDelete }: { project: Project, contacts: Contact[], onEdit: (p: Project) => void, onDelete: (p: Project) => void }) => {
     const client = contacts.find(c => c.id === project.contactId);
-    const router = useRouter();
+    const projectManager = contacts.find(c => c.id === project.projectManagerId);
 
     const handleDeleteClick = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -56,21 +55,22 @@ const ProjectListItem = ({ project, contacts, onEdit, onDelete }: { project: Pro
         onEdit(project);
     }
 
-    const projectLink = `/projects/${project.id}/tasks`;
-
     return (
         <div 
             className="group flex items-center p-4 border-b hover:bg-muted/50 transition-colors cursor-pointer"
-            onClick={() => router.push(projectLink)}
+            onClick={handleEditClick}
         >
-            <div className="flex-1 grid grid-cols-12 items-center gap-4">
-                <div className="col-span-4">
+            <div className="flex-1 grid grid-cols-4 items-center gap-4">
+                <div className="col-span-1">
                     <p className="font-semibold">{project.name}</p>
                 </div>
-                <div className="col-span-4">
+                <div className="col-span-1">
                     <p className="text-sm text-muted-foreground">{client?.name || 'No client assigned'}</p>
                 </div>
-                <div className="col-span-4 text-center">
+                <div className="col-span-1 text-center">
+                    <p className="text-sm text-muted-foreground">{projectManager?.name || 'N/A'}</p>
+                </div>
+                <div className="col-span-1 text-center">
                     <span className="text-sm text-muted-foreground">
                         {statusDisplayMap[project.status || 'planning'] || 'Planning'}
                     </span>
@@ -108,7 +108,7 @@ export function ProjectsView() {
     const [isLoading, setIsLoading] = useState(true);
     const [isNewItemDialogOpen, setIsNewItemDialogOpen] = useState(false);
     const [initialDialogData, setInitialDialogData] = useState(emptyInitialData);
-    const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'clientName' | 'status'; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
+    const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'clientName' | 'status' | 'projectManagerName'; direction: 'ascending' | 'descending' } | null>({ key: 'name', direction: 'ascending' });
     
     const { user } = useAuth();
     const { toast } = useToast();
@@ -192,7 +192,7 @@ export function ProjectsView() {
         }
     };
     
-    const requestSort = (key: 'name' | 'clientName' | 'status') => {
+    const requestSort = (key: 'name' | 'clientName' | 'status' | 'projectManagerName') => {
         let direction: 'ascending' | 'descending' = 'ascending';
         if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
             direction = 'descending';
@@ -210,6 +210,9 @@ export function ProjectsView() {
                 if (sortConfig.key === 'clientName') {
                     aValue = contacts.find(c => c.id === a.contactId)?.name || '';
                     bValue = contacts.find(c => c.id === b.contactId)?.name || '';
+                } else if (sortConfig.key === 'projectManagerName') {
+                    aValue = contacts.find(c => c.id === a.projectManagerId)?.name || '';
+                    bValue = contacts.find(c => c.id === b.projectManagerId)?.name || '';
                 } else {
                     aValue = a[sortConfig.key] || '';
                     bValue = b[sortConfig.key] || '';
@@ -253,40 +256,27 @@ export function ProjectsView() {
             />
             
             <div className="p-4 sm:p-6 flex flex-col h-full items-center">
-                <header className="text-center mb-6">
-                    <h1 className="text-3xl font-bold font-headline text-primary">Project Manager</h1>
-                    <p className="text-muted-foreground">Manage your projects, view tasks, or create a new project.</p>
-                </header>
+                <ProjectManagementHeader onNewProjectClick={() => { setProjectToEdit(null); setInitialDialogData({}); setIsNewItemDialogOpen(true); }} />
 
                 <Card className="w-full max-w-6xl">
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <div>
-                            <CardTitle>All Projects</CardTitle>
-                            <CardDescription>A list of all your active and planning projects.</CardDescription>
-                        </div>
-                        <div className="flex items-center gap-2">
-                             <Button asChild variant="outline">
-                                <Link href="/project-status">
-                                    <ListChecks className="mr-2 h-4 w-4" />
-                                    Project Status
-                                </Link>
-                            </Button>
-                            <Button onClick={() => { setInitialDialogData({}); setProjectToEdit(null); setIsNewItemDialogOpen(true); }}>
-                                <Plus className="mr-2 h-4 w-4" /> New Project
-                            </Button>
-                        </div>
+                    <CardHeader>
+                        <CardTitle>All Projects</CardTitle>
+                        <CardDescription>A list of all your active and planning projects.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="border-t">
                             <div className="flex items-center p-4 border-b bg-muted/50">
-                                <div className="flex-1 grid grid-cols-12 items-center gap-4">
-                                    <div className="col-span-4">
+                                <div className="flex-1 grid grid-cols-4 items-center gap-4">
+                                    <div className="col-span-1">
                                         <Button onClick={() => requestSort('name')} className="font-semibold p-2 h-auto w-full justify-center bg-gradient-to-r from-glass-start to-glass-end text-black shadow-glass hover:from-glass-start/90 hover:to-glass-end/90">Project Title <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
                                     </div>
-                                    <div className="col-span-4">
+                                    <div className="col-span-1">
                                         <Button onClick={() => requestSort('clientName')} className="font-semibold p-2 h-auto w-full justify-center bg-gradient-to-r from-glass-start to-glass-end text-black shadow-glass hover:from-glass-start/90 hover:to-glass-end/90">Client <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
                                     </div>
-                                    <div className="col-span-4">
+                                    <div className="col-span-1">
+                                        <Button onClick={() => requestSort('projectManagerName')} className="font-semibold p-2 h-auto w-full justify-center bg-gradient-to-r from-glass-start to-glass-end text-black shadow-glass hover:from-glass-start/90 hover:to-glass-end/90">Prj Mngr <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
+                                    </div>
+                                    <div className="col-span-1">
                                         <Button onClick={() => requestSort('status')} className="font-semibold p-2 h-auto w-full justify-center bg-gradient-to-r from-glass-start to-glass-end text-black shadow-glass hover:from-glass-start/90 hover:to-glass-end/90">Status <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
                                     </div>
                                 </div>

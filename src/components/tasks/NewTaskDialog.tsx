@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,7 +31,7 @@ import { type Project, type Event as TaskEvent, type ProjectUrgency, type Projec
 import { type Contact, type FolderData } from '@/data/contacts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
-import { Plus, Calendar as CalendarIcon, Save, Trash2 } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, Save, Trash2, Route } from 'lucide-react';
 import ContactFormDialog from '../contacts/contact-form-dialog';
 import { getFolders } from '@/services/contact-service';
 import { useAuth } from '@/context/auth-context';
@@ -40,7 +41,6 @@ import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, set, addMinutes } from 'date-fns';
 import { addProjectTemplate, getProjectTemplates, updateProjectWithTasks } from '@/services/project-service';
-import { Checkbox } from '../ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 const projectSchema = z.object({
@@ -71,6 +71,8 @@ interface NewTaskDialogProps {
   initialData?: Partial<any>;
 }
 
+export const PROJECT_PLAN_SESSION_KEY = 'ogeemo-project-plan-session';
+
 export function NewTaskDialog({
   isOpen,
   onOpenChange,
@@ -83,6 +85,7 @@ export function NewTaskDialog({
 }: NewTaskDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const router = useRouter();
   const [clientAction, setClientAction] = useState<'select' | 'add'>('select');
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [contactFolders, setContactFolders] = useState<FolderData[]>([]);
@@ -90,15 +93,8 @@ export function NewTaskDialog({
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState("");
   
-  // State for integrated step planning
   const [steps, setSteps] = useState<Partial<ProjectStep>[]>([]);
-  const [newStepTitle, setNewStepTitle] = useState("");
-  const [newStepDescription, setNewStepDescription] = useState("");
-  const [newStepDate, setNewStepDate] = useState<Date | undefined>(new Date());
-  const [newStepHour, setNewStepHour] = useState<string>(String(new Date().getHours()));
-  const [newStepMinute, setNewStepMinute] = useState<string>("0");
-  const [newStepConnectToCalendar, setNewStepConnectToCalendar] = useState(false);
-
+  
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
     defaultValues: { name: "", description: "", contactId: "", urgency: 'important', importance: 'B', projectManagerId: "", startDate: undefined, endDate: undefined, projectValue: 0, status: 'planning' },
@@ -108,40 +104,38 @@ export function NewTaskDialog({
 
   useEffect(() => {
     if (isOpen) {
-        if (projectToEdit) {
+        // Check for returning plan from Project Organizer
+        const returningPlanRaw = sessionStorage.getItem(PROJECT_PLAN_SESSION_KEY);
+        if (returningPlanRaw) {
+            const returningPlan = JSON.parse(returningPlanRaw);
+            form.reset(returningPlan.projectData);
+            setSteps(returningPlan.steps);
+            // It's crucial to remove the item after use to prevent stale data
+            sessionStorage.removeItem(PROJECT_PLAN_SESSION_KEY);
+            return; // Exit early to avoid overwriting with old data
+        }
+
+        const projectData = projectToEdit || initialData;
+        if (projectData) {
             form.reset({
-                name: projectToEdit.name,
-                description: projectToEdit.description || "",
-                contactId: projectToEdit.contactId || "",
-                urgency: projectToEdit.urgency || 'important',
-                importance: projectToEdit.importance || 'B',
-                projectManagerId: projectToEdit.projectManagerId || "",
-                startDate: projectToEdit.startDate ? new Date(projectToEdit.startDate) : undefined,
-                endDate: projectToEdit.endDate ? new Date(projectToEdit.endDate) : undefined,
-                projectValue: projectToEdit.projectValue || 0,
-                status: projectToEdit.status || 'planning',
+                name: projectData.name || "",
+                description: projectData.description || "",
+                contactId: projectData.contactId || "",
+                urgency: projectData.urgency || 'important',
+                importance: projectData.importance || 'B',
+                projectManagerId: projectData.projectManagerId || "",
+                startDate: projectData.startDate ? new Date(projectData.startDate) : undefined,
+                endDate: projectData.endDate ? new Date(projectData.endDate) : undefined,
+                projectValue: projectData.projectValue || 0,
+                status: projectData.status || 'planning',
             });
-            setSteps(projectToEdit.steps || []);
-        } else if (initialData) {
-            form.reset({
-                name: initialData.name || "",
-                description: initialData.description || "",
-                contactId: initialData.contactId || "",
-                urgency: 'important',
-                importance: 'B',
-                projectManagerId: "",
-                startDate: undefined,
-                endDate: undefined,
-                projectValue: 0,
-                status: 'planning',
-            });
-            setSteps([]);
+            setSteps(projectData.steps || []);
         } else {
             form.reset({ name: "", description: "", contactId: "", urgency: 'important', importance: 'B', projectManagerId: "", startDate: undefined, endDate: undefined, projectValue: 0, status: 'planning' });
             setSteps([]);
         }
         
-        setClientAction('select'); // Always default to select
+        setClientAction('select');
     }
   }, [isOpen, projectToEdit, initialData, form]);
 
@@ -170,6 +164,9 @@ export function NewTaskDialog({
             contactId: values.contactId || null,
             projectManagerId: values.projectManagerId || null,
             projectValue: values.projectValue || null,
+            startDate: values.startDate || null,
+            endDate: values.endDate || null,
+            steps: steps, // Make sure steps are included
         };
         onProjectUpdate(updatedProjectData, steps);
     } else {
@@ -208,7 +205,7 @@ export function NewTaskDialog({
         } else {
           updatedContacts = [...contacts, savedContact];
         }
-        onContactsChange(updatedContacts); // Update parent component's state
+        onContactsChange(updatedContacts);
     }
     form.setValue('contactId', savedContact.id);
     setClientAction('select');
@@ -219,7 +216,7 @@ export function NewTaskDialog({
     const template = templates.find(t => t.id === templateId);
     if (template) {
         form.setValue('name', template.name);
-        form.setValue('description', template.description);
+        form.setValue('description', template.description || '');
         const templateTasks = template.tasks || [];
         setSteps(templateTasks.map(t => ({...t, id: `temp_${Date.now()}`})));
         toast({ title: "Template Applied", description: `Project details and ${templateTasks.length} steps have been loaded.`});
@@ -249,51 +246,20 @@ export function NewTaskDialog({
         toast({ variant: 'destructive', title: 'Failed to save template', description: error.message });
     }
   };
+
+  const handleOpenProjectOrganizer = () => {
+      const currentProjectData = form.getValues();
+      const sessionData = {
+          projectData: currentProjectData,
+          steps: steps,
+          isEditing: !!projectToEdit,
+          projectId: projectToEdit?.id,
+          contacts: contacts,
+      };
+      sessionStorage.setItem(PROJECT_PLAN_SESSION_KEY, JSON.stringify(sessionData));
+      router.push('/projects/organizer');
+  };
   
-  const handleAddStep = () => {
-        if (!newStepTitle.trim()) {
-            toast({ variant: 'destructive', title: 'Missing Information', description: 'Please provide a title for the step.' });
-            return;
-        }
-
-        let stepStartTime: Date | null = null;
-        if (newStepConnectToCalendar && newStepDate) {
-            stepStartTime = set(newStepDate, {
-                hours: parseInt(newStepHour),
-                minutes: parseInt(newStepMinute)
-            });
-        }
-        
-        const newStep: Partial<ProjectStep> = {
-            id: `temp_${Date.now()}`,
-            title: newStepTitle,
-            description: newStepDescription,
-            isBillable: true,
-            connectToCalendar: newStepConnectToCalendar,
-            startTime: stepStartTime,
-            isCompleted: false,
-        };
-        
-        setSteps(prev => [...prev, newStep]);
-        setNewStepTitle("");
-        setNewStepDescription("");
-    };
-
-    const handleDeleteStep = (stepId: string) => {
-        setSteps(prev => prev.filter(step => step.id !== stepId));
-    };
-    
-    const hourOptions = Array.from({ length: 24 }, (_, i) => {
-        const date = set(new Date(), { hours: i });
-        return { value: String(i), label: format(date, 'h a') };
-    });
-
-    const minuteOptions = Array.from({ length: 12 }, (_, i) => {
-        const minutes = i * 5;
-        return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` };
-    });
-
-
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -366,38 +332,20 @@ export function NewTaskDialog({
                       {/* Right Column: Step Planning */}
                       <div className="space-y-4">
                         <Card>
-                          <CardHeader className="p-4"><CardTitle className="text-base">Add a New Step</CardTitle></CardHeader>
-                          <CardContent className="p-4 pt-0 space-y-4">
-                            <div className="space-y-2"><Label htmlFor="step-title">Step Title</Label><Input id="step-title" value={newStepTitle} onChange={(e) => setNewStepTitle(e.target.value)} /></div>
-                            <div className="space-y-2"><Label htmlFor="step-desc">Description</Label><Textarea id="step-desc" value={newStepDescription} onChange={(e) => setNewStepDescription(e.target.value)} /></div>
-                            <div className="flex items-center space-x-2 pt-2"><Checkbox id="connect-to-calendar" checked={newStepConnectToCalendar} onCheckedChange={(checked) => setNewStepConnectToCalendar(!!checked)} /><div className="grid gap-1.5 leading-none"><label htmlFor="connect-to-calendar" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Add to Calendar</label><p className="text-xs text-muted-foreground">Schedules this step as a task in the calendar.</p></div></div>
-                            {newStepConnectToCalendar && (
-                                <div className="space-y-2 animate-in fade-in-50 duration-300">
-                                    <Label>Start Date & Time</Label>
-                                    <div className="flex gap-2">
-                                        <Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !newStepDate && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{newStepDate ? format(newStepDate, "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={newStepDate} onSelect={setNewStepDate} initialFocus /></PopoverContent></Popover>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Select value={newStepHour} onValueChange={setNewStepHour}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
-                                        <Select value={newStepMinute} onValueChange={setNewStepMinute}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
-                                    </div>
-                                </div>
-                            )}
-                            <Button onClick={handleAddStep} className="w-full" type="button"><Plus className="mr-2 h-4 w-4" /> Add Step to Plan</Button>
-                          </CardContent>
-                        </Card>
-                        
-                        <Card>
-                          <CardHeader className="p-4"><CardTitle className="text-base">Project Plan</CardTitle></CardHeader>
+                          <CardHeader className="p-4 flex-row justify-between items-center">
+                              <CardTitle className="text-base">Project Plan</CardTitle>
+                              <Button onClick={handleOpenProjectOrganizer} type="button">
+                                  <Route className="mr-2 h-4 w-4" /> Open Project Organizer
+                              </Button>
+                          </CardHeader>
                           <CardContent className="p-4 pt-0">
                             {steps.length > 0 ? (
-                                <div className="space-y-2">{steps.map((step, index) => (<div key={step.id} className="p-2 border rounded-md flex items-start justify-between"><div className="flex-1"><p className="font-semibold text-sm">{index + 1}. {step.title}</p>{step.connectToCalendar && step.startTime && (<p className="text-xs text-primary mt-1 flex items-center gap-1"><CalendarIcon className="h-3 w-3" />Scheduled for {format(step.startTime as Date, 'PPp')}</p>)}</div><Button variant="ghost" size="icon" className="h-7 w-7" type="button" onClick={() => handleDeleteStep(step.id!)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>))}</div>
+                                <div className="space-y-2 border rounded-md p-2 h-64 overflow-y-auto">{steps.map((step, index) => (<div key={step.id || index} className="p-2 border-b last:border-b-0 flex items-start justify-between"><div className="flex-1"><p className="font-semibold text-sm">{index + 1}. {step.title}</p>{step.connectToCalendar && step.startTime && (<p className="text-xs text-primary mt-1 flex items-center gap-1"><CalendarIcon className="h-3 w-3" />Scheduled for {format(step.startTime as Date, 'PPp')}</p>)}</div></div>))}</div>
                             ) : (
-                                <div className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-lg"><p className="text-sm">No steps defined yet.</p></div>
+                                <div className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-lg"><p className="text-sm">No steps defined yet.</p><p className="text-xs">Use the Project Organizer to build your plan.</p></div>
                             )}
                           </CardContent>
                         </Card>
-
                       </div>
 
                     </div>

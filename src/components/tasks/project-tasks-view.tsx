@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LoaderCircle, ArrowLeft, Route, Calendar, Inbox, Trash2, Plus, ListChecks } from 'lucide-react';
+import { LoaderCircle, Trash2, Plus } from 'lucide-react';
 import { TaskColumn } from './TaskColumn';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
@@ -22,6 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ProjectManagementHeader } from './ProjectManagementHeader';
 
 export const ACTION_ITEMS_PROJECT_ID = 'inbox';
 
@@ -224,55 +225,7 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
     return (
         <>
             <div className="p-4 sm:p-6 h-full flex flex-col">
-                <header className="flex flex-col items-center text-center pb-4">
-                     <div>
-                        <h1 className="text-2xl font-bold font-headline text-primary flex items-center gap-2">
-                            {isActionItemsView ? (
-                                <>
-                                    <Inbox className="h-6 w-6" />
-                                    Action Items
-                                </>
-                            ) : (
-                                `${project.name} - Task Board`
-                            )}
-                        </h1>
-                        <p className="text-muted-foreground">
-                            {isActionItemsView
-                                ? "Manage your uncategorized tasks here."
-                                : "Manage your project tasks on the Kanban board."
-                            }
-                        </p>
-                     </div>
-                     <div className="flex items-center gap-2 mt-4">
-                        <Button
-                            onClick={() => setIsBulkDeleteAlertOpen(true)}
-                            disabled={selectedTaskIds.length === 0}
-                        >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Bulk Delete
-                        </Button>
-                        <Button onClick={handleAddTask} variant="outline">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Task
-                        </Button>
-                        {!isActionItemsView && (
-                            <>
-                                <Button asChild variant="outline">
-                                    <Link href={`/calendar?projectId=${projectId}`}>
-                                        <Calendar className="mr-2 h-4 w-4" />
-                                        Calendar View
-                                    </Link>
-                                </Button>
-                            </>
-                        )}
-                        <Button asChild variant="outline">
-                            <Link href="/projects">
-                                <ArrowLeft className="mr-2 h-4 w-4" />
-                                All Projects
-                            </Link>
-                        </Button>
-                     </div>
-                </header>
+                <ProjectManagementHeader onNewProjectClick={() => router.push('/projects')} projectId={projectId}/>
                 
                 <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-3 gap-6">
                     <TaskColumn

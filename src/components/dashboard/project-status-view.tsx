@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getProjects, getTasksForUser, updateProject, deleteProject } from '@/services/project-service';
 import { useAuth } from '@/context/auth-context';
 import { type Project, type Event as TaskEvent, type ProjectStatus } from '@/types/calendar-types';
-import { LoaderCircle, MoreVertical, Edit, Trash2, ArrowLeft, X } from 'lucide-react';
+import { LoaderCircle, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
@@ -29,6 +29,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from '../ui/button';
+import { ProjectManagementHeader } from '../tasks/ProjectManagementHeader';
+import { useRouter } from 'next/navigation';
 
 const ItemTypes = {
   PROJECT: 'project',
@@ -134,7 +136,7 @@ export function ProjectStatusView() {
   const [tasks, setTasks] = React.useState<TaskEvent[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [projectToDelete, setProjectToDelete] = React.useState<Project | null>(null);
-
+  const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -246,28 +248,7 @@ export function ProjectStatusView() {
   return (
     <>
         <div className="space-y-6 p-4 sm:p-6">
-          <header className="relative text-center">
-            <div className="flex flex-col">
-                <h1 className="text-3xl font-bold font-headline text-primary">Project Status</h1>
-                <p className="text-muted-foreground">An interactive overview of your workspace.</p>
-            </div>
-             <div className="flex justify-center mt-4">
-                <Button asChild variant="outline">
-                    <Link href="/projects">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Project Manager
-                    </Link>
-                </Button>
-            </div>
-            <div className="absolute top-0 right-0">
-                <Button asChild variant="ghost" size="icon">
-                    <Link href="/action-manager">
-                        <X className="h-5 w-5" />
-                        <span className="sr-only">Close and go to Action Manager</span>
-                    </Link>
-                </Button>
-            </div>
-          </header>
+            <ProjectManagementHeader onNewProjectClick={() => router.push('/projects')} />
           
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <ProjectColumn status="planning" projects={projectsByStatus.planning} tasks={tasks} onDropProject={handleDropProject} onEditProject={handleEditProject} onDeleteProject={setProjectToDelete} />
