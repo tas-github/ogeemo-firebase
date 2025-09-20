@@ -109,7 +109,7 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
     }, [tasks]);
 
     const handleAddTask = () => {
-        router.push(`/time?projectId=${projectId}`);
+        router.push(`/master-mind?projectId=${projectId}`);
     };
 
     const handleTaskUpdated = (updatedTask: TaskEvent) => {
@@ -225,7 +225,15 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
     return (
         <>
             <div className="p-4 sm:p-6 h-full flex flex-col">
-                <ProjectManagementHeader onNewProjectClick={() => router.push('/projects')} projectId={projectId}/>
+                <ProjectManagementHeader />
+                 <header className="text-center mb-6">
+                    <h1 className="text-3xl font-bold font-headline text-primary">
+                        {project.name}
+                    </h1>
+                    <p className="text-muted-foreground max-w-2xl mx-auto">
+                        {project.description}
+                    </p>
+                </header>
                 
                 <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-3 gap-6">
                     <TaskColumn

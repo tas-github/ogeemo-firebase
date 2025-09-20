@@ -1,11 +1,10 @@
-
 'use client';
 
 import dynamic from 'next/dynamic';
 import { LoaderCircle } from 'lucide-react';
 
 const ProjectStepsView = dynamic(
-  () => import('@/components/tasks/project-steps-view'),
+  () => import('@/components/tasks/project-steps-view').then(mod => mod.default),
   {
     ssr: false,
     loading: () => (

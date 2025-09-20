@@ -51,7 +51,7 @@ export function TaskCard({ task, onMoveCard, onTaskUpdate, onTaskDelete, isSelec
   drag(drop(ref));
   
   const handleEdit = () => {
-      router.push(`/time?eventId=${task.id}`);
+      router.push(`/master-mind?eventId=${task.id}`);
   };
 
   return (

@@ -15,12 +15,14 @@ import {
   Timestamp,
   getDoc,
   setDoc,
+  limit,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
 import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData, TimeSession, type ProjectUrgency, type ProjectImportance } from '@/types/calendar-types';
-import { addMinutes, addHours, startOfHour, set, addDays } from 'date-fns';
+import { addMinutes, eachDayOfInterval, isWeekday, set } from 'date-fns';
 import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info, BrainCircuit } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { PlanningRitual } from '@/hooks/use-user-preferences';
 
 const PROJECTS_COLLECTION = 'projects';
 const TASKS_COLLECTION = 'tasks';
@@ -81,6 +83,7 @@ const docToTask = (doc: any): TaskEvent => {
     duration: data.duration,
     isBillable: data.isBillable,
     billableRate: data.billableRate,
+    ritualType: data.ritualType,
     sessions: (data.sessions || []).map((session: any) => ({
         ...session,
         startTime: (session.startTime as Timestamp)?.toDate() || new Date(),
@@ -382,6 +385,69 @@ export async function addProjectTemplate(templateData: Omit<ProjectTemplate, 'id
     return { id: docRef.id, ...templateData };
 }
 
+// --- Planning Ritual Functions ---
+type DayOfWeek = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+const dayNameToIndex: Record<DayOfWeek, number> = { 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+
+export async function upsertRitualTask(
+    userId: string, 
+    ritualType: 'daily' | 'weekly', 
+    settings: PlanningRitual,
+    dateRange: { from: Date, to: Date }
+) {
+    const db = await getDb();
+    const batch = writeBatch(db);
+    const tasksRef = collection(db, TASKS_COLLECTION);
+
+    // 1. Delete all existing ritual tasks for this user and type
+    const q = query(tasksRef, where("userId", "==", userId), where("ritualType", "==", ritualType));
+    const snapshot = await getDocs(q);
+    snapshot.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+
+    // 2. If the ritual is enabled, create new events for the specified date range
+    if (settings.enabled) {
+        const [hour, minute] = settings.time.split(':').map(Number);
+        const allDatesInRange = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
+
+        const taskDataTemplate = {
+            title: ritualType === 'daily' ? 'Daily Wind-Down & Plan' : 'Weekly Strategic Review',
+            description: ritualType === 'daily' 
+                ? 'A protected 25-minute block to review today and plan for tomorrow.'
+                : 'A protected 90-minute block to review all projects and set goals for the week ahead.',
+            isScheduled: true,
+            status: 'todo' as TaskStatus,
+            ritualType: ritualType,
+            userId,
+            position: -1,
+        };
+
+        if (ritualType === 'daily') {
+            const weekdays = allDatesInRange.filter(date => isWeekday(date));
+            weekdays.forEach(day => {
+                const start = set(day, { hours: hour, minutes: minute, seconds: 0, milliseconds: 0 });
+                const end = addMinutes(start, settings.duration);
+                const taskRef = doc(tasksRef);
+                batch.set(taskRef, { ...taskDataTemplate, start, end });
+            });
+        } else if (ritualType === 'weekly' && settings.day) {
+            const dayIndex = dayNameToIndex[settings.day];
+            const matchingDays = allDatesInRange.filter(date => date.getDay() === dayIndex);
+            matchingDays.forEach(day => {
+                const start = set(day, { hours: hour, minutes: minute, seconds: 0, milliseconds: 0 });
+                const end = addMinutes(start, settings.duration);
+                const taskRef = doc(tasksRef);
+                batch.set(taskRef, { ...taskDataTemplate, start, end });
+            });
+        }
+    }
+
+    // 3. Commit all changes
+    await batch.commit();
+}
+
+
 // --- Action Chip Functions ---
 
 const iconMap: { [key: string]: LucideIcon } = { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info, BrainCircuit };
@@ -523,34 +589,3 @@ export async function updateActionChip(userId: string, updatedChip: ActionChipDa
         await updateAvailableActionChips(userId, newAvailableChips);
     }
 }
-
-
-// --- Data for Dialogs ---
-export type ManagerOption = { label: string; href: string; icon: LucideIcon };
-export const managerOptions: ManagerOption[] = [
-    { label: 'Master Mind', icon: BrainCircuit, href: '/master-mind' },
-    { label: 'OgeeMail', icon: Mail, href: '/ogeemail' },
-    { label: 'Compose Email', icon: Mail, href: '/ogeemail/compose' },
-    { label: 'Communications', icon: MessageSquare, href: '/communications' },
-    { label: 'Contacts', icon: Contact, href: '/contacts' },
-    { label: 'Projects', icon: Briefcase, href: '/projects' },
-    { label: 'Tasks', icon: ListTodo, href: '/tasks' },
-    { label: 'Calendar', icon: Calendar, href: '/calendar' },
-    { label: 'Files', icon: Folder, href: '/files' },
-    { label: 'Idea Board', icon: Lightbulb, href: '/idea-board' },
-    { label: 'Research', icon: Beaker, href: '/research' },
-    { label: 'Accounting', icon: Calculator, href: '/accounting' },
-    { label: 'BKS', icon: Info, href: '/accounting/bks' },
-    { label: 'Time', icon: Clock, href: '/time' },
-    { label: 'HR Manager', icon: Contact2, href: '/hr-manager' },
-    { label: 'Social Media', icon: Share2, href: '/social-media-manager' },
-    { label: 'CRM', icon: Users2, href: '/crm' },
-    { label: 'Inventory', icon: PackageSearch, href: '/inventory-manager' },
-    { label: 'Marketing', icon: Megaphone, href: '/marketing-manager' },
-    { label: 'Legal Hub', icon: Landmark, href: '/legal-hub' },
-    { label: 'Google', icon: Wand2, href: '/google' },
-    { label: 'Backup', icon: DatabaseBackup, href: '/backup' },
-    { label: 'Reports', icon: BarChart3, href: '/reports' },
-    { label: 'Hytexercise', icon: HeartPulse, href: '/hytexercise' },
-    { label: 'Alerts', icon: Bell, href: '/alerts' },
-]

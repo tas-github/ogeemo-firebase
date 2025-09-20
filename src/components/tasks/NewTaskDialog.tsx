@@ -39,7 +39,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { cn } from '@/lib/utils';
-import { format, set, addMinutes } from 'date-fns';
+import { format, set, addMinutes, parseISO } from 'date-fns';
 import { addProjectTemplate, getProjectTemplates, updateProjectWithTasks } from '@/services/project-service';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
@@ -67,7 +67,6 @@ interface NewTaskDialogProps {
   contacts?: Contact[];
   onContactsChange?: (contacts: Contact[]) => void;
   projectToEdit?: Project | null;
-  initialMode?: 'project' | 'task' | 'event';
   initialData?: Partial<any>;
 }
 
@@ -94,10 +93,11 @@ export function NewTaskDialog({
   const [newTemplateName, setNewTemplateName] = useState("");
   
   const [steps, setSteps] = useState<Partial<ProjectStep>[]>([]);
+  const [displayValue, setDisplayValue] = useState("");
   
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
-    defaultValues: { name: "", description: "", contactId: "", urgency: 'important', importance: 'B', projectManagerId: "", startDate: undefined, endDate: undefined, projectValue: 0, status: 'planning' },
+    defaultValues: { name: "", description: "", contactId: "", urgency: 'important', importance: 'B', projectManagerId: "", startDate: undefined, endDate: undefined, projectValue: undefined, status: 'planning' },
   });
   
   const importanceValue = form.watch('importance');
@@ -126,12 +126,18 @@ export function NewTaskDialog({
                 projectManagerId: projectData.projectManagerId || "",
                 startDate: projectData.startDate ? new Date(projectData.startDate) : undefined,
                 endDate: projectData.endDate ? new Date(projectData.endDate) : undefined,
-                projectValue: projectData.projectValue || 0,
+                projectValue: projectData.projectValue || undefined,
                 status: projectData.status || 'planning',
             });
+            if (projectData.projectValue) {
+                setDisplayValue(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(projectData.projectValue));
+            } else {
+                setDisplayValue('');
+            }
             setSteps(projectData.steps || []);
         } else {
-            form.reset({ name: "", description: "", contactId: "", urgency: 'important', importance: 'B', projectManagerId: "", startDate: undefined, endDate: undefined, projectValue: 0, status: 'planning' });
+            form.reset({ name: "", description: "", contactId: "", urgency: 'important', importance: 'B', projectManagerId: "", startDate: undefined, endDate: undefined, projectValue: undefined, status: 'planning' });
+            setDisplayValue('');
             setSteps([]);
         }
         
@@ -260,6 +266,32 @@ export function NewTaskDialog({
       router.push('/projects/organizer');
   };
   
+    const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        const numericValue = parseFloat(value.replace(/[^0-9.]/g, ''));
+        if (!isNaN(numericValue)) {
+            form.setValue('projectValue', numericValue);
+            setDisplayValue(value);
+        } else {
+            form.setValue('projectValue', undefined);
+            setDisplayValue('');
+        }
+    };
+  
+    const handleCurrencyBlur = () => {
+        const value = form.getValues('projectValue');
+        if (value !== undefined && value !== null) {
+            setDisplayValue(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value));
+        } else {
+            setDisplayValue('');
+        }
+    };
+  
+    const handleCurrencyFocus = () => {
+        const value = form.getValues('projectValue');
+        setDisplayValue(value !== undefined ? String(value) : '');
+    };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -278,6 +310,7 @@ export function NewTaskDialog({
                     <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
                       {/* Left Column: Project Details */}
                       <div className="space-y-4">
+                        <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Project Name</FormLabel> <FormControl><Input placeholder="e.g., Website Redesign" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                         {!projectToEdit && (
                           <FormItem>
                               <FormLabel>Start from a Template</FormLabel>
@@ -297,7 +330,6 @@ export function NewTaskDialog({
                               </Select>
                           </FormItem>
                         )}
-                        <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Project Name</FormLabel> <FormControl><Input placeholder="e.g., Website Redesign" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                         
                         <div className="space-y-2">
                           <FormLabel>Client</FormLabel>
@@ -319,7 +351,7 @@ export function NewTaskDialog({
                           <FormField control={form.control} name="endDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>End Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} /></PopoverContent></Popover><FormMessage /></FormItem> )} />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <FormField control={form.control} name="projectValue" render={({ field }) => ( <FormItem><FormLabel>Project Value</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /> </FormItem> )} />
+                          <FormField control={form.control} name="projectValue" render={({ field }) => ( <FormItem><FormLabel>Project Value</FormLabel><FormControl><Input placeholder="$" value={displayValue} onChange={handleCurrencyChange} onBlur={handleCurrencyBlur} onFocus={handleCurrencyFocus} /></FormControl><FormMessage /> </FormItem> )} />
                           <FormField control={form.control} name="status" render={({ field }) => ( <FormItem><FormLabel>Initial Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="planning">Planning</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="on-hold">On-Hold</SelectItem><SelectItem value="completed">Completed</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
                         </div>
                         <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea placeholder="Describe the project goals and objectives..." {...field} /></FormControl> <FormMessage /> </FormItem> )} />

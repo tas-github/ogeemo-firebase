@@ -21,7 +21,7 @@ export default function TimeManagerInstructionsPage() {
                 </div>
                 <div className="text-center col-span-1">
                     <h1 className="text-2xl font-bold font-headline text-primary">
-                        How to Use the Event Time Manager
+                        How to Use The Master Mind
                     </h1>
                     <p className="text-muted-foreground max-w-2xl mx-auto">
                         Your central hub for logging past work, scheduling future events, and tracking time live.
@@ -29,9 +29,9 @@ export default function TimeManagerInstructionsPage() {
                 </div>
                 <div className="flex justify-end">
                     <Button asChild variant="outline">
-                        <Link href="/time">
+                        <Link href="/master-mind">
                             <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Event Time Manager
+                            Back to The Master Mind
                         </Link>
                     </Button>
                 </div>

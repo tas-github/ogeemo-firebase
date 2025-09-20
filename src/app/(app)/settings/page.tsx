@@ -2,11 +2,14 @@
 "use client";
 
 import { ProfileCard } from "@/components/settings/profile-card";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 function PreferencesCard() {
   const { preferences, updatePreferences, isLoading } = useUserPreferences();
@@ -54,6 +57,24 @@ function PreferencesCard() {
   );
 }
 
+function PlanningRitualsCard() {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Planning Rituals</CardTitle>
+                <CardDescription>Configure your automated daily and weekly planning sessions to build a routine of focus and clarity.</CardDescription>
+            </CardHeader>
+            <CardFooter>
+                <Button asChild>
+                    <Link href="/settings/rituals">
+                        Configure Rituals <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                </Button>
+            </CardFooter>
+        </Card>
+    )
+}
+
 
 export default function SettingsPage() {
   return (
@@ -73,6 +94,7 @@ export default function SettingsPage() {
             </CardContent>
         </Card>
         <PreferencesCard />
+        <PlanningRitualsCard />
       </div>
     </div>
   );

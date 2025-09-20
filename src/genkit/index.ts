@@ -26,4 +26,5 @@ export * from '@/ai/flows/generate-form-flow';
 export * from '@/ai/flows/summarize-database';
 export * from '@/ai/flows/experimental-chat-flow';
 export * from '@/ai/tools/contact-tools';
+export * from '@/services/project-service'; // Add this export
 export { ai };

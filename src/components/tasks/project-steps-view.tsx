@@ -167,28 +167,36 @@ export default function ProjectStepsView() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+        <header className="text-center">
+            <h1 className="text-2xl font-bold font-headline text-primary">Project Organizer</h1>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+                Break down your project into manageable steps and schedule them on your calendar.
+            </p>
+        </header>
+        
         <ProjectManagementHeader onNewProjectClick={() => router.push('/projects')} projectId={projectData.id} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Project Details</CardTitle>
-                    <CardDescription>Edit the core details of your project.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="project-name">Project Name</Label>
-                        <Input id="project-name" value={projectData.name || ''} onChange={(e) => handleProjectDataChange('name', e.target.value)} />
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="project-desc">Description</Label>
-                        <Textarea id="project-desc" value={projectData.description || ''} onChange={(e) => handleProjectDataChange('description', e.target.value)} />
-                    </div>
-                </CardContent>
-            </Card>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+            {/* Left Column for Details and Plan */}
+            <div className="md:col-span-2 space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Project Details</CardTitle>
+                        <CardDescription>Edit the core details of your project.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="project-name">Project Name</Label>
+                            <Input id="project-name" value={projectData.name || ''} onChange={(e) => handleProjectDataChange('name', e.target.value)} />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="project-desc">Description</Label>
+                            <Textarea id="project-desc" value={projectData.description || ''} onChange={(e) => handleProjectDataChange('description', e.target.value)} />
+                        </div>
+                    </CardContent>
+                </Card>
 
-            <div className="grid grid-rows-[auto_1fr] gap-6">
-                <Card className="md:col-span-2">
+                <Card>
                     <CardHeader>
                         <CardTitle>Project Plan</CardTitle>
                         <CardDescription>Drag and drop the steps to reorder them.</CardDescription>
@@ -204,6 +212,10 @@ export default function ProjectStepsView() {
                         ))}
                     </CardContent>
                 </Card>
+            </div>
+            
+            {/* Right Column for Adding Steps */}
+            <div className="md:col-span-1">
                 <Card>
                     <CardHeader>
                         <CardTitle>Add New Step</CardTitle>
@@ -228,6 +240,13 @@ export default function ProjectStepsView() {
                     </CardContent>
                 </Card>
             </div>
+        </div>
+
+        <div className="flex justify-end mt-6">
+            <Button size="lg" onClick={handleSaveAndReturn}>
+                <Save className="mr-2 h-4 w-4" />
+                Save Plan & Return
+            </Button>
         </div>
     </div>
   );

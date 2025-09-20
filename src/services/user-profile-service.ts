@@ -5,6 +5,15 @@ import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'f
 import { initializeFirebase } from '@/lib/firebase';
 import type { SidebarViewType } from '@/context/sidebar-view-context';
 
+type DayOfWeek = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+
+export interface PlanningRitual {
+    enabled: boolean;
+    time: string; // e.g., "17:00"
+    duration: number; // in minutes
+    day?: DayOfWeek; // Only for weekly
+}
+
 export interface UserProfile {
     id: string; // This will be the user's UID
     email: string;
@@ -25,6 +34,12 @@ export interface UserProfile {
         menuOrder?: string[];
         googleAppsOrder?: string[];
         fileFolderOrder?: string[];
+        planningRituals?: {
+            daily: PlanningRitual;
+            weekly: PlanningRitual;
+            ritualsStartDate?: string; // ISO string
+            ritualsEndDate?: string;   // ISO string
+        }
     };
 }
 
@@ -43,6 +58,10 @@ const defaultPreferences: UserProfile['preferences'] = {
     menuOrder: [],
     googleAppsOrder: [],
     fileFolderOrder: [],
+    planningRituals: {
+        daily: { enabled: false, time: '17:00', duration: 25 },
+        weekly: { enabled: false, day: 'Friday', time: '15:00', duration: 90 },
+    }
 };
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
@@ -53,7 +72,14 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     if (docSnap.exists()) {
         const data = docSnap.data();
         // Merge fetched preferences with defaults to ensure all keys are present
-        const preferences = { ...defaultPreferences, ...(data.preferences || {}) };
+        const preferences = { 
+            ...defaultPreferences, 
+            ...(data.preferences || {}),
+            planningRituals: {
+                ...defaultPreferences.planningRituals,
+                ...(data.preferences?.planningRituals || {}),
+            }
+        };
         return { id: docSnap.id, ...data, preferences } as UserProfile;
     } else {
         // Return a default profile for a new user

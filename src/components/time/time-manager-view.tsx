@@ -23,7 +23,6 @@ import { format, set, addMinutes, parseISO } from 'date-fns';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import ContactFormDialog from '@/components/contacts/contact-form-dialog';
-import { NewTaskDialog } from '@/components/tasks/NewTaskDialog';
 import Link from 'next/link';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
@@ -81,7 +80,8 @@ export function TimeManagerView() {
     // New state for project selection UI
     const [isProjectPopoverOpen, setIsProjectPopoverOpen] = React.useState(false);
     const [projectAction, setProjectAction] = React.useState<string>('select');
-    const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = React.useState(false);
+    const [newProjectName, setNewProjectName] = React.useState('');
+
     
     const [eventToEdit, setEventToEdit] = React.useState<TaskEvent | null>(null);
     
@@ -412,17 +412,28 @@ export function TimeManagerView() {
         setClientAction('select');
     };
 
-    const handleProjectCreated = (projectData: Omit<Project, 'id' | 'createdAt' | 'userId'>, tasks: Omit<TaskEvent, 'id'|'userId'|'projectId'>[]) => {
-        if (!user) return;
-        addProject({ ...projectData, userId: user.uid, createdAt: new Date() })
-            .then(newProject => {
-                setProjects(prev => [newProject, ...prev]);
-                setSelectedProjectId(newProject.id);
-                setProjectAction('select');
-                toast({ title: 'Project Created', description: `Project "${newProject.name}" has been added.` });
-            })
-            .catch(err => toast({ variant: 'destructive', title: 'Creation Failed', description: err.message }));
+    const handleCreateProject = async () => {
+        if (!user || !newProjectName.trim()) {
+            toast({ variant: 'destructive', title: 'Project name is required.' });
+            return;
+        }
+        try {
+            const newProject = await addProject({
+                name: newProjectName,
+                userId: user.uid,
+                status: 'planning',
+                createdAt: new Date(),
+            });
+            setProjects(prev => [newProject, ...prev]);
+            setSelectedProjectId(newProject.id);
+            setProjectAction('select');
+            setNewProjectName('');
+            toast({ title: 'Project Created', description: `Project "${newProject.name}" has been added.` });
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Failed to create project", description: error.message });
+        }
     };
+
     
     const handleSetReminder = () => {
         if (subject.trim()) {
@@ -447,12 +458,12 @@ export function TimeManagerView() {
                     <div className="flex justify-between items-center">
                         <div className="flex-1" />
                         <div className="flex-1 text-center flex items-center justify-center gap-2">
-                            <h1 className="text-2xl font-bold font-headline text-primary">Event Time Manager</h1>
+                            <h1 className="text-2xl font-bold font-headline text-primary">Master Mind</h1>
                              <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <Button asChild variant="ghost" size="icon" className="h-8 w-8">
-                                            <Link href="/time/instructions">
+                                            <Link href="/master-mind/instructions">
                                                 <Info className="h-5 w-5 text-muted-foreground" />
                                             </Link>
                                         </Button>
@@ -508,7 +519,7 @@ export function TimeManagerView() {
                                 </CardContent>
                             </Card>
                             <Card>
-                                <CardHeader className="p-4"><CardTitle className="text-base">Select a Project</CardTitle></CardHeader>
+                                <CardHeader className="p-4"><CardTitle className="text-base">Select or Create a Project</CardTitle></CardHeader>
                                 <CardContent className="p-4 pt-0">
                                     <div className="space-y-2">
                                         <RadioGroup onValueChange={(value) => setProjectAction(value)} value={projectAction} className="flex space-x-4">
@@ -529,9 +540,15 @@ export function TimeManagerView() {
                                                 </PopoverContent>
                                             </Popover>
                                         ) : (
-                                            <Button variant="outline" onClick={() => setIsNewProjectDialogOpen(true)} className="w-full mt-2">
-                                                <Plus className="mr-2 h-4 w-4" /> Create New Project
-                                            </Button>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <Input
+                                                    placeholder="Enter new project name..."
+                                                    value={newProjectName}
+                                                    onChange={e => setNewProjectName(e.target.value)}
+                                                    onKeyDown={e => e.key === 'Enter' && handleCreateProject()}
+                                                />
+                                                <Button onClick={handleCreateProject}><Plus className="mr-2 h-4 w-4"/> Create</Button>
+                                            </div>
                                         )}
                                     </div>
                                 </CardContent>
@@ -639,14 +656,6 @@ export function TimeManagerView() {
                     contactToEdit={null}
                     folders={contactFolders}
                     onSave={handleContactSave}
-                />
-            )}
-            {isNewProjectDialogOpen && (
-                <NewTaskDialog
-                    isOpen={isNewProjectDialogOpen}
-                    onOpenChange={setIsNewProjectDialogOpen}
-                    onProjectCreate={handleProjectCreated}
-                    contacts={contacts}
                 />
             )}
              <Dialog open={isEditSessionDialogOpen} onOpenChange={setIsEditSessionDialogOpen}>

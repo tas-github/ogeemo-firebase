@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from '../ui/button';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 // Define item type for react-dnd
 export const ItemTypes = {
@@ -32,6 +33,7 @@ interface CalendarEventProps {
 export function CalendarEvent({ event, onEdit, onDelete, onToggleComplete }: CalendarEventProps) {
   const startTime = format(event.start, 'h:mm a');
   const isCompleted = event.status === 'done';
+  const router = useRouter();
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.EVENT,
@@ -40,6 +42,15 @@ export function CalendarEvent({ event, onEdit, onDelete, onToggleComplete }: Cal
       isDragging: !!monitor.isDragging(),
     }),
   }));
+
+  const handleConvertToProject = () => {
+    const projectData = {
+      name: event.title,
+      description: event.description,
+    };
+    sessionStorage.setItem('ogeemo-event-to-project', JSON.stringify(projectData));
+    router.push('/projects/all');
+  };
 
   return (
     <div
@@ -69,12 +80,12 @@ export function CalendarEvent({ event, onEdit, onDelete, onToggleComplete }: Cal
               <Pencil className="mr-2 h-4 w-4" /> Open / Edit
             </DropdownMenuItem>
              <DropdownMenuItem asChild>
-                <Link href={`/time?eventId=${event.id}&startTimer=true`}>
+                <Link href={`/master-mind?eventId=${event.id}&startTimer=true`}>
                     <PlayCircle className="mr-2 h-4 w-4" /> Start Timer
                 </Link>
             </DropdownMenuItem>
              <DropdownMenuItem asChild>
-                <Link href={`/time?logTimeFor=${event.id}`}>
+                <Link href={`/master-mind?logTimeFor=${event.id}`}>
                     <Clock className="mr-2 h-4 w-4" /> Log Actual Time
                 </Link>
             </DropdownMenuItem>
@@ -82,10 +93,13 @@ export function CalendarEvent({ event, onEdit, onDelete, onToggleComplete }: Cal
                 <CheckCircle className="mr-2 h-4 w-4" /> 
                 {isCompleted ? "Mark as Not Completed" : "Mark as Completed"}
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={handleConvertToProject}>
+              <Briefcase className="mr-2 h-4 w-4" /> Convert to Project
+            </DropdownMenuItem>
             {event.projectId && (
                 <DropdownMenuItem asChild>
                     <Link href={`/projects/${event.projectId}/tasks`}>
-                        <Briefcase className="mr-2 h-4 w-4" /> Go to Project
+                        <Briefcase className="mr-2 h-4 w-4" /> Go to Project Workspace
                     </Link>
                 </DropdownMenuItem>
             )}

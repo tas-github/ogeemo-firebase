@@ -32,7 +32,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { addActionChip, updateActionChip, managerOptions } from '@/services/project-service';
+import { addActionChip, updateActionChip } from '@/services/project-service';
+import { managerOptions } from '@/lib/manager-options';
 import type { ActionChipData } from '@/types/calendar';
 import { Wand2 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
