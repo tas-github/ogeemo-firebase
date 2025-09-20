@@ -13,10 +13,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { format, set, addDays } from 'date-fns';
+import { format, set, addDays, addMinutes } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { upsertRitualTask } from '@/services/project-service';
+import { upsertRitualTask } from '@/app/actions/rituals';
 import type { PlanningRitual } from '@/hooks/use-user-preferences';
 import { getUserProfile, updateUserProfile } from '@/services/user-profile-service';
 
