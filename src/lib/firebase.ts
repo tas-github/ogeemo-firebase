@@ -3,6 +3,7 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { getFunctions, type Functions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -19,6 +20,7 @@ export type FirebaseServices = {
   auth: Auth;
   db: Firestore;
   storage: FirebaseStorage;
+  functions: Functions;
 };
 
 // This promise will be resolved with the initialized services, acting as a singleton.
@@ -51,12 +53,13 @@ export function initializeFirebase(): Promise<FirebaseServices> {
         const auth = getAuth(app);
         const db = getFirestore(app);
         const storage = getStorage(app);
+        const functions = getFunctions(app);
         
         // setPersistence ensures that the user's authentication state is persisted.
         // It's crucial to await this before considering initialization complete.
         await setPersistence(auth, browserLocalPersistence);
 
-        return { app, auth, db, storage };
+        return { app, auth, db, storage, functions };
     })();
     
     return firebaseServicesPromise;
