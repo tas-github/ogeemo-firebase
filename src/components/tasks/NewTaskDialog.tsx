@@ -335,11 +335,13 @@ export function NewTaskDialog({
                         )}
                         
                         <div className="space-y-2">
-                          <FormLabel>Client</FormLabel>
-                          <RadioGroup onValueChange={(value: 'select' | 'add') => setClientAction(value)} value={clientAction} className="flex space-x-4">
-                              <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="select" /></FormControl><FormLabel className="font-normal">Select Existing Client</FormLabel></FormItem>
-                              <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="add" /></FormControl><FormLabel className="font-normal">Create New Client</FormLabel></FormItem>
-                          </RadioGroup>
+                            <FormItem>
+                                <FormLabel>Client</FormLabel>
+                                <RadioGroup onValueChange={(value: 'select' | 'add') => setClientAction(value)} value={clientAction} className="flex space-x-4">
+                                    <div className="flex items-center space-x-2"><RadioGroupItem value="select" id="select-client" /><Label htmlFor="select-client">Select Existing Client</Label></div>
+                                    <div className="flex items-center space-x-2"><RadioGroupItem value="add" id="add-client" /><Label htmlFor="add-client">Create New Client</Label></div>
+                                </RadioGroup>
+                            </FormItem>
                         </div>
 
                         {clientAction === 'select' ? (
