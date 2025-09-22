@@ -39,7 +39,7 @@ const contactSchema = z.object({
   faxNumber: z.string().optional(),
   primaryPhoneType: z.enum(['businessPhone', 'cellPhone', 'homePhone']).nullable().default(null),
   notes: z.string().optional(),
-  folderId: z.string({ required_error: "Please select a folder." }),
+  folderId: z.string({ required_error: "Please select a folder." }).min(1, { message: "Folder is required." }),
 });
 
 type ContactFormData = z.infer<typeof contactSchema>;
@@ -174,7 +174,7 @@ export default function ContactFormDialog({
                     <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
                         <ScrollArea className="flex-1">
                             <div className="px-6 pb-4 space-y-4">
-                                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name <span className="text-destructive">*</span></FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                 <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                 
                                 <FormField
@@ -182,7 +182,7 @@ export default function ContactFormDialog({
                                     name="folderId"
                                     render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Folder</FormLabel>
+                                        <FormLabel>Folder <span className="text-destructive">*</span></FormLabel>
                                         <div className="flex gap-2">
                                             <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl>
