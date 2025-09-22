@@ -532,7 +532,14 @@ export function ContactsView() {
                                 return (
                                   <DraggableTableRow key={contact.id} contact={contact}>
                                       <TableCell onClick={(e) => e.stopPropagation()}><Checkbox checked={selectedContactIds.includes(contact.id)} onCheckedChange={() => handleToggleSelect(contact.id)} /></TableCell>
-                                      <TableCell className="font-medium cursor-pointer hover:underline" onClick={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}>{contact.name}</TableCell>
+                                      <TableCell className="font-medium">
+                                        <button 
+                                          className="text-left hover:underline" 
+                                          onClick={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}
+                                        >
+                                          {contact.name}
+                                        </button>
+                                      </TableCell>
                                       <TableCell>{contact.email}</TableCell>
                                       <TableCell>{primaryPhoneNumber}</TableCell>
                                       {selectedFolderId === 'all' && <TableCell>{folderName}</TableCell>}
