@@ -32,12 +32,12 @@ import { useUserPreferences } from '@/hooks/use-user-preferences';
 
 const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
-  email: z.string().email({ message: "Please enter a valid email." }).optional(),
+  email: z.string().email({ message: "Please enter a valid email." }).optional().or(z.literal('')),
   businessPhone: z.string().optional(),
   cellPhone: z.string().optional(),
   homePhone: z.string().optional(),
   faxNumber: z.string().optional(),
-  primaryPhoneType: z.enum(['businessPhone', 'cellPhone', 'homePhone']).optional(),
+  primaryPhoneType: z.enum(['businessPhone', 'cellPhone', 'homePhone']).nullable().default(null),
   notes: z.string().optional(),
   folderId: z.string({ required_error: "Please select a folder." }),
 });
@@ -72,17 +72,22 @@ export default function ContactFormDialog({
 
     const form = useForm<ContactFormData>({
         resolver: zodResolver(contactSchema),
-        defaultValues: { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: undefined, notes: "", folderId: "" },
+        defaultValues: { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: "" },
     });
     
+    // Watch phone number fields to dynamically enable/disable radio buttons
+    const businessPhoneValue = form.watch('businessPhone');
+    const cellPhoneValue = form.watch('cellPhone');
+    const homePhoneValue = form.watch('homePhone');
+
     useEffect(() => {
         // Only reset form when dialog opens. Prevents infinite loops.
         if (isOpen) {
             setCurrentFolders(folders);
             const defaultFolderId = selectedFolderId !== 'all' ? selectedFolderId : (folders.find(f => f.name === 'Clients')?.id || folders[0]?.id || '');
             const initialValues = contactToEdit 
-                ? { ...contactToEdit, folderId: contactToEdit.folderId || defaultFolderId } 
-                : { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: undefined, notes: "", folderId: defaultFolderId };
+                ? { ...contactToEdit, folderId: contactToEdit.folderId || defaultFolderId, primaryPhoneType: contactToEdit.primaryPhoneType || null } 
+                : { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: defaultFolderId };
             form.reset(initialValues);
         }
     }, [isOpen, contactToEdit, folders, selectedFolderId, form]);
@@ -110,16 +115,21 @@ export default function ContactFormDialog({
             return;
         }
 
+        const dataToSave = {
+            ...values,
+            primaryPhoneType: values.primaryPhoneType || undefined, // Convert null back to undefined for Firestore if it matters, or handle in service
+        };
+
         try {
             if (contactToEdit) {
-                const updatedContactData = { ...contactToEdit, ...values };
+                const updatedContactData = { ...contactToEdit, ...dataToSave };
                 await updateContact(contactToEdit.id, updatedContactData);
                 onSave(updatedContactData, true);
                 toast({ title: "Contact Updated", description: `Details for ${values.name} have been saved.` });
             } else {
                 const newContactData: Omit<Contact, 'id'> = {
-                    ...values,
-                    email: values.email || '',
+                    ...dataToSave,
+                    email: dataToSave.email || '',
                     userId: user.uid,
                 };
                 const newContact = await addContact(newContactData);
@@ -232,17 +242,17 @@ export default function ContactFormDialog({
                                             <FormLabel>Primary Phone Number</FormLabel>
                                             <FormDescription>Select the best number to use for this contact.</FormDescription>
                                             <FormControl>
-                                                <RadioGroup onValueChange={field.onChange} value={field.value} className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                                <RadioGroup onValueChange={field.onChange} value={field.value || ""} className="grid grid-cols-1 md:grid-cols-3 gap-2">
                                                     <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-2 has-[:disabled]:opacity-50">
-                                                        <FormControl><RadioGroupItem value="businessPhone" disabled={!form.getValues().businessPhone} /></FormControl>
+                                                        <FormControl><RadioGroupItem value="businessPhone" disabled={!businessPhoneValue} /></FormControl>
                                                         <FormLabel className="font-normal w-full cursor-pointer">Business</FormLabel>
                                                     </FormItem>
                                                     <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-2 has-[:disabled]:opacity-50">
-                                                        <FormControl><RadioGroupItem value="cellPhone" disabled={!form.getValues().cellPhone} /></FormControl>
+                                                        <FormControl><RadioGroupItem value="cellPhone" disabled={!cellPhoneValue} /></FormControl>
                                                         <FormLabel className="font-normal w-full cursor-pointer">Cell</FormLabel>
                                                     </FormItem>
                                                     <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-2 has-[:disabled]:opacity-50">
-                                                        <FormControl><RadioGroupItem value="homePhone" disabled={!form.getValues().homePhone} /></FormControl>
+                                                        <FormControl><RadioGroupItem value="homePhone" disabled={!homePhoneValue} /></FormControl>
                                                         <FormLabel className="font-normal w-full cursor-pointer">Home</FormLabel>
                                                     </FormItem>
                                                 </RadioGroup>
