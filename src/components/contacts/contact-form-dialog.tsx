@@ -117,7 +117,7 @@ export default function ContactFormDialog({
 
         const dataToSave = {
             ...values,
-            primaryPhoneType: values.primaryPhoneType, // This can be null, which is fine for Firestore
+            primaryPhoneType: values.primaryPhoneType,
         };
 
         try {
@@ -175,7 +175,6 @@ export default function ContactFormDialog({
                         <ScrollArea className="flex-1">
                             <div className="px-6 pb-4 space-y-4">
                                 <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name <span className="text-destructive">*</span></FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                 
                                 <FormField
                                     control={form.control}
@@ -200,6 +199,8 @@ export default function ContactFormDialog({
                                     </FormItem>
                                     )}
                                 />
+
+                                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField control={form.control} name="businessPhone" render={({ field }) => (
