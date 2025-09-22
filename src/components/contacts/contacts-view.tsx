@@ -508,12 +508,6 @@ export function ContactsView() {
                                     <h2 className="text-xl font-bold">{selectedFolderId === 'all' ? 'All Contacts' : selectedFolder?.name}</h2>
                                     <p className="text-sm text-muted-foreground">{displayedContacts.length} contact(s)</p>
                                 </div>
-                                {selectedFolder && selectedFolderId !== 'all' && (
-                                    <div className="flex items-center gap-1">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleStartRename(selectedFolder)}><Pencil className="h-4 w-4" /></Button>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteFolder(selectedFolder)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                    </div>
-                                )}
                               </div>
                               <div className="flex items-center gap-2">
                                 {selectedFolderId === 'all' ? (
