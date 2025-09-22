@@ -18,7 +18,15 @@ import {
   ListChecks,
   Inbox,
   Calendar as CalendarIcon,
+  Plus,
+  Info,
 } from 'lucide-react';
+import { NewTaskDialog } from './NewTaskDialog';
+import { useAuth } from '@/context/auth-context';
+import { addProject } from '@/services/project-service';
+import { type Project, type Event as TaskEvent } from '@/types/calendar-types';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 interface FeatureCardProps {
   icon: React.ElementType;
@@ -54,6 +62,30 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon: Icon, title, descriptio
 );
 
 export function ProjectsView() {
+  const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = React.useState(false);
+  const [initialDialogData, setInitialDialogData] = React.useState({});
+  const [contacts, setContacts] = React.useState([]); // Assuming contacts are needed for the dialog
+  
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const router = useRouter();
+
+  const handleNewProjectClick = () => {
+      setInitialDialogData({}); // Clear any previous initial data
+      setIsNewProjectDialogOpen(true);
+  };
+
+  const handleProjectCreated = async (projectData: Omit<Project, 'id' | 'createdAt' | 'userId'>, tasks: Omit<TaskEvent, 'id' | 'userId' | 'projectId'>[]) => {
+      if (!user) return;
+      try {
+          const newProject = await addProject({ ...projectData, status: 'planning', userId: user.uid, createdAt: new Date() });
+          toast({ title: "Project Created", description: `"${newProject.name}" has been successfully created.` });
+          router.push(`/projects/${newProject.id}/tasks`); // Navigate to the new project board
+      } catch (error: any) {
+          toast({ variant: "destructive", title: "Failed to create project", description: error.message });
+      }
+  };
+
   const features = [
     { icon: Briefcase, title: "Project List", description: "A comprehensive list of every project. Use this view to edit project details.", href: "/projects/all", cta: "View Project List" },
     { icon: ListChecks, title: "Status Board", description: "A Kanban-style board to visualize project status and quickly assess your workload.", href: "/project-status", cta: "Go to Status Board" },
@@ -62,21 +94,58 @@ export function ProjectsView() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <header className="text-center mb-6">
-        <h1 className="text-3xl font-bold font-headline text-primary">
-          Project Hub
-        </h1>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          Your central command for managing projects and tasks, from high-level planning to daily execution.
-        </p>
-      </header>
+    <>
+      <div className="p-4 sm:p-6 space-y-6">
+        <header className="text-center mb-6">
+          <h1 className="text-3xl font-bold font-headline text-primary">
+            Project Hub
+          </h1>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Your central command for managing projects and tasks, from high-level planning to daily execution.
+          </p>
+          <div className="flex justify-center gap-2 pt-4">
+              <Button asChild variant="outline">
+                  <Link href="/projects/all">
+                      <Briefcase className="mr-2 h-4 w-4" /> Project List
+                  </Link>
+              </Button>
+              <Button asChild variant="outline">
+                  <Link href="/project-status">
+                      <ListChecks className="mr-2 h-4 w-4" /> Status Board
+                  </Link>
+              </Button>
+              <Button asChild variant="outline">
+                  <Link href="/tasks">
+                      <Inbox className="mr-2 h-4 w-4" /> Action Items
+                  </Link>
+              </Button>
+              <Button onClick={handleNewProjectClick}>
+                  <Plus className="mr-2 h-4 w-4" /> New Project
+              </Button>
+              <Button asChild variant="ghost" size="icon">
+                  <Link href="/projects/instructions">
+                      <Info className="h-5 w-5" />
+                      <span className="sr-only">Project Management Instructions</span>
+                  </Link>
+              </Button>
+          </div>
+        </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
-        {features.map((feature) => (
-          <FeatureCard key={feature.title} {...feature} />
-        ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+          {features.map((feature) => (
+            <FeatureCard key={feature.title} {...feature} />
+          ))}
+        </div>
       </div>
-    </div>
+      <NewTaskDialog
+          isOpen={isNewProjectDialogOpen}
+          onOpenChange={setIsNewProjectDialogOpen}
+          onProjectCreate={handleProjectCreated}
+          contacts={contacts}
+          onContactsChange={setContacts}
+          projectToEdit={null}
+          initialData={initialDialogData}
+      />
+    </>
   );
 }
