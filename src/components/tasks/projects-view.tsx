@@ -24,6 +24,7 @@ import {
 import { NewTaskDialog } from './NewTaskDialog';
 import { useAuth } from '@/context/auth-context';
 import { addProject } from '@/services/project-service';
+import { getContacts, type Contact } from '@/services/contact-service';
 import { type Project, type Event as TaskEvent } from '@/types/calendar-types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -64,11 +65,30 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon: Icon, title, descriptio
 export function ProjectsView() {
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = React.useState(false);
   const [initialDialogData, setInitialDialogData] = React.useState({});
-  const [contacts, setContacts] = React.useState([]); // Assuming contacts are needed for the dialog
+  const [contacts, setContacts] = React.useState<Contact[]>([]);
   
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+
+  React.useEffect(() => {
+    async function loadContacts() {
+        if (user) {
+            try {
+                const fetchedContacts = await getContacts(user.uid);
+                setContacts(fetchedContacts);
+            } catch (error) {
+                console.error("Failed to load contacts for Project Hub:", error);
+                toast({
+                    variant: 'destructive',
+                    title: 'Failed to load contacts',
+                    description: 'Could not retrieve client list for the new project form.',
+                });
+            }
+        }
+    }
+    loadContacts();
+  }, [user, toast]);
 
   const handleNewProjectClick = () => {
       setInitialDialogData({}); // Clear any previous initial data
