@@ -77,7 +77,7 @@ export const allMenuItems: MenuItem[] = [
   { href: "/settings", label: "Settings", icon: Settings },
   { href: "/logout", label: "Logout", icon: LogOut },
   { href: "/ogeemail", label: "OgeeMail", icon: Mail },
-  { href: "/ogeemail/compose", label: "CC.Mail", icon: Pencil },
+  { href: "/ogeemail/compose", label: "C.Mail", icon: Pencil },
   { href: "/communications", label: "Communications", icon: MessageSquare },
   { href: "/contacts", label: "Contacts", icon: Contact },
   { href: "/projects", label: "Projects", icon: Briefcase },
