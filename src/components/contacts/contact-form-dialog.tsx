@@ -117,7 +117,7 @@ export default function ContactFormDialog({
 
         const dataToSave = {
             ...values,
-            primaryPhoneType: values.primaryPhoneType === null ? undefined : values.primaryPhoneType,
+            primaryPhoneType: values.primaryPhoneType, // This can be null, which is fine for Firestore
         };
 
         try {
@@ -239,7 +239,7 @@ export default function ContactFormDialog({
                                     name="primaryPhoneType"
                                     render={({ field }) => (
                                         <FormItem className="space-y-2">
-                                            <FormLabel>Primary Phone Number</FormLabel>
+                                            <FormLabel>Best number to use</FormLabel>
                                             <FormDescription>Select the best number to use for this contact.</FormDescription>
                                             <FormControl>
                                                 <RadioGroup onValueChange={field.onChange} value={field.value || ""} className="grid grid-cols-1 md:grid-cols-3 gap-2">
