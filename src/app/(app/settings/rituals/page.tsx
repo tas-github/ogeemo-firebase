@@ -12,7 +12,7 @@ import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getUserProfile, updateUserProfile, type PlanningRitual } from '@/services/user-profile-service';
 import { addMinutes, format, eachDayOfInterval, isWeekday, getDay, set, startOfWeek, endOfWeek, parseISO, addDays, isWeekend } from 'date-fns';
-import { LoaderCircle, Save, ArrowLeft, BrainCircuit, Calendar as CalendarIcon, X, Info } from 'lucide-react';
+import { LoaderCircle, Save, ArrowLeft, BrainCircuit, Calendar as CalendarIcon, X } from 'lucide-react';
 import { addTask, deleteRitualTasks } from '@/services/project-service';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -192,16 +192,8 @@ export default function PlanningRitualsPage() {
 
         try {
             // 1. Save settings
-            const profile = await getUserProfile(user.uid);
-            const existingPrefs = profile?.preferences || {};
             await updateUserProfile(user.uid, user.email || '', {
-                preferences: { 
-                    ...existingPrefs,
-                    planningRituals: {
-                        ...existingPrefs.planningRituals,
-                        weekly: ritualSettingsToSave 
-                    } 
-                },
+                preferences: { planningRituals: { weekly: ritualSettingsToSave } },
             });
             
             // 2. Delete old weekly ritual tasks
@@ -261,16 +253,10 @@ export default function PlanningRitualsPage() {
         <div className="p-4 sm:p-6 space-y-6">
             <header className="relative text-center">
                 <div className="absolute top-0 right-0 flex items-center gap-2">
-                    <Button asChild className="bg-gradient-to-r from-glass-start to-glass-end text-black">
+                    <Button asChild variant="outline">
                         <Link href="/calendar">
                             <ArrowLeft className="mr-2 h-4 w-4" />
                             Back to Calendar
-                        </Link>
-                    </Button>
-                     <Button asChild variant="ghost" size="icon">
-                        <Link href="/settings/rituals/instructions">
-                            <Info className="h-5 w-5" />
-                            <span className="sr-only">Instructions</span>
                         </Link>
                     </Button>
                      <Button asChild variant="ghost" size="icon">
@@ -372,6 +358,16 @@ export default function PlanningRitualsPage() {
                             </div>
                         )}
                     </CardContent>
+                    <CardFooter>
+                        <Button
+                            onClick={handleSaveDaily}
+                            disabled={isSavingDaily}
+                            className="w-full bg-gradient-to-r from-glass-start to-glass-end text-black"
+                        >
+                             {isSavingDaily && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                            Save & Schedule
+                        </Button>
+                    </CardFooter>
                 </Card>
 
                 {/* Weekly Strategic Review Card */}
@@ -430,29 +426,18 @@ export default function PlanningRitualsPage() {
                             <Input type="time" value={weeklyRitual.time} onChange={e => setWeeklyRitual(p => ({ ...p, time: e.target.value }))} />
                         </div>
                     </CardContent>
+                    <CardFooter>
+                        <Button
+                            onClick={handleSaveWeekly}
+                            disabled={isSavingWeekly}
+                            className="w-full bg-gradient-to-r from-glass-start to-glass-end text-black"
+                        >
+                             {isSavingWeekly && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                            Save & Schedule
+                        </Button>
+                    </CardFooter>
                 </Card>
             </div>
-
-             <Card className="max-w-4xl mx-auto mt-6">
-                <CardFooter className="p-4 flex justify-center items-center gap-4">
-                    <Button
-                        onClick={handleSaveDaily}
-                        disabled={isSavingDaily}
-                        className="w-full bg-gradient-to-r from-glass-start to-glass-end text-black"
-                    >
-                         {isSavingDaily && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                        Save Daily Ritual
-                    </Button>
-                    <Button
-                        onClick={handleSaveWeekly}
-                        disabled={isSavingWeekly}
-                        className="w-full bg-gradient-to-r from-glass-start to-glass-end text-black"
-                    >
-                         {isSavingWeekly && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                        Save Weekly Ritual
-                    </Button>
-                </CardFooter>
-            </Card>
         </div>
     );
 }

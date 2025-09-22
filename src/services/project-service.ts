@@ -19,10 +19,10 @@ import {
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
 import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData, TimeSession, type ProjectUrgency, type ProjectImportance } from '@/types/calendar-types';
-import { addMinutes, eachDayOfInterval, isWeekday, set, format } from 'date-fns';
 import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info, BrainCircuit } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { PlanningRitual } from '@/hooks/use-user-preferences';
+import { addMinutes, eachDayOfInterval, isWeekday, set, format, startOfWeek, endOfWeek } from 'date-fns';
+
 
 const PROJECTS_COLLECTION = 'projects';
 const TASKS_COLLECTION = 'tasks';
@@ -141,11 +141,10 @@ export async function getProjectById(projectId: string): Promise<Project | null>
     return null;
 }
 
-export async function addProject(projectData: Omit<Project, 'id' | 'createdAt'>): Promise<Project> {
+export async function addProject(projectData: Omit<Project, 'id'>): Promise<Project> {
     const db = await getDb();
-    const dataWithTimestamp = { ...projectData, createdAt: new Date() };
-    const docRef = await addDoc(collection(db, PROJECTS_COLLECTION), dataWithTimestamp);
-    return { id: docRef.id, ...dataWithTimestamp };
+    const docRef = await addDoc(collection(db, PROJECTS_COLLECTION), projectData);
+    return { id: docRef.id, ...projectData };
 }
 
 
@@ -273,39 +272,11 @@ export async function getTaskById(taskId: string): Promise<TaskEvent | null> {
     return null;
 }
 
-// Titles of the original mock tasks to identify them for deletion.
-const mockTaskTitlesForDeletion = new Set([
-  'Finalize Q3 budget',
-  'Draft marketing email for new feature launch',
-  'Design new dashboard layout',
-  'Write documentation for the API',
-  'Plan company offsite event'
-]);
-
 export async function getTasksForUser(userId: string): Promise<TaskEvent[]> {
     const db = await getDb();
     const q = query(collection(db, TASKS_COLLECTION), where("userId", "==", userId));
     const snapshot = await getDocs(q);
-
-    const allTasks = snapshot.docs.map(docToTask);
-
-    // One-time cleanup of old mock tasks
-    const tasksToDelete = allTasks.filter(task => mockTaskTitlesForDeletion.has(task.title));
-
-    if (tasksToDelete.length > 0) {
-        console.log(`Found and deleting ${tasksToDelete.length} old mock tasks...`);
-        const batch = writeBatch(db);
-        tasksToDelete.forEach(task => {
-            const taskRef = doc(db, TASKS_COLLECTION, task.id);
-            batch.delete(taskRef);
-        });
-        await batch.commit();
-        console.log("Cleanup complete.");
-        // Return the list of tasks without the ones we just deleted.
-        return allTasks.filter(task => !mockTaskTitlesForDeletion.has(task.title));
-    }
-    
-    return allTasks;
+    return snapshot.docs.map(docToTask);
 }
 
 export async function addTask(taskData: Omit<TaskEvent, 'id'>): Promise<TaskEvent> {
@@ -369,6 +340,20 @@ export async function deleteAllTasksForUser(userId: string): Promise<void> {
 
     await batch.commit();
 }
+
+export async function deleteRitualTasks(userId: string, ritualType: 'daily' | 'weekly'): Promise<void> {
+    const db = await getDb();
+    const batch = writeBatch(db);
+    const q = query(collection(db, TASKS_COLLECTION), where("userId", "==", userId), where("ritualType", "==", ritualType));
+    const snapshot = await getDocs(q);
+
+    snapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+}
+
 
 // --- Template Functions ---
 

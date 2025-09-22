@@ -3,66 +3,94 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BrainCircuit, Zap, BarChart } from "lucide-react";
+import { ArrowLeft, BrainCircuit, Calendar, CheckCircle } from "lucide-react";
 import Link from "next/link";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export default function RitualsInstructionsPage() {
     return (
         <div className="p-4 sm:p-6 space-y-6">
-            <header className="relative text-center">
-                 <div className="absolute left-0 top-1/2 -translate-y-1/2">
-                    <Button asChild variant="outline">
-                        <Link href="/calendar">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Calendar
-                        </Link>
-                    </Button>
+            <header className="flex items-center justify-between">
+                <div />
+                <div className="text-center">
+                    <h1 className="text-2xl font-bold font-headline text-primary">
+                        About Planning Rituals
+                    </h1>
+                    <p className="text-muted-foreground max-w-2xl mx-auto">
+                        A guide to establishing powerful routines for focus and clarity.
+                    </p>
                 </div>
-                <h1 className="text-2xl font-bold font-headline text-primary">
-                    The Power of Planning Rituals
-                </h1>
-                <p className="text-muted-foreground max-w-2xl mx-auto">
-                    Why dedicating time to plan is the ultimate productivity hack.
-                </p>
+                <Button asChild variant="outline">
+                    <Link href="/settings/rituals">
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Rituals
+                    </Link>
+                </Button>
             </header>
 
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-3">
                         <BrainCircuit className="h-6 w-6 text-primary" />
-                        From Chaos to Clarity
+                        The Power of Routine
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="p-6 space-y-6">
                     <div className="prose prose-sm dark:prose-invert max-w-none">
                         <p>
-                           In a world of constant notifications and competing priorities, the single most effective way to regain control is to dedicate uninterrupted time to think and plan. It feels counterintuitive—to go faster, you must first slow down. Ogeemo's Planning Rituals are designed to help you build this essential habit.
+                           The Planning Rituals feature is designed to help you carve out dedicated time for high-level thinking and organization. By consistently making time for these sessions, you can reduce stress, increase focus, and ensure you're always working on what matters most.
                         </p>
-                        
-                        <blockquote className="border-l-4 border-primary pl-4 italic">
-                           "I found that I got more results by working 4 days on sales than when I worked 5. That fifth day, reserved entirely for planning, made the other four more focused and effective."
-                        </blockquote>
+                    </div>
 
-                        <p>
-                           This isn't about adding more to your plate. It's about making the time you spend working more focused, strategic, and productive.
-                        </p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                        <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-                            <Zap className="h-6 w-6 text-primary mt-1 shrink-0" />
-                            <div>
-                                <h4 className="font-semibold">The Daily Wind-Down</h4>
-                                <p className="text-xs text-muted-foreground">End your day by reviewing what was accomplished and clarifying what needs to happen tomorrow. This 25-minute ritual prevents tasks from bleeding into your personal time and ensures you start the next day with a clear, actionable plan.</p>
-                            </div>
-                        </div>
-                         <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50">
-                            <BarChart className="h-6 w-6 text-primary mt-1 shrink-0" />
-                            <div>
-                                <h4 className="font-semibold">The Weekly Strategic Review</h4>
-                                <p className="text-xs text-muted-foreground">This is your command center meeting with yourself. Block off 90 minutes at the end of the week to review all your projects, clean up your inboxes, and set major goals for the week ahead. This is where you move from being reactive to proactive.</p>
-                            </div>
-                        </div>
-                    </div>
+                    <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
+                        <AccordionItem value="item-1">
+                            <AccordionTrigger>
+                                <div className="flex items-center gap-3">
+                                    <Calendar className="h-5 w-5 text-primary"/>
+                                    <span className="font-semibold">Daily Wind-down & Plan</span>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                <div className="prose prose-sm dark:prose-invert max-w-none pl-8">
+                                    <p>
+                                        This is a short, 15-30 minute session at the end of your workday. The goal is to close open loops and prepare for a successful tomorrow.
+                                    </p>
+                                    <ul>
+                                        <li><strong>Clear Inboxes:</strong> Process any remaining items in your email and task inboxes.</li>
+                                        <li><strong>Review Today:</strong> Briefly look over what you accomplished.</li>
+                                        <li><strong>Plan Tomorrow:</strong> Identify your top 1-3 priorities for the next day.</li>
+                                        <li><strong>Shutdown Complete:</strong> End your day with a clear mind, knowing you're prepared for what's next.</li>
+                                    </ul>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                        <AccordionItem value="item-2" className="border-b-0">
+                            <AccordionTrigger>
+                                <div className="flex items-center gap-3">
+                                    <CheckCircle className="h-5 w-5 text-primary"/>
+                                    <span className="font-semibold">Weekly Strategic Review</span>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                                <div className="prose prose-sm dark:prose-invert max-w-none pl-8">
+                                    <p>
+                                       This is a longer, 90-minute session typically held at the end of the week (e.g., Friday afternoon). It's your chance to zoom out from the daily grind and look at the bigger picture.
+                                    </p>
+                                    <ul>
+                                        <li><strong>Review Goals:</strong> Are you on track with your quarterly and annual objectives?</li>
+                                        <li><strong>Review Projects:</strong> Check the status of all active projects. What needs your attention?</li>
+                                        <li><strong>Plan the Upcoming Week:</strong> Block out time for important tasks and meetings for the week ahead.</li>
+                                        <li><strong>Clear Your Mind:</strong> Offload any new ideas or tasks that have accumulated into your system.</li>
+                                    </ul>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
                 </CardContent>
             </Card>
         </div>

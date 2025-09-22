@@ -1,17 +1,18 @@
 
 'use client';
 
-import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
 import type { SidebarViewType } from '@/context/sidebar-view-context';
 
 type DayOfWeek = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
 
 export interface PlanningRitual {
-    enabled: boolean;
     time: string; // e.g., "17:00"
     duration: number; // in minutes
     day?: DayOfWeek; // Only for weekly
+    repeatEnabled?: boolean; // For daily repeats
+    repeatCount?: number; // For daily repeats
 }
 
 export interface UserProfile {
@@ -35,10 +36,8 @@ export interface UserProfile {
         googleAppsOrder?: string[];
         fileFolderOrder?: string[];
         planningRituals?: {
-            daily: PlanningRitual;
-            weekly: PlanningRitual;
-            ritualsStartDate?: string; // ISO string
-            ritualsEndDate?: string;   // ISO string
+            daily: Omit<PlanningRitual, 'day'>;
+            weekly: Omit<PlanningRitual, 'repeatEnabled' | 'repeatCount'>;
         }
     };
 }
@@ -59,8 +58,8 @@ const defaultPreferences: UserProfile['preferences'] = {
     googleAppsOrder: [],
     fileFolderOrder: [],
     planningRituals: {
-        daily: { enabled: false, time: '17:00', duration: 25 },
-        weekly: { enabled: false, day: 'Friday', time: '15:00', duration: 90 },
+        daily: { time: '17:00', duration: 25, repeatEnabled: false, repeatCount: 5 },
+        weekly: { day: 'Friday', time: '15:00', duration: 90 },
     }
 };
 
@@ -78,6 +77,14 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
             planningRituals: {
                 ...defaultPreferences.planningRituals,
                 ...(data.preferences?.planningRituals || {}),
+                daily: {
+                    ...defaultPreferences.planningRituals?.daily,
+                    ...(data.preferences?.planningRituals?.daily || {}),
+                },
+                weekly: {
+                    ...defaultPreferences.planningRituals?.weekly,
+                    ...(data.preferences?.planningRituals?.weekly || {}),
+                }
             }
         };
         return { id: docSnap.id, ...data, preferences } as UserProfile;
@@ -108,7 +115,21 @@ export async function updateUserProfile(
     if (docSnap.exists()) {
         const existingData = docSnap.data();
         const existingPrefs = existingData.preferences || {};
-        dataWithTimestamp.preferences = { ...existingPrefs, ...data.preferences };
+        
+        // Deep merge for planningRituals
+        if (data.preferences?.planningRituals) {
+            dataWithTimestamp.preferences = { 
+                ...existingPrefs, 
+                ...data.preferences,
+                planningRituals: {
+                    ...existingPrefs.planningRituals,
+                    ...data.preferences.planningRituals,
+                }
+            };
+        } else if (data.preferences) {
+             dataWithTimestamp.preferences = { ...existingPrefs, ...data.preferences };
+        }
+
         await updateDoc(docRef, dataWithTimestamp);
     } else {
         dataWithTimestamp.email = email;

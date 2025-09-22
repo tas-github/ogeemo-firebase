@@ -18,14 +18,35 @@ const initializeFirebaseAdmin = () => {
   }
 
   try {
-    const serviceAccount = JSON.parse(serviceAccountKey);
+    let serviceAccount;
+    // The service account key might be a JSON string or already a parsed object
+    // depending on the environment. We need to handle both cases.
+    if (typeof serviceAccountKey === 'string') {
+        try {
+            serviceAccount = JSON.parse(serviceAccountKey);
+        } catch (e) {
+            throw new Error(`Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY as JSON. Please ensure it's a valid JSON string. Error: ${(e as Error).message}`);
+        }
+    } else if (typeof serviceAccountKey === 'object') {
+        serviceAccount = serviceAccountKey;
+    } else {
+        throw new Error('FIREBASE_SERVICE_ACCOUNT_KEY is not a valid string or object.');
+    }
+    
+    // FIX: The private_key needs to have its escaped newlines replaced with actual newlines.
+    // This is a common issue when passing multiline strings through environment variables.
+    if (serviceAccount.private_key) {
+        serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+
     adminApp = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
       storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
     });
     return adminApp;
   } catch (e: any) {
-    throw new Error(`Failed to parse Firebase service account key. Please ensure it is a valid JSON string. Error: ${e.message}`);
+    // Provide a more detailed error message to help with debugging.
+    throw new Error(`Failed to initialize Firebase Admin SDK. Error: ${e.message}`);
   }
 };
 
