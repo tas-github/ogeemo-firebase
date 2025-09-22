@@ -335,20 +335,26 @@ export function NewTaskDialog({
                         )}
                         
                         <div className="space-y-2">
-                            <FormItem>
+                           <FormItem>
                                 <FormLabel>Client</FormLabel>
                                 <RadioGroup onValueChange={(value: 'select' | 'add') => setClientAction(value)} value={clientAction} className="flex space-x-4">
-                                    <div className="flex items-center space-x-2"><RadioGroupItem value="select" id="select-client" /><Label htmlFor="select-client">Select Existing Client</Label></div>
-                                    <div className="flex items-center space-x-2"><RadioGroupItem value="add" id="add-client" /><Label htmlFor="add-client">Create New Client</Label></div>
+                                    <FormItem className="flex items-center space-x-2">
+                                        <RadioGroupItem value="select" id="select-client" />
+                                        <Label htmlFor="select-client">Select Existing Client</Label>
+                                    </FormItem>
+                                    <FormItem className="flex items-center space-x-2">
+                                        <RadioGroupItem value="add" id="add-client" />
+                                        <Label htmlFor="add-client">Create New Client</Label>
+                                    </FormItem>
                                 </RadioGroup>
                             </FormItem>
-                        </div>
 
-                        {clientAction === 'select' ? (
-                          <FormField control={form.control} name="contactId" render={({ field }) => ( <FormItem> <Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Assign a client (optional)" /></SelectTrigger></FormControl><SelectContent>{contacts.map(contact => (<SelectItem key={contact.id} value={contact.id}>{contact.name}</SelectItem>))}</SelectContent></Select><FormMessage /> </FormItem> )} />
-                        ) : (
-                          <Button variant="outline" className="w-full" onClick={() => setIsContactFormOpen(true)}><Plus className="mr-2 h-4 w-4" /> Add New Contact</Button>
-                        )}
+                            {clientAction === 'select' ? (
+                            <FormField control={form.control} name="contactId" render={({ field }) => ( <FormItem> <Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Assign a client (optional)" /></SelectTrigger></FormControl><SelectContent>{contacts.map(contact => (<SelectItem key={contact.id} value={contact.id}>{contact.name}</SelectItem>))}</SelectContent></Select><FormMessage /> </FormItem> )} />
+                            ) : (
+                            <Button type="button" variant="outline" className="w-full" onClick={(e) => { e.preventDefault(); setIsContactFormOpen(true); }}><Plus className="mr-2 h-4 w-4" /> Add New Contact</Button>
+                            )}
+                        </div>
                         
                         <FormField control={form.control} name="projectManagerId" render={({ field }) => ( <FormItem><FormLabel>Project Manager</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Assign a project manager" /></SelectTrigger></FormControl><SelectContent>{contacts.map(contact => (<SelectItem key={contact.id} value={contact.id}>{contact.name}</SelectItem>))}</SelectContent></Select><FormMessage /> </FormItem> )} />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
