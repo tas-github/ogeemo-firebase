@@ -225,7 +225,6 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
     return (
         <>
             <div className="p-4 sm:p-6 h-full flex flex-col">
-                <ProjectManagementHeader />
                  <header className="text-center mb-6">
                     <h1 className="text-3xl font-bold font-headline text-primary">
                         {project.name}
@@ -234,6 +233,7 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                         {project.description}
                     </p>
                 </header>
+                <ProjectManagementHeader />
                 
                 <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-3 gap-6">
                     <TaskColumn
