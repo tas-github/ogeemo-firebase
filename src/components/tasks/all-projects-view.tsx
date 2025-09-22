@@ -266,7 +266,7 @@ export function AllProjectsView() {
             <div className="p-4 sm:p-6 flex flex-col h-full items-center">
                 <header className="text-center mb-6">
                     <h1 className="text-3xl font-bold font-headline text-primary">
-                        All Projects
+                        Project List
                     </h1>
                     <p className="text-muted-foreground max-w-2xl mx-auto">
                         A comprehensive list of every project. Use this view to edit project details.
