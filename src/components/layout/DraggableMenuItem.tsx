@@ -24,15 +24,16 @@ interface DragItem {
   type: string;
 }
 
-export function DraggableMenuItem({ 
+const DraggableMenuItemComponent = React.forwardRef<HTMLDivElement, DraggableMenuItemProps>(({ 
     item, 
     index, 
     isActive, 
     moveMenuItem, 
     isDraggable = true, 
     isCompact = false 
-}: DraggableMenuItemProps) {
-  const ref = useRef<HTMLDivElement>(null);
+}, forwardedRef) => {
+  const localRef = useRef<HTMLDivElement>(null);
+  const ref = (forwardedRef as React.RefObject<HTMLDivElement>) || localRef;
   const Icon = item.icon;
 
   const [{ isDragging }, drag, preview] = useDrag({
@@ -90,4 +91,8 @@ export function DraggableMenuItem({
       </div>
     </div>
   );
-}
+});
+
+DraggableMenuItemComponent.displayName = "DraggableMenuItem";
+
+export const DraggableMenuItem = React.memo(DraggableMenuItemComponent);
