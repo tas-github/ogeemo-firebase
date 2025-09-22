@@ -29,6 +29,7 @@ import { addContact, updateContact, addFolder } from '@/services/contact-service
 import { useAuth } from '@/context/auth-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useUserPreferences } from '@/hooks/use-user-preferences';
+import { cn } from '@/lib/utils';
 
 const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -244,15 +245,15 @@ export default function ContactFormDialog({
                                             <FormDescription>Select the best number to use for this contact.</FormDescription>
                                             <FormControl>
                                                 <RadioGroup onValueChange={field.onChange} value={field.value || ""} className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-2">
+                                                    <FormItem className={cn("flex items-center space-x-3 space-y-0 rounded-md border p-2 transition-colors", field.value === 'businessPhone' ? "bg-accent border-primary" : "text-foreground border-input")}>
                                                         <FormControl><RadioGroupItem value="businessPhone" disabled={!businessPhoneValue} /></FormControl>
                                                         <FormLabel className="font-normal w-full cursor-pointer">Business</FormLabel>
                                                     </FormItem>
-                                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-2">
+                                                    <FormItem className={cn("flex items-center space-x-3 space-y-0 rounded-md border p-2 transition-colors", field.value === 'cellPhone' ? "bg-accent border-primary" : "text-foreground border-input")}>
                                                         <FormControl><RadioGroupItem value="cellPhone" disabled={!cellPhoneValue} /></FormControl>
                                                         <FormLabel className="font-normal w-full cursor-pointer">Cell</FormLabel>
                                                     </FormItem>
-                                                    <FormItem className="flex items-center space-x-3 space-y-0 rounded-md border p-2">
+                                                    <FormItem className={cn("flex items-center space-x-3 space-y-0 rounded-md border p-2 transition-colors", field.value === 'homePhone' ? "bg-accent border-primary" : "text-foreground border-input")}>
                                                         <FormControl><RadioGroupItem value="homePhone" disabled={!homePhoneValue} /></FormControl>
                                                         <FormLabel className="font-normal w-full cursor-pointer">Home</FormLabel>
                                                     </FormItem>
