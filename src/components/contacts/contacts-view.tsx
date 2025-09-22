@@ -564,7 +564,7 @@ export function ContactsView() {
                                                   <DropdownMenuItem onSelect={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}><BookOpen className="mr-2 h-4 w-4" />Open</DropdownMenuItem>
                                                   <DropdownMenuItem onSelect={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}><Pencil className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
                                                   <DropdownMenuSeparator />
-                                                  <DropdownMenuItem className="text-destructive" onSelect={() => setContactToDelete(contact)}> <Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                                                  <DropdownMenuItem className="text-destructive" onSelect={(e) => { e.preventDefault(); setContactToDelete(contact); }}> <Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
                                               </DropdownMenuContent>
                                           </DropdownMenu>
                                       </TableCell>
