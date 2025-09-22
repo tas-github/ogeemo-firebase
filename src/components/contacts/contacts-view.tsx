@@ -98,6 +98,7 @@ export function ContactsView() {
   
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [contactToEdit, setContactToEdit] = useState<Contact | null>(null);
+  const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
   
   const [folderToDelete, setFolderToDelete] = useState<FolderData | null>(null);
   const [foldersToDelete, setFoldersToDelete] = useState<string[] | null>(null);
@@ -209,6 +210,19 @@ export function ContactsView() {
       } else {
           setContacts(prev => [...prev, data]);
       }
+  };
+  
+  const handleConfirmDeleteContact = async () => {
+    if (!contactToDelete) return;
+    try {
+        await deleteContacts([contactToDelete.id]);
+        setContacts(prev => prev.filter(c => c.id !== contactToDelete.id));
+        toast({ title: "Contact Deleted" });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Delete Failed', description: error.message });
+    } finally {
+        setContactToDelete(null);
+    }
   };
 
   const handleDeleteSelected = async () => {
@@ -550,7 +564,7 @@ export function ContactsView() {
                                                   <DropdownMenuItem onSelect={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}><BookOpen className="mr-2 h-4 w-4" />Open</DropdownMenuItem>
                                                   <DropdownMenuItem onSelect={() => { setContactToEdit(contact); setIsContactFormOpen(true); }}><Pencil className="mr-2 h-4 w-4" />Edit</DropdownMenuItem>
                                                   <DropdownMenuSeparator />
-                                                  <DropdownMenuItem className="text-destructive" onSelect={async (e) => { e.preventDefault(); if (window.confirm(`Are you sure you want to delete "${contact.name}"?`)) { await deleteContacts([contact.id]); setContacts(prev => prev.filter(c => c.id !== contact.id)); toast({ title: "Contact Deleted" }); } }}> <Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                                                  <DropdownMenuItem className="text-destructive" onSelect={() => setContactToDelete(contact)}> <Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
                                               </DropdownMenuContent>
                                           </DropdownMenu>
                                       </TableCell>
@@ -595,6 +609,21 @@ export function ContactsView() {
                 <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
+      </AlertDialog>
+      
+      <AlertDialog open={!!contactToDelete} onOpenChange={() => setContactToDelete(null)}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      This action will permanently delete the contact "{contactToDelete?.name}". This action cannot be undone.
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleConfirmDeleteContact} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
       </AlertDialog>
     </>
   );
