@@ -117,7 +117,7 @@ export default function ContactFormDialog({
 
         const dataToSave = {
             ...values,
-            primaryPhoneType: values.primaryPhoneType,
+            primaryPhoneType: values.primaryPhoneType || null,
         };
 
         try {
@@ -173,7 +173,7 @@ export default function ContactFormDialog({
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
                         <ScrollArea className="flex-1">
-                            <div className="px-6 pb-4 space-y-4">
+                            <div className="px-6 pb-4 space-y-4 bg-card">
                                 <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name <span className="text-destructive">*</span></FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                 
                                 <FormField
