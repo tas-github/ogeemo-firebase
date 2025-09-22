@@ -33,7 +33,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { addActionChip, updateActionChip } from '@/services/project-service';
-import { managerOptions } from '@/lib/manager-options';
+import { allMenuItems } from '@/lib/menu-items';
 import type { ActionChipData } from '@/types/calendar';
 import { Wand2 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
@@ -128,7 +128,7 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
 
     if (values.linkType === 'page' && values.targetPage) {
         href = values.targetPage;
-        const selectedManager = managerOptions.find(m => m.href === values.targetPage);
+        const selectedManager = allMenuItems.find(m => m.href === values.targetPage);
         if (selectedManager) {
             icon = selectedManager.icon;
         }
@@ -229,7 +229,7 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
                             </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                            {managerOptions.map((option) => (
+                            {allMenuItems.map((option) => (
                                 <SelectItem key={option.href} value={option.href}>
                                     <div className="flex items-center gap-2">
                                         <option.icon className="h-4 w-4" />
