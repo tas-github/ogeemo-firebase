@@ -117,7 +117,7 @@ export default function ContactFormDialog({
 
         const dataToSave = {
             ...values,
-            primaryPhoneType: values.primaryPhoneType || undefined, // Convert null back to undefined for Firestore if it matters, or handle in service
+            primaryPhoneType: values.primaryPhoneType === null ? undefined : values.primaryPhoneType,
         };
 
         try {
