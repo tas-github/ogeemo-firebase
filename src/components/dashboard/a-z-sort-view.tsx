@@ -139,10 +139,13 @@ export function AZSortView() {
             ...profile,
             preferences: { ...profile?.preferences, menuOrder: orderToSave }
         });
+        
+        // Dispatch custom event to notify the sidebar to update
+        window.dispatchEvent(new CustomEvent('menuOrderChanged'));
 
         toast({
             title: "Menu Order Saved",
-            description: "Your new menu order has been saved. It will be reflected in the sidebar on the next page load."
+            description: "Your new menu order has been saved and the sidebar has been updated."
         });
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Save Failed', description: error.message });

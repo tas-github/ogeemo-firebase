@@ -32,7 +32,7 @@ export function MainMenu() {
   const pathname = usePathname();
   const [menuItems, setMenuItems] = useState<MenuItem[]>(allMenuItems);
   const [actionChips, setActionChips] = useState<ActionChipData[]>([]);
-  const { preferences, isLoading: isLoadingPreferences, updatePreferences } = useUserPreferences();
+  const { preferences, isLoading: isLoadingPreferences, updatePreferences, loadPreferences } = useUserPreferences();
   const { user } = useAuth();
   const { toast } = useToast();
   const { view, setView } = useSidebarView();
@@ -45,31 +45,51 @@ export function MainMenu() {
     const remainingItems = allMenuItems.filter(item => !order.includes(item.href));
     return [...orderedItems, ...remainingItems];
   }, []);
-
-  useEffect(() => {
-    if (!isLoadingPreferences && preferences?.menuOrder && preferences.menuOrder.length > 0) {
-      setMenuItems(sortMenuItems(preferences.menuOrder));
-    } else if (!isLoadingPreferences) {
-      setMenuItems([...allMenuItems].sort((a, b) => a.label.localeCompare(b.label)));
-    }
-  }, [preferences, isLoadingPreferences, sortMenuItems]);
-
-  useEffect(() => {
-    async function loadChips() {
-        if (user) {
-            setIsLoadingChips(true);
-            try {
-                const chips = await getActionChips(user.uid);
-                setActionChips(chips);
-            } catch (error) {
-                console.error("Failed to load action chips for sidebar:", error);
-            } finally {
-                setIsLoadingChips(false);
-            }
+  
+  const refreshMenuOrder = useCallback(async () => {
+    if (user) {
+        const profile = await getUserProfile(user.uid);
+        const savedOrder = profile?.preferences?.menuOrder;
+        if (savedOrder && savedOrder.length > 0) {
+            setMenuItems(sortMenuItems(savedOrder));
+        } else {
+            setMenuItems([...allMenuItems].sort((a, b) => a.label.localeCompare(b.label)));
         }
     }
-    loadChips();
+  }, [user, sortMenuItems]);
+
+  useEffect(() => {
+    refreshMenuOrder();
+    
+    const handleMenuOrderChange = () => refreshMenuOrder();
+    window.addEventListener('menuOrderChanged', handleMenuOrderChange);
+    return () => window.removeEventListener('menuOrderChanged', handleMenuOrderChange);
+
+  }, [refreshMenuOrder]);
+
+  const loadChips = useCallback(async () => {
+    if (user) {
+        setIsLoadingChips(true);
+        try {
+            const chips = await getActionChips(user.uid);
+            setActionChips(chips);
+        } catch (error) {
+            console.error("Failed to load action chips for sidebar:", error);
+        } finally {
+            setIsLoadingChips(false);
+        }
+    }
   }, [user]);
+
+  useEffect(() => {
+    loadChips();
+    
+    // Listen for custom event to reload chips if they are changed on another page
+    const handleChipsUpdate = () => loadChips();
+    window.addEventListener('chipsUpdated', handleChipsUpdate);
+    return () => window.removeEventListener('chipsUpdated', handleChipsUpdate);
+
+  }, [loadChips]);
 
   const moveMenuItem = useCallback((dragIndex: number, hoverIndex: number) => {
     setMenuItems((prevItems: MenuItem[]) => {

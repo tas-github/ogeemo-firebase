@@ -5,8 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "genkit:dev": "genkit start -- tsx src/ai/genkit.ts",
-    "genkit:watch": "genkit start -- tsx --watch src/ai/genkit.ts",
+    "genkit:dev": "genkit start -- tsx genkit/index.ts",
+    "genkit:watch": "genkit start -- tsx --watch genkit/index.ts",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -68,6 +68,7 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.13",
+    "@types/mermaid": "^8.2.22",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

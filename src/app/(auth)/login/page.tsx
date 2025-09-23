@@ -54,7 +54,7 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(firebaseServices.auth, values.email, values.password);
-      // On successful sign-in, the AuthProvider will handle the redirect.
+      // On successful sign-in, the AuthProvider will handle session creation and redirect.
       // The loading modal will stay until the redirect happens.
     } catch (error: any) {
       let description = "An unknown error occurred. Please try again.";

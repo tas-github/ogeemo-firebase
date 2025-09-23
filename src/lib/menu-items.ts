@@ -39,8 +39,9 @@ import {
   ImageIcon,
   BookText,
   BrainCircuit,
-  ListChecks, // Added for Project Status
+  ListChecks,
   Pencil,
+  GitMerge,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -52,7 +53,8 @@ export interface MenuItem {
 
 export const allMenuItems: MenuItem[] = [
   { href: "/action-manager", label: "Action Manager", icon: LayoutDashboard },
-  { href: "/master-mind", label: "Master Mind", icon: BrainCircuit },
+  { href: "/master-mind", label: "The Ultimate Task & Event Manager", icon: BrainCircuit },
+  { href: "/workflow-chart", label: "Workflow Chart", icon: GitMerge },
   { href: "/command-centre", label: "Command Centre", icon: BrainCircuit },
   { href: "/action-manager/manage", label: "Manage Dashboard", icon: LayoutDashboard },
   { href: "/action-manager/trash", label: "Trash", icon: Trash2 },

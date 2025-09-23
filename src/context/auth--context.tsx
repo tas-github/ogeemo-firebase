@@ -40,13 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (currentUser) {
             const token = sessionStorage.getItem('google_access_token');
             setAccessToken(token);
-            const idToken = await currentUser.getIdToken();
-            // Create session cookie on login
-            await fetch('/api/auth/session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ idToken }),
-            });
+            // The session cookie will be set by the server action when needed.
+            // No need to explicitly create it here.
           } else {
             setAccessToken(null);
             sessionStorage.removeItem('google_access_token');
@@ -72,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (!user && !isPublicPath && !isMarketingPath) {
         router.push('/login');
-      } else if (user && (isPublicPath || pathname === '/home' || pathname === '/')) {
+      } else if (user && (isPublicPath || pathname === '/home')) {
         router.push('/action-manager');
       }
     }
@@ -92,14 +87,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sessionStorage.setItem('google_access_token', credential.accessToken);
         setAccessToken(credential.accessToken);
     }
-    // The onAuthStateChanged listener will handle the session cookie creation
   };
 
 
   const logout = async () => {
     if (firebaseServices) {
       await signOut(firebaseServices.auth);
-      // The onAuthStateChanged listener will handle the session cookie deletion
     }
   };
   
@@ -116,10 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   if (isLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center">
-        <div className="text-center">
-            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mb-4"></div>
-            <p className="font-semibold">Starting app...</p>
-        </div>
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
       </div>
     );
   }

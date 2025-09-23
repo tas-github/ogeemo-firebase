@@ -397,6 +397,7 @@ export function TimeManagerView() {
                 setEventToEdit(newEvent);
                 toast({ title: "Event Scheduled", description: `"${eventData.title}" has been saved.` });
             }
+            router.push('/calendar');
         } catch (error: any) {
              toast({ variant: 'destructive', title: 'Failed to save event', description: error.message });
         }
@@ -454,11 +455,14 @@ export function TimeManagerView() {
     return (
         <>
             <div className="p-4 sm:p-6 space-y-6 flex flex-col items-center">
-                <header className="w-full max-w-4xl">
+                <header className="w-full max-w-5xl">
                     <div className="flex justify-between items-center">
-                        <div className="flex-1" />
-                        <div className="flex-1 text-center flex items-center justify-center gap-2">
-                            <h1 className="text-2xl font-bold font-headline text-primary">Master Mind</h1>
+                        <div />
+                        <div className="text-center">
+                            <h1 className="text-2xl font-bold font-headline text-primary whitespace-nowrap">The Ultimate Task &amp; Event Manager</h1>
+                            <p className="text-muted-foreground whitespace-nowrap">Your ‘Master Mind’ for getting things done.</p>
+                        </div>
+                        <div className="flex items-center justify-end gap-2">
                              <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -473,8 +477,6 @@ export function TimeManagerView() {
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
-                        </div>
-                        <div className="flex-1 text-right flex items-center justify-end gap-2">
                             <Button variant="ghost" onClick={() => router.push('/calendar')}>
                                 Close
                             </Button>
@@ -643,7 +645,7 @@ export function TimeManagerView() {
                                 Close
                             </Button>
                             <Button size="lg" onClick={handleSave} variant="default">
-                                <Save className="mr-2 h-4 w-4" /> Log Events & Save to Database
+                                <Save className="mr-2 h-4 w-4" /> Log Events &amp; Save to Database
                             </Button>
                         </div>
                     </CardFooter>

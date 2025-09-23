@@ -297,6 +297,7 @@ export function ManageDashboardView() {
         onActionAdded={handleActionAdded}
         onActionEdited={handleActionEdited}
         chipToEdit={chipToEdit}
+        existingChips={[...chipsState.userChips, ...chipsState.availableChips]}
       />
     </>
   );

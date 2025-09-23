@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,27 +36,11 @@ import { addActionChip, updateActionChip } from '@/services/project-service';
 import { allMenuItems } from '@/lib/menu-items';
 import type { ActionChipData } from '@/types/calendar';
 import { Wand2 } from 'lucide-react';
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 const addActionSchema = z.object({
   label: z.string().min(1, { message: "Label is required." }),
-  linkType: z.enum(['page', 'url']).default('page'),
-  targetPage: z.string().optional(),
-  targetUrl: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal('')),
-}).refine(data => {
-    if (data.linkType === 'page') return !!data.targetPage;
-    return true;
-}, {
-    message: "Please select a page from the dropdown.",
-    path: ['targetPage'],
-}).refine(data => {
-    if (data.linkType === 'url') return !!data.targetUrl;
-    return true;
-}, {
-    message: "Please enter a URL.",
-    path: ['targetUrl'],
+  targetPage: z.string({ required_error: "Please select a page from the dropdown." }).min(1, { message: "Please select a page." }),
 });
-
 
 type AddActionFormData = z.infer<typeof addActionSchema>;
 
@@ -66,56 +50,48 @@ interface AddActionDialogProps {
   onActionAdded: (action: ActionChipData) => void;
   onActionEdited: (action: ActionChipData) => void;
   chipToEdit: ActionChipData | null;
+  existingChips: ActionChipData[];
 }
 
-export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, onActionEdited, chipToEdit }: AddActionDialogProps) {
+export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, onActionEdited, chipToEdit, existingChips }: AddActionDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const form = useForm<AddActionFormData>({
     resolver: zodResolver(addActionSchema),
     defaultValues: {
       label: "",
-      linkType: 'page',
       targetPage: undefined,
-      targetUrl: "",
     },
   });
   
+  const availableMenuItems = useMemo(() => {
+    const existingHrefs = new Set(existingChips.map(c => c.href));
+    // If we are editing a chip, allow its own href to be in the list
+    if (chipToEdit) {
+      existingHrefs.delete(chipToEdit.href as string);
+    }
+    return allMenuItems.filter(item => !existingHrefs.has(item.href));
+  }, [existingChips, chipToEdit]);
+  
   useEffect(() => {
     if (chipToEdit) {
-        let linkType: 'page' | 'url' = 'page';
         let targetPage: string | undefined = undefined;
-        let targetUrl: string | undefined = undefined;
 
-        if (typeof chipToEdit.href === 'string') {
-            if (chipToEdit.href.startsWith('/')) {
-                linkType = 'page';
-                targetPage = chipToEdit.href;
-            } else if (chipToEdit.href.startsWith('http')) {
-                linkType = 'url';
-                targetUrl = chipToEdit.href;
-            } else {
-                linkType = 'page'; // Default if href is empty or invalid
-            }
+        if (typeof chipToEdit.href === 'string' && chipToEdit.href.startsWith('/')) {
+            targetPage = chipToEdit.href;
         }
 
         form.reset({
             label: chipToEdit.label,
-            linkType,
             targetPage,
-            targetUrl: targetUrl || "",
         });
     } else {
         form.reset({
           label: "",
-          linkType: 'page',
           targetPage: undefined,
-          targetUrl: "",
         });
     }
   }, [chipToEdit, form]);
-
-  const linkType = form.watch('linkType');
 
   async function onSubmit(values: AddActionFormData) {
     if (!user) {
@@ -123,17 +99,10 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
       return;
     }
     
-    let href: ActionChipData['href'] = '';
-    let icon = Wand2;
-
-    if (values.linkType === 'page' && values.targetPage) {
-        href = values.targetPage;
-        const selectedManager = allMenuItems.find(m => m.href === values.targetPage);
-        if (selectedManager) {
-            icon = selectedManager.icon;
-        }
-    } else if (values.linkType === 'url' && values.targetUrl) {
-        href = values.targetUrl;
+    const selectedManager = allMenuItems.find(m => m.href === values.targetPage);
+    if (!selectedManager) {
+      toast({ variant: "destructive", title: "Invalid page selected." });
+      return;
     }
 
     try {
@@ -141,8 +110,8 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
         const updatedActionData: ActionChipData = {
             ...chipToEdit,
             label: values.label,
-            href,
-            icon,
+            href: selectedManager.href,
+            icon: selectedManager.icon,
         };
         await updateActionChip(user.uid, updatedActionData);
         onActionEdited(updatedActionData);
@@ -150,8 +119,8 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
       } else {
          const newActionData: Omit<ActionChipData, 'id'> = {
             label: values.label,
-            icon,
-            href,
+            icon: selectedManager.icon,
+            href: selectedManager.href,
             userId: user.uid,
          };
          const newAction = await addActionChip(newActionData);
@@ -171,7 +140,7 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
         <DialogHeader>
           <DialogTitle>{chipToEdit ? 'Edit Action' : 'Add New Action'}</DialogTitle>
           <DialogDescription>
-            {chipToEdit ? 'Modify the details for this action.' : 'Create a custom shortcut for your Action Dashboard.'}
+            {chipToEdit ? 'Modify the details for this action.' : 'Create a shortcut for your Action Dashboard from an available page.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -181,85 +150,47 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
               name="label"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Label</FormLabel>
+                  <FormLabel>Custom Label</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Accounts Receivable" {...field} />
+                    <Input placeholder="Enter a custom label for the chip" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
              <FormField
-                control={form.control}
-                name="linkType"
-                render={({ field }) => (
-                    <FormItem className="space-y-3">
-                        <FormLabel>Link Type</FormLabel>
-                        <FormControl>
-                            <RadioGroup
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            className="flex space-x-4"
-                            >
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                    <FormControl><RadioGroupItem value="page" /></FormControl>
-                                    <FormLabel className="font-normal">Select a Page</FormLabel>
-                                </FormItem>
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                    <FormControl><RadioGroupItem value="url" /></FormControl>
-                                    <FormLabel className="font-normal">Enter a URL</FormLabel>
-                                </FormItem>
-                            </RadioGroup>
-                        </FormControl>
-                    </FormItem>
-                )}
+              control={form.control}
+              name="targetPage"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Target Page</FormLabel>
+                  <Select onValueChange={(value) => {
+                      field.onChange(value);
+                      const selected = availableMenuItems.find(item => item.href === value);
+                      if (selected && !form.getValues('label')) {
+                          form.setValue('label', selected.label);
+                      }
+                  }} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a page to add..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {availableMenuItems.map((option) => (
+                        <SelectItem key={option.href} value={option.href}>
+                          <div className="flex items-center gap-2">
+                            <option.icon className="h-4 w-4" />
+                            <span>{option.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-
-            {linkType === 'page' && (
-                <FormField
-                    control={form.control}
-                    name="targetPage"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Target Page</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a page to open..." />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {allMenuItems.map((option) => (
-                                <SelectItem key={option.href} value={option.href}>
-                                    <div className="flex items-center gap-2">
-                                        <option.icon className="h-4 w-4" />
-                                        <span>{option.label}</span>
-                                    </div>
-                                </SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            )}
-
-            {linkType === 'url' && (
-                 <FormField
-                    control={form.control}
-                    name="targetUrl"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Target Page or URL</FormLabel>
-                        <FormControl>
-                            <Input placeholder="https://example.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            )}
             
              <DialogFooter className="pt-4">
                 <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>

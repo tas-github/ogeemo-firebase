@@ -1,8 +1,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth } from '@/lib/firebase-admin';
-import { cookies } from 'next/headers';
-import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 
 export async function POST(req: NextRequest) {
     console.log('Session API POST request received.');

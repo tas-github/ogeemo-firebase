@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { getUserProfile, updateUserProfile, UserProfile } from '@/services/user-profile-service';
+import type { SidebarViewType } from '@/context/sidebar-view-context';
 
 const defaultPreferences: UserProfile['preferences'] = {
     showDictationButton: true,
@@ -53,5 +54,5 @@ export function useUserPreferences() {
         }
     };
 
-    return { preferences, updatePreferences, isLoading };
+    return { preferences, updatePreferences, isLoading, loadPreferences };
 }

@@ -36,10 +36,9 @@ export function initializeFirebase(): Promise<FirebaseServices> {
             throw new Error("Firebase client SDK can only be initialized in the browser.");
         }
 
-        if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+        if (!firebaseConfig.apiKey) {
             const missingVars = [
                 !firebaseConfig.apiKey && "NEXT_PUBLIC_FIREBASE_API_KEY",
-                !firebaseConfig.projectId && "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
             ].filter(Boolean).join(", ");
             
             throw new Error(`Firebase configuration is incomplete. Missing environment variables: ${missingVars}`);

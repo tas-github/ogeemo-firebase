@@ -15,13 +15,12 @@ import {
   Timestamp,
   getDoc,
   setDoc,
-  limit,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
 import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData, TimeSession, type ProjectUrgency, type ProjectImportance } from '@/types/calendar-types';
-import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info, BrainCircuit } from 'lucide-react';
+import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info, BrainCircuit, GitMerge } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { addMinutes, eachDayOfInterval, isWeekday, set, format, startOfWeek, endOfWeek } from 'date-fns';
+import { addMinutes } from 'date-fns';
 
 
 const PROJECTS_COLLECTION = 'projects';
@@ -372,7 +371,7 @@ export async function addProjectTemplate(templateData: Omit<ProjectTemplate, 'id
 
 // --- Action Chip Functions ---
 
-const iconMap: { [key: string]: LucideIcon } = { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info, BrainCircuit };
+const iconMap: { [key: string]: LucideIcon } = { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info, BrainCircuit, GitMerge };
 
 const defaultChips: Omit<ActionChipData, 'id' | 'userId'>[] = [
   { label: 'OgeeMail', icon: Mail, href: '/ogeemail' },
@@ -401,8 +400,9 @@ async function updateChipsInCollection(userId: string, collectionName: string, c
     const docRef = doc(db, collectionName, userId);
     const chipsToSave = chips.map((chip, index) => {
         const iconName = Object.keys(iconMap).find(key => iconMap[key] === chip.icon);
+        // Do not save the icon component itself
         const { icon, ...rest } = chip;
-        return { ...rest, position: index, iconName };
+        return { ...rest, position: index, iconName: iconName || 'Wand2' };
     });
     await setDoc(docRef, { chips: chipsToSave }, { merge: true });
 }
@@ -489,12 +489,19 @@ export async function addActionChip(chipData: Omit<ActionChipData, 'id'>): Promi
   
   const existingChips = docSnap.exists() ? (docSnap.data().chips || []).map(docToActionChip) : [];
   
-  const newChipData = { ...chipData, id: `chip_${Date.now()}` };
+  // Find the icon name (string) from the icon component (function)
+  const iconName = Object.keys(iconMap).find(key => iconMap[key] === chipData.icon);
   
-  const updatedChips = [...existingChips, newChipData];
+  // Create a new object for saving that doesn't include the 'icon' function
+  const { icon, ...restOfChipData } = chipData;
+  const newChipDataForDb = { ...restOfChipData, iconName: iconName || 'Wand2' };
+  
+  const newChipForState = { ...chipData, id: `chip_${Date.now()}` };
+  const updatedChips = [...existingChips, newChipForState];
+
   await updateChipsInCollection(chipData.userId, AVAILABLE_ACTION_CHIPS_COLLECTION, updatedChips);
   
-  return newChipData;
+  return newChipForState;
 }
 
 export async function updateActionChip(userId: string, updatedChip: ActionChipData): Promise<void> {
@@ -502,7 +509,12 @@ export async function updateActionChip(userId: string, updatedChip: ActionChipDa
     const availableChips = await getAvailableActionChips(userId);
     
     const isUserChip = userChips.some(c => c.id === updatedChip.id);
-    
+
+    // Find the icon name (string) from the icon component (function) before saving
+    const iconName = Object.keys(iconMap).find(key => iconMap[key] === updatedChip.icon);
+    const { icon, ...chipToSave } = updatedChip;
+    const finalChipData = { ...chipToSave, iconName: iconName || 'Wand2' };
+
     if (isUserChip) {
         const newUserChips = userChips.map(c => c.id === updatedChip.id ? updatedChip : c);
         await updateActionChips(userId, newUserChips);

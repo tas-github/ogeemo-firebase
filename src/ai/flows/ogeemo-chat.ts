@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview The primary Ogeemo AI assistant agent.
@@ -6,7 +7,7 @@
  * - ogeemoAgent - The main function that handles user requests.
  * - OgeemoAgentInput - The input type for the ogeemoAgent function.
  */
-import { ai } from '@/ai/ai';
+import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { MessageData } from 'genkit';
 import { addContact } from '@/services/contact-service';
