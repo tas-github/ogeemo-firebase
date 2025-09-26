@@ -39,9 +39,10 @@ import {
   ImageIcon,
   BookText,
   BrainCircuit,
-  ListChecks,
-  Pencil,
   GitMerge,
+  Pencil,
+  ListChecks,
+  FilePenLine,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -54,6 +55,8 @@ export interface MenuItem {
 export const allMenuItems: MenuItem[] = [
   { href: "/action-manager", label: "Action Manager", icon: LayoutDashboard },
   { href: "/master-mind", label: "The Ultimate Task & Event Manager", icon: BrainCircuit },
+  { href: "/knowledge-base", label: "Knowledge Base", icon: BrainCircuit },
+  { href: "/doc-editor", label: "Text Editor", icon: FilePenLine },
   { href: "/workflow-chart", label: "Workflow Chart", icon: GitMerge },
   { href: "/command-centre", label: "Command Centre", icon: BrainCircuit },
   { href: "/action-manager/manage", label: "Manage Dashboard", icon: LayoutDashboard },
@@ -86,7 +89,7 @@ export const allMenuItems: MenuItem[] = [
   { href: "/project-status", label: "Project Status", icon: ListChecks },
   { href: "/tasks", label: "Tasks", icon: ListTodo },
   { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/files", label: "Files", icon: Folder },
+  { href: "/files", label: "File Cabinet", icon: Folder },
   { href: "/idea-board", label: "Idea Board", icon: Lightbulb },
   { href: "/research", label: "Research", icon: Beaker },
   { href: "/accounting", label: "Accounting", icon: Calculator },

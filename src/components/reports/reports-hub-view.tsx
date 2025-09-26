@@ -47,13 +47,6 @@ export function ReportsHubView() {
       href: "/reports/activity",
     },
     {
-      icon: FileText,
-      title: "Templates",
-      description: "Create, manage, and utilize standardized report templates for consistent and efficient reporting.",
-      cta: "Manage Templates",
-      href: "/reports/templates",
-    },
-    {
       icon: Search,
       title: "Advanced Search",
       description: "Perform deep, conditional searches across all your data to find exactly what you need.",

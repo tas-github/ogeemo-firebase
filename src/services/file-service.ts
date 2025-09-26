@@ -23,9 +23,8 @@ import type { FileItem, FolderItem } from '@/data/files';
 const FOLDERS_COLLECTION = 'fileFolders';
 const FILES_COLLECTION = 'files';
 const SITE_IMAGES_FOLDER_NAME = 'Site Images';
-export const SITE_IMAGES_FOLDER_ID = 'folder-site-images'; // A constant ID for simplicity
+export const SITE_IMAGES_FOLDER_ID = 'folder-site-images';
 
-// --- Helper Functions ---
 async function getDb() {
     const { db } = await initializeFirebase();
     return db;
@@ -45,11 +44,8 @@ const docToFile = (doc: any): FileItem => ({
     id: doc.id, 
     ...doc.data(),
     modifiedAt: (doc.data().modifiedAt as Timestamp)?.toDate() || new Date(),
-    checkedOutAt: (doc.data().checkedOutAt as Timestamp)?.toDate() || undefined,
 } as FileItem);
 
-
-// --- Folder functions ---
 export async function getFolders(userId: string): Promise<FolderItem[]> {
   const db = await getDb();
   const q = query(collection(db, FOLDERS_COLLECTION), where("userId", "==", userId));
@@ -60,7 +56,6 @@ export async function getFolders(userId: string): Promise<FolderItem[]> {
 export async function findOrCreateFileFolder(userId: string, folderName: string, parentId: string | null = null, predefinedId?: string): Promise<FolderItem> {
     const db = await getDb();
     
-    // If a predefined ID is given, check for that first.
     if (predefinedId) {
         const docRef = doc(db, FOLDERS_COLLECTION, predefinedId);
         const docSnap = await getDoc(docRef);
@@ -121,26 +116,44 @@ export async function deleteFolders(userId: string, folderIds: string[]): Promis
     await batch.commit();
 }
 
-// --- File functions ---
-export async function getFiles(userId: string): Promise<FileItem[]> {
+export async function getFiles(userId?: string): Promise<FileItem[]> {
   const db = await getDb();
-  const q = query(collection(db, FILES_COLLECTION), where("userId", "==", userId));
+  const q = userId ? query(collection(db, FILES_COLLECTION), where("userId", "==", userId)) : collection(db, FILES_COLLECTION);
   const snapshot = await getDocs(q);
   return snapshot.docs.map(docToFile);
 }
 
-export async function getFileContent(storagePath: string): Promise<string> {
-    const { storage } = await initializeFirebase();
-    const fileRef = storageRef(storage, storagePath);
-    const downloadUrl = await getDownloadURL(fileRef);
-
-    // Fetch the content from the URL
-    const response = await fetch(downloadUrl);
-    if (!response.ok) {
-        throw new Error(`Failed to fetch file content: ${response.statusText}`);
-    }
-    return await response.text();
+export async function getFileById(fileId: string): Promise<FileItem | null> {
+    const db = await getDb();
+    const fileRef = doc(db, FILES_COLLECTION, fileId);
+    const fileSnap = await getDoc(fileRef);
+    return fileSnap.exists() ? docToFile(fileSnap) : null;
 }
+
+export async function addTextFile(folderId: string, fileName: string, content: string): Promise<FileItem> {
+    const file = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    
+    const { auth } = await initializeFirebase();
+    const userId = auth.currentUser?.uid;
+    if (!userId) throw new Error("User not authenticated.");
+    
+    const finalFileName = fileName.endsWith('.txt') ? fileName : `${fileName}.txt`;
+
+    const formData = new FormData();
+    formData.append('file', file, finalFileName);
+    formData.append('userId', userId);
+    formData.append('folderId', folderId);
+
+    return addFile(formData);
+}
+
+export async function updateTextFileContentByPath(storagePath: string, content: string): Promise<void> {
+    const storage = await getAppStorage();
+    const fileRef = storageRef(storage, storagePath);
+    const fileBlob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    await uploadBytes(fileRef, fileBlob);
+}
+
 
 export async function getFilesForFolder(userId: string, folderId: string): Promise<FileItem[]> {
   const db = await getDb();
@@ -155,13 +168,6 @@ export async function addFileRecord(fileData: Omit<FileItem, 'id'>): Promise<Fil
     return { id: docRef.id, ...fileData };
 }
 
-export async function updateFileRecord(fileId: string, data: Partial<Omit<FileItem, 'id' | 'userId'>>): Promise<void> {
-    const db = await getDb();
-    const fileRef = doc(db, FILES_COLLECTION, fileId);
-    await updateDoc(fileRef, data);
-}
-
-
 export async function addFile(formData: FormData): Promise<FileItem> {
     const file = formData.get('file') as File;
     const userId = formData.get('userId') as string;
@@ -171,18 +177,12 @@ export async function addFile(formData: FormData): Promise<FileItem> {
         throw new Error("Missing required data for file upload.");
     }
     
-    // Special handling for site images to ensure the folder exists
-    if (folderId === SITE_IMAGES_FOLDER_ID) {
-        const siteImagesFolder = await findOrCreateFileFolder(userId, SITE_IMAGES_FOLDER_NAME, null, SITE_IMAGES_FOLDER_ID);
-        folderId = siteImagesFolder.id; // Use the confirmed ID
-    }
-    
     if (folderId === 'unfiled') {
         folderId = '';
     }
 
     const storage = await getAppStorage();
-    const storagePath = `${userId}/${folderId || 'unfiled'}/${Date.now()}-${file.name}`;
+    const storagePath = `userFiles/${userId}/${folderId || 'unfiled'}/${Date.now()}-${file.name}`;
     const fileRef = storageRef(storage, storagePath);
     
     await uploadBytes(fileRef, file);
@@ -198,6 +198,12 @@ export async function addFile(formData: FormData): Promise<FileItem> {
     };
 
     return addFileRecord(newFileRecord);
+}
+
+export async function updateFile(fileId: string, data: Partial<Omit<FileItem, 'id' | 'userId'>>): Promise<void> {
+    const db = await getDb();
+    const fileRef = doc(db, FILES_COLLECTION, fileId);
+    await updateDoc(fileRef, data);
 }
 
 export async function addFileFromDataUrl(options: { dataUrl: string; fileName: string; userId: string; folderId: string }): Promise<FileItem> {

@@ -2,7 +2,6 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   Folder,
   Plus,
@@ -13,10 +12,17 @@ import {
   ChevronRight,
   FolderPlus,
   ArrowUpDown,
-  Download,
   Users,
   UploadCloud,
-  Edit,
+  Wand2,
+  BookOpen,
+  FilePlus,
+  Save,
+  Bold,
+  Italic,
+  Underline,
+  List,
+  ListOrdered,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -50,10 +56,13 @@ import {
     addFolder, 
     updateFolder,
     getFiles,
-    addFileRecord,
+    addFile,
     deleteFiles,
-    deleteFolders
-} from '@/services/file-service';
+    deleteFolders,
+    addTextFile,
+    updateTextFileContent,
+} from '@/services/knowledge-base-service';
+import { fetchFileContent } from '@/app/actions/file-actions';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import {
@@ -67,12 +76,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from '../ui/checkbox';
-import { FileIcon } from './file-icon';
+import { FileIcon } from '../files/file-icon';
 import { format } from 'date-fns';
-import { getDownloadUrl } from '@/app/actions/file-actions';
-import { triggerBrowserDownload } from '@/lib/utils';
+import { Textarea } from '../ui/textarea';
+import { Separator } from '../ui/separator';
 
-export function FilesView() {
+export function KnowledgeBaseView() {
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [allFiles, setAllFiles] = useState<FileItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,10 +104,18 @@ export function FilesView() {
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+
+  const [activeFile, setActiveFile] = useState<FileItem | null>(null);
+  const [editorContent, setEditorContent] = useState<string | null>(null);
+  const [isEditorLoading, setIsEditorLoading] = useState(false);
+  const editorRef = useRef<HTMLDivElement>(null);
   
+  const [isNewFileDialogOpen, setIsNewFileDialogOpen] = useState(false);
+  const [newFileName, setNewFileName] = useState('');
+
   const { toast } = useToast();
   const { user } = useAuth();
-  const router = useRouter();
   
   const loadInitialData = useCallback(async () => {
     if (!user) {
@@ -131,6 +148,12 @@ export function FilesView() {
   useEffect(() => {
     setSelectedFileIds([]);
   }, [selectedFolderId]);
+  
+  useEffect(() => {
+    if (editorRef.current && editorContent !== null && document.activeElement !== editorRef.current) {
+      editorRef.current.innerHTML = editorContent;
+    }
+  }, [editorContent]);
 
   const selectedFolder = useMemo(
     () => folders.find((f) => f && f.id === selectedFolderId),
@@ -144,18 +167,6 @@ export function FilesView() {
     return allFiles.filter(file => file.folderId === selectedFolderId);
   }, [selectedFolderId, allFiles]);
   
-  const handleDownloadFile = async (file: FileItem) => {
-    try {
-        const { url, error } = await getDownloadUrl(file.storagePath);
-        if (error) throw new Error(error);
-        if (url) {
-            await triggerBrowserDownload(url, file.name);
-        }
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Download Failed', description: error.message });
-    }
-  };
-
   const handleCreateFolder = async () => {
     if (!user || !newFolderName.trim()) return;
     try {
@@ -260,7 +271,7 @@ export function FilesView() {
             formData.append('file', file);
             formData.append('userId', user.uid);
             formData.append('folderId', selectedFolderId);
-            const newFile = await addFileRecord(formData);
+            const newFile = await addFile(formData);
             setAllFiles(prev => [...prev, newFile]);
             successfulUploads++;
         }
@@ -274,8 +285,122 @@ export function FilesView() {
     }
   };
 
-  const isTextEditable = (file: FileItem) => {
-    return file.type === 'text/plain' || file.type === 'text/markdown' || file.name.endsWith('.txt') || file.name.endsWith('.md');
+  const handleFolderUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0 || !user) return;
+
+    const firstFile = files[0];
+    const rootFolderName = firstFile.webkitRelativePath.split('/')[0];
+    
+    if (!rootFolderName) {
+        toast({ variant: 'destructive', title: 'Could not determine folder name.' });
+        return;
+    }
+    
+    setIsUploading(true);
+    toast({ title: 'Folder Upload Started', description: `Uploading folder "${rootFolderName}"...` });
+    
+    try {
+        const newFolder = await addFolder({ name: rootFolderName, userId: user.uid, parentId: selectedFolderId !== 'all' ? selectedFolderId : null, createdAt: new Date() });
+        setFolders(prev => [...prev, newFolder]);
+
+        const uploadPromises = Array.from(files).map(async (file) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('userId', user.uid);
+            formData.append('folderId', newFolder.id);
+            return addFile(formData);
+        });
+        
+        const newFiles = await Promise.all(uploadPromises);
+        setAllFiles(prev => [...prev, ...newFiles]);
+
+        toast({ title: 'Folder Upload Complete', description: `${files.length} file(s) uploaded to "${rootFolderName}".` });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Folder Upload Failed', description: error.message });
+    } finally {
+        setIsUploading(false);
+        if (folderInputRef.current) {
+            folderInputRef.current.value = "";
+        }
+    }
+  };
+
+  const handleOpenFile = async (file: FileItem) => {
+    if (file.type === 'text/plain' || file.type === 'text/markdown' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+        setActiveFile(file);
+        setIsEditorLoading(true);
+        try {
+            const { content, error } = await fetchFileContent(file.storagePath);
+            if (error) throw new Error(error);
+            setEditorContent(content || "");
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Failed to load content', description: error.message });
+            setActiveFile(null);
+            setEditorContent(null);
+        } finally {
+            setIsEditorLoading(false);
+        }
+    } else {
+        toast({ title: 'File type not supported for editing', description: 'You can download this file from the main File Cabinet.' });
+    }
+  };
+  
+  const handleSaveContent = async () => {
+    if (!activeFile || editorContent === null) return;
+    setIsEditorLoading(true);
+    try {
+        const newContent = editorRef.current?.innerHTML || editorContent;
+        await updateTextFileContent(activeFile.storagePath, newContent);
+        setAllFiles(prev => prev.map(f => f.id === activeFile.id ? { ...f, modifiedAt: new Date() } : f));
+        toast({ title: 'File Saved', description: `Changes to "${activeFile.name}" have been saved.` });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+    } finally {
+        setIsEditorLoading(false);
+    }
+  };
+  
+  const handleNewFile = () => {
+      if (!selectedFolderId || selectedFolderId === 'all') {
+          toast({ variant: 'destructive', title: 'No Folder Selected', description: 'Please select a folder before creating a new file.' });
+          return;
+      }
+      setActiveFile(null);
+      setEditorContent('');
+      setNewFileName('');
+      setIsNewFileDialogOpen(true);
+  };
+
+  const handleSaveNewFile = async () => {
+    if (!user || !selectedFolderId || selectedFolderId === 'all') {
+      toast({ variant: 'destructive', title: 'Folder Not Selected', description: 'Please select a folder to save the file in.' });
+      return;
+    }
+    if (!newFileName.trim()) {
+      toast({ variant: 'destructive', title: 'File Name Required', description: 'Please enter a name for your file.' });
+      return;
+    }
+    
+    setIsUploading(true);
+    setIsNewFileDialogOpen(false);
+    try {
+        const finalFileName = newFileName.endsWith('.txt') ? newFileName : `${newFileName}.txt`;
+        const newFile = await addTextFile(user.uid, selectedFolderId, finalFileName, '');
+        setAllFiles(prev => [...prev, newFile]);
+        setActiveFile(newFile);
+        setEditorContent('');
+        toast({ title: 'File Created', description: `"${finalFileName}" has been saved. You can now add content.` });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Failed to create file', description: error.message });
+    } finally {
+        setIsUploading(false);
+    }
+  };
+
+  const handleFormat = (command: string) => {
+    document.execCommand(command, false);
+    editorRef.current?.focus();
   };
 
   const FolderTreeItem = ({ folder, allFolders, level = 0 }: { folder: FolderItem, allFolders: FolderItem[], level?: number }) => {
@@ -363,8 +488,8 @@ export function FilesView() {
     <>
       <div className="flex flex-col h-full">
         <header className="text-center py-4 sm:py-6 px-4 sm:px-6">
-            <h1 className="text-3xl font-bold font-headline text-primary">Ogeemo File Cabinet</h1>
-            <p className="text-muted-foreground">Organize your documents and assets.</p>
+            <h1 className="text-3xl font-bold font-headline text-primary">Knowledge Base</h1>
+            <p className="text-muted-foreground">Store and organize your important documents.</p>
         </header>
 
         <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border">
@@ -403,68 +528,137 @@ export function FilesView() {
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize={75}>
-            <div className="flex flex-col h-full">
-                <div className="flex items-center justify-between p-2 border-b h-14">
-                    <div className="flex items-center gap-2">
-                        <h2 className="text-lg font-semibold">{selectedFolder?.name || 'All Files'}</h2>
-                        <span className="text-sm text-muted-foreground">({displayedFiles.length} file(s))</span>
-                    </div>
-                    {selectedFileIds.length > 0 ? (
-                        <Button variant="destructive" onClick={() => handleDeleteFiles(allFiles.filter(f => selectedFileIds.includes(f.id)))}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedFileIds.length})
-                        </Button>
-                    ) : (
-                        <div className="flex items-center gap-2">
-                            <Button onClick={() => setIsAddFileDialogOpen(true)}>
-                                <UploadCloud className="mr-2 h-4 w-4" /> Add File(s)
-                            </Button>
-                        </div>
-                    )}
-                </div>
-                 <div className="flex-1 overflow-y-auto p-2">
-                    <div className="flex items-center p-2 h-10">
-                        <div className="w-12"><Checkbox onCheckedChange={handleToggleSelectAll} checked={sortedFiles.length > 0 && selectedFileIds.length === sortedFiles.length} /></div>
-                        <div className="w-12"><span className="sr-only">Icon</span></div>
-                        <Button variant="ghost" onClick={() => handleSort('name')} className="flex-1 justify-start p-0 h-auto font-medium text-muted-foreground hover:bg-transparent">Name <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
-                        <Button variant="ghost" onClick={() => handleSort('modifiedAt')} className="w-48 justify-start p-0 h-auto font-medium text-muted-foreground hover:bg-transparent">Last Modified <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
-                        <div className="w-24 text-center"><span className="sr-only">Actions</span></div>
-                    </div>
-                    <div className="space-y-1">
-                        {sortedFiles.length > 0 ? (
-                            sortedFiles.map(file => {
-                                const canEdit = isTextEditable(file);
-                                return (
-                                <div key={file.id} className="flex items-center h-10 rounded-md p-2 border border-foreground bg-blue-100 text-blue-900 group">
-                                    <div className="w-12" onClick={(e) => e.stopPropagation()}><Checkbox checked={selectedFileIds.includes(file.id)} onCheckedChange={() => setSelectedFileIds(p => p.includes(file.id) ? p.filter(id => id !== file.id) : [...p, file.id])} /></div>
-                                    <div className="w-12"><FileIcon fileType={file.type} /></div>
-                                    <div className="flex-1 font-medium text-sm truncate">{file.name}</div>
-                                    <div className="w-48 text-sm">{format(file.modifiedAt, 'PPp')}</div>
-                                    <div className="w-24 flex justify-center">
-                                        {canEdit && (
-                                            <Button variant="outline" size="sm" className="h-7" onClick={() => router.push(`/doc-editor/${file.id}`)}>
-                                                <Edit className="mr-2 h-4 w-4" /> Edit
-                                            </Button>
-                                        )}
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onSelect={() => handleDownloadFile(file)}><Download className="mr-2 h-4 w-4" /> Download</DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteFiles([file])}><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
+            <ResizablePanelGroup direction="vertical">
+                <ResizablePanel defaultSize={40}>
+                    <div className="flex flex-col h-full">
+                        <div className="flex items-center justify-between p-2 border-b h-14">
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-lg font-semibold">{selectedFolder?.name || 'All Files'}</h2>
+                                <span className="text-sm text-muted-foreground">({displayedFiles.length} file(s))</span>
+                            </div>
+                            {selectedFileIds.length > 0 ? (
+                                <Button variant="destructive" onClick={() => handleDeleteFiles(allFiles.filter(f => selectedFileIds.includes(f.id)))}>
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedFileIds.length})
+                                </Button>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <input type="file" ref={folderInputRef} className="hidden" multiple directory="" webkitdirectory="" />
+                                    <Button onClick={() => folderInputRef.current?.click()} disabled={isUploading}>
+                                        {isUploading ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
+                                        {isUploading ? 'Uploading...' : 'Folder Upload'}
+                                    </Button>
+                                    <input type="file" ref={fileInputRef} onChange={(e) => setFilesToUpload(e.target.files ? Array.from(e.target.files) : [])} className="hidden" multiple />
+                                    <Button onClick={() => setIsAddFileDialogOpen(true)}><UploadCloud className="mr-2 h-4 w-4" /> Upload Files</Button>
+                                    <Button onClick={handleNewFile}><FilePlus className="mr-2 h-4 w-4" /> Create File</Button>
                                 </div>
-                            )})
-                        ) : (
-                            <div className="flex items-center justify-center h-48 text-muted-foreground">This folder is empty.</div>
-                        )}
+                            )}
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-2">
+                            <div className="flex items-center p-2 h-10">
+                                <div className="w-12"><Checkbox onCheckedChange={handleToggleSelectAll} checked={sortedFiles.length > 0 && selectedFileIds.length === sortedFiles.length} /></div>
+                                <div className="w-12"><span className="sr-only">Icon</span></div>
+                                <Button variant="ghost" onClick={() => handleSort('name')} className="flex-1 justify-start p-0 h-auto font-medium text-muted-foreground hover:bg-transparent">Name <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
+                                <Button variant="ghost" onClick={() => handleSort('modifiedAt')} className="w-48 justify-start p-0 h-auto font-medium text-muted-foreground hover:bg-transparent">Last Modified <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
+                                <div className="w-12"><span className="sr-only">Actions</span></div>
+                            </div>
+                            <div className="space-y-1">
+                                {sortedFiles.length > 0 ? (
+                                    sortedFiles.map(file => {
+                                        return (
+                                        <div key={file.id} className="flex items-center h-8 rounded-md p-2 border border-foreground bg-blue-100 text-blue-900 cursor-pointer hover:bg-blue-200" onClick={() => handleOpenFile(file)}>
+                                            <div className="w-12" onClick={(e) => e.stopPropagation()}><Checkbox checked={selectedFileIds.includes(file.id)} onCheckedChange={() => setSelectedFileIds(p => p.includes(file.id) ? p.filter(id => id !== file.id) : [...p, file.id])} /></div>
+                                            <div className="w-12"><FileIcon fileType={file.type} /></div>
+                                            <div className="flex-1 font-medium text-sm truncate flex items-center gap-2">{file.name}</div>
+                                            <div className="w-48 text-sm">{format(file.modifiedAt, 'PPp')}</div>
+                                            <div className="w-12" onClick={(e) => e.stopPropagation()}>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteFiles([file])}><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        </div>
+                                    )})
+                                ) : (
+                                    <div className="flex items-center justify-center h-48 text-muted-foreground">This folder is empty.</div>
+                                )}
+                            </div>
+                        </div>
                     </div>
-                 </div>
-            </div>
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={60}>
+                    <div className="h-full flex flex-col">
+                        <div className="p-2 border-b flex items-center justify-between h-14">
+                            <div className="flex items-center gap-2">
+                                <Button variant="ghost" size="icon" title="Bold" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('bold')}><Bold className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" title="Italic" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('italic')}><Italic className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" title="Underline" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('underline')}><Underline className="h-4 w-4" /></Button>
+                                <Separator orientation="vertical" className="h-6 mx-1" />
+                                <Button variant="ghost" size="icon" title="Unordered List" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('insertUnorderedList')}><List className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" title="Ordered List" onMouseDown={(e) => e.preventDefault()} onClick={() => handleFormat('insertOrderedList')}><ListOrdered className="h-4 w-4" /></Button>
+                            </div>
+                            <div>
+                                {activeFile ? (
+                                    <Button onClick={handleSaveContent} disabled={isEditorLoading}>
+                                        {isEditorLoading ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                        Save Changes
+                                    </Button>
+                                ) : null}
+                            </div>
+                        </div>
+                        <ScrollArea className="flex-1">
+                            {isEditorLoading ? (
+                                <div className="flex items-center justify-center h-full"><LoaderCircle className="h-8 w-8 animate-spin" /></div>
+                            ) : editorContent !== null ? (
+                                <div
+                                    ref={editorRef}
+                                    contentEditable
+                                    className="prose dark:prose-invert max-w-none p-6 focus:outline-none h-full"
+                                    onInput={(e) => setEditorContent(e.currentTarget.innerHTML)}
+                                    suppressContentEditableWarning={true}
+                                />
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                                    <BookOpen className="h-12 w-12" />
+                                    <p className="mt-4">Select a text file to view or edit.</p>
+                                    <p className="text-sm">Or, create a new file to get started.</p>
+                                </div>
+                            )}
+                        </ScrollArea>
+                    </div>
+                </ResizablePanel>
+            </ResizablePanelGroup>
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
-
+      
+      <Dialog open={isNewFileDialogOpen} onOpenChange={setIsNewFileDialogOpen}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Create New File</DialogTitle>
+                  <DialogDescription>
+                      Enter a name for your new text file. It will be saved in the "{selectedFolder?.name}" folder.
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                  <Label htmlFor="new-file-name">File Name</Label>
+                  <Input 
+                      id="new-file-name" 
+                      value={newFileName} 
+                      onChange={(e) => setNewFileName(e.target.value)} 
+                      onKeyDown={e => { if (e.key === 'Enter') handleSaveNewFile() }}
+                      placeholder="e.g., My meeting notes.txt"
+                  />
+              </div>
+              <DialogFooter>
+                  <Button variant="ghost" onClick={() => setIsNewFileDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleSaveNewFile}>Create and Open</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+      
       <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader><DialogTitle>Create New Folder</DialogTitle></DialogHeader>
@@ -493,46 +687,6 @@ export function FilesView() {
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Dialog open={isAddFileDialogOpen} onOpenChange={(open) => { if (!isUploading) setIsAddFileDialogOpen(open); }}>
-          <DialogContent>
-              <DialogHeader>
-                  <DialogTitle>Add New File(s)</DialogTitle>
-                  <DialogDescription>
-                      Upload files to the folder: "{selectedFolder?.name || 'Please select a folder'}".
-                  </DialogDescription>
-              </DialogHeader>
-              <div className="py-4">
-                <div 
-                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted"
-                    onClick={() => fileInputRef.current?.click()}
-                >
-                    {filesToUpload.length > 0 ? (
-                        <p className="font-medium text-center">{filesToUpload.length} file(s) selected.<br/><span className="text-xs font-normal">({filesToUpload[0].name}, etc.)</span></p>
-                    ) : (
-                        <>
-                            <UploadCloud className="w-8 h-8 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">Click to browse or drag files here</p>
-                        </>
-                    )}
-                </div>
-                 <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    multiple
-                    onChange={(e) => setFilesToUpload(e.target.files ? Array.from(e.target.files) : [])} 
-                />
-              </div>
-              <DialogFooter>
-                  <Button variant="ghost" onClick={() => setIsAddFileDialogOpen(false)} disabled={isUploading}>Cancel</Button>
-                  <Button onClick={handleFileUpload} disabled={isUploading || filesToUpload.length === 0 || selectedFolderId === 'all'}>
-                      {isUploading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                      {isUploading ? "Uploading..." : "Upload File(s)"}
-                  </Button>
-              </DialogFooter>
-          </DialogContent>
-      </Dialog>
     </>
   );
 }
