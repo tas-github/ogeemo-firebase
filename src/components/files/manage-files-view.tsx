@@ -122,7 +122,7 @@ const DraggableFile = ({ file, onDelete, isSelected, onToggleSelect, selectedFil
 
 interface DroppableFolderProps {
     folder: FolderItem;
-    onDrop: (item: { ids?: string[], type: string } | FileItem | FolderItem, folderId: string | null) => void;
+    onDrop: (item: any, folderId: string | null) => void;
     onRename: (folder: FolderItem) => void;
     onDelete: (folder: FolderItem) => void;
     onNewSubfolder: (parentId: string) => void;
@@ -431,7 +431,7 @@ export function ManageFilesView() {
   
   const handleToggleSelect = (fileId: string) => {
     setSelectedFileIds(prev =>
-        prev.includes(fileId) ? prev.filter(id => id !== fileId) : [...prev, fileId]
+        prev.includes(fileId) ? prev.filter(id => id !== fileId) : [...prev, id]
     );
   };
 

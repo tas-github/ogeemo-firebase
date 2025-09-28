@@ -11,6 +11,8 @@ export interface FileItem {
   userId: string;
   storagePath: string;
   content?: string;
+  googleFileId?: string;
+  driveLink?: string; // Link to Google Drive file
 }
 
 export interface FolderItem {

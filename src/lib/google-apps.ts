@@ -16,6 +16,7 @@ import {
     Presentation, // Using Presentation for Slides
     Globe,
     BookOpen,
+    Search,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -43,4 +44,5 @@ export const allApps: GoogleApp[] = [
     { name: "Sheets", href: "https://sheets.google.com/", icon: Sheet },
     { name: "Sites", href: "https://sites.google.com/", icon: Globe },
     { name: "Slides", href: "https://slides.google.com/", icon: Presentation },
+    { name: "Google Search", href: "https://drive.google.com/drive/search?q=", icon: Search },
 ];

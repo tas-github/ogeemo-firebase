@@ -2,7 +2,7 @@
 'use client';
 
 import type { User } from 'firebase/auth';
-import { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import { createContext, useState, useContext, ReactNode, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { initializeFirebase, FirebaseServices } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
@@ -14,6 +14,7 @@ interface AuthContextType {
   firebaseServices: FirebaseServices | null;
   logout: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  getGoogleAccessToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -83,7 +84,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Firebase is not initialized.");
     }
     const provider = new GoogleAuthProvider();
-    provider.addScope('https://www.googleapis.com/auth/drive');
+    // Request scopes needed for Google Picker API
+    provider.addScope('https://www.googleapis.com/auth/drive.file'); 
     provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
     
     const result = await signInWithPopup(firebaseServices.auth, provider);
@@ -94,6 +96,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     // The onAuthStateChanged listener will handle the session cookie creation
   };
+
+  const getGoogleAccessToken = useCallback(async (): Promise<string | null> => {
+    const storedToken = sessionStorage.getItem('google_access_token');
+    if (storedToken) {
+        return storedToken;
+    }
+    // If no token, trigger the sign-in process which also requests the token
+    await signInWithGoogle();
+    // After sign-in, the token should be in sessionStorage
+    return sessionStorage.getItem('google_access_token');
+  }, [firebaseServices]);
 
 
   const logout = async () => {
@@ -124,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  const value = { user, isLoading, accessToken, firebaseServices, logout, signInWithGoogle };
+  const value = { user, isLoading, accessToken, firebaseServices, logout, signInWithGoogle, getGoogleAccessToken };
 
   return (
     <AuthContext.Provider value={value}>

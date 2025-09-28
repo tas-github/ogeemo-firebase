@@ -3,6 +3,7 @@
 
 import { adminDb as db, getAdminStorage } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { google } from 'googleapis';
 
 /**
  * Moves a file to a new folder by updating its folderId in Firestore.
@@ -75,4 +76,21 @@ export async function fetchFileContent(storagePath: string): Promise<{ content?:
         console.error("Error fetching file content in server action:", error);
         return { error: error.message || "An unknown server error occurred while fetching the file." };
     }
+}
+
+async function getGoogleAuth(accessToken: string) {
+    const auth = new google.auth.OAuth2();
+    auth.setCredentials({ access_token: accessToken });
+    return auth;
+}
+
+export async function getGoogleDriveFiles(accessToken: string) {
+    const auth = await getGoogleAuth(accessToken);
+    const drive = google.drive({ version: 'v3', auth });
+    const res = await drive.files.list({
+        pageSize: 20,
+        fields: 'nextPageToken, files(id, name, mimeType, modifiedTime, size, webViewLink)',
+        orderBy: 'modifiedTime desc',
+    });
+    return res.data.files || [];
 }

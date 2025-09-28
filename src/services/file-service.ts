@@ -131,20 +131,26 @@ export async function getFileById(fileId: string): Promise<FileItem | null> {
 }
 
 export async function addTextFile(folderId: string, fileName: string, content: string): Promise<FileItem> {
-    const file = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    
     const { auth } = await initializeFirebase();
     const userId = auth.currentUser?.uid;
     if (!userId) throw new Error("User not authenticated.");
     
     const finalFileName = fileName.endsWith('.txt') ? fileName : `${fileName}.txt`;
+    
+    // For a new text file, we don't need to upload to storage immediately.
+    // The record is created, and content can be added/saved later.
+    // The storagePath can be determined just before the first upload.
+    const newFileRecordData: Omit<FileItem, 'id'> = {
+        name: finalFileName,
+        type: 'text/plain',
+        size: 0,
+        modifiedAt: new Date(),
+        folderId,
+        userId,
+        storagePath: '', // Will be set on first save/upload of content
+    };
 
-    const formData = new FormData();
-    formData.append('file', file, finalFileName);
-    formData.append('userId', userId);
-    formData.append('folderId', folderId);
-
-    return addFile(formData);
+    return addFileRecord(newFileRecordData);
 }
 
 export async function updateTextFileContentByPath(storagePath: string, content: string): Promise<void> {
@@ -166,6 +172,21 @@ export async function addFileRecord(fileData: Omit<FileItem, 'id'>): Promise<Fil
     const db = await getDb();
     const docRef = await addDoc(collection(db, FILES_COLLECTION), fileData);
     return { id: docRef.id, ...fileData };
+}
+
+export async function addDriveLinkFile(linkData: { userId: string, folderId: string, name: string, driveLink: string }): Promise<FileItem> {
+    const db = await getDb();
+    const newFileRecord: Omit<FileItem, 'id'> = {
+        name: linkData.name,
+        type: 'google-drive-link',
+        size: 0,
+        modifiedAt: new Date(),
+        folderId: linkData.folderId,
+        userId: linkData.userId,
+        storagePath: linkData.driveLink, // Store the link in storagePath for consistency
+        driveLink: linkData.driveLink,
+    };
+    return addFileRecord(newFileRecord);
 }
 
 export async function addFile(formData: FormData): Promise<FileItem> {
@@ -199,6 +220,7 @@ export async function addFile(formData: FormData): Promise<FileItem> {
 
     return addFileRecord(newFileRecord);
 }
+
 
 export async function updateFile(fileId: string, data: Partial<Omit<FileItem, 'id' | 'userId'>>): Promise<void> {
     const db = await getDb();
