@@ -135,13 +135,10 @@ export async function addTextFile(folderId: string, fileName: string, content: s
     const userId = auth.currentUser?.uid;
     if (!userId) throw new Error("User not authenticated.");
     
-    const finalFileName = fileName.endsWith('.txt') ? fileName : `${fileName}.txt`;
-    
-    // For a new text file, we don't need to upload to storage immediately.
-    // The record is created, and content can be added/saved later.
     // The storagePath can be determined just before the first upload.
+    // The record is created, and content can be added/saved later.
     const newFileRecordData: Omit<FileItem, 'id'> = {
-        name: finalFileName,
+        name: fileName,
         type: 'text/plain',
         size: 0,
         modifiedAt: new Date(),
@@ -273,7 +270,7 @@ export async function deleteFiles(fileIds: string[]): Promise<void> {
         if (fileDoc.exists()) {
             const fileData = fileDoc.data() as Omit<FileItem, 'id'>;
             
-            if (fileData.storagePath) {
+            if (fileData.storagePath && !fileData.driveLink) { // Only delete from storage if it's not just a drive link
                 const fileRef = storageRef(storage, fileData.storagePath);
                 try {
                     await deleteObject(fileRef);

@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { DndProviderWrapper } from '@/components/layout/dnd-provider-wrapper';
 import { MainMenu } from '@/components/layout/main-menu';
@@ -13,7 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard, Bot } from 'lucide-react';
 import { SidebarViewProvider } from '@/context/sidebar-view-context';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -73,14 +74,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                               <Button asChild variant="outline" className="h-9 px-2">
-                                    <Link href="https://gemini.google.com/app" target="_blank">
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                                            <span className="font-bold">GEMINI</span>
-                                        </div>
-                                    </Link>
-                                </Button>
+                              <Button asChild variant="outline" className="h-9 px-4">
+                                <a href="https://gemini.google.com/app" target="_blank" rel="noopener noreferrer">
+                                    <div className="flex items-center gap-2">
+                                        <Bot className="h-4 w-4" />
+                                        <span className="font-bold">Gemini</span>
+                                    </div>
+                                </a>
+                              </Button>
                             </TooltipTrigger>
                             <TooltipContent>
                               <p>Open Gemini</p>

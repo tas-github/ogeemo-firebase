@@ -19,7 +19,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const publicPaths = ['/login', '/register', '/auth/callback'];
+const publicPaths = ['/login', '/register'];
 const marketingPaths = ['/home', '/for-small-businesses', '/for-accountants', '/news', '/about', '/contact', '/privacy', '/terms', '/explore'];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -84,7 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Firebase is not initialized.");
     }
     const provider = new GoogleAuthProvider();
-    // Request scopes needed for Google Picker API
     provider.addScope('https://www.googleapis.com/auth/drive.file'); 
     provider.addScope('https://www.googleapis.com/auth/contacts.readonly');
     
@@ -94,7 +93,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         sessionStorage.setItem('google_access_token', credential.accessToken);
         setAccessToken(credential.accessToken);
     }
-    // The onAuthStateChanged listener will handle the session cookie creation
   };
 
   const getGoogleAccessToken = useCallback(async (): Promise<string | null> => {
@@ -102,11 +100,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (storedToken) {
         return storedToken;
     }
-    // If no token, trigger the sign-in process which also requests the token
-    await signInWithGoogle();
-    // After sign-in, the token should be in sessionStorage
-    return sessionStorage.getItem('google_access_token');
-  }, [firebaseServices]);
+    // If no token, trigger the sign-in process
+    try {
+        await signInWithGoogle();
+        const newStoredToken = sessionStorage.getItem('google_access_token');
+        return newStoredToken;
+    } catch (error) {
+        console.error("Failed to sign in to get Google Access Token", error);
+        return null;
+    }
+  }, []);
 
 
   const logout = async () => {

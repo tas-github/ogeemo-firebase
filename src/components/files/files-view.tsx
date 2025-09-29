@@ -54,13 +54,12 @@ import {
     addFolder, 
     updateFolder,
     getFiles,
-    addFileRecord,
+    addFile,
     deleteFiles,
     deleteFolders,
     addTextFile,
-    updateTextFileContent,
-    addDriveLinkFile,
-    updateFile
+    getDownloadUrl,
+    updateFile,
 } from '@/services/file-service';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
@@ -77,55 +76,14 @@ import {
 import { Checkbox } from '../ui/checkbox';
 import { FileIcon } from './file-icon';
 import { format } from 'date-fns';
-import { getDownloadUrl } from '@/app/actions/file-actions';
 import { triggerBrowserDownload } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-
-
-declare global {
-  interface Window {
-    gapi: any;
-  }
-  namespace google {
-    namespace picker {
-      class PickerBuilder {
-        addView(view: any): this;
-        setOAuthToken(token: string): this;
-        setDeveloperKey(key: string): this;
-        setAppId(id: string): this;
-        setCallback(callback: (data: any) => void): this;
-        build(): Picker;
-      }
-      class Picker {
-        setVisible(visible: boolean): void;
-      }
-      const ViewId: {
-        DOCS: any;
-      };
-      const Action: {
-        PICKED: any;
-      };
-      interface ResponseObject {
-        action: any;
-        docs: DocumentObject[];
-      }
-      interface DocumentObject {
-        id: string;
-        name: string;
-        mimeType: string;
-        url: string;
-        sizeBytes?: number;
-      }
-    }
-  }
-}
-
 
 export function FilesView() {
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [allFiles, setAllFiles] = useState<FileItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>('all');
+  const [searchQuery, setSearchQuery] = useState("");
   
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -145,25 +103,15 @@ export function FilesView() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const [activeFile, setActiveFile] = useState<FileItem | null>(null);
-  const [editorContent, setEditorContent] = useState<string | null>(null);
-  const [isEditorLoading, setIsEditorLoading] = useState(false);
-  const editorRef = useRef<HTMLDivElement>(null);
-  
-  const [isNewFileDialogOpen, setIsNewFileDialogOpen] = useState(false);
+  const [isCreatingFile, setIsCreatingFile] = useState(false);
   const [newFileName, setNewFileName] = useState('');
-  
-  const [driveSearchQuery, setDriveSearchQuery] = useState('');
   
   const [isAddLinkDialogOpen, setIsAddLinkDialogOpen] = useState(false);
   const [fileToLink, setFileToLink] = useState<FileItem | null>(null);
   const [linkUrl, setLinkUrl] = useState('');
-  
-  const pickerApiLoaded = useRef(false);
 
   const { toast } = useToast();
-  const { user, getGoogleAccessToken } = useAuth();
-  const router = useRouter();
+  const { user } = useAuth();
   
   const loadInitialData = useCallback(async () => {
     if (!user) {
@@ -196,12 +144,6 @@ export function FilesView() {
   useEffect(() => {
     setSelectedFileIds([]);
   }, [selectedFolderId]);
-  
-  useEffect(() => {
-    if (editorRef.current && editorContent !== null && document.activeElement !== editorRef.current) {
-      editorRef.current.innerHTML = editorContent;
-    }
-  }, [editorContent]);
 
   const selectedFolder = useMemo(
     () => folders.find((f) => f && f.id === selectedFolderId),
@@ -331,7 +273,7 @@ export function FilesView() {
             formData.append('file', file);
             formData.append('userId', user.uid);
             formData.append('folderId', selectedFolderId);
-            const newFile = await addFileRecord(formData);
+            const newFile = await addFile(formData);
             setAllFiles(prev => [...prev, newFile]);
             successfulUploads++;
         }
@@ -344,130 +286,65 @@ export function FilesView() {
         setIsUploading(false);
     }
   };
+
+  const handleNewFile = () => {
+      if (!selectedFolderId || selectedFolderId === 'all') {
+          toast({ variant: 'destructive', title: 'No Folder Selected', description: 'Please select a folder before creating a new file.' });
+          return;
+      }
+      setIsCreatingFile(true);
+  };
+  
+  const handleSaveNewFile = async () => {
+    if (!user || !selectedFolderId || selectedFolderId === 'all') return;
+    if (!newFileName.trim()) {
+        setIsCreatingFile(false);
+        return;
+    }
+
+    try {
+        const newFile = await addTextFile(selectedFolderId, newFileName, '');
+        setAllFiles(prev => [...prev, newFile]);
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Failed to create file', description: error.message });
+    } finally {
+        setIsCreatingFile(false);
+        setNewFileName('');
+    }
+  };
   
   const handleOpenLinkDialog = (file: FileItem) => {
     setFileToLink(file);
     setLinkUrl(file.driveLink || '');
     setIsAddLinkDialogOpen(true);
   };
-  
+
   const handleSaveLink = async () => {
     if (!fileToLink) return;
     try {
         await updateFile(fileToLink.id, { driveLink: linkUrl });
         setAllFiles(prev => prev.map(f => f.id === fileToLink.id ? { ...f, driveLink: linkUrl } : f));
-        toast({ title: 'Link Saved', description: `The link for "${fileToLink.name}" has been updated.` });
+        toast({ title: "Link Saved", description: "The URL has been linked to the file." });
         setIsAddLinkDialogOpen(false);
-        setFileToLink(null);
-        setLinkUrl('');
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+        toast({ variant: "destructive", title: "Failed to save link", description: error.message });
     }
-  };
-
-  const isTextEditable = (file: FileItem) => {
-    return file.type === 'text/plain' || file.type === 'text/markdown' || file.name.endsWith('.txt') || file.name.endsWith('.md');
   };
   
-  const handleDriveSearch = () => {
-    if (!driveSearchQuery.trim()) return;
-    const url = `https://drive.google.com/drive/search?q=${encodeURIComponent(driveSearchQuery)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-  
-  const handleSaveNewFile = async () => {
-    if (!user || !selectedFolderId || selectedFolderId === 'all') {
-        toast({ variant: 'destructive', title: 'Folder Not Selected', description: 'Please select a folder to save the file in.' });
-        return;
-    }
-    if (!newFileName.trim()) {
-        toast({ variant: 'destructive', title: 'File Name Required', description: 'Please enter a name for your file.' });
-        return;
-    }
-
-    try {
-        const newFile = await addTextFile(selectedFolderId, newFileName.trim(), "");
-        setAllFiles(prev => [...prev, newFile]);
-        toast({ title: "File Created", description: `Empty file "${newFile.name}" has been created.` });
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Failed to create file', description: error.message });
-    } finally {
-        setIsNewFileDialogOpen(false);
-        setNewFileName('');
+  const handleDriveSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      const url = `https://drive.google.com/drive/search?q=${encodeURIComponent(searchQuery)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
 
-  const handleLinkGoogleDrive = async () => {
-    if (!user || !selectedFolderId || selectedFolderId === 'all') {
-      toast({ variant: 'destructive', title: 'Select a Folder', description: 'Please select a folder in Ogeemo to save the link to.' });
-      return;
-    }
-
-    try {
-      const accessToken = await getGoogleAccessToken();
-      if (!accessToken) throw new Error("Could not get Google access token.");
-      
-      const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-      if (!GOOGLE_API_KEY) throw new Error("Missing Google API Key configuration.");
-
-      const pickerCallback = (data: google.picker.ResponseObject) => {
-        if (data.action === window.google.picker.Action.PICKED) {
-          const doc = data.docs[0];
-          if (doc) {
-            handleSaveDriveLink({ name: doc.name, link: doc.url });
-          }
-        }
-      };
-
-      const loadPickerApi = (callback: () => void) => {
-        if (pickerApiLoaded.current) {
-          callback();
-          return;
-        }
-        const script = document.createElement('script');
-        script.src = 'https://apis.google.com/js/api.js';
-        script.onload = () => {
-          window.gapi.load('picker', { 'callback': () => {
-            pickerApiLoaded.current = true;
-            callback();
-          }});
-        };
-        document.body.appendChild(script);
-      };
-      
-      const createPicker = () => {
-        const picker = new window.google.picker.PickerBuilder()
-          .addView(window.google.picker.ViewId.DOCS)
-          .setOAuthToken(accessToken)
-          .setDeveloperKey(GOOGLE_API_KEY)
-          .setCallback(pickerCallback)
-          .build();
-        picker.setVisible(true);
-      };
-
-      loadPickerApi(createPicker);
-
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message || "Could not launch Google Picker." });
+  const handleOpenFile = (file: FileItem) => {
+    if (file.driveLink) {
+        window.open(file.driveLink, '_blank', 'noopener,noreferrer');
+    } else {
+        handleOpenLinkDialog(file);
     }
   };
-
-  const handleSaveDriveLink = async (linkData: { name: string, link: string }) => {
-    if (!user || !selectedFolderId || selectedFolderId === 'all') return;
-    try {
-        const newLinkFile = await addDriveLinkFile({
-            userId: user.uid,
-            folderId: selectedFolderId,
-            name: linkData.name,
-            driveLink: linkData.link,
-        });
-        setAllFiles(prev => [...prev, newLinkFile]);
-        toast({ title: "Link Saved", description: `A link to "${linkData.name}" has been saved.` });
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
-    }
-  };
-
 
   const FolderTreeItem = ({ folder, allFolders, level = 0 }: { folder: FolderItem, allFolders: FolderItem[], level?: number }) => {
     const hasChildren = allFolders.some(f => f.parentId === folder.id);
@@ -594,7 +471,7 @@ export function FilesView() {
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize={75}>
-            <div className="flex flex-col h-full">
+              <div className="flex flex-col h-full">
                 <div className="p-2 border-b flex flex-col gap-2">
                     <div className="flex items-center justify-between h-14">
                         <div className="flex items-center gap-2">
@@ -607,181 +484,136 @@ export function FilesView() {
                             </Button>
                         ) : (
                             <div className="flex items-center gap-2">
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <div>
-                                                <Button variant="outline" onClick={handleLinkGoogleDrive} disabled={selectedFolderId === 'all'}>
-                                                    <LinkIcon className="mr-2 h-4 w-4" /> Link Google Drive File
-                                                </Button>
-                                            </div>
-                                        </TooltipTrigger>
-                                        {selectedFolderId === 'all' && (
-                                            <TooltipContent>
-                                                <p>Please select a folder first.</p>
-                                            </TooltipContent>
-                                        )}
-                                    </Tooltip>
-                                     <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <div>
-                                                <Button onClick={() => setIsNewFileDialogOpen(true)} disabled={selectedFolderId === 'all'}>
-                                                    <FilePlus className="mr-2 h-4 w-4" /> Create File
-                                                </Button>
-                                            </div>
-                                        </TooltipTrigger>
-                                        {selectedFolderId === 'all' && (
-                                            <TooltipContent>
-                                                <p>Please select a folder first.</p>
-                                            </TooltipContent>
-                                        )}
-                                    </Tooltip>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <div>
-                                                <Button onClick={() => setIsAddFileDialogOpen(true)} disabled={selectedFolderId === 'all'}>
-                                                    <UploadCloud className="mr-2 h-4 w-4" /> Add File(s)
-                                                </Button>
-                                            </div>
-                                        </TooltipTrigger>
-                                        {selectedFolderId === 'all' && (
-                                            <TooltipContent>
-                                                <p>Please select a folder first.</p>
-                                            </TooltipContent>
-                                        )}
-                                    </Tooltip>
-                                </TooltipProvider>
+                                <Button asChild>
+                                    <a href="https://drive.google.com/drive/folders/1RdaPZL3uPXlmXort_nydmcfFvaeQtJ1e" target="_blank" rel="noopener noreferrer">
+                                        <Folder className="mr-2 h-4 w-4" /> GDRIVE
+                                    </a>
+                                </Button>
+                                <input type="file" ref={fileInputRef} onChange={(e) => setFilesToUpload(e.target.files ? Array.from(e.target.files) : [])} className="hidden" multiple />
+                                <Button onClick={() => setIsAddFileDialogOpen(true)}><UploadCloud className="mr-2 h-4 w-4" /> Upload PC Files</Button>
+                                <Button onClick={handleNewFile}><FilePlus className="mr-2 h-4 w-4" /> Create File Name</Button>
                             </div>
                         )}
                     </div>
-                    {selectedFileIds.length === 0 && (
-                        <div className="flex items-center gap-2">
-                            <Input 
-                                type="text" 
-                                placeholder="Search your Google Drive..." 
-                                value={driveSearchQuery}
-                                onChange={(e) => setDriveSearchQuery(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleDriveSearch()}
-                                className="h-9"
-                            />
-                            <Button type="button" onClick={handleDriveSearch}>
-                                <Search className="h-4 w-4 mr-2" /> Gdrive
-                            </Button>
-                        </div>
-                    )}
+                     <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            type="search"
+                            placeholder="Search Google Drive..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onKeyDown={handleDriveSearch}
+                            className="pl-8"
+                        />
+                    </div>
                 </div>
-                 <div className="flex-1 overflow-y-auto p-2">
-                    <div className="flex items-center p-2 h-10">
-                        <div className="w-12"><Checkbox onCheckedChange={handleToggleSelectAll} checked={sortedFiles.length > 0 && selectedFileIds.length === sortedFiles.length} /></div>
-                        <div className="w-12"><span className="sr-only">Icon</span></div>
-                        <Button variant="ghost" onClick={() => handleSort('name')} className="flex-1 justify-start p-0 h-auto font-medium text-muted-foreground hover:bg-transparent">Name <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
-                        <Button variant="ghost" onClick={() => handleSort('modifiedAt')} className="w-48 justify-start p-0 h-auto font-medium text-muted-foreground hover:bg-transparent">Last Modified <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
-                        <div className="w-24 text-center"><span className="sr-only">Actions</span></div>
-                    </div>
-                    <div className="space-y-1">
-                        {sortedFiles.length > 0 ? (
-                            sortedFiles.map(file => {
-                                const canEdit = isTextEditable(file);
-                                return (
-                                <div key={file.id} className="flex items-center h-10 rounded-md p-2 border border-foreground bg-blue-100 text-blue-900 group">
-                                    <div className="w-12" onClick={(e) => e.stopPropagation()}><Checkbox checked={selectedFileIds.includes(file.id)} onCheckedChange={() => setSelectedFileIds(p => p.includes(file.id) ? p.filter(id => id !== file.id) : [...p, file.id])} /></div>
-                                    <div className="w-12"><FileIcon fileType={file.type} /></div>
-                                    <div className="flex-1 font-medium text-sm truncate flex items-center gap-2">
-                                        <button
-                                            className="text-left hover:underline"
-                                            onClick={() => {
-                                                if (file.driveLink) {
-                                                    window.open(file.driveLink, '_blank', 'noopener,noreferrer');
-                                                } else {
-                                                    handleOpenLinkDialog(file);
-                                                }
-                                            }}
-                                        >
-                                            {file.name}
-                                        </button>
-                                        {file.driveLink && (
-                                            <a href={file.driveLink} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="Open linked file">
-                                                <LinkIcon className="h-3 w-3 text-blue-600 hover:text-blue-800" />
-                                            </a>
-                                        )}
-                                    </div>
-                                    <div className="w-48 text-sm">{format(file.modifiedAt, 'PPp')}</div>
-                                    <div className="w-24 flex justify-center">
-                                        {canEdit && (
-                                            <Button variant="outline" size="sm" className="h-7" onClick={() => router.push(`/doc-editor/${file.id}`)}>
-                                                <Edit className="mr-2 h-4 w-4" /> Edit
-                                            </Button>
-                                        )}
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onSelect={() => handleDownloadFile(file)}><Download className="mr-2 h-4 w-4" /> Download</DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => handleOpenLinkDialog(file)}><LinkIcon className="mr-2 h-4 w-4" /> Add/Edit Link</DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteFiles([file])}><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                </div>
-                            )})
-                        ) : (
-                            <div className="flex items-center justify-center h-48 text-muted-foreground">This folder is empty.</div>
-                        )}
-                    </div>
-                 </div>
-            </div>
+                  <ScrollArea className="flex-1 overflow-y-auto p-2">
+                      <div className="flex items-center p-2 h-10">
+                          <div className="w-12"><Checkbox onCheckedChange={handleToggleSelectAll} checked={sortedFiles.length > 0 && selectedFileIds.length === sortedFiles.length} /></div>
+                          <div className="w-12"><span className="sr-only">Icon</span></div>
+                          <Button variant="ghost" onClick={() => handleSort('name')} className="flex-1 justify-start p-0 h-auto font-medium text-muted-foreground hover:bg-transparent">Name <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
+                          <Button variant="ghost" onClick={() => handleSort('modifiedAt')} className="w-48 justify-start p-0 h-auto font-medium text-muted-foreground hover:bg-transparent">Last Modified <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
+                          <div className="w-12"><span className="sr-only">Actions</span></div>
+                      </div>
+                      <div className="space-y-1">
+                          {isCreatingFile && (
+                            <div className="flex items-center h-10 rounded-md p-2 border border-primary bg-primary/10">
+                                <Input
+                                    autoFocus
+                                    value={newFileName}
+                                    onChange={e => setNewFileName(e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') handleSaveNewFile(); if (e.key === 'Escape') setIsCreatingFile(false); }}
+                                    onBlur={() => setIsCreatingFile(false)}
+                                    placeholder="Enter file name and press Enter"
+                                    className="h-full border-0 bg-transparent focus-visible:ring-0"
+                                />
+                            </div>
+                          )}
+                          {sortedFiles.length > 0 ? (
+                              sortedFiles.map(file => {
+                                  const isSelected = selectedFileIds.includes(file.id);
+                                  return (
+                                  <div
+                                      key={file.id}
+                                      className={cn(
+                                          "flex items-center h-10 rounded-md p-2 border border-foreground bg-blue-100 text-blue-900 cursor-pointer hover:bg-blue-200",
+                                          isSelected && "bg-blue-200 text-blue-900"
+                                      )}
+                                      onClick={() => handleOpenFile(file)}
+                                  >
+                                      <div className="w-12" onClick={(e) => e.stopPropagation()}><Checkbox checked={isSelected} onCheckedChange={() => setSelectedFileIds(p => p.includes(file.id) ? p.filter(id => id !== file.id) : [...p, file.id])} /></div>
+                                      <div className="w-12"><FileIcon fileType={file.type} /></div>
+                                      <div className="flex-1 font-medium text-sm truncate flex items-center gap-2">
+                                        <div className="truncate">{file.name}</div>
+                                          {file.driveLink && (
+                                              <a href={file.driveLink} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="Open linked file">
+                                                  <LinkIcon className="h-3 w-3 text-blue-600 hover:text-blue-800" />
+                                              </a>
+                                          )}
+                                      </div>
+                                      <div className="w-48 text-sm">{format(file.modifiedAt, 'PPp')}</div>
+                                      <div className="w-12" onClick={(e) => e.stopPropagation()}>
+                                          <DropdownMenu>
+                                              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                              <DropdownMenuContent align="end">
+                                                  <DropdownMenuItem onSelect={() => handleDownloadFile(file)}><Download className="mr-2 h-4 w-4" /> Download</DropdownMenuItem>
+                                                  <DropdownMenuItem onSelect={() => handleOpenLinkDialog(file)}><LinkIcon className="mr-2 h-4 w-4" /> Add/Edit Link</DropdownMenuItem>
+                                                  <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteFiles([file])}><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                                              </DropdownMenuContent>
+                                          </DropdownMenu>
+                                      </div>
+                                  </div>
+                              )})
+                          ) : (
+                              !isCreatingFile && <div className="flex items-center justify-center h-48 text-muted-foreground">This folder is empty.</div>
+                          )}
+                      </div>
+                  </ScrollArea>
+              </div>
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
       
-      <Dialog open={isNewFileDialogOpen} onOpenChange={setIsNewFileDialogOpen}>
+      <Dialog open={isAddFileDialogOpen} onOpenChange={(open) => { if (!isUploading) setIsAddFileDialogOpen(open); }}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New File</DialogTitle>
-            <DialogDescription>
-              Enter a name for your new file. It will be saved as a blank text document in "{selectedFolder?.name}".
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="new-file-name">File Name</Label>
-            <Input
-              id="new-file-name"
-              value={newFileName}
-              onChange={(e) => setNewFileName(e.target.value)}
-              placeholder="e.g., Meeting Notes.txt"
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSaveNewFile() }}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsNewFileDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveNewFile}>Create File</Button>
-          </DialogFooter>
+            <DialogHeader>
+                <DialogTitle>Upload Files</DialogTitle>
+                <DialogDescription>
+                    Select one or more files to upload to the "{selectedFolder?.name || 'Unfiled'}" folder.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                <div 
+                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted"
+                    onClick={() => fileInputRef.current?.click()}
+                >
+                    {filesToUpload.length > 0 ? (
+                        <p className="font-medium text-center">{filesToUpload.length} file(s) selected.<br/><span className="text-xs font-normal">({filesToUpload[0].name}, etc.)</span></p>
+                    ) : (
+                        <>
+                            <UploadCloud className="w-8 h-8 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground">Click to browse or drag files here</p>
+                        </>
+                    )}
+                </div>
+                <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    multiple
+                    onChange={(e) => setFilesToUpload(e.target.files ? Array.from(e.target.files) : [])} 
+                />
+            </div>
+            <DialogFooter>
+                <Button variant="ghost" onClick={() => setIsAddFileDialogOpen(false)} disabled={isUploading}>Cancel</Button>
+                <Button onClick={handleFileUpload} disabled={isUploading || filesToUpload.length === 0}>
+                    {isUploading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                    {isUploading ? "Uploading..." : "Upload File(s)"}
+                </Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <Dialog open={isAddLinkDialogOpen} onOpenChange={setIsAddLinkDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add/Edit Link for "{fileToLink?.name}"</DialogTitle>
-            <DialogDescription>
-              Associate an external URL (e.g., from Google Drive) with this file.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="link-url">URL</Label>
-            <Input
-              id="link-url"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="https://..."
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsAddLinkDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveLink}>Save Link</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+      
       <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader><DialogTitle>Create New Folder</DialogTitle></DialogHeader>
@@ -810,45 +642,29 @@ export function FilesView() {
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Dialog open={isAddFileDialogOpen} onOpenChange={(open) => { if (!isUploading) setIsAddFileDialogOpen(open); }}>
-          <DialogContent>
-              <DialogHeader>
-                  <DialogTitle>Add New File(s)</DialogTitle>
-                  <DialogDescription>
-                      Upload files to the folder: "{selectedFolder?.name || 'Please select a folder'}".
-                  </DialogDescription>
-              </DialogHeader>
-              <div className="py-4">
-                <div 
-                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted"
-                    onClick={() => fileInputRef.current?.click()}
-                >
-                    {filesToUpload.length > 0 ? (
-                        <p className="font-medium text-center">{filesToUpload.length} file(s) selected.<br/><span className="text-xs font-normal">({filesToUpload[0].name}, etc.)</span></p>
-                    ) : (
-                        <>
-                            <UploadCloud className="w-8 h-8 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">Click to browse or drag files here</p>
-                        </>
-                    )}
-                </div>
-                 <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    multiple
-                    onChange={(e) => setFilesToUpload(e.target.files ? Array.from(e.target.files) : [])} 
+      
+      <Dialog open={isAddLinkDialogOpen} onOpenChange={setIsAddLinkDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Add/Edit Link</DialogTitle>
+                <DialogDescription>
+                    Add an external URL (like a Google Drive link) to "{fileToLink?.name}".
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+                <Label htmlFor="link-url">URL</Label>
+                <Input 
+                    id="link-url" 
+                    value={linkUrl} 
+                    onChange={(e) => setLinkUrl(e.target.value)} 
+                    placeholder="https://docs.google.com/..."
                 />
-              </div>
-              <DialogFooter>
-                  <Button variant="ghost" onClick={() => setIsAddFileDialogOpen(false)} disabled={isUploading}>Cancel</Button>
-                  <Button onClick={handleFileUpload} disabled={isUploading || filesToUpload.length === 0 || selectedFolderId === 'all'}>
-                      {isUploading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                      {isUploading ? "Uploading..." : "Upload File(s)"}
-                  </Button>
-              </DialogFooter>
-          </DialogContent>
+            </div>
+            <DialogFooter>
+                <Button variant="ghost" onClick={() => setIsAddLinkDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSaveLink}>Save Link</Button>
+            </DialogFooter>
+        </DialogContent>
       </Dialog>
     </>
   );
