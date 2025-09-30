@@ -130,21 +130,18 @@ export async function getFileById(fileId: string): Promise<FileItem | null> {
     return fileSnap.exists() ? docToFile(fileSnap) : null;
 }
 
-export async function addTextFile(folderId: string, fileName: string, content: string): Promise<FileItem> {
-    const { auth } = await initializeFirebase();
-    const userId = auth.currentUser?.uid;
+export async function addTextFile(userId: string, folderId: string, fileName: string): Promise<FileItem> {
     if (!userId) throw new Error("User not authenticated.");
     
-    // The storagePath can be determined just before the first upload.
-    // The record is created, and content can be added/saved later.
     const newFileRecordData: Omit<FileItem, 'id'> = {
         name: fileName,
-        type: 'text/plain',
+        type: 'google-drive-link',
         size: 0,
         modifiedAt: new Date(),
         folderId,
         userId,
-        storagePath: '', // Will be set on first save/upload of content
+        storagePath: '', // This can be updated later with the actual Drive link.
+        driveLink: '', // Initialize empty driveLink
     };
 
     return addFileRecord(newFileRecordData);
