@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LoaderCircle, Save, Calendar as CalendarIcon, ChevronsUpDown, Check, Plus, X, Info, Timer, Play, Pause, Trash2, MoreVertical, Edit, MessageSquare, RefreshCw, BellRing } from 'lucide-react';
+import { LoaderCircle, Save, Calendar as CalendarIcon, ChevronsUpDown, Check, Plus, X, Info, Timer, Play, Pause, Trash2, MoreVertical, Edit, MessageSquare, RefreshCw, BellRing, Mail } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { type Project, type Event as TaskEvent, type TimeSession } from '@/types/calendar-types';
@@ -637,9 +637,14 @@ export function TimeManagerView() {
                         </Card>
                     </CardContent>
                     <CardFooter className="flex items-center justify-between">
-                         <Button size="lg" onClick={handleSetReminder} variant="outline">
-                            <BellRing className="mr-2 h-4 w-4" /> Set Reminder
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button size="lg" onClick={() => router.push('/ogeemail/compose')} variant="outline">
+                                <Mail className="mr-2 h-4 w-4" /> Compose Email
+                            </Button>
+                             <Button size="lg" onClick={handleSetReminder} variant="outline">
+                                <BellRing className="mr-2 h-4 w-4" /> Set Reminder
+                            </Button>
+                        </div>
                         <div className="flex items-center gap-2">
                             <Button size="lg" onClick={() => router.push('/calendar')} variant="ghost">
                                 Close
@@ -694,3 +699,5 @@ export function TimeManagerView() {
         </>
     );
 }
+
+    
