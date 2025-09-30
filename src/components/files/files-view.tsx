@@ -7,23 +7,22 @@ import Link from 'next/link';
 import { useDrag, useDrop } from 'react-dnd';
 import {
   Folder,
-  Plus,
-  MoreVertical,
-  Trash2,
   Pencil,
   LoaderCircle,
+  ArrowLeft,
+  Users,
+  File as FileIconLucide,
   ChevronRight,
   FolderPlus,
-  ArrowUpDown,
-  Users,
-  UploadCloud,
-  Edit,
+  MoreVertical,
   Link as LinkIcon,
   Search,
   FilePlus,
   ClipboardCopy,
-  Wand2,
   Info,
+  ArrowUpDown,
+  ExternalLink,
+  Trash2,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -57,13 +56,10 @@ import {
     addFolder, 
     updateFolder,
     getFiles,
-    addFile,
-    deleteFiles,
-    deleteFolders,
     addTextFile,
-    getDownloadUrl,
     updateFile,
-    addFileRecord,
+    removeFoldersAndContents,
+    deleteFiles as deleteFilesService,
 } from '@/services/file-service';
 import { moveFile } from '@/app/actions/file-actions';
 import { useAuth } from '@/context/auth-context';
@@ -79,9 +75,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from '../ui/checkbox';
-import { FileIcon } from './file-icon';
 import { format } from 'date-fns';
-import { triggerBrowserDownload } from '@/lib/utils';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 
 const ItemTypes = {
@@ -99,22 +99,11 @@ export function FilesView() {
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
-
-  const [renamingFolder, setRenamingFolder] = useState<FolderItem | null>(null);
-  const [renameInputValue, setRenameInputValue] = useState("");
   
-  const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
-
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [sortConfig, setSortConfig] = useState<{ key: keyof FileItem; direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
 
-  const [isAddFileDialogOpen, setIsAddFileDialogOpen] = useState(false);
-  const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
-  
   const [isNewFileDialogOpen, setIsNewFileDialogOpen] = useState(false);
   const [newFileName, setNewFileName] = useState('');
   
@@ -123,6 +112,13 @@ export function FilesView() {
   const [linkUrl, setLinkUrl] = useState('');
   
   const [isInfoDialogOpen, setIsInfoDialogOpen] = useState(false);
+
+  const [renamingFolder, setRenamingFolder] = useState<FolderItem | null>(null);
+  const [renamingFile, setRenamingFile] = useState<FileItem | null>(null);
+  const [renameInputValue, setRenameInputValue] = useState("");
+  
+  const [itemsToRemove, setItemsToRemove] = useState<{ folders: FolderItem[], files: FileItem[] }>({ folders: [], files: [] });
+  const [isRemoveConfirmOpen, setIsRemoveConfirmOpen] = useState(false);
 
 
   const { toast } = useToast();
@@ -172,18 +168,6 @@ export function FilesView() {
     return allFiles.filter(file => file.folderId === selectedFolderId);
   }, [selectedFolderId, allFiles]);
   
-  const handleDownloadFile = async (file: FileItem) => {
-    try {
-        const { url, error } = await getDownloadUrl(file.storagePath);
-        if (error) throw new Error(error);
-        if (url) {
-            await triggerBrowserDownload(url, file.name);
-        }
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Download Failed', description: error.message });
-    }
-  };
-
   const handleCreateFolder = async () => {
     if (!user || !newFolderName.trim()) return;
     try {
@@ -200,65 +184,6 @@ export function FilesView() {
         setNewFolderName(""); 
     }
   };
-
-  const handleStartRename = (folder: FolderItem) => {
-    setRenamingFolder(folder);
-    setRenameInputValue(folder.name);
-  };
-
-  const handleCancelRename = () => {
-    setRenamingFolder(null);
-    setRenameInputValue("");
-  };
-
-  const handleConfirmRename = async () => {
-    if (!renamingFolder || !renameInputValue.trim() || renamingFolder.name === renameInputValue.trim()) {
-      handleCancelRename();
-      return;
-    }
-
-    try {
-      await updateFolder(renamingFolder.id, { name: renameInputValue.trim() });
-      setFolders(prev => prev.map(f => f.id === renamingFolder.id ? { ...f, name: renameInputValue.trim() } : f));
-      toast({ title: "Folder Renamed" });
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Rename Failed", description: error.message });
-    } finally {
-      handleCancelRename();
-    }
-  };
-  
-  const handleConfirmDeleteFolder = async () => {
-      if (!user || !folderToDelete) return;
-      try {
-        await deleteFolders(user.uid, [folderToDelete.id]);
-        setFolders(prev => prev.filter(f => f.id !== folderToDelete.id));
-        setAllFiles(prev => prev.filter(f => f.folderId !== folderToDelete.id));
-        toast({ title: "Folder Deleted" });
-      } catch(error: any) {
-        toast({ variant: "destructive", title: "Delete Failed", description: error.message });
-      } finally {
-        setFolderToDelete(null);
-      }
-  };
-  
-  const handleDeleteFiles = async (filesToDelete: FileItem[]) => {
-      if (!user || filesToDelete.length === 0) return;
-      
-      const fileIdsToDelete = filesToDelete.map(f => f.id);
-      
-      const originalFiles = [...allFiles];
-      setAllFiles(prev => prev.filter(f => !fileIdsToDelete.includes(f.id)));
-      setSelectedFileIds([]);
-
-      try {
-          await deleteFiles(fileIdsToDelete);
-          toast({ title: `${fileIdsToDelete.length} file(s) deleted.` });
-      } catch (error: any) {
-          toast({ variant: 'destructive', title: 'Delete Failed', description: error.message });
-          setAllFiles(originalFiles);
-      }
-  };
   
   const handleToggleSelectAll = () => {
     if (selectedFileIds.length === sortedFiles.length) {
@@ -273,83 +198,6 @@ export function FilesView() {
         key,
         direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
-  };
-
-  const handleFileUpload = async () => {
-    if (!user || filesToUpload.length === 0 || !selectedFolderId || selectedFolderId === 'all') {
-        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Please select one or more files and a specific folder.' });
-        return;
-    }
-    setIsUploading(true);
-    let successfulUploads = 0;
-    try {
-        for (const file of filesToUpload) {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('userId', user.uid);
-            formData.append('folderId', selectedFolderId);
-            const newFile = await addFile(formData);
-            setAllFiles(prev => [...prev, newFile]);
-            successfulUploads++;
-        }
-        toast({ title: 'Upload Successful', description: `${successfulUploads} file(s) have been uploaded.` });
-        setIsAddFileDialogOpen(false);
-        setFilesToUpload([]);
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Upload Failed', description: `Only ${successfulUploads} files were uploaded. ${error.message}` });
-    } finally {
-        setIsUploading(false);
-    }
-  };
-
-  const handleFolderUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0 || !user) return;
-    
-    let newFolder: FolderItem | null = null;
-    setIsUploading(true); // Set loading state at the very beginning
-    try {
-        const firstFile = files[0];
-        const rootFolderName = firstFile.webkitRelativePath.split('/')[0];
-        
-        if (!rootFolderName) {
-            throw new Error("Could not determine folder name from upload.");
-        }
-        
-        toast({ title: 'Folder Upload Started', description: `Uploading folder "${rootFolderName}"...` });
-
-        newFolder = await addFolder({ name: rootFolderName, parentId: selectedFolderId !== 'all' ? selectedFolderId : null, userId: user.uid, createdAt: new Date() });
-        setFolders(prev => [...prev, newFolder!]);
-        
-        const uploadPromises = Array.from(files).map(async (file) => {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('userId', user.uid);
-            formData.append('folderId', newFolder!.id);
-            return addFile(formData);
-        });
-        
-        const newFiles = await Promise.all(uploadPromises);
-        setAllFiles(prev => [...prev, ...newFiles]);
-
-        toast({ title: 'Folder Upload Complete', description: `${files.length} file(s) uploaded to "${rootFolderName}".` });
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Folder Upload Failed', description: error.message });
-        // Rollback folder creation on failure
-        if (newFolder) {
-            try {
-                await deleteFolders(user.uid, [newFolder.id]);
-                setFolders(prev => prev.filter(f => f.id !== newFolder!.id));
-            } catch (rollbackError) {
-                console.error("Rollback failed:", rollbackError);
-            }
-        }
-    } finally {
-        setIsUploading(false); // Ensure this is always called
-        if (folderInputRef.current) {
-            folderInputRef.current.value = "";
-        }
-    }
   };
   
   const handleDrop = async (item: { ids?: string[], type: string }, folderId: string | null) => {
@@ -368,8 +216,8 @@ export function FilesView() {
     }
   };
   
-  const handleNewFile = () => {
-    if (!selectedFolderId || selectedFolderId === 'all') {
+  const handleNewFile = async () => {
+    if (selectedFolderId === 'all') {
         toast({ variant: 'destructive', title: 'No Folder Selected', description: 'Please select a folder before creating a new file.' });
         return;
     }
@@ -377,23 +225,21 @@ export function FilesView() {
   };
   
   const handleSaveNewFile = async () => {
-    if (!user || !selectedFolderId || selectedFolderId === 'all') return;
+    if (!user) return;
     if (!newFileName.trim()) {
         toast({ variant: 'destructive', title: 'File Name Required', description: 'Please enter a name for your file.' });
         return;
     }
     
-    setIsUploading(true);
     setIsNewFileDialogOpen(false);
     try {
         const finalFileName = newFileName;
-        const newFile = await addTextFile(user.uid, selectedFolderId, finalFileName);
+        const newFile = await addTextFile(user.uid, selectedFolderId || '', finalFileName);
         setAllFiles(prev => [...prev, newFile]);
         toast({ title: 'Placeholder Created', description: `"${finalFileName}" is ready to be linked.` });
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Failed to create file', description: error.message });
     } finally {
-        setIsUploading(false);
         setNewFileName('');
     }
   };
@@ -431,73 +277,103 @@ export function FilesView() {
         handleOpenLinkDialog(file);
     }
   };
-  
-  const FolderTreeItem = ({ folder, allFolders, level = 0 }: { folder: FolderItem, allFolders: FolderItem[], level?: number }) => {
-    const hasChildren = allFolders.some(f => f.parentId === folder.id);
-    const isExpanded = expandedFolders.has(folder.id);
-    const isRenaming = renamingFolder?.id === folder.id;
-    const isSelected = selectedFolderId === folder.id;
-    
-    const [{ canDrop, isOver }, drop] = useDrop(() => ({
-        accept: ItemTypes.FILE,
-        drop: (item) => handleDrop(item as any, folder.id),
-        collect: (monitor) => ({
-            isOver: monitor.isOver(),
-            canDrop: monitor.canDrop(),
-        }),
-    }));
 
-    return (
-        <div className="space-y-1" style={{ marginLeft: level > 0 ? '1rem' : '0' }}>
-            <div
-                ref={drop}
-                className={cn(
-                    "flex items-center gap-1 pr-1 border border-foreground rounded-md h-8 group",
-                    isSelected && !isRenaming && "bg-blue-100 text-blue-900",
-                    !isSelected && !isRenaming && (folder.parentId ? "bg-neutral-200 text-foreground" : "bg-gradient-to-r from-[#C3FFF9] to-[#62C1B6] text-black"),
-                    isRenaming && "bg-background text-foreground",
-                    isOver && canDrop && "ring-2 ring-primary bg-primary/20"
-                )}
-            >
-                <div
-                  className="flex items-center flex-1 cursor-pointer h-full min-w-0"
-                  onClick={() => { if (!isRenaming) setSelectedFolderId(folder.id) }}
-                >
-                  <ChevronRight 
-                    className={cn('h-4 w-4 shrink-0 transition-transform ml-1', isExpanded && 'rotate-90', !hasChildren && 'invisible')} 
-                    onClick={(e) => { 
-                        e.stopPropagation(); 
-                        setExpandedFolders(p => { const n = new Set(p); n.has(folder.id) ? n.delete(folder.id) : n.add(folder.id); return n; }); 
-                    }} 
-                  />
-                  <Folder className={cn('h-4 w-4 shrink-0', 'text-blue-500')} />
-                  {isRenaming ? (
-                    <Input autoFocus value={renameInputValue} onChange={e => setRenameInputValue(e.target.value)} onBlur={handleConfirmRename} onKeyDown={e => { if (e.key === 'Enter') handleConfirmRename(); if (e.key === 'Escape') handleCancelRename(); }} className="h-7 ml-2" onClick={e => e.stopPropagation()} />
-                  ) : (
-                    <span className="truncate text-xs ml-2 min-w-0">{folder.name}</span>
-                  )}
-                </div>
-                {!isRenaming && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenuItem onSelect={() => { setNewFolderParentId(folder.id); setIsNewFolderDialogOpen(true); }}><FolderPlus className="mr-2 h-4 w-4" />New Subfolder</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => handleStartRename(folder)}><Pencil className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive" onSelect={() => setFolderToDelete(folder)}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-              {isExpanded && allFolders.filter(f => f.parentId === folder.id).sort((a,b) => a.name.localeCompare(b.name)).map(child => (
-                <FolderTreeItem key={child.id} folder={child} allFolders={allFolders} level={level + 1} />
-            ))}
-        </div>
-    );
+  const handleStartRename = (e: React.MouseEvent, folder: FolderItem) => {
+    e.stopPropagation();
+    setRenamingFile(null); // Ensure we're not renaming a file at the same time
+    setRenamingFolder(folder);
+    setRenameInputValue(folder.name);
+  };
+
+  const handleCancelRename = () => {
+    setRenamingFolder(null);
+    setRenamingFile(null);
+    setRenameInputValue("");
+  };
+
+  const handleConfirmFolderRename = async () => {
+    if (!renamingFolder || !renameInputValue.trim() || renamingFolder.name === renameInputValue.trim()) {
+      handleCancelRename();
+      return;
+    }
+
+    try {
+      await updateFolder(renamingFolder.id, { name: renameInputValue.trim() });
+      setFolders(prev => prev.map(f => f.id === renamingFolder.id ? { ...f, name: renameInputValue.trim() } : f));
+      toast({ title: "Folder Renamed" });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Rename Failed", description: error.message });
+    } finally {
+      handleCancelRename();
+    }
+  };
+  
+  const handleStartFileRename = (e: React.MouseEvent, file: FileItem) => {
+    e.stopPropagation();
+    setRenamingFolder(null); // Ensure we're not renaming a folder at the same time
+    setRenamingFile(file);
+    setRenameInputValue(file.name);
+  };
+
+  const handleConfirmFileRename = async () => {
+    if (!renamingFile || !renameInputValue.trim() || renamingFile.name === renameInputValue.trim()) {
+      handleCancelRename();
+      return;
+    }
+
+    try {
+        await updateFile(renamingFile.id, { name: renameInputValue.trim() });
+        setAllFiles(prev => prev.map(f => f.id === renamingFile.id ? { ...f, name: renameInputValue.trim() } : f));
+        toast({ title: "File Renamed" });
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Rename Failed", description: error.message });
+    } finally {
+        handleCancelRename();
+    }
+  };
+  
+  const handleRemoveItems = (files: FileItem[], folders: FolderItem[]) => {
+    setItemsToRemove({ files, folders });
+    setIsRemoveConfirmOpen(true);
+  };
+
+  const handleConfirmRemove = async () => {
+    if (!user) return;
+    
+    const { files: filesToRemove, folders: foldersToRemove } = itemsToRemove;
+    const folderIdsToRemove = foldersToRemove.map(f => f.id);
+    const fileIdsToRemove = filesToRemove.map(f => f.id);
+
+    if (folderIdsToRemove.length === 0 && fileIdsToRemove.length === 0) {
+        setIsRemoveConfirmOpen(false);
+        return;
+    }
+
+    try {
+        if (folderIdsToRemove.length > 0) {
+            await removeFoldersAndContents(user.uid, folderIdsToRemove);
+        }
+        if (fileIdsToRemove.length > 0) {
+            await deleteFilesService(fileIdsToRemove);
+        }
+
+        // Optimistic UI update
+        if (folderIdsToRemove.length > 0) {
+            // Re-fetch all data as recursive deletion makes local filtering complex
+            await loadInitialData();
+        } else {
+            setAllFiles(prev => prev.filter(f => !fileIdsToRemove.includes(f.id)));
+        }
+
+        toast({ title: "Items Removed" });
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Failed to remove items", description: error.message });
+        loadInitialData(); // Revert on failure
+    } finally {
+        setItemsToRemove({ files: [], folders: [] });
+        setIsRemoveConfirmOpen(false);
+        setSelectedFileIds([]);
+    }
   };
   
   const DraggableFileRow = ({ file }: { file: FileItem }) => {
@@ -514,6 +390,7 @@ export function FilesView() {
     }));
 
     const isSelected = selectedFileIds.includes(file.id);
+    const isRenaming = renamingFile?.id === file.id;
 
     const handleCopyName = (name: string) => {
         navigator.clipboard.writeText(name).then(() => {
@@ -527,34 +404,134 @@ export function FilesView() {
       <div
         ref={drag}
         className={cn(
-          "grid items-center grid-cols-[auto_auto_1fr_minmax(0,max-content)_auto] gap-2 h-8 rounded-md border border-foreground bg-blue-100 text-blue-900 cursor-move hover:bg-blue-200",
+          "grid items-center grid-cols-[auto_1fr_minmax(0,max-content)_auto] gap-2 h-8 rounded-md border border-foreground bg-blue-100 text-blue-900 cursor-move hover:bg-blue-200",
           isSelected && "bg-blue-200 text-blue-900",
           isDragging && "opacity-50"
         )}
-        onClick={() => handleOpenFile(file)}
       >
-        <div className="h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}><Checkbox checked={isSelected} onCheckedChange={() => setSelectedFileIds(p => p.includes(file.id) ? p.filter(id => id !== file.id) : [...p, file.id])} /></div>
-        <div className="h-full flex items-center justify-center"><FileIcon fileType={file.type} /></div>
-        <div className="font-medium text-xs truncate flex items-center gap-2">
-            {file.name}
-            {file.driveLink && <LinkIcon className="h-3 w-3 text-blue-700 shrink-0" />}
+        <div className="h-full flex items-center justify-center pl-2" onClick={(e) => e.stopPropagation()}><Checkbox checked={isSelected} onCheckedChange={() => setSelectedFileIds(p => p.includes(file.id) ? p.filter(id => id !== file.id) : [...p, file.id])} /></div>
+        <div className="font-medium text-xs truncate flex items-center gap-2" onClick={isRenaming ? undefined : () => handleOpenFile(file)}>
+            {isRenaming ? (
+              <Input
+                autoFocus
+                value={renameInputValue}
+                onChange={(e) => setRenameInputValue(e.target.value)}
+                onBlur={handleConfirmFileRename}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleConfirmFileRename();
+                    if (e.key === 'Escape') handleCancelRename();
+                }}
+                className="h-6 text-xs"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <>
+                {file.name}
+                {file.driveLink && <LinkIcon className="h-3 w-3 text-blue-700 shrink-0" />}
+              </>
+            )}
         </div>
-        <div className="text-xs truncate min-w-max px-2">{format(file.modifiedAt, 'PPp')}</div>
+        <div className="text-xs truncate min-w-max px-2" onClick={isRenaming ? undefined : () => handleOpenFile(file)}>{format(file.modifiedAt, 'PPp')}</div>
         <div className="h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => handleOpenFile(file)}><ExternalLink className="mr-2 h-4 w-4" /> Open Link</DropdownMenuItem>
+              <DropdownMenuItem onSelect={(e) => handleStartFileRename(e, file)}><Pencil className="mr-2 h-4 w-4" /> Rename</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => handleCopyName(file.name)}><ClipboardCopy className="mr-2 h-4 w-4" /> Copy Name</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => handleDriveSearch(file.name)}><Search className="mr-2 h-4 w-4" /> Search GDrive</DropdownMenuItem>
               <DropdownMenuItem onSelect={() => handleOpenLinkDialog(file)}><LinkIcon className="mr-2 h-4 w-4" /> Add/Edit Link</DropdownMenuItem>
-              <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteFiles([file])}><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive" onSelect={() => handleRemoveItems([file], [])}>
+                <Trash2 className="mr-2 h-4 w-4" />Remove
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
     );
   };
+  
+  const FolderTreeItem = ({ folder, allFolders, level = 0 }: { folder: FolderItem, allFolders: FolderItem[], level?: number }) => {
+    const hasChildren = allFolders.some(f => f.parentId === folder.id);
+    const isExpanded = expandedFolders.has(folder.id);
+    const isSelected = selectedFolderId === folder.id;
+    const isRenaming = renamingFolder?.id === folder.id;
 
+    const [{ canDrop, isOver }, drop] = useDrop(() => ({
+        accept: [ItemTypes.FILE, ItemTypes.FOLDER],
+        drop: (item) => handleDrop(item as any, folder.id),
+        collect: (monitor) => ({
+            isOver: monitor.isOver(),
+            canDrop: monitor.canDrop(),
+        }),
+    }));
+
+    return (
+        <div className="space-y-1" style={{ marginLeft: level > 0 ? '1rem' : '0' }}>
+            <div
+                ref={drop}
+                className={cn(
+                    "flex items-center gap-1 pr-1 border border-foreground rounded-md h-8 group",
+                    isSelected && "bg-blue-100 text-blue-900",
+                    !isSelected && (folder.parentId ? "bg-neutral-200 text-foreground" : "bg-gradient-to-r from-[#C3FFF9] to-[#62C1B6] text-black"),
+                    isOver && canDrop && "ring-2 ring-primary bg-primary/20"
+                )}
+            >
+                <div
+                  className="flex items-center flex-1 cursor-pointer h-full min-w-0"
+                  onClick={() => { if (!isRenaming) setSelectedFolderId(folder.id); }}
+                >
+                  <ChevronRight 
+                    className={cn('h-4 w-4 shrink-0 transition-transform ml-1', isExpanded && 'rotate-90', !hasChildren && 'invisible')} 
+                    onClick={(e) => { 
+                        e.stopPropagation(); 
+                        setExpandedFolders(p => { const n = new Set(p); n.has(folder.id) ? n.delete(folder.id) : n.add(folder.id); return n; }); 
+                    }} 
+                  />
+                   {isRenaming ? (
+                        <Input
+                            autoFocus
+                            value={renameInputValue}
+                            onChange={(e) => setRenameInputValue(e.target.value)}
+                            onBlur={handleConfirmFolderRename}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleConfirmFolderRename();
+                                if (e.key === 'Escape') handleCancelRename();
+                            }}
+                            className="h-6 text-xs ml-2"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    ) : (
+                        <span className="truncate text-xs ml-2 min-w-0">{folder.name}</span>
+                    )}
+                </div>
+                {!isRenaming && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenuItem onSelect={() => { setNewFolderParentId(folder.id); setIsNewFolderDialogOpen(true); }}><FolderPlus className="mr-2 h-4 w-4" />New Subfolder</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={(e) => handleStartRename(e, folder)}><Pencil className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => console.log('Checking status for', folder.name)}><Info className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive" onSelect={() => handleRemoveItems([], [folder])}>
+                                <Trash2 className="mr-2 h-4 w-4" />Remove
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
+              </div>
+              {isExpanded && allFolders.filter(f => f.parentId === folder.id).sort((a,b) => a.name.localeCompare(b.name)).map(child => (
+                <FolderTreeItem key={child.id} folder={child} allFolders={allFolders} level={level + 1} />
+            ))}
+        </div>
+    );
+  };
+  
   const sortedFiles = useMemo(() => {
     return [...displayedFiles].sort((a, b) => {
         const aVal = a[sortConfig.key];
@@ -586,11 +563,6 @@ export function FilesView() {
             <h1 className="text-3xl font-bold font-headline text-primary">Ogeemo File Cabinet</h1>
             <p className="text-muted-foreground">Your connection to your Google Drive where you organize and manage current files.</p>
             <div className="absolute top-4 right-4 flex items-center gap-2">
-                <Button asChild size="sm">
-                  <a href="https://drive.google.com/drive/folders/1RdaPZL3uPXlmXort_nydmcfFvaeQtJ1e" target="_blank" rel="noopener noreferrer">
-                    <Folder className="mr-2 h-4 w-4" /> Go to Google Folder
-                  </a>
-                </Button>
                 <Button variant="ghost" size="icon" onClick={() => setIsInfoDialogOpen(true)}>
                     <Info className="h-5 w-5" />
                 </Button>
@@ -636,25 +608,37 @@ export function FilesView() {
               <div className="flex flex-col h-full">
                 <div className="p-2 border-b flex flex-col gap-2">
                     <div className="flex items-center justify-between h-14">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <h2 className="text-lg font-semibold truncate">{selectedFolder?.name || 'All Files'}</h2>
-                            <span className="text-sm text-muted-foreground">({displayedFiles.length} file(s))</span>
-                        </div>
                         {selectedFileIds.length > 0 ? (
-                            <Button variant="destructive" onClick={() => handleDeleteFiles(allFiles.filter(f => selectedFileIds.includes(f.id)))}>
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete ({selectedFileIds.length})
-                            </Button>
-                        ) : (
-                            <div className="flex items-center gap-2">
-                                <input type="file" ref={folderInputRef} className="hidden" multiple directory="" webkitdirectory="" onChange={handleFolderUpload} />
-                                <Button size="sm" onClick={() => folderInputRef.current?.click()} disabled={isUploading}>
-                                    {isUploading ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <UploadCloud className="mr-2 h-4 w-4" />}
-                                    Upload PC Folders
+                            <>
+                                <h2 className="text-lg font-semibold">{selectedFileIds.length} file(s) selected</h2>
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => handleRemoveItems(allFiles.filter(f => selectedFileIds.includes(f.id)), [])}
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Selected
                                 </Button>
-                                <input type="file" ref={fileInputRef} onChange={(e) => setFilesToUpload(e.target.files ? Array.from(e.target.files) : [])} className="hidden" multiple />
-                                <Button size="sm" onClick={() => setIsAddFileDialogOpen(true)}><UploadCloud className="mr-2 h-4 w-4" /> Upload PC Files</Button>
-                                <Button size="sm" onClick={handleNewFile}><FilePlus className="mr-2 h-4 w-4" /> Create File</Button>
-                            </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <h2 className="text-lg font-semibold truncate">{selectedFolder?.name || 'All Files'}</h2>
+                                    <span className="text-sm text-muted-foreground">({displayedFiles.length} file(s))</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button asChild size="sm">
+                                        <a href="https://drive.google.com/drive/my-drive" target="_blank" rel="noopener noreferrer">
+                                            <Folder className="mr-2 h-4 w-4" /> GDrive
+                                        </a>
+                                    </Button>
+                                    <Button asChild size="sm">
+                                        <a href="https://drive.google.com/drive/folders/1RdaPZL3uPXlmXort_nydmcfFvaeQtJ1e" target="_blank" rel="noopener noreferrer">
+                                            <Folder className="mr-2 h-4 w-4" /> My Favorites
+                                        </a>
+                                    </Button>
+                                    <Button size="sm" onClick={handleNewFile}><FilePlus className="mr-2 h-4 w-4" /> Create File Name</Button>
+                                </div>
+                            </>
                         )}
                     </div>
                      <div className="relative border border-black rounded-lg">
@@ -670,9 +654,10 @@ export function FilesView() {
                     </div>
                 </div>
                   <ScrollArea className="flex-1 overflow-y-auto p-2">
-                       <div className="grid items-center grid-cols-[auto_auto_1fr_minmax(0,max-content)_auto] gap-2 h-8 p-2">
-                          <div className="h-full w-8 flex items-center justify-center"><Checkbox onCheckedChange={handleToggleSelectAll} checked={sortedFiles.length > 0 && selectedFileIds.length === sortedFiles.length} /></div>
-                          <div className="w-8"><span className="sr-only">Icon</span></div>
+                       <div className="grid items-center grid-cols-[auto_1fr_minmax(0,max-content)_auto] gap-2 h-8 p-2">
+                          <div className="h-full w-8 flex items-center justify-center pl-2">
+                            <Checkbox onCheckedChange={handleToggleSelectAll} checked={sortedFiles.length > 0 && selectedFileIds.length === sortedFiles.length} />
+                          </div>
                           <Button variant="ghost" onClick={() => handleSort('name')} className="justify-start p-0 h-auto font-medium text-muted-foreground hover:bg-transparent text-xs">Name <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
                           <Button variant="ghost" onClick={() => handleSort('modifiedAt')} className="justify-start p-0 h-auto font-medium text-muted-foreground hover:bg-transparent text-xs">Last Modified <ArrowUpDown className="ml-2 h-4 w-4" /></Button>
                           <div className="w-8 flex items-center justify-center"><span className="sr-only">Actions</span></div>
@@ -691,39 +676,6 @@ export function FilesView() {
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
-      
-      <Dialog open={isAddFileDialogOpen} onOpenChange={(open) => { if (!isUploading) setIsAddFileDialogOpen(open); }}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Upload Files</DialogTitle>
-                <DialogDescription>
-                    Select one or more files to upload to the "{selectedFolder?.name || 'Unfiled'}" folder.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-                <div 
-                    className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted"
-                    onClick={() => fileInputRef.current?.click()}
-                >
-                    {filesToUpload.length > 0 ? (
-                        <p className="font-medium text-center">{filesToUpload.length} file(s) selected.<br/><span className="text-xs font-normal">({filesToUpload[0].name}, etc.)</span></p>
-                    ) : (
-                        <>
-                            <UploadCloud className="w-8 h-8 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">Click to browse or drag files here</p>
-                        </>
-                    )}
-                </div>
-            </div>
-            <DialogFooter>
-                <Button variant="ghost" onClick={() => setIsAddFileDialogOpen(false)} disabled={isUploading}>Cancel</Button>
-                <Button onClick={() => handleFileUpload()} disabled={isUploading || filesToUpload.length === 0}>
-                    {isUploading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                    {isUploading ? "Uploading..." : "Upload File(s)"}
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
       
       <Dialog open={isNewFileDialogOpen} onOpenChange={setIsNewFileDialogOpen}>
           <DialogContent>
@@ -754,8 +706,8 @@ export function FilesView() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader><DialogTitle>Create New Folder</DialogTitle></DialogHeader>
             <div className="py-4">
-              <Label htmlFor="folder-name-new">Name</Label>
-              <Input id="folder-name-new" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleCreateFolder() }} />
+              <Label htmlFor="new-folder-name">Name</Label>
+              <Input id="new-folder-name" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleCreateFolder() }} />
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button>
@@ -763,40 +715,6 @@ export function FilesView() {
             </DialogFooter>
           </DialogContent>
       </Dialog>
-      
-      <Dialog open={!!renamingFolder} onOpenChange={(open) => !open && handleCancelRename()}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Rename Folder</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <Label htmlFor="rename-folder-name">New Name</Label>
-                        <Input 
-                            id="rename-folder-name" 
-                            value={renameInputValue}
-                            onChange={(e) => setRenameInputValue(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') handleConfirmRename() }}
-                        />
-                    </div>
-                    <DialogFooter>
-                        <Button variant="ghost" onClick={handleCancelRename}>Cancel</Button>
-                        <Button onClick={handleConfirmRename}>Rename</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <AlertDialog open={!!folderToDelete} onOpenChange={() => setFolderToDelete(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>This will permanently delete the folder "{folderToDelete?.name}" and all its contents.</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleConfirmDeleteFolder} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
       
       <Dialog open={isAddLinkDialogOpen} onOpenChange={setIsAddLinkDialogOpen}>
         <DialogContent>
@@ -823,27 +741,79 @@ export function FilesView() {
       </Dialog>
 
       <Dialog open={isInfoDialogOpen} onOpenChange={setIsInfoDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
-                <DialogTitle>About the File Cabinet</DialogTitle>
+                <DialogTitle>About the Ogeemo File Cabinet</DialogTitle>
                 <DialogDescription>
-                   Your central hub for organizing digital assets.
+                   Your central hub for organizing digital assets by linking them to your Google Drive.
                 </DialogDescription>
             </DialogHeader>
-            <div className="py-4 prose prose-sm dark:prose-invert">
-                <p>The Ogeemo File Cabinet acts as a powerful bridge between your local computer and your Google Drive.</p>
-                <ul>
-                    <li><strong>Upload PC Files:</strong> Use the "Upload PC Files/Folders" buttons to upload documents directly from your computer into organized folders.</li>
-                    <li><strong>Create Placeholders:</strong> Use the "Create File" button to make a placeholder for a document that lives elsewhere (e.g., in Google Drive).</li>
-                    <li><strong>Link to Google Drive:</strong> After creating a placeholder, use the menu on the file to add the direct link to your Google Doc, Sheet, or Slide. This keeps all your related assets in one place, even if they're stored in different locations.</li>
-                    <li><strong>Search Google Drive:</strong> Use the search bar to quickly find files within your Google Drive without leaving Ogeemo.</li>
-                </ul>
+            <div className="py-4">
+              <Accordion type="single" collapsible defaultValue="item-1">
+                <AccordionItem value="item-1">
+                  <AccordionTrigger>Core Concept: A Bridge to Your Drive</AccordionTrigger>
+                  <AccordionContent>
+                    The Ogeemo File Cabinet doesn't store your files directly. Instead, it acts as a powerful organizational layer on top of your Google Drive, allowing you to manage links to your documents, sheets, and slides within the context of your Ogeemo workspace.
+                  </AccordionContent>
+                </AccordionItem>
+                 <AccordionItem value="item-2">
+                    <AccordionTrigger>Recommended Setup: The "Favorites" Folder</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                            <p>For the best experience, we recommend creating a dedicated folder in your Google Drive to hold all your Ogeemo-related files. This keeps everything organized.</p>
+                            <ol>
+                                <li>Click the <strong>"GDrive"</strong> button to open your Google Drive in a new tab.</li>
+                                <li>Right-click on “My Drive” and select <strong>"New folder"</strong>.</li>
+                                <li>Name the folder: <strong>“0 My Favorites.”</strong> Using a "Zero" at the beginning ensures this folder always appears at the top of your “My Drive” folder list for easy access.</li>
+                                <li>In your Ogeemo File Cabinet, to create a link to this new folder, click the button called <strong>“Create File Name.”</strong></li>
+                                <li>In Google Drive, select your new “My Favorites” folder, right-click the folder, then click <strong>Share</strong> and select <strong>“Copy Link”</strong>.</li>
+                                <li>Then go back to your Filing Cabinet and click on the file name you created called “My Favorites". Then in the 3-dot menu click <strong>“Add/Edit Link”</strong>.</li>
+                                <li>Paste the link you copied into the provided field.</li>
+                                <li>When you create new documents (Docs, Sheets, etc.) for Ogeemo, go to your new “My Favorites” folder and click <strong>“New”</strong>. Then click the <strong>“+ New”</strong> button to see the drop-down list of apps that you can select from.</li>
+                                <li>When you create a new app, e.g., a document or sheet, it will automatically save to your favorites folder. This will save you a lot of time in dealing with your files.</li>
+                            </ol>
+                            <p><strong>Note:</strong> You can also create sub-folders for your “My Favorites” folder. Just right-click and select “New Folder.” If you are using sub-folders, just make sure you select the subfolder you want before creating a new document.</p>
+                        </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                <AccordionItem value="item-3">
+                  <AccordionTrigger>How to Add Files</AccordionTrigger>
+                  <AccordionContent>
+                    <ol className="list-decimal list-inside space-y-2 text-sm">
+                      <li><strong>Create a Placeholder:</strong> Click the "Create File Name" button to create a placeholder entry in the selected folder. This acts as a bookmark for your external file.</li>
+                      <li><strong>Get Your Google Drive Link:</strong> Find your file in Google Drive, click "Share", and copy the link.</li>
+                      <li><strong>Link It:</strong> In Ogeemo, click the 3-dot menu on your placeholder and select "Add/Edit Link". Paste the Google Drive URL here. The file icon will now indicate it's a linked file.</li>
+                    </ol>
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="item-4">
+                    <AccordionTrigger>Searching Your Drive</AccordionTrigger>
+                    <AccordionContent className="text-sm">
+                    You can search your entire Google Drive directly from the File Cabinet. Type your query into the search bar and press Enter. A new tab will open with your search results in Google Drive. You can also search for a specific file by using the 3-dot menu on a file and selecting "Search GDrive".
+                    </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
             <DialogFooter>
                 <Button onClick={() => setIsInfoDialogOpen(false)}>Got it</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
+
+       <AlertDialog open={isRemoveConfirmOpen} onOpenChange={setIsRemoveConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove {itemsToRemove.folders.length > 0 && `${itemsToRemove.folders.length} folder(s)`} {itemsToRemove.folders.length > 0 && itemsToRemove.files.length > 0 && 'and'} {itemsToRemove.files.length > 0 && `${itemsToRemove.files.length} file(s)`}, including all sub-folders and their contents. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmRemove} className="bg-destructive hover:bg-destructive/90">Remove</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

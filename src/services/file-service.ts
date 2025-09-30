@@ -104,18 +104,71 @@ export async function updateFolder(folderId: string, folderData: Partial<Omit<Fo
     await updateDoc(folderRef, folderData);
 }
 
-export async function deleteFolders(userId: string, folderIds: string[]): Promise<void> {
+export async function removeFoldersAndContents(userId: string, folderIdsToRemove: string[]): Promise<void> {
     const db = await getDb();
+    const storage = await getAppStorage();
     const batch = writeBatch(db);
-    
-    folderIds.forEach(id => {
-        const folderRef = doc(db, FOLDERS_COLLECTION, id);
+
+    // 1. Fetch all folders and files for the user once to build the hierarchy map
+    const allFolders = await getFolders(userId);
+    const allFiles = await getFiles(userId);
+
+    const foldersToDelete = new Set<string>(folderIdsToRemove);
+    const filesToDelete = new Set<string>();
+
+    // 2. Recursively find all descendant folders
+    const findDescendants = (parentId: string) => {
+        allFolders
+            .filter(f => f.parentId === parentId)
+            .forEach(child => {
+                foldersToDelete.add(child.id);
+                findDescendants(child.id); // Recurse
+            });
+    };
+
+    folderIdsToRemove.forEach(id => findDescendants(id));
+
+    // 3. Find all files within the identified folders
+    allFiles.forEach(file => {
+        if (file.folderId && foldersToDelete.has(file.folderId)) {
+            filesToDelete.add(file.id);
+        }
+    });
+
+    // 4. Batch delete all identified files from Firestore and Storage
+    for (const fileId of filesToDelete) {
+        const fileDoc = allFiles.find(f => f.id === fileId);
+        if (fileDoc) {
+            // Delete from Firestore
+            const fileRef = doc(db, FILES_COLLECTION, fileId);
+            batch.delete(fileRef);
+
+            // Delete from Storage if it's not just a link
+            if (fileDoc.storagePath && !fileDoc.storagePath.startsWith('http')) {
+                const storageFileRef = storageRef(storage, fileDoc.storagePath);
+                // We have to delete from storage immediately, can't be batched with Firestore
+                try {
+                    await deleteObject(storageFileRef);
+                } catch (error) {
+                    // Log error but continue, so Firestore data gets cleaned up.
+                    console.error(`Failed to remove file from storage: ${fileDoc.storagePath}`, error);
+                }
+            }
+        }
+    }
+
+    // 5. Batch delete all identified folders from Firestore
+    foldersToDelete.forEach(folderId => {
+        const folderRef = doc(db, FOLDERS_COLLECTION, folderId);
         batch.delete(folderRef);
     });
 
+    // 6. Commit all Firestore deletions at once
     await batch.commit();
 }
 
+
+// --- File functions ---
 export async function getFiles(userId?: string): Promise<FileItem[]> {
   const db = await getDb();
   const q = userId ? query(collection(db, FILES_COLLECTION), where("userId", "==", userId)) : collection(db, FILES_COLLECTION);
@@ -254,39 +307,6 @@ export async function addFileFromDataUrl(options: { dataUrl: string; fileName: s
     return addFileRecord(newFileRecord);
 }
 
-export async function deleteFiles(fileIds: string[]): Promise<void> {
-    if (fileIds.length === 0) return;
-    const db = await getDb();
-    const storage = await getAppStorage();
-    const batch = writeBatch(db);
-
-    const fileDocsPromises = fileIds.map(id => getDoc(doc(db, FILES_COLLECTION, id)));
-    const fileDocs = await Promise.all(fileDocsPromises);
-
-    for (const fileDoc of fileDocs) {
-        if (fileDoc.exists()) {
-            const fileData = fileDoc.data() as Omit<FileItem, 'id'>;
-            
-            if (fileData.storagePath && !fileData.driveLink) { // Only delete from storage if it's not just a drive link
-                const fileRef = storageRef(storage, fileData.storagePath);
-                try {
-                    await deleteObject(fileRef);
-                } catch (error: any) {
-                    if (error.code !== 'storage/object-not-found') {
-                        console.error(`Failed to delete file from storage at path ${fileData.storagePath}:`, error);
-                        throw new Error(`Failed to delete file from storage: ${error.message}`);
-                    }
-                }
-            }
-            
-            batch.delete(fileDoc.ref);
-        }
-    }
-
-    await batch.commit();
-}
-
-
 export async function saveEmailForContact(userId: string, contactName: string, email: { subject: string; body: string }): Promise<void> {
     const db = await getDb();
     const storage = await getAppStorage();
@@ -355,4 +375,35 @@ export async function archiveIdeaAsFile(userId: string, title: string, content: 
     };
 
     await addFileRecord(newFileRecord);
+}
+
+// Kept for specific file deletions, but folder deletion is handled by removeFoldersAndContents
+export async function deleteFiles(fileIds: string[]): Promise<void> {
+    const db = await getDb();
+    const storage = await getAppStorage();
+    const batch = writeBatch(db);
+
+    for (const fileId of fileIds) {
+        const fileRef = doc(db, FILES_COLLECTION, fileId);
+        const fileSnap = await getDoc(fileRef);
+        if (fileSnap.exists()) {
+            const fileData = docToFile(fileSnap);
+            if (fileData.storagePath && !fileData.storagePath.startsWith('http')) {
+                 try {
+                    const storageFileRef = storageRef(storage, fileData.storagePath);
+                    await deleteObject(storageFileRef);
+                } catch (error: any) {
+                    // If file doesn't exist in storage, log it but don't block the Firestore deletion
+                    if (error.code !== 'storage/object-not-found') {
+                        console.error(`Failed to delete file from storage: ${fileData.storagePath}`, error);
+                        // Optionally re-throw if storage deletion failure should stop the whole process
+                        // throw error; 
+                    }
+                }
+            }
+            batch.delete(fileRef);
+        }
+    }
+    
+    await batch.commit();
 }
