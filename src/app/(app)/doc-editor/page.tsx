@@ -78,7 +78,7 @@ export default function DocEditorRedirectPage() {
                   </CardHeader>
                   <CardContent>
                       <Button asChild className="w-full">
-                          <Link href="/files">
+                          <Link href="/file-cabinet">
                               Go to File Cabinet
                           </Link>
                       </Button>

@@ -86,7 +86,7 @@ export function GoogleIntegrationView() {
                         </CardDescription>
                          <div className="absolute top-4 right-4">
                             <Button asChild variant="ghost" size="icon">
-                                <Link href="/files">
+                                <Link href="/file-cabinet">
                                     <X className="h-5 w-5" />
                                     <span className="sr-only">Back to File Cabinet</span>
                                 </Link>

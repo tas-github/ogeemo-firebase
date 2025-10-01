@@ -258,6 +258,11 @@ export function TimeManagerView() {
             setContacts(fetchedContacts);
             setContactFolders(fetchedFolders);
             
+            const titleParam = searchParams.get('title');
+            if (titleParam) {
+              setSubject(titleParam);
+            }
+
             // Check for data from Idea Board
             const ideaToScheduleRaw = sessionStorage.getItem('ogeemo-idea-to-schedule');
             if (ideaToScheduleRaw) {
@@ -459,7 +464,7 @@ export function TimeManagerView() {
                     <div className="flex justify-between items-center">
                         <div />
                         <div className="text-center">
-                            <h1 className="text-2xl font-bold font-headline text-primary whitespace-nowrap">The Ultimate Task &amp; Event Manager</h1>
+                            <h1 className="text-2xl font-bold font-headline text-primary whitespace-nowrap">Task & Event Manager</h1>
                             <p className="text-muted-foreground whitespace-nowrap">Your ‘Master Mind’ for getting things done.</p>
                         </div>
                         <div className="flex items-center justify-end gap-2">

@@ -11,6 +11,7 @@ import {
   Beaker,
   Calculator,
   Folder,
+  BrainCircuit,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -24,8 +25,8 @@ export interface ActionChipData {
 
 // This now represents the DEFAULT state for "Your Actions".
 export const initialChips: ActionChipData[] = [
-  { id: 'chip-1', label: 'Open Email', icon: Mail, href: '/ogeemail', frame: 'quick' },
-  { id: 'chip-2', label: 'Open Contacts', icon: Contact, href: '/contacts', frame: 'quick' },
-  { id: 'chip-3', label: 'Open Projects', icon: Briefcase, href: '/projects', frame: 'quick' },
-  { id: 'chip-14', label: 'Open Files', icon: Folder, href: '/files', frame: 'quick' },
+  { id: 'chip-1', label: 'OgeeMail', icon: Mail, href: '/ogeemail', frame: 'quick' },
+  { id: 'chip-2', label: 'Contacts', icon: Contact, href: '/contacts', frame: 'quick' },
+  { id: 'chip-3', label: 'Projects', icon: Briefcase, href: '/projects', frame: 'quick' },
+  { id: 'chip-4', label: 'Task & Event Mngr', icon: BrainCircuit, href: '/master-mind', frame: 'quick'},
 ];

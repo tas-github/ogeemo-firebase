@@ -20,5 +20,3 @@ const ComposeEmailView = dynamic(
 export default function ComposeEmailPage() {
   return <ComposeEmailView />;
 }
-
-    

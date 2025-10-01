@@ -1,6 +1,8 @@
 
-import IdeasPage from "@/components/ideas/ideas-page-view";
+'use client';
 
-export default function IdeaBoard() {
-    return <IdeasPage />;
+import { IdeaListView } from '@/components/ideas/idea-list-view';
+
+export default function IdeaBoardPage() {
+    return <IdeaListView />;
 }

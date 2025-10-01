@@ -40,7 +40,7 @@ export default function DocEditorPage() {
         const fileData = await getFileById(fileId);
         if (!fileData) {
           toast({ variant: 'destructive', title: 'Error', description: 'File not found.' });
-          router.push('/files');
+          router.push('/file-cabinet');
           return;
         }
         setFile(fileData);
@@ -117,7 +117,7 @@ export default function DocEditorPage() {
                 />
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={() => router.push('/files')}>
+                <Button variant="outline" onClick={() => router.push('/file-cabinet')}>
                     <ArrowLeft className="mr-2 h-4 w-4" /> Back to File Cabinet
                 </Button>
                 <Button onClick={handleSave} disabled={isSaving}>

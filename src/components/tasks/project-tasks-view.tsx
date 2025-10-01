@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
@@ -56,18 +57,20 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
             if (isActionItemsView) {
                 projectData = {
                     id: ACTION_ITEMS_PROJECT_ID,
-                    name: "Action Items",
-                    description: "A place for all your uncategorized tasks.",
+                    name: "To Do",
+                    description: "A place for all your unscheduled tasks.",
                     userId: user.uid,
                     createdAt: new Date(),
                 };
                 const allUserTasks = await getTasksForUser(user.uid);
-                tasksData = allUserTasks.filter(task => !task.projectId || task.projectId === ACTION_ITEMS_PROJECT_ID);
+                tasksData = allUserTasks.filter(task => (!task.projectId || task.projectId === ACTION_ITEMS_PROJECT_ID) && !task.ritualType);
             } else {
                 [projectData, tasksData] = await Promise.all([
                     getProjectById(projectId),
                     getTasksForProject(projectId),
                 ]);
+                // Filter out rituals from project boards as well
+                tasksData = tasksData.filter(task => !task.ritualType);
             }
             
             if (!projectData) {
