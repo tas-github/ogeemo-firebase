@@ -19,3 +19,48 @@ To address these issues and restore a productive development cycle, I am committ
 2.  **Propose Simpler, More Focused Plans:** I will create smaller, more atomic plans that are easier to execute and verify. This means focusing on one discrete piece of functionality at a time (e.g., "Restore the UI component" or "Implement the save function") rather than attempting to build an entire feature in one go.
 
 3.  **Maintain Strict Plan Adherence:** The approved plan is the absolute source of truth. The code I generate will be a direct and precise execution of that plan. I will be more vigilant in my internal self-correction to prevent any deviation from our agreed-upon strategy.
+
+## NEW - Critical Rule: Dynamic Imports
+
+**DO NOT create separate server-side skeleton components for dynamically imported client components.** This pattern has repeatedly caused hydration errors and a "flash of content".
+
+**INSTEAD**, when using `dynamic()` with `ssr: false`, define the loading state directly and inline within the page file using a simple JSX element.
+
+**Correct Example:**
+```tsx
+import dynamic from 'next/dynamic';
+import { LoaderCircle } from 'lucide-react';
+
+const ClientComponent = dynamic(
+  () => import('@/components/some-client-component'),
+  {
+    ssr: false,
+    loading: () => <div className="flex justify-center p-4"><LoaderCircle className="animate-spin" /></div>,
+  }
+);
+
+export default function Page() {
+  return <ClientComponent />;
+}
+```
+
+**Incorrect (Forbidden) Example:**
+```tsx
+// in /app/some-page/page.tsx
+import dynamic from 'next/dynamic';
+import { SomeClientComponentSkeleton } from './some-client-component-skeleton'; // FORBIDDEN
+
+const ClientComponent = dynamic(
+  () => import('@/components/some-client-component'),
+  {
+    ssr: false,
+    loading: () => <SomeClientComponentSkeleton />, // FORBIDDEN
+  }
+);
+
+export default function Page() {
+  return <ClientComponent />;
+}
+```
+
+Adherence to this rule is mandatory to prevent regressions.

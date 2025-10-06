@@ -13,8 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { type Project, type Event as TaskEvent, type TimeSession } from '@/types/calendar-types';
 import { type Contact, type FolderData } from '@/data/contacts';
-import { addTask, getProjects, addProject, updateProject, getTaskById, updateTask } from '@/services/project-service';
-import { getContacts, getFolders } from '@/services/contact-service';
+import { addTask, addProject, updateProject, getTaskById, updateTask, getProjects, getTasksForUser } from '@/services/project-service';
+import { getFolders, getContacts } from '@/services/contact-service';
 import { Textarea } from '../ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
@@ -53,12 +53,13 @@ export interface StoredTimerState {
 
 const TIMER_STORAGE_KEY = 'activeTimeManagerEntry';
 
+
 export function TimeManagerView() {
     const [projects, setProjects] = React.useState<Project[]>([]);
     const [contacts, setContacts] = React.useState<Contact[]>([]);
     const [contactFolders, setContactFolders] = React.useState<FolderData[]>([]);
-    const [isLoadingData, setIsLoadingData] = React.useState(true);
-
+    const [isLoading, setIsLoading] = React.useState(true);
+    
     // Form state
     const [subject, setSubject] = React.useState("");
     const [notes, setNotes] = React.useState("");
@@ -106,6 +107,63 @@ export function TimeManagerView() {
 
     const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
     const minuteOptions = Array.from({ length: 12 }, (_, i) => { const minutes = i * 5; return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` }; });
+    
+    const loadInitialData = useCallback(async () => {
+        if (!user) {
+            setIsLoading(false);
+            return;
+        }
+        setIsLoading(true);
+        try {
+            const [fetchedProjects, fetchedContacts] = await Promise.all([
+                getProjects(user.uid),
+                getContacts(user.uid),
+            ]);
+            setProjects(fetchedProjects);
+            setContacts(fetchedContacts);
+            
+            // Now handle URL params with fetched data available
+            const eventIdParam = searchParams.get('eventId');
+            if (eventIdParam) {
+                const eventData = await getTaskById(eventIdParam);
+                if (eventData) {
+                     setEventToEdit(eventData);
+                     setSubject(eventData.title);
+                     setNotes(eventData.description || "");
+                     setSelectedProjectId(eventData.projectId || null);
+                     setSelectedContactId(eventData.contactId || null);
+                     setIsBillable(eventData.isBillable || false);
+                     setBillableRate(eventData.billableRate || 0);
+                     setSessions(eventData.sessions || []);
+                     if (eventData.start) {
+                         setScheduleDate(eventData.start);
+                         setScheduleHour(String(eventData.start.getHours()));
+                         setScheduleMinute(String(eventData.start.getMinutes()));
+                     }
+                } else {
+                    toast({ variant: 'destructive', title: 'Error', description: 'Could not load event data.' });
+                }
+            } else {
+                const dateParam = searchParams.get('date');
+                const hourParam = searchParams.get('hour');
+                const minuteParam = searchParams.get('minute');
+                const projectIdParam = searchParams.get('projectId');
+                
+                setScheduleDate(dateParam ? parseISO(dateParam) : new Date());
+                setScheduleHour(hourParam || String(new Date().getHours()));
+                setScheduleMinute(minuteParam || String(Math.floor(new Date().getMinutes() / 5) * 5));
+                if (projectIdParam) setSelectedProjectId(projectIdParam);
+            }
+        } catch (error: any) {
+             toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [user, searchParams, toast]);
+
+    useEffect(() => {
+        loadInitialData();
+    }, [loadInitialData]);
     
     const createAndSaveNewEvent = useCallback(async (): Promise<TaskEvent | null> => {
         if (!user || !subject.trim()) {
@@ -242,80 +300,6 @@ export function TimeManagerView() {
         setIsEditSessionDialogOpen(false);
     };
 
-    const loadData = useCallback(async () => {
-        if (!user) {
-            setIsLoadingData(false);
-            return;
-        }
-        setIsLoadingData(true);
-        try {
-            const [fetchedProjects, fetchedContacts, fetchedFolders] = await Promise.all([
-                getProjects(user.uid),
-                getContacts(user.uid),
-                getFolders(user.uid),
-            ]);
-            setProjects(fetchedProjects);
-            setContacts(fetchedContacts);
-            setContactFolders(fetchedFolders);
-            
-            const titleParam = searchParams.get('title');
-            if (titleParam) {
-              setSubject(titleParam);
-            }
-
-            // Check for data from Idea Board
-            const ideaToScheduleRaw = sessionStorage.getItem('ogeemo-idea-to-schedule');
-            if (ideaToScheduleRaw) {
-                const ideaData = JSON.parse(ideaToScheduleRaw);
-                setSubject(ideaData.title);
-                setNotes(ideaData.description || "");
-                sessionStorage.removeItem('ogeemo-idea-to-schedule');
-                toast({ title: "Idea Loaded", description: "Your idea has been imported. Please review and save." });
-            } else {
-                const eventIdParam = searchParams.get('eventId');
-                if (eventIdParam) {
-                    const eventData = await getTaskById(eventIdParam);
-                    if (eventData) {
-                        setEventToEdit(eventData);
-                        setSubject(eventData.title);
-                        setNotes(eventData.description || "");
-                        setSelectedProjectId(eventData.projectId || null);
-                        setSelectedContactId(eventData.contactId || null);
-                        setIsBillable(eventData.isBillable || false);
-                        setBillableRate(eventData.billableRate || 0);
-                        setSessions(eventData.sessions || []);
-                        if (eventData.start) {
-                            setScheduleDate(eventData.start);
-                            setScheduleHour(String(eventData.start.getHours()));
-                            setScheduleMinute(String(eventData.start.getMinutes()));
-                        }
-                    } else {
-                        toast({ variant: 'destructive', title: 'Error', description: 'Could not load event data.' });
-                    }
-                } else {
-                    const dateParam = searchParams.get('date');
-                    const hourParam = searchParams.get('hour');
-                    const minuteParam = searchParams.get('minute');
-                    const projectIdParam = searchParams.get('projectId');
-                    
-                    setScheduleDate(dateParam ? parseISO(dateParam) : new Date());
-                    setScheduleHour(hourParam || String(new Date().getHours()));
-                    setScheduleMinute(minuteParam || String(Math.floor(new Date().getMinutes() / 5) * 5));
-                    if (projectIdParam) setSelectedProjectId(projectIdParam);
-                }
-            }
-
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
-        } finally {
-            setIsLoadingData(false);
-        }
-    }, [user, searchParams, toast]);
-
-    useEffect(() => {
-        loadData();
-    }, [loadData]);
-    
     // This effect handles the startTimer URL parameter
     useEffect(() => {
         const startTimerParam = searchParams.get('startTimer');
@@ -330,7 +314,6 @@ export function TimeManagerView() {
             const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
             if (savedStateRaw) {
                 const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-                // Only sync if the timer belongs to the event being edited
                 if (eventToEdit && savedState.eventId === eventToEdit.id) {
                     setTimerState(savedState);
                     if (savedState.isActive) {
@@ -448,10 +431,10 @@ export function TimeManagerView() {
             router.push('/calendar/reminders');
         }
     };
-
-    if (isLoadingData) {
+    
+    if (isLoading) {
         return (
-            <div className="flex h-full w-full items-center justify-center">
+            <div className="flex h-full w-full items-center justify-center p-4">
                 <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
             </div>
         );
@@ -704,5 +687,3 @@ export function TimeManagerView() {
         </>
     );
 }
-
-    
