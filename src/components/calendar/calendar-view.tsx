@@ -411,7 +411,7 @@ export function CalendarView() {
                                 const slots = hourSlots[hour] || 1;
 
                                 return (
-                                    <div key={hour} className="flex my-1 border border-black">
+                                    <div key={hour} className="flex my-0.5 border border-black">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <div className="w-[4.5rem] flex-shrink-0 p-1 border-r border-black flex flex-col items-center justify-center cursor-pointer">
