@@ -65,7 +65,7 @@ export function CalendarView() {
         setIsClient(true);
     }, []);
 
-    const dayOptions = Array.from({ length: 7 }, (_, i) => i + 1);
+    const dayOptions = Array.from({ length: 30 }, (_, i) => i + 1);
 
     const loadEvents = React.useCallback(async () => {
         if (!user) {
@@ -252,7 +252,7 @@ export function CalendarView() {
             <Droppable
                 type={EventItemTypes.EVENT}
                 onDrop={(item) => handleEventDrop(item as Event, slotStart)}
-                className="h-8 border border-black rounded-md mx-1 my-0.5 flex items-center p-1 relative group"
+                className="h-8 border border-black rounded-md m-1 flex items-center p-1 relative group"
             >
                 {isEmpty ? (
                     <button
