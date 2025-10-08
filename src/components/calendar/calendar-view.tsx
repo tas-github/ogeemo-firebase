@@ -244,7 +244,7 @@ export function CalendarView() {
             <Droppable
                 type={EventItemTypes.EVENT}
                 onDrop={(item) => handleEventDrop(item as Event, slotStart)}
-                className="h-8 flex items-center p-1 relative group bg-card border border-black"
+                className="h-8 flex items-center p-1 relative group bg-card"
             >
                 {isEmpty ? (
                     <button
@@ -406,7 +406,7 @@ export function CalendarView() {
                                     <div key={hour} className="flex border border-black mb-1">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <div className="w-[6rem] flex-shrink-0 p-1 border-r border-black flex items-center justify-center cursor-pointer mr-1 bg-muted">
+                                                <div className="w-[6rem] flex-shrink-0 p-1 border-r border-black flex items-center justify-center cursor-pointer mr-1 bg-card">
                                                     <span className="text-xs text-muted-foreground">{format(new Date(0, 0, 0, hour), 'h a')}</span>
                                                     <ChevronDown className="h-6 w-6 text-black" />
                                                 </div>
@@ -471,4 +471,5 @@ export function CalendarView() {
     
 
     
+
 
