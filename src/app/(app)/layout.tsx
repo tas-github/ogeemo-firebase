@@ -41,7 +41,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                    <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button asChild variant="ghost" size="icon" className="h-9 w-9 text-black hover:bg-white/20 hover:text-black">
+                          <Button asChild size="icon" className="h-9 w-9 bg-card text-card-foreground hover:bg-card/90">
                             <Link href="/action-manager">
                               <LayoutDashboard className="h-5 w-5" />
                               <span className="sr-only">Action Manager</span>
@@ -59,7 +59,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button asChild variant="outline" className="h-9 px-4">
+                              <Button asChild className="h-9 px-4 bg-card text-card-foreground hover:bg-card/90">
                                 <Link href="/command-centre">
                                     <div className="flex items-center gap-2">
                                         <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
@@ -74,7 +74,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button asChild variant="outline" className="h-9 px-4">
+                              <Button asChild className="h-9 px-4 bg-card text-card-foreground hover:bg-card/90">
                                 <a href="https://gemini.google.com/app" target="_blank" rel="noopener noreferrer">
                                     <div className="flex items-center gap-2">
                                         <Bot className="h-4 w-4" />
