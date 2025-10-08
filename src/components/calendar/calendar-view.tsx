@@ -252,7 +252,7 @@ export function CalendarView() {
             <Droppable
                 type={EventItemTypes.EVENT}
                 onDrop={(item) => handleEventDrop(item as Event, slotStart)}
-                className="h-8 border border-black rounded-md m-1 flex items-center p-1 relative group"
+                className="h-8 border border-black rounded-md mx-1 my-0.5 flex items-center p-1 relative group"
             >
                 {isEmpty ? (
                     <button
@@ -411,10 +411,10 @@ export function CalendarView() {
                                 const slots = hourSlots[hour] || 1;
 
                                 return (
-                                    <div key={hour} className="flex my-0.5 border border-black">
+                                    <div key={hour} className="flex border border-black">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <div className="w-[4.5rem] flex-shrink-0 p-1 border-r border-black flex flex-col items-center justify-center cursor-pointer">
+                                                <div className="w-[6rem] flex-shrink-0 p-1 border-r border-black flex items-center justify-center cursor-pointer">
                                                     <span className="text-xs text-muted-foreground">{format(new Date(0, 0, 0, hour), 'h a')}</span>
                                                     <ChevronDown className="h-6 w-6 text-black" />
                                                 </div>
