@@ -244,7 +244,7 @@ export function CalendarView() {
             <Droppable
                 type={EventItemTypes.EVENT}
                 onDrop={(item) => handleEventDrop(item as Event, slotStart)}
-                className="h-8 flex items-center p-1 relative group bg-card"
+                className="h-8 flex items-center p-1 relative group bg-card border border-black"
             >
                 {isEmpty ? (
                     <button
@@ -391,7 +391,7 @@ export function CalendarView() {
                     
                     <div className="grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
                         {visibleDates.map((date) => (
-                            <div key={date.toISOString()} className="h-8 flex items-center justify-center border border-black">
+                            <div key={date.toISOString()} className="h-8 flex items-center justify-center border border-black bg-card">
                                 <p className="text-xs font-semibold text-center">{format(date, 'cccc, LLL do')}</p>
                             </div>
                         ))}
@@ -471,5 +471,3 @@ export function CalendarView() {
     
 
     
-
-
