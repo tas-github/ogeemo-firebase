@@ -245,7 +245,7 @@ export function CalendarView() {
             <Droppable
                 type={EventItemTypes.EVENT}
                 onDrop={(item) => handleEventDrop(item as Event, slotStart)}
-                className="h-8 flex items-center px-1 relative group bg-card border border-black rounded-md"
+                className="h-8 flex items-center px-1 relative group bg-card"
             >
                 {isEmpty ? (
                     <button
@@ -299,9 +299,9 @@ export function CalendarView() {
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button
-                                        variant={"outline"}
+                                        
                                         className={cn(
-                                            "w-[280px] justify-center text-center font-normal",
+                                            "w-[280px] justify-center text-center font-normal bg-card text-card-foreground",
                                             !currentDate && "text-muted-foreground"
                                         )}
                                     >
@@ -313,9 +313,9 @@ export function CalendarView() {
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={currentDate} onSelect={(date) => date && setCurrentDate(date)} initialFocus /></PopoverContent>
                             </Popover>
-                            <Button variant="outline" onClick={handleToday}>Today</Button>
+                            <Button onClick={handleToday} className="bg-card text-card-foreground">Today</Button>
                             <Select value={String(dayCount)} onValueChange={handleDayCountChange}>
-                                <SelectTrigger className="w-[110px]"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="w-[110px] bg-card text-card-foreground"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {dayOptions.map(day => (
                                         <SelectItem key={day} value={String(day)}>{day} Day{day > 1 ? 's' : ''}</SelectItem>
@@ -404,7 +404,7 @@ export function CalendarView() {
                                 const slots = hourSlots[hour] || 1;
   
                                 return (
-                                    <div key={hour} className="flex border border-black mb-0.5">
+                                    <div key={hour} className="flex border border-black mb-1">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <div className="w-[6rem] flex-shrink-0 p-1 border-r border-black flex items-center justify-center cursor-pointer mr-1 bg-card">
@@ -425,7 +425,7 @@ export function CalendarView() {
                                              {visibleDates.map((date, dateIndex) => {
                                                 
                                                 return (
-                                                    <div key={date.toISOString()} className="relative border-l border-black p-0.5 space-y-1">
+                                                    <div key={date.toISOString()} className="relative border-l border-black p-0.5">
                                                         {Array.from({ length: slots }, (_, i) => (
                                                             <TimeSlot 
                                                                 key={i}
