@@ -244,7 +244,7 @@ export function CalendarView() {
             <Droppable
                 type={EventItemTypes.EVENT}
                 onDrop={(item) => handleEventDrop(item as Event, slotStart)}
-                className="h-8 mx-1 flex items-center p-1 relative group bg-muted"
+                className="h-8 flex items-center p-1 relative group bg-muted border border-black"
             >
                 {isEmpty ? (
                     <button
@@ -462,5 +462,7 @@ export function CalendarView() {
         </>
     );
 }
+
+    
 
     
