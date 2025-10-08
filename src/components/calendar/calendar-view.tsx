@@ -414,7 +414,7 @@ export function CalendarView() {
                                     <div key={hour} className="flex border border-black mb-1">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <div className="w-[6rem] flex-shrink-0 p-1 border-r border-black flex items-center justify-center cursor-pointer">
+                                                <div className="w-[6rem] flex-shrink-0 p-1 border-r border-black flex items-center justify-center cursor-pointer mr-1">
                                                     <span className="text-xs text-muted-foreground">{format(new Date(0, 0, 0, hour), 'h a')}</span>
                                                     <ChevronDown className="h-6 w-6 text-black" />
                                                 </div>
