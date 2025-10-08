@@ -56,7 +56,7 @@ export function CalendarEvent({ event, onEdit, onDelete, onToggleComplete }: Cal
     <div
       ref={drag}
       className={cn(
-        'w-full h-full rounded-md p-1 text-xs transition-opacity group flex items-center justify-between cursor-move',
+        'w-full h-full rounded-md p-1 text-xs transition-opacity group flex items-center justify-between cursor-move border border-tan',
         isCompleted ? 'bg-muted text-muted-foreground' : 'bg-primary/20 text-black',
         isDragging && 'opacity-50'
       )}
