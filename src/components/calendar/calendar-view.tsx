@@ -59,8 +59,6 @@ export function CalendarView() {
     const searchParams = useSearchParams();
     const pathname = usePathname();
 
-    // This is the permanent fix for the flash.
-    // The component will render a skeleton until it has mounted on the client.
     React.useEffect(() => {
         setIsClient(true);
     }, []);
@@ -104,9 +102,8 @@ export function CalendarView() {
         return allEvents;
     }, [allEvents, filteredProject]);
 
-    // Effect to load preferences from localStorage
     React.useEffect(() => {
-        if (!isClient) return; // Only run on the client
+        if (!isClient) return;
         try {
             const savedDayCount = localStorage.getItem(CALENDAR_DAY_COUNT_KEY);
             if (savedDayCount) setDayCount(parseInt(savedDayCount, 10));
@@ -169,14 +166,12 @@ export function CalendarView() {
 
         const updatedEvent = { ...item, start: newStartTime, end: newEndTime };
         
-        // Optimistic UI update
         setAllEvents(prev => prev.map(e => e.id === item.id ? updatedEvent : e));
 
         try {
             await updateTask(item.id, { start: newStartTime, end: newEndTime });
             toast({ title: 'Event Rescheduled', description: `"${item.title}" moved to ${format(newStartTime, 'PPp')}` });
         } catch (error: any) {
-            // Revert on failure
             setAllEvents(prev => prev.map(e => e.id === item.id ? item : e));
             toast({ variant: 'destructive', title: 'Failed to move event', description: error.message });
         }
@@ -207,7 +202,6 @@ export function CalendarView() {
     };
 
     const handleEditEvent = (event: Event) => {
-        // Navigate to the unified time manager page to edit
         router.push(`/master-mind?eventId=${event.id}`);
     };
     
@@ -215,14 +209,12 @@ export function CalendarView() {
         const newStatus: TaskStatus = event.status === 'done' ? 'todo' : 'done';
         const updatedEvent = { ...event, status: newStatus };
 
-        // Optimistic UI update
         setAllEvents(prev => prev.map(e => e.id === event.id ? updatedEvent : e));
         
         try {
             await updateTask(event.id, { status: newStatus });
             toast({ title: `Task ${newStatus === 'done' ? 'completed' : 'reopened'}` });
         } catch (error: any) {
-            // Revert on failure
             setAllEvents(prev => prev.map(e => e.id === event.id ? event : e));
             toast({ variant: 'destructive', title: 'Failed to update task status' });
         }
@@ -230,7 +222,7 @@ export function CalendarView() {
 
     const clearFilter = () => {
         setFilteredProject(null);
-        router.push(pathname); // Pushes the URL without query params
+        router.push(pathname);
     };
 
     const TimeSlot = ({ date, hour, slotIndex, totalSlots }: { date: Date, hour: number, slotIndex: number, totalSlots: number }) => {
@@ -252,7 +244,7 @@ export function CalendarView() {
             <Droppable
                 type={EventItemTypes.EVENT}
                 onDrop={(item) => handleEventDrop(item as Event, slotStart)}
-                className="h-8 border border-black rounded-md mx-1 flex items-center p-1 relative group bg-muted"
+                className="h-8 mx-1 flex items-center p-1 relative group bg-muted"
             >
                 {isEmpty ? (
                     <button
@@ -409,7 +401,7 @@ export function CalendarView() {
                         <div className="relative">
                             {visibleHours.map(hour => {
                                 const slots = hourSlots[hour] || 1;
-
+  
                                 return (
                                     <div key={hour} className="flex border border-black mb-1">
                                         <DropdownMenu>
@@ -427,24 +419,21 @@ export function CalendarView() {
                                                 ))}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
-
+  
                                         <div className="flex-1 grid relative" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))`}}>
-                                             {visibleDates.map((date, dateIndex) => {
-                                                
-                                                return (
-                                                    <div key={date.toISOString()} className="relative border-l border-black p-1">
-                                                        {Array.from({ length: slots }, (_, i) => (
-                                                            <TimeSlot 
-                                                                key={i}
-                                                                date={date}
-                                                                hour={hour}
-                                                                slotIndex={i}
-                                                                totalSlots={slots}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                );
-                                            })}
+                                             {visibleDates.map((date) => (
+                                                <div key={date.toISOString()} className="relative border-l border-black p-1">
+                                                    {Array.from({ length: slots }, (_, i) => (
+                                                        <TimeSlot 
+                                                            key={i}
+                                                            date={date}
+                                                            hour={hour}
+                                                            slotIndex={i}
+                                                            totalSlots={slots}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 );
@@ -453,7 +442,7 @@ export function CalendarView() {
                     </ScrollArea>
                 </div>
             </div>
-
+  
             <AlertDialog open={!!eventToDelete} onOpenChange={() => setEventToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -469,10 +458,9 @@ export function CalendarView() {
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
-            </>
+            </AlertDialog>
+        </>
     );
 }
-
-    
 
     
