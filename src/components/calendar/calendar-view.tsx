@@ -244,7 +244,7 @@ export function CalendarView() {
             <Droppable
                 type={EventItemTypes.EVENT}
                 onDrop={(item) => handleEventDrop(item as Event, slotStart)}
-                className="h-8 flex items-center p-1 relative group bg-muted border border-black"
+                className="h-8 flex items-center p-1 relative group bg-muted border border-black mb-1"
             >
                 {isEmpty ? (
                     <button
@@ -421,19 +421,22 @@ export function CalendarView() {
                                         </DropdownMenu>
   
                                         <div className="flex-1 grid relative" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))`}}>
-                                             {visibleDates.map((date) => (
-                                                <div key={date.toISOString()} className="relative border-l border-black p-1">
-                                                    {Array.from({ length: slots }, (_, i) => (
-                                                        <TimeSlot 
-                                                            key={i}
-                                                            date={date}
-                                                            hour={hour}
-                                                            slotIndex={i}
-                                                            totalSlots={slots}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            ))}
+                                             {visibleDates.map((date, dateIndex) => {
+                                                
+                                                return (
+                                                    <div key={date.toISOString()} className="relative border-l border-black p-1">
+                                                        {Array.from({ length: slots }, (_, i) => (
+                                                            <TimeSlot 
+                                                                key={i}
+                                                                date={date}
+                                                                hour={hour}
+                                                                slotIndex={i}
+                                                                totalSlots={slots}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 );
@@ -462,6 +465,8 @@ export function CalendarView() {
         </>
     );
 }
+
+    
 
     
 
