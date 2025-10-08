@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -244,7 +245,7 @@ export function CalendarView() {
             <Droppable
                 type={EventItemTypes.EVENT}
                 onDrop={(item) => handleEventDrop(item as Event, slotStart)}
-                className="h-8 flex items-center p-1 relative group bg-card border border-black mb-1"
+                className="h-8 flex items-center px-1 relative group bg-card border border-black"
             >
                 {isEmpty ? (
                     <button
@@ -300,13 +301,13 @@ export function CalendarView() {
                                     <Button
                                         variant={"outline"}
                                         className={cn(
-                                            "w-[240px] justify-center text-center font-normal",
+                                            "w-[280px] justify-center text-center font-normal",
                                             !currentDate && "text-muted-foreground"
                                         )}
                                     >
                                         <ChevronLeft onClick={(e) => { e.stopPropagation(); handlePrev(); }} className="h-4 w-4" />
                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                        <span className="mx-2">{format(currentDate, "PPP")}</span>
+                                        <span className="mx-2">{format(currentDate, "cccc, LLLL do")}</span>
                                         <ChevronRight onClick={(e) => { e.stopPropagation(); handleNext(); }} className="h-4 w-4" />
                                     </Button>
                                 </PopoverTrigger>
@@ -389,7 +390,7 @@ export function CalendarView() {
                         </div>
                     )}
                     
-                    <div className="grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
+                    <div className="grid bg-card" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
                         {visibleDates.map((date) => (
                             <div key={date.toISOString()} className="h-8 flex items-center justify-center border border-black bg-card">
                                 <p className="text-xs font-semibold text-center">{format(date, 'cccc, LLLL do')}</p>
@@ -403,7 +404,7 @@ export function CalendarView() {
                                 const slots = hourSlots[hour] || 1;
   
                                 return (
-                                    <div key={hour} className="flex border border-black mb-1">
+                                    <div key={hour} className="flex border border-black mb-0.5">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <div className="w-[6rem] flex-shrink-0 p-1 border-r border-black flex items-center justify-center cursor-pointer mr-1 bg-card">
@@ -424,7 +425,7 @@ export function CalendarView() {
                                              {visibleDates.map((date, dateIndex) => {
                                                 
                                                 return (
-                                                    <div key={date.toISOString()} className="relative border-l border-black py-0.5 space-y-1">
+                                                    <div key={date.toISOString()} className="relative border-l border-black p-0.5">
                                                         {Array.from({ length: slots }, (_, i) => (
                                                             <TimeSlot 
                                                                 key={i}
