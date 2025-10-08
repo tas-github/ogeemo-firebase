@@ -245,7 +245,7 @@ export function CalendarView() {
             <Droppable
                 type={EventItemTypes.EVENT}
                 onDrop={(item) => handleEventDrop(item as Event, slotStart)}
-                className="h-8 flex items-center px-1 relative group bg-card"
+                className="h-8 flex items-center px-1 relative group bg-card rounded-md"
             >
                 {isEmpty ? (
                     <button
@@ -301,7 +301,7 @@ export function CalendarView() {
                                     <Button
                                         
                                         className={cn(
-                                            "w-[280px] justify-center text-center font-normal bg-card text-card-foreground",
+                                            "w-[280px] justify-center text-center font-normal bg-card text-card-foreground border border-black",
                                             !currentDate && "text-muted-foreground"
                                         )}
                                     >
@@ -313,9 +313,9 @@ export function CalendarView() {
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={currentDate} onSelect={(date) => date && setCurrentDate(date)} initialFocus /></PopoverContent>
                             </Popover>
-                            <Button onClick={handleToday} className="bg-card text-card-foreground">Today</Button>
+                            <Button onClick={handleToday} className="bg-card text-card-foreground border border-black">Today</Button>
                             <Select value={String(dayCount)} onValueChange={handleDayCountChange}>
-                                <SelectTrigger className="w-[110px] bg-card text-card-foreground"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="w-[110px] bg-card text-card-foreground border border-black"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {dayOptions.map(day => (
                                         <SelectItem key={day} value={String(day)}>{day} Day{day > 1 ? 's' : ''}</SelectItem>
@@ -404,7 +404,7 @@ export function CalendarView() {
                                 const slots = hourSlots[hour] || 1;
   
                                 return (
-                                    <div key={hour} className="flex border border-black mb-1">
+                                    <div key={hour} className="flex border border-black mb-0.5">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <div className="w-[6rem] flex-shrink-0 p-1 border-r border-black flex items-center justify-center cursor-pointer mr-1 bg-card">
@@ -421,11 +421,11 @@ export function CalendarView() {
                                             </DropdownMenuContent>
                                         </DropdownMenu>
   
-                                        <div className="flex-1 grid relative" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))`}}>
+                                        <div className="flex-1 grid relative space-y-1" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))`}}>
                                              {visibleDates.map((date, dateIndex) => {
                                                 
                                                 return (
-                                                    <div key={date.toISOString()} className="relative border-l border-black p-0.5">
+                                                    <div key={date.toISOString()} className="relative border-l border-black p-0.5 space-y-1">
                                                         {Array.from({ length: slots }, (_, i) => (
                                                             <TimeSlot 
                                                                 key={i}
