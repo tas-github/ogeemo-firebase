@@ -56,12 +56,12 @@ export function CalendarEvent({ event, onEdit, onDelete, onToggleComplete }: Cal
     <div
       ref={drag}
       className={cn(
-        'w-full h-6 rounded-md p-1 text-xs transition-opacity group flex items-center justify-between cursor-move border border-tan',
-        isCompleted ? 'bg-muted text-muted-foreground' : 'bg-primary/20 text-black',
+        'w-full h-6 rounded-md p-1 text-xs transition-opacity group flex items-center justify-between border',
+        isCompleted ? 'bg-muted text-muted-foreground border-gray-300' : 'bg-primary/20 text-black border-tan',
         isDragging && 'opacity-50'
       )}
     >
-      <div className="flex-1 overflow-hidden" onClick={() => onEdit(event)}>
+      <div className="flex-1 overflow-hidden cursor-pointer" onClick={() => onEdit(event)}>
         <p className={cn("truncate", isCompleted && "line-through")}>
           <span className="font-bold">{event.title}</span> {startTime}
         </p>
@@ -69,7 +69,7 @@ export function CalendarEvent({ event, onEdit, onDelete, onToggleComplete }: Cal
       
       <div className="flex-shrink-0">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-6 w-6">
               <MoreVertical className="h-4 w-4" />
               <span className="sr-only">Event options</span>

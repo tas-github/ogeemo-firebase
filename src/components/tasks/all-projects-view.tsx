@@ -39,6 +39,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
+import { ProjectManagementHeader } from './ProjectManagementHeader';
 
 const statusDisplayMap: Record<string, string> = {
     todo: 'To Do',
@@ -229,6 +230,7 @@ export function AllProjectsView() {
                         View all tasks across all projects, or filter by a specific project.
                     </p>
                 </header>
+                <ProjectManagementHeader />
 
                 <Card className="w-full max-w-6xl">
                     <CardHeader>

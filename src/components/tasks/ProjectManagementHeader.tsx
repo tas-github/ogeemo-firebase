@@ -4,7 +4,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Briefcase, ListChecks, Inbox, Info, Plus } from 'lucide-react';
+import { Briefcase, ListChecks, Inbox, Info, Plus, ListTodo } from 'lucide-react';
 import { NewTaskDialog } from './NewTaskDialog'; // Assuming NewTaskDialog handles project creation
 import { useAuth } from '@/context/auth-context';
 import { addProject } from '@/services/project-service';
@@ -63,7 +63,7 @@ export function ProjectManagementHeader({}: ProjectManagementHeaderProps) {
                 </Button>
                 <Button asChild variant="outline">
                     <Link href="/tasks">
-                        <Inbox className="mr-2 h-4 w-4" /> Action Items
+                        <ListTodo className="mr-2 h-4 w-4" /> All Tasks
                     </Link>
                 </Button>
                  <Button onClick={handleNewProjectClick}>

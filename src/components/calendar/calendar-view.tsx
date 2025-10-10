@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import * as React from "react"
@@ -18,7 +17,7 @@ import { useToast } from "@/hooks/use-toast"
 import { getTasksForUser, updateTask, deleteTask, getProjectById, type Project } from "@/services/project-service"
 import { type Event, type TaskStatus } from "@/types/calendar-types"
 import { Label } from "../ui/label"
-import Link from "next/link"
+import Link from 'next/link'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -230,42 +229,47 @@ export function CalendarView() {
         const slotDurationMinutes = 60 / totalSlots;
         const slotStartMinute = slotIndex * slotDurationMinutes;
         const slotStart = set(date, { hours: hour, minutes: slotStartMinute, seconds: 0, milliseconds: 0 });
-        const slotEnd = addMinutes(slotStart, slotDurationMinutes);
-
-        const eventsInSlot = events.filter(e =>
-            e.start &&
-            isSameDay(e.start, date) &&
-            e.start >= slotStart &&
-            e.start < slotEnd
-        );
         
-        const isEmpty = eventsInSlot.length === 0;
-
+        const eventsInSlot = events
+            .filter(e =>
+                e.start &&
+                isSameDay(e.start, date) &&
+                getHours(e.start) === hour &&
+                getMinutes(e.start) >= slotStartMinute &&
+                getMinutes(e.start) < (slotStartMinute + slotDurationMinutes)
+            )
+            .sort((a, b) => a.start!.getTime() - b.start!.getTime());
+        
         return (
-            <Droppable
-                type={EventItemTypes.EVENT}
-                onDrop={(item) => handleEventDrop(item as Event, slotStart)}
-                className="h-8 flex items-center px-1 relative group bg-card rounded-md border-b border-black"
-            >
-                {isEmpty ? (
-                    <button
-                        className="absolute inset-0 flex items-center opacity-0 group-hover:opacity-100 transition-opacity pl-2 w-full text-left"
-                        onClick={() => handleAddNewEvent(slotStart)}
-                    >
-                        <Plus className="h-4 w-4 text-muted-foreground" />
-                    </button>
-                ) : (
-                    eventsInSlot.map(event => (
-                        <CalendarEvent
-                            key={event.id}
-                            event={event}
-                            onEdit={handleEditEvent}
-                            onDelete={() => setEventToDelete(event)}
-                            onToggleComplete={handleToggleComplete}
-                        />
-                    ))
-                )}
-            </Droppable>
+            <div className="m-px border border-black p-1 bg-background flex flex-col space-y-1 min-h-[34px]">
+                <Droppable
+                    type={EventItemTypes.EVENT}
+                    onDrop={(item) => handleEventDrop(item as Event, slotStart)}
+                    className="w-full relative group flex-1"
+                >
+                    {eventsInSlot.length > 0 ? (
+                        eventsInSlot.map(event => (
+                            <CalendarEvent
+                                key={event.id}
+                                event={event}
+                                onEdit={handleEditEvent}
+                                onDelete={() => setEventToDelete(event)}
+                                onToggleComplete={handleToggleComplete}
+                            />
+                        ))
+                    ) : (
+                        <>
+                            <div className="w-full h-full relative" />
+                            <button
+                                className="absolute inset-0 flex items-center opacity-0 group-hover:opacity-100 transition-opacity pl-2 w-full text-left"
+                                onClick={() => handleAddNewEvent(slotStart)}
+                            >
+                                <Plus className="h-4 w-4 text-muted-foreground" />
+                            </button>
+                        </>
+                    )}
+                </Droppable>
+            </div>
         );
     };
     
@@ -275,7 +279,7 @@ export function CalendarView() {
 
     return (
         <>
-            <div className="p-4 sm:p-6 flex flex-col h-full">
+            <div className="p-4 sm:p-6 flex flex-col h-full bg-background">
                 <header className="relative text-center mb-6 print:hidden">
                     <h1 className="text-3xl font-bold font-headline text-primary">
                     Calendar
@@ -293,7 +297,7 @@ export function CalendarView() {
                     </div>
                 </header>
                  <div className="flex-1 min-h-0 flex flex-col">
-                    <div className="flex items-center justify-between flex-wrap gap-4 pb-4 border-b">
+                    <div className="flex items-center justify-between flex-wrap gap-4 pb-4">
                         <div />
                         <div className="flex-1 flex justify-center items-center gap-2">
                             <Popover>
@@ -390,61 +394,50 @@ export function CalendarView() {
                         </div>
                     )}
                     
-                    <div className="grid bg-card" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
+                    <div className="flex w-full justify-between items-center bg-background text-sm font-semibold">
+                        <div className="m-px p-1 w-28 text-center invisible border border-transparent">Time</div>
                         {visibleDates.map((date) => (
-                            <div key={date.toISOString()} className="h-8 flex items-center justify-center border border-black bg-card">
-                                <p className="text-xs font-semibold text-center">{format(date, 'cccc, LLLL do')}</p>
+                            <div key={date.toISOString()} className="flex-1 text-center p-1 m-px border border-black bg-card">
+                                <p>{format(date, 'cccc, LLLL do')}</p>
                             </div>
                         ))}
                     </div>
-                    
-                    <ScrollArea className="flex-1 min-h-0">
-                        <div className="relative">
-                            {visibleHours.map(hour => {
-                                const slots = hourSlots[hour] || 1;
-  
-                                return (
-                                    <div key={hour} className="flex border border-black mb-0.5">
+
+                    <ScrollArea className="flex-1 min-h-0 bg-background">
+                        <div className="flex flex-col">
+                            {visibleHours.map((hour) => (
+                                <div key={hour} className="flex">
+                                    <div className="m-px p-1 border border-black bg-card w-28 flex items-center justify-center">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <div className="w-[6rem] flex-shrink-0 p-1 border-r border-black flex items-center justify-center cursor-pointer mr-1 bg-card">
-                                                    <span className="text-xs text-muted-foreground">{format(new Date(0, 0, 0, hour), 'h a')}</span>
-                                                    <ChevronDown className="h-6 w-6 text-black" />
-                                                </div>
+                                                <Button variant="ghost" className="h-full w-full p-1 text-xs text-muted-foreground group flex items-center justify-center">
+                                                    <span>{format(new Date(0, 0, 0, hour), 'h a')}</span>
+                                                    <ChevronDown className="ml-2 h-4 w-4 text-muted-foreground/50 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                                </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent>
-                                                {Array.from({ length: 12 }, (_, i) => i + 1).map(numSlots => (
+                                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(numSlots => (
                                                     <DropdownMenuItem key={numSlots} onSelect={() => handleSetHourSlots(hour, numSlots)}>
-                                                        {numSlots} slots ({Math.round(60 / numSlots)} min each)
+                                                        {numSlots} slot{numSlots > 1 ? 's' : ''} ({Math.round(60 / numSlots)} min each)
                                                     </DropdownMenuItem>
                                                 ))}
                                             </DropdownMenuContent>
                                         </DropdownMenu>
-  
-                                        <div className="flex-1 grid relative space-y-1" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))`}}>
-                                             {visibleDates.map((date, dateIndex) => {
-                                                
-                                                return (
-                                                    <div key={date.toISOString()} className="relative border-l border-black space-y-1 p-0.5">
-                                                        {Array.from({ length: slots }, (_, i) => (
-                                                            <TimeSlot 
-                                                                key={i}
-                                                                date={date}
-                                                                hour={hour}
-                                                                slotIndex={i}
-                                                                totalSlots={slots}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
                                     </div>
-                                );
-                            })}
+                                    <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
+                                        {visibleDates.map((date) => (
+                                            <div key={date.toISOString()} className="flex flex-col">
+                                                {Array.from({ length: hourSlots[hour] || 1 }, (_, i) => (
+                                                    <TimeSlot key={i} date={date} hour={hour} slotIndex={i} totalSlots={hourSlots[hour] || 1} />
+                                                ))}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </ScrollArea>
-                </div>
+                 </div>
             </div>
   
             <AlertDialog open={!!eventToDelete} onOpenChange={() => setEventToDelete(null)}>

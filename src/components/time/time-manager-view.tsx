@@ -462,16 +462,29 @@ export function TimeManagerView() {
             <div className="p-4 sm:p-6 space-y-6 flex flex-col items-center">
                 <header className="w-full max-w-5xl">
                     <div className="flex justify-between items-center">
-                        <div />
+                        <div className="flex items-center justify-start gap-2">
+                             <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" onClick={handleSave}>
+                                            <Plus className="h-5 w-5 text-muted-foreground" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Save Event</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
                         <div className="text-center">
-                            <h1 className="text-2xl font-bold font-headline text-primary whitespace-nowrap">Task & Event Manager</h1>
+                            <h1 className="text-2xl font-bold font-headline text-primary whitespace-nowrap">Task &amp; Event Manager</h1>
                             <p className="text-muted-foreground whitespace-nowrap">Your ‘Master Mind’ for getting things done.</p>
                         </div>
                         <div className="flex items-center justify-end gap-2">
                              <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                                        <Button asChild variant="ghost" size="icon">
                                             <Link href="/master-mind/instructions">
                                                 <Info className="h-5 w-5 text-muted-foreground" />
                                             </Link>
@@ -482,8 +495,9 @@ export function TimeManagerView() {
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
-                            <Button variant="ghost" onClick={() => router.push('/calendar')}>
-                                Close
+                            <Button variant="ghost" size="icon" onClick={() => router.push('/calendar')}>
+                                <X className="h-5 w-5" />
+                                <span className="sr-only">Close</span>
                             </Button>
                         </div>
                     </div>
@@ -704,5 +718,9 @@ export function TimeManagerView() {
         </>
     );
 }
+
+    
+
+
 
     

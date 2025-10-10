@@ -20,6 +20,7 @@ import {
   Calendar as CalendarIcon,
   Plus,
   Info,
+  ListTodo,
 } from 'lucide-react';
 import { NewTaskDialog } from './NewTaskDialog';
 import { useAuth } from '@/context/auth-context';
@@ -109,7 +110,7 @@ export function ProjectsView() {
   const features = [
     { icon: Briefcase, title: "Project List", description: "A comprehensive list of every project. Use this view to edit project details.", href: "/projects/all", cta: "View Project List" },
     { icon: ListChecks, title: "Status Board", description: "A Kanban-style board to visualize project status and quickly assess your workload.", href: "/project-status", cta: "Go to Status Board" },
-    { icon: ListChecks, title: "Tasks List", description: "View a comprehensive list of every task and event across all projects and your calendar.", href: "/tasks", cta: "Open Tasks List" },
+    { icon: ListTodo, title: "All Tasks", description: "View a comprehensive list of every task and event across all projects and your calendar.", href: "/tasks", cta: "Open Tasks List" },
     { icon: CalendarIcon, title: "Calendar View", description: "See all scheduled project tasks and events in a visual, drag-and-drop calendar.", href: "/calendar", cta: "Open Calendar" },
   ];
 
@@ -136,7 +137,7 @@ export function ProjectsView() {
               </Button>
               <Button asChild variant="outline">
                   <Link href="/tasks">
-                      <Inbox className="mr-2 h-4 w-4" /> Action Items
+                      <Inbox className="mr-2 h-4 w-4" /> All Tasks
                   </Link>
               </Button>
               <Button onClick={handleNewProjectClick}>
