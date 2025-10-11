@@ -6,16 +6,28 @@ import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, MoreVertical, Trash2, Briefcase, ListChecks, LoaderCircle, Calendar, Pencil } from 'lucide-react';
+import { Plus, MoreVertical, Trash2, Briefcase, ListChecks, LoaderCircle, Calendar, Pencil, CheckCircle, Info } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getTodos, addTodo, deleteTodo, updateTodo, type ToDoItem } from '@/services/todo-service';
+import { NewTaskDialog } from '../tasks/NewTaskDialog';
+import { type Project, type Event as TaskEvent } from '@/types/calendar-types';
+import { addProject } from '@/services/project-service';
+import { cn } from '@/lib/utils';
 
 export function ToDoListView() {
   const [todos, setTodos] = useState<ToDoItem[]>([]);
@@ -23,6 +35,11 @@ export function ToDoListView() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
+  
+  const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
+  const [initialDialogData, setInitialDialogData] = useState({});
+  const [isInfoDialogOpen, setIsInfoDialogOpen] = useState(false);
+
   const router = useRouter();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -35,7 +52,14 @@ export function ToDoListView() {
     setIsLoading(true);
     try {
       const userTodos = await getTodos(user.uid);
-      setTodos(userTodos);
+      // Sort to-dos: incomplete first, then by creation date.
+      const sortedTodos = userTodos.sort((a, b) => {
+        if (a.completed === b.completed) {
+          return b.createdAt.getTime() - a.createdAt.getTime(); // Newest first within the same group
+        }
+        return a.completed ? 1 : -1; // Incomplete items first
+      });
+      setTodos(sortedTodos);
     } catch (error) {
       console.error("Failed to load to-dos:", error);
       toast({
@@ -60,8 +84,15 @@ export function ToDoListView() {
         text: newTodo.trim(),
         userId: user.uid,
         createdAt: new Date(),
+        completed: false,
       });
-      setTodos(prev => [savedTodo, ...prev]);
+      // Adding new to-do at the top of the list
+      setTodos(prev => [savedTodo, ...prev].sort((a, b) => {
+        if (a.completed === b.completed) {
+          return b.createdAt.getTime() - a.createdAt.getTime();
+        }
+        return a.completed ? 1 : -1;
+      }));
       setNewTodo('');
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not save new to-do item.' });
@@ -89,17 +120,19 @@ export function ToDoListView() {
       setEditingId(null);
       return;
     }
-    const originalText = todos.find(t => t.id === editingId)?.text;
-    if (originalText === editingText) {
+    const todoToUpdate = todos.find(t => t.id === editingId);
+    if (!todoToUpdate || todoToUpdate.text === editingText.trim()) {
       setEditingId(null);
       return;
     }
 
-    setTodos(prev => prev.map(t => t.id === editingId ? { ...t, text: editingText } : t));
+    const updatedTodo = { ...todoToUpdate, text: editingText.trim() };
+    setTodos(prev => prev.map(t => t.id === editingId ? updatedTodo : t));
+    
     try {
-      await updateTodo(editingId, editingText);
+      await updateTodo(editingId, { text: editingText.trim() });
     } catch (error) {
-      setTodos(prev => prev.map(t => t.id === editingId ? { ...t, text: originalText! } : t));
+      setTodos(prev => prev.map(t => t.id === editingId ? todoToUpdate : t));
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update item.' });
     } finally {
       setEditingId(null);
@@ -111,85 +144,172 @@ export function ToDoListView() {
   };
 
   const handleMakeProject = (todo: ToDoItem) => {
-    sessionStorage.setItem('ogeemo-idea-to-project', JSON.stringify({ title: todo.text }));
-    router.push('/projects');
+    setInitialDialogData({ name: todo.text });
+    setIsNewProjectDialogOpen(true);
+  };
+  
+  const handleProjectCreated = async (projectData: Omit<Project, 'id' | 'createdAt' | 'userId'>, tasks: Omit<TaskEvent, 'id' | 'userId' | 'projectId'>[]) => {
+    if (!user) return;
+    try {
+        const newProject = await addProject({ ...projectData, status: 'planning', userId: user.uid, createdAt: new Date() });
+        toast({ title: "Project Created", description: `"${newProject.name}" has been successfully created.` });
+        router.push(`/projects/${newProject.id}/tasks`);
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Failed to create project", description: error.message });
+    }
+  };
+  
+  const handleToggleComplete = async (todo: ToDoItem) => {
+    const updatedTodo = { ...todo, completed: !todo.completed };
+    
+    // Optimistic update with sorting
+    setTodos(prev => {
+        const otherTodos = prev.filter(t => t.id !== todo.id);
+        const newTodos = [...otherTodos, updatedTodo];
+        return newTodos.sort((a, b) => {
+            if (a.completed === b.completed) {
+                return b.createdAt.getTime() - a.createdAt.getTime();
+            }
+            return a.completed ? 1 : -1;
+        });
+    });
+    
+    try {
+      await updateTodo(todo.id, { completed: updatedTodo.completed });
+    } catch (error) {
+      setTodos(prev => prev.map(t => t.id === todo.id ? todo : t));
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not update completion status.' });
+    }
   };
 
   return (
-    <div className="p-4 sm:p-6 flex flex-col items-center h-full">
-      <header className="text-center mb-6">
-        <h1 className="text-3xl font-bold font-headline text-primary">A To Do List</h1>
-        <p className="text-muted-foreground">A simple place to quickly capture tasks and ideas.</p>
-      </header>
+    <>
+      <div className="p-4 sm:p-6 flex flex-col items-center h-full">
+        <header className="text-center mb-6">
+            <div className="flex items-center justify-center gap-2">
+                <h1 className="text-3xl font-bold font-headline text-primary">A To Do List</h1>
+                <Button variant="ghost" size="icon" onClick={() => setIsInfoDialogOpen(true)}>
+                    <Info className="h-5 w-5 text-muted-foreground" />
+                </Button>
+            </div>
+          <p className="text-muted-foreground"> A simple place to quickly make a note of things to do. To change a thought to reality, use the 3 dot menu to schedule the event to your calendar.</p>
+        </header>
 
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle>My To-Dos</CardTitle>
-          <div className="flex w-full items-center space-x-2 pt-2">
-            <Input
-              type="text"
-              placeholder="e.g., Follow up with Jane Doe..."
-              value={newTodo}
-              onChange={(e) => setNewTodo(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleAddTodo(); }}
-            />
-            <Button onClick={handleAddTodo}>
-              <Plus className="mr-2 h-4 w-4" /> Add
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {isLoading ? (
-                <div className="flex items-center justify-center p-8">
-                    <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+        <Card className="w-full max-w-2xl">
+          <CardHeader>
+            <CardTitle>My To-Dos</CardTitle>
+            <div className="flex w-full items-center space-x-2 pt-2">
+              <Input
+                type="text"
+                placeholder="e.g., Follow up with Jane Doe..."
+                value={newTodo}
+                onChange={(e) => setNewTodo(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddTodo(); }}
+              />
+              <Button onClick={handleAddTodo}>
+                <Plus className="mr-2 h-4 w-4" /> Add
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {isLoading ? (
+                  <div className="flex items-center justify-center p-8">
+                      <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+              ) : todos.length > 0 ? (
+                todos.map(todo => (
+                  <div key={todo.id} className="flex items-center gap-2 p-2 rounded-md border bg-muted/50">
+                    {editingId === todo.id ? (
+                        <Input
+                            autoFocus
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            onBlur={handleUpdateTodo}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateTodo(); if (e.key === 'Escape') setEditingId(null); }}
+                            className="flex-1"
+                        />
+                    ) : (
+                        <p className={cn("flex-1", todo.completed && "line-through text-muted-foreground")}>{todo.text}</p>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => handleToggleComplete(todo)}>
+                          <CheckCircle className="mr-2 h-4 w-4" /> {todo.completed ? "Mark as Not Done" : "Mark as Done"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleStartEdit(todo)}>
+                          <Pencil className="mr-2 h-4 w-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleMakeTask(todo)}>
+                          <Calendar className="mr-2 h-4 w-4" /> Schedule to calendar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleMakeProject(todo)}>
+                          <Briefcase className="mr-2 h-4 w-4" /> Make a Project
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleDeleteTodo(todo.id)} className="text-destructive">
+                          <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
+                  <p>Your to-do list is empty. Add a new item above to get started!</p>
                 </div>
-            ) : todos.length > 0 ? (
-              todos.map(todo => (
-                <div key={todo.id} className="flex items-center gap-2 p-2 rounded-md border bg-muted/50">
-                  {editingId === todo.id ? (
-                      <Input
-                          autoFocus
-                          value={editingText}
-                          onChange={(e) => setEditingText(e.target.value)}
-                          onBlur={handleUpdateTodo}
-                          onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateTodo(); if (e.key === 'Escape') setEditingId(null); }}
-                          className="flex-1"
-                      />
-                  ) : (
-                      <p className="flex-1">{todo.text}</p>
-                  )}
-                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => handleStartEdit(todo)}>
-                        <Pencil className="mr-2 h-4 w-4" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => handleMakeTask(todo)}>
-                        <Calendar className="mr-2 h-4 w-4" /> Schedule to calendar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => handleMakeProject(todo)}>
-                        <Briefcase className="mr-2 h-4 w-4" /> Make a Project
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => handleDeleteTodo(todo.id)} className="text-destructive">
-                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      <NewTaskDialog
+        isOpen={isNewProjectDialogOpen}
+        onOpenChange={setIsNewProjectDialogOpen}
+        onProjectCreate={handleProjectCreated}
+        contacts={[]}
+        onContactsChange={() => {}}
+        projectToEdit={null}
+        initialData={initialDialogData}
+      />
+      
+      <Dialog open={isInfoDialogOpen} onOpenChange={setIsInfoDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>About the To-Do List</DialogTitle>
+                <DialogDescription>
+                    A quick guide to using this simple but powerful tool.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4 text-sm">
+                <div>
+                    <h4 className="font-semibold mb-2">Capture Everything</h4>
+                    <p className="text-muted-foreground">
+                        The to-do list is your quick-capture inbox. Use it to jot down any task or idea that comes to mind without breaking your workflow. Don't worry about details yet—just get it out of your head and onto the list.
+                    </p>
                 </div>
-              ))
-            ) : (
-              <div className="text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
-                <p>Your to-do list is empty. Add a new item above to get started!</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+                <div>
+                    <h4 className="font-semibold mb-2">From Thought to Action</h4>
+                    <p className="text-muted-foreground">
+                        A simple list is good, but a plan is better. Use the 3-dot menu (`...`) next to any item to take action.
+                    </p>
+                </div>
+                <div>
+                    <h4 className="font-semibold mb-2">Schedule to Calendar</h4>
+                    <p className="text-muted-foreground">
+                        The most powerful feature is "Schedule to calendar". This sends your to-do item directly to the Task & Event Manager, where you can assign it a specific date and time. Once scheduled, it will appear on your calendar, allowing you to visually drag and drop it to plan your time effectively. This is the key to turning a simple thought into a concrete part of your schedule.
+                    </p>
+                </div>
+            </div>
+            <DialogFooter>
+                <Button onClick={() => setIsInfoDialogOpen(false)}>Close</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

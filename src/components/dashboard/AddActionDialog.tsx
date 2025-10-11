@@ -36,6 +36,7 @@ import { useAuth } from '@/context/auth-context';
 import { addActionChip, updateActionChip } from '@/services/project-service';
 import { allMenuItems } from '@/lib/menu-items';
 import type { ActionChipData } from '@/types/calendar';
+import { Wand2 } from 'lucide-react';
 
 const addActionSchema = z.discriminatedUnion("linkType", [
   z.object({
@@ -80,14 +81,8 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
   const linkType = form.watch("linkType");
 
   const availableMenuItems = useMemo(() => {
-    const existingHrefs = new Set(existingChips.map(c => typeof c.href === 'string' ? c.href : c.href.pathname));
-    // If we are editing a chip, allow its own href to be in the list
-    if (chipToEdit) {
-      const editHref = typeof chipToEdit.href === 'string' ? chipToEdit.href : chipToEdit.href.pathname;
-      existingHrefs.delete(editHref);
-    }
-    return allMenuItems.filter(item => !existingHrefs.has(item.href));
-  }, [existingChips, chipToEdit]);
+    return allMenuItems.sort((a, b) => a.label.localeCompare(b.label));
+  }, []);
 
   useEffect(() => {
     if (isOpen) {

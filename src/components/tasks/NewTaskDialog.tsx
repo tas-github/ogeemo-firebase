@@ -399,7 +399,7 @@ export function NewTaskDialog({
                     </Button>
                     <div className="flex-1" />
                     <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button type="submit">{projectToEdit ? 'Save Changes' : 'Create Project'}</Button>
+                    <Button type="submit">{projectToEdit ? 'Save Changes' : 'Save Project'}</Button>
                 </DialogFooter>
             </form>
           </Form>

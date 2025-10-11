@@ -20,6 +20,7 @@ export interface ToDoItem {
   text: string;
   userId: string;
   createdAt: Date;
+  completed: boolean;
 }
 
 const TODOS_COLLECTION = 'todos';
@@ -36,6 +37,7 @@ const docToTodo = (doc: any): ToDoItem => {
         text: data.text,
         userId: data.userId,
         createdAt: (data.createdAt as Timestamp)?.toDate() || new Date(),
+        completed: data.completed || false,
     } as ToDoItem;
 };
 
@@ -53,14 +55,14 @@ export async function getTodos(userId: string): Promise<ToDoItem[]> {
 
 export async function addTodo(todoData: Omit<ToDoItem, 'id'>): Promise<ToDoItem> {
     const db = await getDb();
-    const docRef = await addDoc(collection(db, TODOS_COLLECTION), todoData);
-    return { id: docRef.id, ...todoData };
+    const docRef = await addDoc(collection(db, TODOS_COLLECTION), { ...todoData, completed: false });
+    return { id: docRef.id, ...todoData, completed: false };
 }
 
-export async function updateTodo(todoId: string, newText: string): Promise<void> {
+export async function updateTodo(todoId: string, dataToUpdate: Partial<Omit<ToDoItem, 'id' | 'userId' | 'createdAt'>>): Promise<void> {
     const db = await getDb();
     const todoRef = doc(db, TODOS_COLLECTION, todoId);
-    await updateDoc(todoRef, { text: newText });
+    await updateDoc(todoRef, dataToUpdate);
 }
 
 export async function deleteTodo(todoId: string): Promise<void> {

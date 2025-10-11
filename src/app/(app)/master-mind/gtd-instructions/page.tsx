@@ -18,9 +18,9 @@ export default function GtdInstructionsPage() {
             <header className="grid grid-cols-3 items-center">
                 <div className="flex justify-start">
                     <Button asChild variant="outline">
-                        <Link href="/master-mind">
+                        <Link href="/action-manager">
                             <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Master Mind
+                            Action Manager
                         </Link>
                     </Button>
                 </div>
