@@ -1,12 +1,13 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, MoreVertical, Trash2, Briefcase, ListChecks, LoaderCircle, Calendar, Pencil, CheckCircle, Info } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,11 +24,22 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getTodos, addTodo, deleteTodo, updateTodo, type ToDoItem } from '@/services/todo-service';
+import { getTodos, addTodo, deleteTodo, updateTodo, deleteTodos, updateTodosStatus, type ToDoItem } from '@/services/todo-service';
 import { NewTaskDialog } from '../tasks/NewTaskDialog';
 import { type Project, type Event as TaskEvent } from '@/types/calendar-types';
 import { addProject } from '@/services/project-service';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Label } from '@/components/ui/label';
 
 export function ToDoListView() {
   const [todos, setTodos] = useState<ToDoItem[]>([]);
@@ -35,10 +47,12 @@ export function ToDoListView() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
   const [initialDialogData, setInitialDialogData] = useState({});
   const [isInfoDialogOpen, setIsInfoDialogOpen] = useState(false);
+  const [todoToDelete, setTodoToDelete] = useState<ToDoItem | null>(null);
 
   const router = useRouter();
   const { user } = useAuth();
@@ -52,14 +66,7 @@ export function ToDoListView() {
     setIsLoading(true);
     try {
       const userTodos = await getTodos(user.uid);
-      // Sort to-dos: incomplete first, then by creation date.
-      const sortedTodos = userTodos.sort((a, b) => {
-        if (a.completed === b.completed) {
-          return b.createdAt.getTime() - a.createdAt.getTime(); // Newest first within the same group
-        }
-        return a.completed ? 1 : -1; // Incomplete items first
-      });
-      setTodos(sortedTodos);
+      setTodos(userTodos);
     } catch (error) {
       console.error("Failed to load to-dos:", error);
       toast({
@@ -75,6 +82,15 @@ export function ToDoListView() {
   useEffect(() => {
     loadTodos();
   }, [loadTodos]);
+  
+  const sortedTodos = useMemo(() => {
+    return [...todos].sort((a, b) => {
+        if (a.completed === b.completed) {
+          return b.createdAt.getTime() - a.createdAt.getTime();
+        }
+        return a.completed ? 1 : -1;
+      });
+  }, [todos]);
 
   const handleAddTodo = async () => {
     if (!newTodo.trim() || !user) return;
@@ -86,24 +102,18 @@ export function ToDoListView() {
         createdAt: new Date(),
         completed: false,
       });
-      // Adding new to-do at the top of the list
-      setTodos(prev => [savedTodo, ...prev].sort((a, b) => {
-        if (a.completed === b.completed) {
-          return b.createdAt.getTime() - a.createdAt.getTime();
-        }
-        return a.completed ? 1 : -1;
-      }));
+      setTodos(prev => [savedTodo, ...prev]);
       setNewTodo('');
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not save new to-do item.' });
     }
   };
 
-  const handleDeleteTodo = async (id: string) => {
+  const handleDeleteTodo = async (todo: ToDoItem) => {
     const originalTodos = [...todos];
-    setTodos(todos.filter(todo => todo.id !== id));
+    setTodos(todos.filter(t => t.id !== todo.id));
     try {
-      await deleteTodo(id);
+      await deleteTodo(todo.id);
     } catch (error) {
       setTodos(originalTodos);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the to-do item.' });
@@ -161,19 +171,7 @@ export function ToDoListView() {
   
   const handleToggleComplete = async (todo: ToDoItem) => {
     const updatedTodo = { ...todo, completed: !todo.completed };
-    
-    // Optimistic update with sorting
-    setTodos(prev => {
-        const otherTodos = prev.filter(t => t.id !== todo.id);
-        const newTodos = [...otherTodos, updatedTodo];
-        return newTodos.sort((a, b) => {
-            if (a.completed === b.completed) {
-                return b.createdAt.getTime() - a.createdAt.getTime();
-            }
-            return a.completed ? 1 : -1;
-        });
-    });
-    
+    setTodos(prev => prev.map(t => t.id === todo.id ? updatedTodo : t));
     try {
       await updateTodo(todo.id, { completed: updatedTodo.completed });
     } catch (error) {
@@ -181,6 +179,51 @@ export function ToDoListView() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update completion status.' });
     }
   };
+  
+  const handleConfirmDelete = async () => {
+    if (!todoToDelete) return;
+    handleDeleteTodo(todoToDelete);
+    setTodoToDelete(null);
+  };
+  
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+  
+  const handleSelectAll = (checked: boolean | 'indeterminate') => {
+    setSelectedIds(checked ? todos.map(t => t.id) : []);
+  };
+  
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    const originalTodos = [...todos];
+    setTodos(prev => prev.filter(t => !selectedIds.includes(t.id)));
+    try {
+      await deleteTodos(selectedIds);
+      toast({ title: `${selectedIds.length} item(s) deleted.` });
+      setSelectedIds([]);
+    } catch (error) {
+      setTodos(originalTodos);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not delete selected items.' });
+    }
+  };
+  
+  const handleMarkSelectedDone = async () => {
+    if (selectedIds.length === 0) return;
+    setTodos(prev => prev.map(t => selectedIds.includes(t.id) ? { ...t, completed: true } : t));
+    try {
+      await updateTodosStatus(selectedIds, true);
+      setSelectedIds([]);
+    } catch (error) {
+      loadTodos();
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not update items.' });
+    }
+  };
+  
+  const allSelected = todos.length > 0 && selectedIds.length === todos.length;
+  const someSelected = selectedIds.length > 0 && selectedIds.length < todos.length;
 
   return (
     <>
@@ -210,6 +253,24 @@ export function ToDoListView() {
                 <Plus className="mr-2 h-4 w-4" /> Add
               </Button>
             </div>
+            
+            <div className="flex items-center justify-between pt-4">
+                <div className="flex items-center gap-2">
+                    <Checkbox
+                        id="select-all"
+                        checked={allSelected ? true : (someSelected ? 'indeterminate' : false)}
+                        onCheckedChange={handleSelectAll}
+                    />
+                    <Label htmlFor="select-all" className="text-sm font-medium">Select All</Label>
+                </div>
+                {selectedIds.length > 0 && (
+                    <div className="flex items-center gap-2">
+                         <Button variant="outline" size="sm" onClick={handleMarkSelectedDone}>Mark as Done</Button>
+                         <Button variant="destructive" size="sm" onClick={handleDeleteSelected}>Delete Selected</Button>
+                    </div>
+                )}
+            </div>
+
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -217,9 +278,13 @@ export function ToDoListView() {
                   <div className="flex items-center justify-center p-8">
                       <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
                   </div>
-              ) : todos.length > 0 ? (
-                todos.map(todo => (
+              ) : sortedTodos.length > 0 ? (
+                sortedTodos.map(todo => (
                   <div key={todo.id} className="flex items-center gap-2 p-2 rounded-md border bg-muted/50">
+                    <Checkbox
+                        checked={selectedIds.includes(todo.id)}
+                        onCheckedChange={() => handleToggleSelect(todo.id)}
+                    />
                     {editingId === todo.id ? (
                         <Input
                             autoFocus
@@ -232,7 +297,7 @@ export function ToDoListView() {
                     ) : (
                         <p className={cn("flex-1", todo.completed && "line-through text-muted-foreground")}>{todo.text}</p>
                     )}
-                    <DropdownMenu>
+                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                           <MoreVertical className="h-4 w-4" />
@@ -251,7 +316,7 @@ export function ToDoListView() {
                         <DropdownMenuItem onSelect={() => handleMakeProject(todo)}>
                           <Briefcase className="mr-2 h-4 w-4" /> Make a Project
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleDeleteTodo(todo.id)} className="text-destructive">
+                        <DropdownMenuItem onSelect={() => setTodoToDelete(todo)} className="text-destructive">
                           <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -310,6 +375,20 @@ export function ToDoListView() {
             </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={!!todoToDelete} onOpenChange={() => setTodoToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will permanently delete the to-do item: "{todoToDelete?.text}".
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

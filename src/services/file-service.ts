@@ -183,30 +183,27 @@ export async function getFileById(fileId: string): Promise<FileItem | null> {
     return fileSnap.exists() ? docToFile(fileSnap) : null;
 }
 
-export async function addTextFile(userId: string, folderId: string, fileName: string): Promise<FileItem> {
+export async function addTextFile(userId: string, folderId: string, fileName: string, content: string = ''): Promise<FileItem> {
     if (!userId) throw new Error("User not authenticated.");
-    
+    const storage = await getAppStorage();
+
+    const storagePath = `userFiles/${userId}/${folderId}/${Date.now()}-${fileName}.txt`;
+    const fileRef = storageRef(storage, storagePath);
+    const fileBlob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    await uploadBytes(fileRef, fileBlob);
+
     const newFileRecordData: Omit<FileItem, 'id'> = {
         name: fileName,
-        type: 'google-drive-link',
-        size: 0,
+        type: 'text/plain',
+        size: fileBlob.size,
         modifiedAt: new Date(),
         folderId,
         userId,
-        storagePath: '', // This can be updated later with the actual Drive link.
-        driveLink: '', // Initialize empty driveLink
+        storagePath: storagePath,
     };
 
     return addFileRecord(newFileRecordData);
 }
-
-export async function updateTextFileContentByPath(storagePath: string, content: string): Promise<void> {
-    const storage = await getAppStorage();
-    const fileRef = storageRef(storage, storagePath);
-    const fileBlob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    await uploadBytes(fileRef, fileBlob);
-}
-
 
 export async function getFilesForFolder(userId: string, folderId: string): Promise<FileItem[]> {
   const db = await getDb();
@@ -407,5 +404,3 @@ export async function deleteFiles(fileIds: string[]): Promise<void> {
     
     await batch.commit();
 }
-
-    
