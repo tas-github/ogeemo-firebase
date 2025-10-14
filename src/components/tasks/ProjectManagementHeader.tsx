@@ -61,11 +61,6 @@ export function ProjectManagementHeader({}: ProjectManagementHeaderProps) {
                         <ListChecks className="mr-2 h-4 w-4" /> Status Board
                     </Link>
                 </Button>
-                <Button asChild variant="outline">
-                    <Link href="/tasks">
-                        <ListTodo className="mr-2 h-4 w-4" /> All Tasks
-                    </Link>
-                </Button>
                  <Button onClick={handleNewProjectClick}>
                     <Plus className="mr-2 h-4 w-4" /> New Project
                 </Button>

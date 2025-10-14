@@ -31,6 +31,7 @@ export interface UserProfile {
         showDictationButton?: boolean;
         showDashboardFrame?: boolean;
         showMenuViewInstructions?: boolean;
+        showActionManagerAboutPanel?: boolean; // Added this line
         defaultSidebarView?: SidebarViewType;
         menuOrder?: string[];
         googleAppsOrder?: string[];
@@ -53,6 +54,7 @@ const defaultPreferences: UserProfile['preferences'] = {
     showDictationButton: true,
     showDashboardFrame: true,
     showMenuViewInstructions: true,
+    showActionManagerAboutPanel: true,
     defaultSidebarView: 'grouped',
     menuOrder: [],
     googleAppsOrder: [],
@@ -139,3 +141,5 @@ export async function updateUserProfile(
         await setDoc(docRef, dataWithTimestamp);
     }
 }
+
+    

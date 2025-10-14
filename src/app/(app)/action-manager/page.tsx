@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { LoaderCircle, Settings, Plus, PlayCircle, BookOpen, Lightbulb } from 'lucide-react';
+import { LoaderCircle, Settings, Plus, PlayCircle, BookOpen, Lightbulb, Info, X } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getActionChips, type ActionChipData } from '@/services/project-service';
@@ -16,12 +16,35 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useUserPreferences } from '@/hooks/use-user-preferences';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export default function ActionManagerDashboardPage() {
   const [chips, setChips] = useState<ActionChipData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { preferences, updatePreferences } = useUserPreferences();
+  const [isAboutPanelVisible, setIsAboutPanelVisible] = useState(false);
+
+  useEffect(() => {
+    // Only set the initial visibility from preferences once they are loaded
+    if (preferences) {
+      setIsAboutPanelVisible(preferences.showActionManagerAboutPanel ?? true);
+    }
+  }, [preferences]);
+
+  const handleDismissAboutPanel = () => {
+    setIsAboutPanelVisible(false);
+    updatePreferences({ showActionManagerAboutPanel: false });
+  };
+  
+  const toggleAboutPanel = () => {
+      const newVisibility = !isAboutPanelVisible;
+      setIsAboutPanelVisible(newVisibility);
+      updatePreferences({ showActionManagerAboutPanel: newVisibility });
+  };
 
   const loadChips = useCallback(async () => {
     if (user) {
@@ -66,21 +89,60 @@ export default function ActionManagerDashboardPage() {
           </p>
         </header>
 
+        <AnimatePresence>
+            {isAboutPanelVisible && (
+                 <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="w-full max-w-4xl mb-6 overflow-hidden"
+                >
+                    <Alert>
+                        <Info className="h-4 w-4" />
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <AlertTitle>About the Action Manager</AlertTitle>
+                                <AlertDescription>
+                                This is your personalized dashboard. Add, remove, and reorder 'Action Chips' to create one-click shortcuts to the Ogeemo managers and tools you use most often.
+                                </AlertDescription>
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 -mr-2 -mt-2" onClick={handleDismissAboutPanel}>
+                                <X className="h-4 w-4" />
+                                <span className="sr-only">Dismiss</span>
+                            </Button>
+                        </div>
+                    </Alert>
+                </motion.div>
+            )}
+        </AnimatePresence>
+
         <Card className="w-full max-w-4xl">
             <CardHeader className="flex-row items-center justify-center p-4">
                 <div className="flex items-center gap-2">
                     <TooltipProvider delayDuration={0}>
-                      <Tooltip>
+                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button asChild className="h-9 bg-black text-primary-foreground hover:bg-black/90">
-                              <Link href="/master-mind">
-                                  <PlayCircle className="mr-2 h-4 w-4" />
-                                  Start
-                              </Link>
-                          </Button>
+                           <Button asChild className="h-9">
+                                <Link href="/master-mind/gtd-instructions">
+                                    <BookOpen className="mr-2 h-4 w-4" />
+                                    TOM
+                                </Link>
+                            </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Start every day with planning</p>
+                            <p>The Ogeemo Method of managing your day</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button onClick={toggleAboutPanel} className="h-9">
+                                <Info className="mr-2 h-4 w-4" />
+                                About
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>About the Action Manager</p>
                         </TooltipContent>
                       </Tooltip>
                       <Tooltip>
@@ -94,19 +156,6 @@ export default function ActionManagerDashboardPage() {
                         </TooltipTrigger>
                         <TooltipContent>
                           <p>Manage your actions with action chips.</p>
-                        </TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button asChild className="h-9">
-                                <Link href="/master-mind/gtd-instructions">
-                                    <BookOpen className="mr-2 h-4 w-4" />
-                                    TOM
-                                </Link>
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>The Ogeemo Method of managing your day</p>
                         </TooltipContent>
                       </Tooltip>
                       <Tooltip>
@@ -152,3 +201,5 @@ export default function ActionManagerDashboardPage() {
     </div>
   );
 }
+
+    

@@ -4,8 +4,8 @@
 import dynamic from 'next/dynamic';
 import { LoaderCircle } from 'lucide-react';
 
-const AllTasksView = dynamic(
-  () => import('@/components/tasks/all-projects-view').then((mod) => mod.AllProjectsView),
+const AllProjectTasksView = dynamic(
+  () => import('@/components/tasks/all-project-tasks-view').then((mod) => mod.AllProjectTasksView),
   {
     ssr: false,
     loading: () => (
@@ -20,5 +20,5 @@ const AllTasksView = dynamic(
 );
 
 export default function AllTasksPage() {
-  return <AllTasksView />;
+  return <AllProjectTasksView />;
 }

@@ -288,11 +288,9 @@ export function CalendarView() {
                     Manage your schedule, events and appointments.
                     </p>
                     <div className="absolute top-0 right-0">
-                        <Button asChild variant="ghost" size="icon">
-                            <Link href="/action-manager">
-                                <X className="h-5 w-5" />
-                                <span className="sr-only">Close and go to Action Manager</span>
-                            </Link>
+                        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                            <X className="h-5 w-5" />
+                            <span className="sr-only">Close</span>
                         </Button>
                     </div>
                 </header>

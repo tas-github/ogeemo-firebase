@@ -1,7 +1,8 @@
+
 // @/lib/google-apps.ts
 import {
     Calendar,
-    MessageCircle, // Using MessageCircle for Chat
+    MessageSquare, // Using MessageSquare for Chat
     Users,
     FileText,
     Pencil,
@@ -29,7 +30,7 @@ export interface GoogleApp {
 // Using Lucide icons for consistency
 export const allApps: GoogleApp[] = [
     { name: "Calendar", href: "https://calendar.google.com/", icon: Calendar },
-    { name: "Chat", href: "https://chat.google.com/", icon: MessageCircle },
+    { name: "Chat", href: "https://chat.google.com/", icon: MessageSquare },
     { name: "Contacts", href: "https://contacts.google.com/", icon: Users },
     { name: "Docs", href: "https://docs.google.com/", icon: FileText },
     { name: "Drawings", href: "https://docs.google.com/drawings/", icon: Pencil },
@@ -39,6 +40,7 @@ export const allApps: GoogleApp[] = [
     { name: "Keep", href: "https://keep.google.com/", icon: Lightbulb },
     { name: "Maps", href: "https://maps.google.com/", icon: Map },
     { name: "Meet", href: "https://meet.google.com/", icon: Video },
+    { name: "Text Messages", href: "https://messages.google.com/web/", icon: MessageSquare },
     { name: "Notebook LM", href: "https://notebooklm.google.com/", icon: BookOpen },
     { name: "Photos", href: "https://photos.google.com/", icon: Camera },
     { name: "Sheets", href: "https://sheets.google.com/", icon: Sheet },

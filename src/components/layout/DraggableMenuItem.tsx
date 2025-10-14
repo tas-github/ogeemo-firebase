@@ -61,6 +61,15 @@ const DraggableMenuItemComponent = React.forwardRef<HTMLDivElement, DraggableMen
 
   drag(drop(ref));
 
+  const isExternal = item.href.startsWith('http');
+
+  const buttonContent = (
+    <>
+      <Icon className="h-4 w-4" />
+      <span>{item.label}</span>
+    </>
+  );
+
   return (
     <div
       ref={isDraggable ? preview : null}
@@ -68,21 +77,38 @@ const DraggableMenuItemComponent = React.forwardRef<HTMLDivElement, DraggableMen
       className="relative"
     >
       <div ref={ref} className="flex items-center">
-        <Button
-          asChild
-          variant={isActive ? "secondary" : "ghost"}
-          className={cn(
-            "w-full justify-start gap-3",
-            isDraggable ? "pl-8" : "pl-3",
-            isCompact ? "h-9 text-sm" : "h-5 text-sm py-1",
-            "border-b-4 border-black hover:bg-sidebar-accent/90 active:mt-1 active:border-b-2"
-          )}
-        >
-          <Link href={item.href}>
-            <Icon className="h-4 w-4" />
-            <span>{item.label}</span>
-          </Link>
-        </Button>
+        {isExternal ? (
+           <Button
+            asChild
+            variant={isActive ? "secondary" : "ghost"}
+            className={cn(
+                "w-full justify-start gap-3",
+                isDraggable ? "pl-8" : "pl-3",
+                isCompact ? "h-9 text-sm" : "h-5 text-sm py-1",
+                "border-b-4 border-black hover:bg-sidebar-accent/90 active:mt-1 active:border-b-2"
+            )}
+            >
+                <a href={item.href} target="_blank" rel="noopener noreferrer">
+                    {buttonContent}
+                </a>
+            </Button>
+        ) : (
+            <Button
+            asChild
+            variant={isActive ? "secondary" : "ghost"}
+            className={cn(
+                "w-full justify-start gap-3",
+                isDraggable ? "pl-8" : "pl-3",
+                isCompact ? "h-9 text-sm" : "h-5 text-sm py-1",
+                "border-b-4 border-black hover:bg-sidebar-accent/90 active:mt-1 active:border-b-2"
+            )}
+            >
+            <Link href={item.href}>
+                {buttonContent}
+            </Link>
+            </Button>
+        )}
+       
         {isDraggable && (
             <GripVertical
             className="absolute left-2 top-1/2 -translate-y-1/2 h-5 w-5 text-sidebar-foreground/50 cursor-grab"

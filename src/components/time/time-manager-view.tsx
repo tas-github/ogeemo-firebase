@@ -402,7 +402,7 @@ export function TimeManagerView() {
                 setEventToEdit(newEvent);
                 toast({ title: "Event Scheduled", description: `"${eventData.title}" has been saved.` });
             }
-            router.push('/calendar');
+            router.back();
         } catch (error: any) {
              toast({ variant: 'destructive', title: 'Failed to save event', description: error.message });
         }
@@ -495,7 +495,7 @@ export function TimeManagerView() {
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
-                            <Button variant="ghost" size="icon" onClick={() => router.push('/calendar')}>
+                            <Button variant="ghost" size="icon" onClick={() => router.back()}>
                                 <X className="h-5 w-5" />
                                 <span className="sr-only">Close</span>
                             </Button>
@@ -665,7 +665,7 @@ export function TimeManagerView() {
                             </Button>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Button size="lg" onClick={() => router.push('/calendar')} variant="ghost">
+                            <Button size="lg" onClick={() => router.back()} variant="ghost">
                                 Close
                             </Button>
                             <Button size="lg" onClick={handleSave} variant="default">
