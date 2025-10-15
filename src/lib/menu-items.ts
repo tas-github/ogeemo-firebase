@@ -90,6 +90,7 @@ export const allMenuItems: MenuItem[] = [
   { href: "/to-do", label: "A To Do List", icon: ListChecks },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/file-cabinet", label: "File Cabinet", icon: Folder },
+  { href: "/notes-manager", label: "Notes Manager", icon: FileText },
   { href: "/idea-board", label: "Idea Board", icon: Lightbulb },
   { href: "/research", label: "Research", icon: Beaker },
   { href: "/accounting", label: "Accounting", icon: Calculator },

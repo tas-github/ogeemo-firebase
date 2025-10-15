@@ -1,9 +1,13 @@
 
+'use client';
+
 import dynamic from 'next/dynamic';
 import { LoaderCircle } from 'lucide-react';
 
-const ManageFilesView = dynamic(
-  () => import('@/components/files/manage-files-view').then((mod) => mod.ManageFilesView),
+// This component now acts as a wrapper to dynamically load the main files view.
+// This ensures a consistent UI and avoids code duplication.
+const FilesView = dynamic(
+  () => import('@/components/files/files-view').then((mod) => mod.FilesView),
   {
     ssr: false,
     loading: () => (
@@ -18,5 +22,5 @@ const ManageFilesView = dynamic(
 );
 
 export default function ManageFilesPage() {
-  return <ManageFilesView />;
+  return <FilesView />;
 }

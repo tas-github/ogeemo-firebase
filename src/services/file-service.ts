@@ -87,12 +87,11 @@ export async function findOrCreateFileFolder(userId: string, folderName: string,
     }
 }
 
-export async function addFolder(folderData: Omit<FolderItem, 'id' | 'createdAt'>): Promise<FolderItem> {
+export async function addFolder(folderData: Omit<FolderItem, 'id'>): Promise<FolderItem> {
   const db = await getDb();
   const dataToSave = {
     ...folderData,
     parentId: folderData.parentId || null,
-    createdAt: new Date(),
   };
   const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), dataToSave);
   return { id: docRef.id, ...dataToSave };
