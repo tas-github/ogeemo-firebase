@@ -86,9 +86,9 @@ export function GoogleIntegrationView() {
                         </CardDescription>
                          <div className="absolute top-4 right-4">
                             <Button asChild variant="ghost" size="icon">
-                                <Link href="/file-cabinet">
+                                <Link href="/file-manager">
                                     <X className="h-5 w-5" />
-                                    <span className="sr-only">Back to File Cabinet</span>
+                                    <span className="sr-only">Back to File Manager</span>
                                 </Link>
                             </Button>
                         </div>
@@ -116,7 +116,7 @@ export function GoogleIntegrationView() {
                     <CardContent>
                         <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
                             <li>This page provides quick shortcuts to your most-used Google Workspace applications.</li>
-                            <li><strong>Drag &amp; Drop:</strong> Click and hold any app button to drag it to a new position in the list.</li>
+                            <li><strong>Drag & Drop:</strong> Click and hold any app button to drag it to a new position in the list.</li>
                             <li><strong>Sort:</strong> Use the "A-Z" or "Z-A" buttons to automatically sort the list alphabetically.</li>
                             <li><strong>Save Your Order:</strong> Your custom order is not saved automatically. Click the "Save Order" button to make your changes permanent.</li>
                         </ul>

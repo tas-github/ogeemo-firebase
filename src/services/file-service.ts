@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -19,6 +18,7 @@ import {
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { initializeFirebase } from '@/lib/firebase';
 import type { FileItem, FolderItem } from '@/data/files';
+
 
 const FOLDERS_COLLECTION = 'fileFolders';
 const FILES_COLLECTION = 'files';
@@ -104,66 +104,47 @@ export async function updateFolder(folderId: string, folderData: Partial<Omit<Fo
     await updateDoc(folderRef, folderData);
 }
 
-export async function removeFoldersAndContents(userId: string, folderIdsToRemove: string[]): Promise<void> {
+export async function deleteFolders(userId: string, folderIds: string[]): Promise<void> {
     const db = await getDb();
     const storage = await getAppStorage();
     const batch = writeBatch(db);
-
-    // 1. Fetch all folders and files for the user once to build the hierarchy map
     const allFolders = await getFolders(userId);
     const allFiles = await getFiles(userId);
-
-    const foldersToDelete = new Set<string>(folderIdsToRemove);
-    const filesToDelete = new Set<string>();
-
-    // 2. Recursively find all descendant folders
+    
+    const foldersToDelete = new Set<string>(folderIds);
+    
     const findDescendants = (parentId: string) => {
         allFolders
             .filter(f => f.parentId === parentId)
             .forEach(child => {
                 foldersToDelete.add(child.id);
-                findDescendants(child.id); // Recurse
+                findDescendants(child.id);
             });
     };
+    
+    folderIds.forEach(id => findDescendants(id));
 
-    folderIdsToRemove.forEach(id => findDescendants(id));
+    const filesToDelete = allFiles.filter(file => file.folderId && foldersToDelete.has(file.folderId));
 
-    // 3. Find all files within the identified folders
-    allFiles.forEach(file => {
-        if (file.folderId && foldersToDelete.has(file.folderId)) {
-            filesToDelete.add(file.id);
-        }
-    });
-
-    // 4. Batch delete all identified files from Firestore and Storage
-    for (const fileId of filesToDelete) {
-        const fileDoc = allFiles.find(f => f.id === fileId);
-        if (fileDoc) {
-            // Delete from Firestore
-            const fileRef = doc(db, FILES_COLLECTION, fileId);
-            batch.delete(fileRef);
-
-            // Delete from Storage if it's not just a link
-            if (fileDoc.storagePath && !fileDoc.storagePath.startsWith('http')) {
-                const storageFileRef = storageRef(storage, fileDoc.storagePath);
-                // We have to delete from storage immediately, can't be batched with Firestore
-                try {
-                    await deleteObject(storageFileRef);
-                } catch (error) {
-                    // Log error but continue, so Firestore data gets cleaned up.
-                    console.error(`Failed to remove file from storage: ${fileDoc.storagePath}`, error);
+    for (const file of filesToDelete) {
+        if (file.storagePath && file.type !== 'google-drive-link') {
+            try {
+                const storageFileRef = storageRef(storage, file.storagePath);
+                await deleteObject(storageFileRef);
+            } catch (error: any) {
+                if (error.code !== 'storage/object-not-found') {
+                    console.error(`Failed to delete storage object for file ${file.id}:`, error);
                 }
             }
         }
+        batch.delete(doc(db, FILES_COLLECTION, file.id));
     }
 
-    // 5. Batch delete all identified folders from Firestore
-    foldersToDelete.forEach(folderId => {
-        const folderRef = doc(db, FOLDERS_COLLECTION, folderId);
+    foldersToDelete.forEach(id => {
+        const folderRef = doc(db, FOLDERS_COLLECTION, id);
         batch.delete(folderRef);
     });
 
-    // 6. Commit all Firestore deletions at once
     await batch.commit();
 }
 
@@ -180,29 +161,47 @@ export async function getFileById(fileId: string): Promise<FileItem | null> {
     const db = await getDb();
     const fileRef = doc(db, FILES_COLLECTION, fileId);
     const fileSnap = await getDoc(fileRef);
-    return fileSnap.exists() ? docToFile(fileSnap) : null;
+    if (!fileSnap.exists()) return null;
+
+    const fileData = docToFile(fileSnap);
+
+    // If it's a text-based file, fetch its content from Storage
+    if (fileData.type.startsWith('text/') && fileData.storagePath) {
+        try {
+            const storage = await getAppStorage();
+            const contentRef = storageRef(storage, fileData.storagePath);
+            const downloadUrl = await getDownloadURL(contentRef);
+            const response = await fetch(downloadUrl);
+            const content = await response.text();
+            return { ...fileData, content };
+        } catch (error) {
+            console.error(`Failed to fetch content for ${fileData.name}:`, error);
+            // Return file data without content if fetching fails
+            return { ...fileData, content: '' };
+        }
+    }
+
+    return fileData;
 }
 
 export async function addTextFile(userId: string, folderId: string, fileName: string, content: string = ''): Promise<FileItem> {
-    if (!userId) throw new Error("User not authenticated.");
     const storage = await getAppStorage();
-
+    const fileBlob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const storagePath = `userFiles/${userId}/${folderId}/${Date.now()}-${fileName}.txt`;
     const fileRef = storageRef(storage, storagePath);
-    const fileBlob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     await uploadBytes(fileRef, fileBlob);
 
-    const newFileRecordData: Omit<FileItem, 'id'> = {
+    const newFileRecord: Omit<FileItem, 'id'> = {
         name: fileName,
         type: 'text/plain',
         size: fileBlob.size,
         modifiedAt: new Date(),
         folderId,
         userId,
-        storagePath: storagePath,
+        storagePath,
     };
 
-    return addFileRecord(newFileRecordData);
+    return addFileRecord(newFileRecord);
 }
 
 export async function getFilesForFolder(userId: string, folderId: string): Promise<FileItem[]> {
@@ -216,21 +215,6 @@ export async function addFileRecord(fileData: Omit<FileItem, 'id'>): Promise<Fil
     const db = await getDb();
     const docRef = await addDoc(collection(db, FILES_COLLECTION), fileData);
     return { id: docRef.id, ...fileData };
-}
-
-export async function addDriveLinkFile(linkData: { userId: string, folderId: string, name: string, driveLink: string }): Promise<FileItem> {
-    const db = await getDb();
-    const newFileRecord: Omit<FileItem, 'id'> = {
-        name: linkData.name,
-        type: 'google-drive-link',
-        size: 0,
-        modifiedAt: new Date(),
-        folderId: linkData.folderId,
-        userId: linkData.userId,
-        storagePath: linkData.driveLink, // Store the link in storagePath for consistency
-        driveLink: linkData.driveLink,
-    };
-    return addFileRecord(newFileRecord);
 }
 
 export async function addFile(formData: FormData): Promise<FileItem> {
@@ -266,10 +250,13 @@ export async function addFile(formData: FormData): Promise<FileItem> {
 }
 
 
-export async function updateFile(fileId: string, data: Partial<Omit<FileItem, 'id' | 'userId'>>): Promise<void> {
+export async function updateFile(fileId: string, data: Partial<Omit<FileItem, 'id' | 'userId' | 'content'>>): Promise<void> {
     const db = await getDb();
     const fileRef = doc(db, FILES_COLLECTION, fileId);
-    await updateDoc(fileRef, data);
+    
+    const updateData = { ...data, modifiedAt: new Date() };
+    
+    await updateDoc(fileRef, updateData);
 }
 
 export async function addFileFromDataUrl(options: { dataUrl: string; fileName: string; userId: string; folderId: string }): Promise<FileItem> {
@@ -333,7 +320,7 @@ export async function saveEmailForContact(userId: string, contactName: string, e
     const storagePath = `${userId}/${contactFolder.id}/${fileName}`;
     const fileRef = storageRef(storage, storagePath);
     await uploadBytes(fileRef, fileBlob);
-
+    
     const newFileRecord: Omit<FileItem, 'id'> = {
         name: fileName,
         type: 'text/html',
@@ -385,7 +372,7 @@ export async function deleteFiles(fileIds: string[]): Promise<void> {
         const fileSnap = await getDoc(fileRef);
         if (fileSnap.exists()) {
             const fileData = docToFile(fileSnap);
-            if (fileData.storagePath && !fileData.storagePath.startsWith('http')) {
+            if (fileData.storagePath && fileData.type !== 'google-drive-link') {
                  try {
                     const storageFileRef = storageRef(storage, fileData.storagePath);
                     await deleteObject(storageFileRef);
@@ -393,7 +380,7 @@ export async function deleteFiles(fileIds: string[]): Promise<void> {
                     // If file doesn't exist in storage, log it but don't block the Firestore deletion
                     if (error.code !== 'storage/object-not-found') {
                         console.error(`Failed to delete file from storage: ${fileData.storagePath}`, error);
-                        // Optionally re-throw if storage deletion failure should stop the whole process
+                        // Optionally re-throw if storage deletion should stop the whole process
                         // throw error; 
                     }
                 }

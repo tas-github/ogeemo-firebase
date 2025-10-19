@@ -1,96 +1,63 @@
-
 'use server';
 
-import { adminDb as db, getAdminStorage } from '@/lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
-import { google } from 'googleapis';
+import { adminDb, getAdminStorage } from '@/lib/firebase-admin';
+import { type FileItem } from '@/data/files';
 
-/**
- * Moves a file to a new folder by updating its folderId in Firestore.
- * This is a server action callable from client components.
- * @param fileId The ID of the file to move.
- * @param newFolderId The ID of the destination folder.
- * @returns An object indicating success or failure.
- */
-export async function moveFile(fileId: string, newFolderId: string): Promise<{ success: boolean; error?: string }> {
-    if (!fileId || !newFolderId) {
-        return { success: false, error: 'File ID and new folder ID are required.' };
-    }
+const FILES_COLLECTION = 'files';
 
-    try {
-        const fileRef = db.collection('files').doc(fileId);
-        await fileRef.update({
-            folderId: newFolderId,
-            modifiedAt: FieldValue.serverTimestamp(),
-        });
-        return { success: true };
-    } catch (error: any) {
-        console.error("Error moving file in server action:", error);
-        return { success: false, error: error.message || "An unknown error occurred on the server." };
-    }
+function checkDb() {
+  if (!adminDb) {
+    throw new Error('Firestore Admin SDK is not initialized.');
+  }
 }
 
-/**
- * Generates a signed URL for downloading a file from Firebase Storage.
- * @param storagePath The full path to the file in the storage bucket.
- * @returns An object with the URL or an error.
- */
-export async function getDownloadUrl(storagePath: string): Promise<{ url?: string; error?: string }> {
-    if (!storagePath) {
-        return { error: 'Storage path is required.' };
-    }
+export async function addTextFile(userId: string, folderId: string, fileName: string, content: string = ''): Promise<FileItem> {
+  checkDb();
 
+  const fileBlob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const storage = getAdminStorage();
+  const bucket = storage.bucket();
+
+  const storagePath = `userFiles/${userId}/${folderId}/${Date.now()}-${fileName}.txt`;
+  const file = bucket.file(storagePath);
+
+  const buffer = Buffer.from(await fileBlob.arrayBuffer());
+  await file.save(buffer, {
+    metadata: {
+      contentType: 'text/plain;charset=utf-8',
+    },
+  });
+
+  const newFileRecord: Omit<FileItem, 'id'> = {
+    name: fileName,
+    type: 'text/plain',
+    size: fileBlob.size,
+    modifiedAt: new Date(),
+    folderId,
+    userId,
+    storagePath,
+  };
+
+  const docRef = await adminDb.collection(FILES_COLLECTION).add(newFileRecord);
+
+  return { id: docRef.id, ...newFileRecord };
+}
+
+export async function fetchFileContent(storagePath: string): Promise<{ content?: string; error?: string }> {
+    checkDb();
     try {
         const bucket = getAdminStorage().bucket();
         const file = bucket.file(storagePath);
-        const [url] = await file.getSignedUrl({
-            action: 'read',
-            expires: Date.now() + 15 * 60 * 1000, // 15 minutes
-        });
-        return { url };
+        const [exists] = await file.exists();
+        if (!exists) {
+            return { error: 'File not found in storage.' };
+        }
+        const [buffer] = await file.download();
+        // Check for common text-based types before assuming utf-8
+        // A more robust solution might check the file's metadata for content type
+        return { content: buffer.toString('utf-8') };
     } catch (error: any) {
-        console.error("Error generating download URL:", error);
+        console.error("Error fetching file content:", error);
         return { error: error.message || "An unknown error occurred." };
     }
-}
-
-
-/**
- * Fetches the content of a text-based file directly from Firebase Storage.
- * This function is specific to the knowledge base storage path.
- * @param storagePath The full path to the file in the storage bucket.
- * @returns An object with the file content as a string, or an error.
- */
-export async function fetchFileContent(storagePath: string): Promise<{ content?: string; error?: string }> {
-    if (!storagePath) {
-        return { error: 'Storage path is required.' };
-    }
-
-    try {
-        const bucket = getAdminStorage().bucket();
-        const file = bucket.file(storagePath);
-        
-        const [contents] = await file.download();
-        return { content: contents.toString('utf8') };
-    } catch (error: any) {
-        console.error("Error fetching file content in server action:", error);
-        return { error: error.message || "An unknown server error occurred while fetching the file." };
-    }
-}
-
-async function getGoogleAuth(accessToken: string) {
-    const auth = new google.auth.OAuth2();
-    auth.setCredentials({ access_token: accessToken });
-    return auth;
-}
-
-export async function getGoogleDriveFiles(accessToken: string) {
-    const auth = await getGoogleAuth(accessToken);
-    const drive = google.drive({ version: 'v3', auth });
-    const res = await drive.files.list({
-        pageSize: 20,
-        fields: 'nextPageToken, files(id, name, mimeType, modifiedTime, size, webViewLink)',
-        orderBy: 'modifiedTime desc',
-    });
-    return res.data.files || [];
 }
