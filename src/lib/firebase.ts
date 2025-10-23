@@ -8,8 +8,7 @@ import { getFunctions, type Functions } from "firebase/functions";
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  // HARDCODED FOR DEBUGGING: Directly setting the projectId to ensure it's not undefined.
-  projectId: "ogeemo-firebase",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
@@ -33,19 +32,16 @@ export function initializeFirebase(): Promise<FirebaseServices> {
 
     firebaseServicesPromise = (async () => {
         if (typeof window === 'undefined') {
+            // This error should not be hit in a client-side context, but it's a good safeguard.
             throw new Error("Firebase client SDK can only be initialized in the browser.");
         }
 
-        if (!firebaseConfig.apiKey) {
-            const missingVars = [
-                !firebaseConfig.apiKey && "NEXT_PUBLIC_FIREBASE_API_KEY",
-            ].filter(Boolean).join(", ");
-            
-            throw new Error(`Firebase configuration is incomplete. Missing environment variables: ${missingVars}`);
-        }
+        const missingVars = Object.entries(firebaseConfig)
+            .filter(([key, value]) => !value)
+            .map(([key]) => `NEXT_PUBLIC_${key.replace(/([A-Z])/g, '_$1').toUpperCase()}`);
 
-        if (!firebaseConfig.authDomain) {
-            firebaseConfig.authDomain = `${firebaseConfig.projectId}.firebaseapp.com`;
+        if (missingVars.length > 0) {
+            throw new Error(`Firebase configuration is incomplete. Missing environment variables: ${missingVars.join(", ")}`);
         }
         
         const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -54,9 +50,11 @@ export function initializeFirebase(): Promise<FirebaseServices> {
         const storage = getStorage(app);
         const functions = getFunctions(app);
         
-        // setPersistence ensures that the user's authentication state is persisted.
-        // It's crucial to await this before considering initialization complete.
-        await setPersistence(auth, browserLocalPersistence);
+        try {
+            await setPersistence(auth, browserLocalPersistence);
+        } catch (error) {
+            console.error("Firebase persistence error:", error);
+        }
 
         return { app, auth, db, storage, functions };
     })();

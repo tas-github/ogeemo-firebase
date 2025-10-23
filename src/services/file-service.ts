@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -165,18 +166,26 @@ export async function getFileById(fileId: string): Promise<FileItem | null> {
 
     const fileData = docToFile(fileSnap);
 
-    // If it's a text-based file, fetch its content from Storage
-    if (fileData.type.startsWith('text/') && fileData.storagePath) {
+    // Only try to fetch content for text-based files with a storage path
+    if (fileData.storagePath && fileData.type.startsWith('text/')) {
         try {
             const storage = await getAppStorage();
             const contentRef = storageRef(storage, fileData.storagePath);
             const downloadUrl = await getDownloadURL(contentRef);
             const response = await fetch(downloadUrl);
-            const content = await response.text();
-            return { ...fileData, content };
-        } catch (error) {
+            
+            if (response.ok) {
+                const content = await response.text();
+                return { ...fileData, content };
+            } else {
+                // If file is not found or other error, return with empty content
+                console.warn(`Content for ${fileData.name} not found or failed to load, returning empty. Status: ${response.status}`);
+                return { ...fileData, content: '' };
+            }
+
+        } catch (error: any) {
             console.error(`Failed to fetch content for ${fileData.name}:`, error);
-            // Return file data without content if fetching fails
+            // On error, return the file data with empty content instead of an error message.
             return { ...fileData, content: '' };
         }
     }
@@ -184,25 +193,6 @@ export async function getFileById(fileId: string): Promise<FileItem | null> {
     return fileData;
 }
 
-export async function addTextFile(userId: string, folderId: string, fileName: string, content: string = ''): Promise<FileItem> {
-    const storage = await getAppStorage();
-    const fileBlob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const storagePath = `userFiles/${userId}/${folderId}/${Date.now()}-${fileName}.txt`;
-    const fileRef = storageRef(storage, storagePath);
-    await uploadBytes(fileRef, fileBlob);
-
-    const newFileRecord: Omit<FileItem, 'id'> = {
-        name: fileName,
-        type: 'text/plain',
-        size: fileBlob.size,
-        modifiedAt: new Date(),
-        folderId,
-        userId,
-        storagePath,
-    };
-
-    return addFileRecord(newFileRecord);
-}
 
 export async function getFilesForFolder(userId: string, folderId: string): Promise<FileItem[]> {
   const db = await getDb();
@@ -249,15 +239,54 @@ export async function addFile(formData: FormData): Promise<FileItem> {
     return addFileRecord(newFileRecord);
 }
 
-
-export async function updateFile(fileId: string, data: Partial<Omit<FileItem, 'id' | 'userId' | 'content'>>): Promise<void> {
+export async function updateFile(fileId: string, data: Partial<Omit<FileItem, 'id' | 'userId' | 'content'>> & { content?: string }): Promise<void> {
     const db = await getDb();
+    const storage = await getAppStorage();
     const fileRef = doc(db, FILES_COLLECTION, fileId);
+
+    const fileSnap = await getDoc(fileRef);
+    if (!fileSnap.exists()) throw new Error("File not found to update.");
+    const existingFileData = docToFile(fileSnap);
+
+    const metadataToUpdate: {[key: string]: any} = { ...data };
+    delete metadataToUpdate.content; // Ensure content is not written to Firestore
+    metadataToUpdate.modifiedAt = new Date();
+
+    // If content is being updated, upload it to storage first.
+    if (typeof data.content === 'string') {
+        const fileBlob = new Blob([data.content], { type: existingFileData.type || 'text/plain' });
+        const storageFileRef = storageRef(storage, existingFileData.storagePath);
+        await uploadBytes(storageFileRef, fileBlob);
+        metadataToUpdate.size = fileBlob.size;
+    }
     
-    const updateData = { ...data, modifiedAt: new Date() };
-    
-    await updateDoc(fileRef, updateData);
+    await updateDoc(fileRef, metadataToUpdate);
 }
+
+export async function addTextFileClient(userId: string, folderId: string, fileName: string, content: string = ''): Promise<FileItem> {
+    const storage = await getAppStorage();
+    const fileBlob = new Blob([content], { type: 'text/html;charset=utf-8' });
+    
+    const finalFileName = fileName.endsWith('.html') ? fileName : `${fileName}.html`;
+
+    const storagePath = `userFiles/${userId}/${folderId || 'unfiled'}/${Date.now()}-${finalFileName}`;
+    const fileRef = storageRef(storage, storagePath);
+
+    await uploadBytes(fileRef, fileBlob);
+
+    const newFileRecord: Omit<FileItem, 'id'> = {
+        name: finalFileName,
+        type: 'text/html',
+        size: fileBlob.size,
+        modifiedAt: new Date(),
+        folderId: folderId,
+        userId,
+        storagePath,
+    };
+
+    return addFileRecord(newFileRecord);
+}
+
 
 export async function addFileFromDataUrl(options: { dataUrl: string; fileName: string; userId: string; folderId: string }): Promise<FileItem> {
     const { dataUrl, fileName, userId, folderId } = options;
@@ -361,7 +390,7 @@ export async function archiveIdeaAsFile(userId: string, title: string, content: 
     await addFileRecord(newFileRecord);
 }
 
-// Kept for specific file deletions, but folder deletion is handled by removeFoldersAndContents
+// Kept for specific file deletions, but folder deletion is handled by deleteFolders
 export async function deleteFiles(fileIds: string[]): Promise<void> {
     const db = await getDb();
     const storage = await getAppStorage();
@@ -377,11 +406,8 @@ export async function deleteFiles(fileIds: string[]): Promise<void> {
                     const storageFileRef = storageRef(storage, fileData.storagePath);
                     await deleteObject(storageFileRef);
                 } catch (error: any) {
-                    // If file doesn't exist in storage, log it but don't block the Firestore deletion
                     if (error.code !== 'storage/object-not-found') {
                         console.error(`Failed to delete file from storage: ${fileData.storagePath}`, error);
-                        // Optionally re-throw if storage deletion should stop the whole process
-                        // throw error; 
                     }
                 }
             }
