@@ -57,6 +57,7 @@ import {
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '../ui/resizable';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import Link from 'next/link';
 
 const OGEEMO_NOTES_FOLDER_NAME = "Ogeemo Notes";
 
@@ -137,7 +138,7 @@ export function FilesView() {
     if (file.type === 'google-drive-link' && file.driveLink) {
         window.open(file.driveLink, '_blank', 'noopener,noreferrer');
     } else if (file.type.startsWith('text/')) {
-        router.push(`/doc-editor?fileId=${file.id}`);
+        router.push(`/text-editor?fileId=${file.id}`);
     } else {
         toast({ title: "Preview Unavailable", description: "This file type cannot be opened in the editor."})
     }
@@ -451,7 +452,7 @@ export function FilesView() {
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => router.push('/doc-editor')} title="New Note">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => router.push('/text-editor')} title="New Note">
                           <FilePlus2 className="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
@@ -540,7 +541,12 @@ export function FilesView() {
         {/* Column 3: Editor */}
         <div className="flex flex-col gap-2">
             <div className="h-8 flex items-center justify-center p-1 border border-black bg-primary/10 rounded-md text-center font-semibold text-sm text-primary">
-                <p>Text Editor</p>
+                <Button asChild variant="link" className="p-0 h-auto text-primary">
+                    <Link href="/text-editor">
+                        <FilePlus2 className="mr-2 h-4 w-4" />
+                        New Text File
+                    </Link>
+                </Button>
             </div>
             <div className="h-8 flex items-center justify-center p-1 border border-black bg-primary/10 rounded-md text-center font-semibold text-sm text-primary">
               <p className="text-center font-semibold text-sm">Preview / Editor</p>
@@ -625,5 +631,3 @@ export function FilesView() {
     </>
   );
 }
-
-    

@@ -105,7 +105,7 @@ export async function updateFolder(folderId: string, folderData: Partial<Omit<Fo
     await updateDoc(folderRef, folderData);
 }
 
-export async function deleteFolders(userId: string, folderIds: string[]): Promise<void> {
+export async function deleteFoldersAndContents(userId: string, folderIds: string[]): Promise<void> {
     const db = await getDb();
     const storage = await getAppStorage();
     const batch = writeBatch(db);
@@ -167,7 +167,7 @@ export async function getFileById(fileId: string): Promise<FileItem | null> {
     const fileData = docToFile(fileSnap);
 
     // Only try to fetch content for text-based files with a storage path
-    if (fileData.storagePath && fileData.type.startsWith('text/')) {
+    if (fileData.storagePath && (fileData.type.startsWith('text/') || fileData.type.startsWith('application/vnd.ogeemo'))) {
         try {
             const storage = await getAppStorage();
             const contentRef = storageRef(storage, fileData.storagePath);
@@ -178,14 +178,12 @@ export async function getFileById(fileId: string): Promise<FileItem | null> {
                 const content = await response.text();
                 return { ...fileData, content };
             } else {
-                // If file is not found or other error, return with empty content
                 console.warn(`Content for ${fileData.name} not found or failed to load, returning empty. Status: ${response.status}`);
                 return { ...fileData, content: '' };
             }
 
         } catch (error: any) {
             console.error(`Failed to fetch content for ${fileData.name}:`, error);
-            // On error, return the file data with empty content instead of an error message.
             return { ...fileData, content: '' };
         }
     }
@@ -241,33 +239,36 @@ export async function addFile(formData: FormData): Promise<FileItem> {
 
 export async function updateFile(fileId: string, data: Partial<Omit<FileItem, 'id' | 'userId' | 'content'>> & { content?: string }): Promise<void> {
     const db = await getDb();
-    const storage = await getAppStorage();
     const fileRef = doc(db, FILES_COLLECTION, fileId);
 
     const fileSnap = await getDoc(fileRef);
     if (!fileSnap.exists()) throw new Error("File not found to update.");
     const existingFileData = docToFile(fileSnap);
 
-    const metadataToUpdate: {[key: string]: any} = { ...data };
-    delete metadataToUpdate.content; // Ensure content is not written to Firestore
-    metadataToUpdate.modifiedAt = new Date();
-
     // If content is being updated, upload it to storage first.
     if (typeof data.content === 'string') {
-        const fileBlob = new Blob([data.content], { type: existingFileData.type || 'text/plain' });
+        const storage = await getAppStorage();
+        const fileBlob = new Blob([data.content], { type: existingFileData.type || 'text/plain;charset=utf-8' });
         const storageFileRef = storageRef(storage, existingFileData.storagePath);
         await uploadBytes(storageFileRef, fileBlob);
-        metadataToUpdate.size = fileBlob.size;
+        data.size = fileBlob.size; // Update the size in the metadata
     }
+
+    const metadataToUpdate: {[key: string]: any} = { ...data };
+    delete metadataToUpdate.content; // Ensure content is never written to Firestore
+    metadataToUpdate.modifiedAt = new Date();
     
-    await updateDoc(fileRef, metadataToUpdate);
+    if (Object.keys(metadataToUpdate).length > 0) {
+      await updateDoc(fileRef, metadataToUpdate);
+    }
 }
+
 
 export async function addTextFileClient(userId: string, folderId: string, fileName: string, content: string = ''): Promise<FileItem> {
     const storage = await getAppStorage();
-    const fileBlob = new Blob([content], { type: 'text/html;charset=utf-8' });
+    const fileBlob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     
-    const finalFileName = fileName.endsWith('.html') ? fileName : `${fileName}.html`;
+    const finalFileName = fileName.endsWith('.txt') ? fileName : `${fileName}.txt`;
 
     const storagePath = `userFiles/${userId}/${folderId || 'unfiled'}/${Date.now()}-${finalFileName}`;
     const fileRef = storageRef(storage, storagePath);
@@ -276,7 +277,7 @@ export async function addTextFileClient(userId: string, folderId: string, fileNa
 
     const newFileRecord: Omit<FileItem, 'id'> = {
         name: finalFileName,
-        type: 'text/html',
+        type: 'text/plain',
         size: fileBlob.size,
         modifiedAt: new Date(),
         folderId: folderId,

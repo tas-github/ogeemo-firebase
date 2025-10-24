@@ -1,4 +1,3 @@
-
 import {
   LayoutDashboard,
   Users,
@@ -55,6 +54,7 @@ export interface MenuItem {
 export const allMenuItems: MenuItem[] = [
   { href: "/action-manager", label: "Action Manager", icon: LayoutDashboard },
   { href: "/master-mind", label: "Task & Event Mngr", icon: BrainCircuit },
+  { href: "/text-editor", label: "Text Editor", icon: FilePenLine },
   { href: "/workflow-chart", label: "Workflow Chart", icon: GitMerge },
   { href: "/command-centre", label: "Command Centre", icon: BrainCircuit },
   { href: "/action-manager/manage", label: "Manage Dashboard", icon: LayoutDashboard },
@@ -91,5 +91,6 @@ export const allMenuItems: MenuItem[] = [
   { href: "/file-manager", label: "File Manager", icon: Folder },
   { href: "/idea-board", label: "Idea Board", icon: Lightbulb },
   { href: "/research", label: "Research", icon: Beaker },
+  { href: "/sandbox", label: "Sandbox", icon: Beaker },
   { href: "/accounting", label: "Accounting", icon: Calculator },
 ];

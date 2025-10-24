@@ -1,8 +1,7 @@
+import { notFound } from 'next/navigation';
 
-'use client';
-
-import { TextEditorView } from '@/components/text-editor/text-editor-view';
-
-export default function TextEditorPage() {
-  return <TextEditorView />;
+export default function ObsoleteDocEditorPage() {
+  // This page is obsolete and should not be accessible.
+  // Trigger a 404 error to indicate it's not found.
+  notFound();
 }
