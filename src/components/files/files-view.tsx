@@ -138,7 +138,7 @@ export function FilesView() {
     if (file.type === 'google-drive-link' && file.driveLink) {
         window.open(file.driveLink, '_blank', 'noopener,noreferrer');
     } else if (file.type.startsWith('text/')) {
-        router.push(`/text-editor?fileId=${file.id}`);
+        router.push(`/text-editor?fileId=${file.id}&storagePath=${encodeURIComponent(file.storagePath)}`);
     } else {
         toast({ title: "Preview Unavailable", description: "This file type cannot be opened in the editor."})
     }
@@ -165,7 +165,6 @@ export function FilesView() {
             name: newFolderName.trim(),
             userId: user.uid,
             parentId: newFolderParentId,
-            createdAt: new Date(),
         });
         setFolders(prev => [...prev, newFolder]);
         if (newFolder.parentId) {

@@ -16,9 +16,10 @@ import {
     getDoc,
     setDoc,
 } from 'firebase/firestore';
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { getStorage, ref as storageRef, uploadBytes, deleteObject, getBytes } from 'firebase/storage';
 import { initializeFirebase } from '@/lib/firebase';
 import type { FileItem, FolderItem } from '@/data/files';
+import { onAuthStateChanged, type Auth } from 'firebase/auth';
 
 
 const FOLDERS_COLLECTION = 'fileFolders';
@@ -134,7 +135,7 @@ export async function deleteFoldersAndContents(userId: string, folderIds: string
                 await deleteObject(storageFileRef);
             } catch (error: any) {
                 if (error.code !== 'storage/object-not-found') {
-                    console.error(`Failed to delete storage object for file ${file.id}:`, error);
+                    console.error(`Failed to delete storage object for file \'\'\'${file.id}\'\'\'':`, error);
                 }
             }
         }
@@ -162,35 +163,48 @@ export async function getFileById(fileId: string): Promise<FileItem | null> {
     const db = await getDb();
     const fileRef = doc(db, FILES_COLLECTION, fileId);
     const fileSnap = await getDoc(fileRef);
-    if (!fileSnap.exists()) return null;
-
-    const fileData = docToFile(fileSnap);
-
-    // Only try to fetch content for text-based files with a storage path
-    if (fileData.storagePath && (fileData.type.startsWith('text/') || fileData.type.startsWith('application/vnd.ogeemo'))) {
-        try {
-            const storage = await getAppStorage();
-            const contentRef = storageRef(storage, fileData.storagePath);
-            const downloadUrl = await getDownloadURL(contentRef);
-            const response = await fetch(downloadUrl);
-            
-            if (response.ok) {
-                const content = await response.text();
-                return { ...fileData, content };
-            } else {
-                console.warn(`Content for ${fileData.name} not found or failed to load, returning empty. Status: ${response.status}`);
-                return { ...fileData, content: '' };
-            }
-
-        } catch (error: any) {
-            console.error(`Failed to fetch content for ${fileData.name}:`, error);
-            return { ...fileData, content: '' };
-        }
+    if (!fileSnap.exists()) {
+        return null;
     }
-
-    return fileData;
+    return docToFile(fileSnap);
 }
 
+export async function getFileContentFromStorage(auth: Auth, storagePath: string): Promise<string> {
+    if (!storagePath) {
+        console.warn("Storage path is empty, returning empty content.");
+        return '';
+    }
+
+    // Wait for the user to be authenticated before proceeding.
+    await new Promise<void>((resolve, reject) => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            unsubscribe(); // Unsubscribe immediately to avoid memory leaks
+            if (user) {
+                resolve();
+            } else {
+                // If there's no user, wait a very short moment in case auth state is still initializing
+                setTimeout(() => {
+                    if (auth.currentUser) {
+                        resolve();
+                    } else {
+                        reject(new Error("User is not authenticated."));
+                    }
+                }, 50);
+            }
+        });
+    });
+
+    try {
+        const storage = await getAppStorage();
+        const contentRef = storageRef(storage, storagePath);
+        const bytes = await getBytes(contentRef);
+        const textDecoder = new TextDecoder('utf-8');
+        return textDecoder.decode(bytes);
+    } catch (error: any) {
+        console.error(`Failed to fetch content from ${storagePath}:`, error);
+        throw new Error(`Failed to retrieve file content: ${error.message}`);
+    }
+}
 
 export async function getFilesForFolder(userId: string, folderId: string): Promise<FileItem[]> {
   const db = await getDb();
@@ -289,106 +303,16 @@ export async function addTextFileClient(userId: string, folderId: string, fileNa
 }
 
 
-export async function addFileFromDataUrl(options: { dataUrl: string; fileName: string; userId: string; folderId: string }): Promise<FileItem> {
-    const { dataUrl, fileName, userId, folderId } = options;
-
-    const response = await fetch(dataUrl);
-    const blob = await response.blob();
-    
-    const storage = await getAppStorage();
-    
-    let finalFolderId = folderId;
-    if (folderId === SITE_IMAGES_FOLDER_ID) {
-        const siteImagesFolder = await findOrCreateFileFolder(userId, SITE_IMAGES_FOLDER_NAME, null, SITE_IMAGES_FOLDER_ID);
-        finalFolderId = siteImagesFolder.id;
-    }
-
-    const storagePath = `${userId}/${finalFolderId}/${Date.now()}-${fileName}`;
-    const fileRef = storageRef(storage, storagePath);
-
-    await uploadBytes(fileRef, blob, { contentType: blob.type });
-
-    const newFileRecord: Omit<FileItem, 'id'> = {
-        name: fileName,
-        type: blob.type,
-        size: blob.size,
-        modifiedAt: new Date(),
-        folderId: finalFolderId,
-        userId,
-        storagePath,
-    };
-    
-    return addFileRecord(newFileRecord);
-}
-
-export async function saveEmailForContact(userId: string, contactName: string, email: { subject: string; body: string }): Promise<void> {
-    const db = await getDb();
-    const storage = await getAppStorage();
-
-    const contactsRootFolder = await findOrCreateFileFolder(userId, "Contacts");
-    
-    const contactFolder = await findOrCreateFileFolder(userId, contactName, contactsRootFolder.id);
-
-    const timestamp = new Date().toISOString();
-    const fileName = `${email.subject.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.html`;
-    const fileContent = `
-        <html>
-            <head>
-                <title>${email.subject}</title>
-                <style>body { font-family: sans-serif; }</style>
-            </head>
-            <body>
-                <h1>${email.subject}</h1>
-                <p>Saved on: ${new Date().toLocaleString()}</p>
-                <hr>
-                <div>${email.body}</div>
-            </body>
-        </html>
-    `;
-    const fileBlob = new Blob([fileContent], { type: 'text/html' });
-
-    const storagePath = `${userId}/${contactFolder.id}/${fileName}`;
-    const fileRef = storageRef(storage, storagePath);
-    await uploadBytes(fileRef, fileBlob);
-    
-    const newFileRecord: Omit<FileItem, 'id'> = {
-        name: fileName,
-        type: 'text/html',
-        size: fileBlob.size,
-        modifiedAt: new Date(),
-        folderId: contactFolder.id,
-        userId,
-        storagePath,
-    };
-
-    await addFileRecord(newFileRecord);
-}
-
-export async function archiveIdeaAsFile(userId: string, title: string, content: string): Promise<void> {
-    const db = await getDb();
-    const storage = await getAppStorage();
-
-    const archiveFolder = await findOrCreateFileFolder(userId, "Archived Ideas");
-    
-    const finalFileName = `${title.replace(/[^a-zA-Z0-9]/g, '_')}.md`;
-    const fileContent = `# ${title}\n\n${content.replace(/<[^>]+>/g, '\n')}`; // Basic HTML to Markdown
-    const fileBlob = new Blob([fileContent], { type: 'text/markdown' });
-
-    const storagePath = `${userId}/${archiveFolder.id}/${Date.now()}-${finalFileName}`;
-    const fileRef = storageRef(storage, storagePath);
-    await uploadBytes(fileRef, fileBlob);
-    
-    const newFileRecord: Omit<FileItem, 'id'> = {
-        name: finalFileName,
-        type: 'text/markdown',
-        size: fileBlob.size,
-        modifiedAt: new Date(),
-        folderId: archiveFolder.id,
-        userId,
-        storagePath,
-    };
-
-    await addFileRecord(newFileRecord);
+export async function saveEmailForContact(userId: string, contactName: string, email: { to: string, from: string, subject: string; body: string; sourceLink?: string; }): Promise<void> {
+    console.log("--- Placeholder: saveEmailForContact ---");
+    console.log("User ID:", userId);
+    console.log("Contact Name:", contactName);
+    console.log("Email to save:", email);
+    console.log("This function will eventually save this email as an HTML file in the contact's folder in the File Manager.");
+    console.log("--- End Placeholder ---");
+    // This is a placeholder. The real implementation will be done in Phase 2.
+    // No actual file saving will happen here.
+    return Promise.resolve();
 }
 
 // Kept for specific file deletions, but folder deletion is handled by deleteFolders
@@ -418,3 +342,5 @@ export async function deleteFiles(fileIds: string[]): Promise<void> {
     
     await batch.commit();
 }
+
+    

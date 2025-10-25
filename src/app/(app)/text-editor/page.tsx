@@ -18,13 +18,14 @@ import { Button } from '@/components/ui/button';
 import { LoaderCircle, ArrowLeft, Save, FolderPlus } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
+import { type FolderItem } from '@/data/files';
 import {
   addTextFileClient,
   getFileById,
   updateFile,
   getFolders,
   addFolder,
-  type FolderItem,
+  getFileContentFromStorage,
 } from '@/services/file-service';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
@@ -55,13 +56,13 @@ export default function TextEditorPage() {
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
-  const { user } = useAuth();
+  const { user, firebaseServices } = useAuth();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
 
   const loadInitialData = useCallback(async () => {
-    if (!user) {
+    if (!user || !firebaseServices) {
       setIsLoading(false);
       return;
     }
@@ -70,14 +71,20 @@ export default function TextEditorPage() {
       const fetchedFolders = await getFolders(user.uid);
       setFolders(fetchedFolders);
 
-      const fileId = searchParams.get('fileId');
+      const fileId = searchParams?.get('fileId');
+
       if (fileId) {
         setFileToEditId(fileId);
         const fileData = await getFileById(fileId);
         if (fileData) {
           setFileName(fileData.name);
-          setFileContent(fileData.content || '');
           setSelectedFolderId(fileData.folderId);
+
+          if (fileData.storagePath) {
+            const content = await getFileContentFromStorage(firebaseServices.auth, fileData.storagePath);
+            setFileContent(content);
+          }
+
         } else {
           toast({
             variant: 'destructive',
@@ -100,7 +107,7 @@ export default function TextEditorPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [user, toast, searchParams]);
+  }, [user, firebaseServices, toast, searchParams]);
 
   useEffect(() => {
     loadInitialData();
@@ -137,8 +144,8 @@ export default function TextEditorPage() {
         );
         setFileToEditId(newFile.id);
         toast({ title: 'File Saved' });
-        // Update URL without a full page reload to reflect the new file ID
-        router.push(`/text-editor?fileId=${newFile.id}`, { scroll: false });
+        // Update URL without a full page reload to reflect the new file ID and storage path
+        router.push(`/text-editor?fileId=${newFile.id}&storagePath=${encodeURIComponent(newFile.storagePath)}`, { scroll: false });
       }
     } catch (error: any) {
       toast({
@@ -154,7 +161,7 @@ export default function TextEditorPage() {
   const handleCreateFolder = async () => {
     if (!user || !newFolderName.trim()) return;
     try {
-        const newFolder = await addFolder({ name: newFolderName.trim(), userId: user.uid, parentId: null, createdAt: new Date() });
+        const newFolder = await addFolder({ name: newFolderName.trim(), userId: user.uid, parentId: null });
         setFolders(prev => [...prev, newFolder]);
         setSelectedFolderId(newFolder.id); // Select the new folder
         setIsNewFolderDialogOpen(false);

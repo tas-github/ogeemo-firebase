@@ -121,7 +121,7 @@ const TaskListItem = ({ task, project, onEdit, onDelete, onAssignProject, projec
 };
 
 
-export function AllProjectTasksView() {
+export default function AllProjectTasksView() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<TaskEvent[]>([]);
     const [taskToDelete, setTaskToDelete] = useState<TaskEvent | null>(null);

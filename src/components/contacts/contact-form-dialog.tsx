@@ -51,7 +51,8 @@ interface ContactFormDialogProps {
     contactToEdit: Contact | null;
     folders: FolderData[];
     onSave: (contact: Contact, isEditing: boolean) => void;
-    selectedFolderId?: string; // Add this to pass the currently selected folder
+    selectedFolderId?: string;
+    initialEmail?: string;
 }
 
 export default function ContactFormDialog({
@@ -61,6 +62,7 @@ export default function ContactFormDialog({
     folders,
     onSave,
     selectedFolderId,
+    initialEmail = '',
 }: ContactFormDialogProps) {
     const { toast } = useToast();
     const { user } = useAuth();
@@ -73,7 +75,7 @@ export default function ContactFormDialog({
 
     const form = useForm<ContactFormData>({
         resolver: zodResolver(contactSchema),
-        defaultValues: { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: "" },
+        defaultValues: { name: "", email: initialEmail, businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: "" },
     });
     
     // Watch phone number fields to dynamically enable/disable radio buttons
@@ -82,16 +84,15 @@ export default function ContactFormDialog({
     const homePhoneValue = form.watch('homePhone');
 
     useEffect(() => {
-        // Only reset form when dialog opens. Prevents infinite loops.
         if (isOpen) {
             setCurrentFolders(folders);
             const defaultFolderId = selectedFolderId !== 'all' ? selectedFolderId : (folders.find(f => f.name === 'Clients')?.id || folders[0]?.id || '');
             const initialValues = contactToEdit 
                 ? { ...contactToEdit, folderId: contactToEdit.folderId || defaultFolderId, primaryPhoneType: contactToEdit.primaryPhoneType || null } 
-                : { name: "", email: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: defaultFolderId };
+                : { name: "", email: initialEmail, businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: defaultFolderId };
             form.reset(initialValues);
         }
-    }, [isOpen, contactToEdit, folders, selectedFolderId, form]);
+    }, [isOpen, contactToEdit, folders, selectedFolderId, form, initialEmail]);
 
     const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
         onTranscript: (transcript) => {

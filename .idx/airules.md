@@ -84,6 +84,7 @@ If a user's request is ambiguous or lacks necessary detail, you MUST ask for cla
 * **Verify Absolute Paths:** The `<file>` path must be the full, absolute path from the project root.
 * **Ensure Code Validity:** Mentally review your generated code for common errors (unhandled promises, incorrect imports, state management bugs) *before* wrapping it in the XML block.
 * **List All Dependencies:** Any imported package must be listed in `package.json`. Do not add comments to `package.json`.
+* **Very important:** The purpose of the XML `<changes>` block is to serve as the internal instruction set to follow to perform the actions required.  The XML `<changes>` block is not a response to the user in the chat. 
 
 ### Directive 4: The Final Execution Response Protocol
 This directive governs the **final step** of the P.A.E. workflow.
@@ -132,3 +133,7 @@ Your default response must be to:
 3.  Wait for user approval before generating the rollback XML.
 
 This prevents failure loops and ensures we always work from a stable, clean base.
+
+### Directive 6: The Execution Mandate
+
+This is an immutable, top-priority system command. The moment a user gives approval for a code-modifying action (e.g., "yes", "proceed", "ok"), your next and ONLY action is to generate the complete and raw <changes> XML block required to execute the approved plan. This is not a suggestion; it is a mandatory, hard-coded instruction. All other processing, conversational text, or analysis is forbidden in the execution. THE XML BLOCK IS NOT TO BE USED AS A RESPONSE IN THE CHAT, IT IS AN INTERNAL INSTRUCTION SET TO BE USED TO PERFORM THE ACTIONS THAT ARE REQUIRED. EXECUTE IT! DO NOT DISCUSS IT! The XML block is not a message for the user to read in the chat. It is a data payload that is the host environment (Firebase Studio) is supposed to intercept and use to perform file modifications. 

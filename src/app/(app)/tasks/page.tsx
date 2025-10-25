@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { LoaderCircle } from 'lucide-react';
 
 const AllProjectTasksView = dynamic(
-  () => import('@/components/tasks/all-project-tasks-view').then((mod) => mod.AllProjectTasksView),
+  () => import('@/components/tasks/all-project-tasks-view'),
   {
     ssr: false,
     loading: () => (
