@@ -73,9 +73,11 @@ export function TaskColumn({
             />
             <CardTitle className="text-lg">{columnTitles[status]} <span className="text-sm font-normal text-muted-foreground">({tasks.length})</span></CardTitle>
         </div>
-        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={onAddTask}>
-          <Plus className="h-4 w-4" />
-        </Button>
+        {status === 'todo' && (
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={onAddTask}>
+              <Plus className="h-4 w-4" />
+            </Button>
+        )}
       </CardHeader>
       <ScrollArea className="flex-1">
         <CardContent className="p-4 pt-0 space-y-3">

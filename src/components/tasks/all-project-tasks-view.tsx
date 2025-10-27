@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -10,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getProjects, getTasksForUser, updateTask, deleteTask } from '@/services/project-service';
-import { type Project, type Event as TaskEvent } from '@/types/calendar';
+import { getProjects, getTasksForUser, updateTask, deleteTask, deleteTasks, updateTasksStatus } from '@/services/project-service';
+import { type Project, type Event as TaskEvent, type TaskStatus } from '@/types/calendar';
 import { getContacts, type Contact } from '@/services/contact-service';
 import {
   AlertDialog,
@@ -40,6 +39,8 @@ import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { format } from 'date-fns';
 import { ProjectManagementHeader } from './ProjectManagementHeader';
+import { Checkbox } from '../ui/checkbox';
+import { Label } from '../ui/label';
 
 const statusDisplayMap: Record<string, string> = {
     todo: 'To Do',
@@ -53,9 +54,12 @@ const statusColorMap: Record<string, string> = {
 };
 
 
-const TaskListItem = ({ task, project, onEdit, onDelete, onAssignProject, projects }: { task: TaskEvent, project: Project | undefined, onEdit: (task: TaskEvent) => void, onDelete: (task: TaskEvent) => void, onAssignProject: (taskId: string, projectId: string | null) => void, projects: Project[] }) => {
+const TaskListItem = ({ task, project, onEdit, onDelete, onAssignProject, projects, isSelected, onToggleSelect }: { task: TaskEvent, project: Project | undefined, onEdit: (task: TaskEvent) => void, onDelete: (task: TaskEvent) => void, onAssignProject: (taskId: string, projectId: string | null) => void, projects: Project[], isSelected: boolean, onToggleSelect: (taskId: string) => void }) => {
     return (
         <div className="group flex items-center p-3 border-b hover:bg-muted/50 transition-colors">
+            <div className="flex items-center w-[50px] pl-4">
+                <Checkbox checked={isSelected} onCheckedChange={() => onToggleSelect(task.id)} />
+            </div>
             <div className="flex-1 grid grid-cols-4 items-center gap-4 cursor-pointer" onClick={() => onEdit(task)}>
                 <div className="col-span-1">
                     <p className="font-medium text-sm">{task.title}</p>
@@ -129,6 +133,8 @@ export default function AllProjectTasksView() {
     
     const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
     const [isProjectPopoverOpen, setIsProjectPopoverOpen] = useState(false);
+    const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
+    const [isBulkDeleteAlertOpen, setIsBulkDeleteAlertOpen] = useState(false);
     
     const router = useRouter();
     const { user } = useAuth();
@@ -213,6 +219,60 @@ export default function AllProjectTasksView() {
     const unassignedOption = { id: 'unassigned', name: 'Unassigned Tasks' };
     const projectOptions = [allProjectsOption, unassignedOption, ...projects];
 
+    const handleToggleSelect = (taskId: string) => {
+        setSelectedTaskIds(prev =>
+            prev.includes(taskId)
+                ? prev.filter(id => id !== taskId)
+                : [...prev, taskId]
+        );
+    };
+
+    const handleToggleSelectAll = (checked: boolean | 'indeterminate') => {
+        if (checked) {
+            setSelectedTaskIds(sortedTasks.map(t => t.id));
+        } else {
+            setSelectedTaskIds([]);
+        }
+    };
+
+    const handleDeleteSelected = async () => {
+        if (selectedTaskIds.length === 0) return;
+        
+        const originalTasks = [...tasks];
+        setTasks(prev => prev.filter(t => !selectedTaskIds.includes(t.id)));
+
+        try {
+            await deleteTasks(selectedTaskIds);
+            toast({ title: `${selectedTaskIds.length} Task(s) Deleted` });
+            setSelectedTaskIds([]);
+        } catch (error: any) {
+            setTasks(originalTasks);
+            toast({ variant: 'destructive', title: 'Bulk Delete Failed', description: error.message });
+        } finally {
+            setIsBulkDeleteAlertOpen(false);
+        }
+    };
+
+    const handleMarkSelectedDone = async () => {
+        if (selectedTaskIds.length === 0) return;
+        
+        const originalTasks = [...tasks];
+        setTasks(prev => prev.map(t => selectedTaskIds.includes(t.id) ? { ...t, status: 'done' } : t));
+        
+        try {
+            await updateTasksStatus(selectedTaskIds, 'done');
+            toast({ title: 'Tasks Updated', description: `${selectedTaskIds.length} task(s) marked as done.` });
+            setSelectedTaskIds([]);
+        } catch (error: any) {
+            setTasks(originalTasks);
+            toast({ variant: 'destructive', title: 'Bulk Update Failed', description: error.message });
+        }
+    };
+    
+    const allVisibleSelected = sortedTasks.length > 0 && sortedTasks.every(t => selectedTaskIds.includes(t.id));
+    const someVisibleSelected = selectedTaskIds.length > 0 && !allVisibleSelected;
+
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-full pt-16">
@@ -225,7 +285,7 @@ export default function AllProjectTasksView() {
         <>
             <div className="p-4 sm:p-6 flex flex-col h-full items-center">
                 <header className="text-center mb-6">
-                    <h1 className="text-3xl font-bold font-headline text-primary">All Project Tasks</h1>
+                    <h1 className="text-3xl font-bold font-headline text-primary">All Tasks</h1>
                     <p className="text-muted-foreground max-w-2xl mx-auto">
                         View all tasks across all projects, or filter by a specific project.
                     </p>
@@ -235,7 +295,16 @@ export default function AllProjectTasksView() {
                 <Card className="w-full max-w-6xl">
                     <CardHeader>
                         <div className="flex justify-between items-center">
-                            <CardTitle>Task List</CardTitle>
+                            <div className="flex items-center gap-4">
+                               <CardTitle>Task List</CardTitle>
+                               {selectedTaskIds.length > 0 && (
+                                   <div className="flex items-center gap-2">
+                                       <Button variant="outline" size="sm" onClick={handleMarkSelectedDone}>Mark as Done</Button>
+                                       <Button variant="destructive" size="sm" onClick={() => setIsBulkDeleteAlertOpen(true)}>Delete Selected</Button>
+                                       <span className="text-sm text-muted-foreground">{selectedTaskIds.length} selected</span>
+                                   </div>
+                               )}
+                            </div>
                             <div className="w-64">
                                 <Popover open={isProjectPopoverOpen} onOpenChange={setIsProjectPopoverOpen}>
                                     <PopoverTrigger asChild>
@@ -254,6 +323,13 @@ export default function AllProjectTasksView() {
                     <CardContent className="p-0">
                         <div className="border-t">
                             <div className="flex items-center p-4 border-b bg-muted/50">
+                                <div className="flex items-center w-[50px] pl-4">
+                                    <Checkbox
+                                        checked={allVisibleSelected ? true : (someVisibleSelected ? 'indeterminate' : false)}
+                                        onCheckedChange={() => handleToggleSelectAll(!allVisibleSelected)}
+                                        aria-label="Select all visible tasks"
+                                    />
+                                </div>
                                 <div className="flex-1 grid grid-cols-4 items-center gap-4">
                                     <div className="col-span-1"><p className="font-semibold text-sm">Task Title</p></div>
                                     <div className="col-span-1"><p className="font-semibold text-sm">Project</p></div>
@@ -273,6 +349,8 @@ export default function AllProjectTasksView() {
                                             onDelete={setTaskToDelete}
                                             onAssignProject={handleAssignProject}
                                             projects={projects}
+                                            isSelected={selectedTaskIds.includes(task.id)}
+                                            onToggleSelect={handleToggleSelect}
                                         />
                                     ))
                                 ) : (
@@ -298,6 +376,22 @@ export default function AllProjectTasksView() {
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+            <AlertDialog open={isBulkDeleteAlertOpen} onOpenChange={setIsBulkDeleteAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete {selectedTaskIds.length} task(s). This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">
+                            Delete
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

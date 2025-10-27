@@ -439,7 +439,7 @@ export function ContactsView() {
                   </DropdownMenu>
                 )}
               </div>
-              {isExpanded && <FolderTree parentId={folder.id} level={level + 1} />}
+              {isExpanded && <FolderTree parentId={folder.id} allFolders={folders} level={level + 1} />}
             </div>
           );
         })}
@@ -574,7 +574,7 @@ export function ContactsView() {
         </div>
       </div>
       
-      {isContactFormOpen && <ContactFormDialog isOpen={isContactFormOpen} onOpenChange={setIsContactFormOpen} contactToEdit={contactToEdit} selectedFolderId={selectedFolderId} folders={folders} onSave={handleSaveContact} />}
+      {isContactFormOpen && <ContactFormDialog isOpen={isContactFormOpen} onOpenChange={setIsContactFormOpen} contactToEdit={contactToEdit} selectedFolderId={selectedFolderId} folders={folders} onFoldersChange={setFolders} onSave={handleSaveContact} />}
 
       <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
           <DialogContent className="sm:max-w-md">

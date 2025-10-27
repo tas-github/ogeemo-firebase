@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -318,6 +319,17 @@ export async function deleteTasks(taskIds: string[]): Promise<void> {
     taskIds.forEach(id => {
         const taskRef = doc(db, TASKS_COLLECTION, id);
         batch.delete(taskRef);
+    });
+    await batch.commit();
+}
+
+export async function updateTasksStatus(taskIds: string[], status: TaskStatus): Promise<void> {
+    if (taskIds.length === 0) return;
+    const db = await getDb();
+    const batch = writeBatch(db);
+    taskIds.forEach(id => {
+        const taskRef = doc(db, TASKS_COLLECTION, id);
+        batch.update(taskRef, { status: status });
     });
     await batch.commit();
 }

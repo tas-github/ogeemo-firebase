@@ -20,5 +20,15 @@ const ProjectTasksView = dynamic(
 );
 
 export default function ProjectTaskPage({ params }: { params: { projectId: string } }) {
-  return <ProjectTasksView projectId={params.projectId} />;
+  return (
+    <div className="h-full flex flex-col">
+      {/* ProjectHeader will be added in a subsequent step */}
+      <div className="p-4 sm:p-6">
+        <h1 className="text-2xl font-bold">Project: {params.projectId}</h1>
+      </div>
+      <div className="flex-1 min-h-0">
+        <ProjectTasksView projectId={params.projectId} />
+      </div>
+    </div>
+  );
 }

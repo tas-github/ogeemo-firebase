@@ -167,14 +167,20 @@ export default function ProjectStepsView() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-        <header className="text-center">
+        <header className="relative text-center">
             <h1 className="text-2xl font-bold font-headline text-primary">Project Organizer</h1>
             <p className="text-muted-foreground max-w-2xl mx-auto">
                 Break down your project into manageable steps and schedule them on your calendar.
             </p>
+             <div className="absolute top-0 right-0">
+                <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                    <X className="h-5 w-5" />
+                    <span className="sr-only">Close</span>
+                </Button>
+            </div>
         </header>
         
-        <ProjectManagementHeader onNewProjectClick={() => router.push('/projects')} projectId={projectData.id} />
+        <ProjectManagementHeader />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
             {/* Left Column for Details and Plan */}

@@ -53,6 +53,8 @@ interface ContactFormDialogProps {
     onSave: (contact: Contact, isEditing: boolean) => void;
     selectedFolderId?: string;
     initialEmail?: string;
+    forceFolderId?: string;
+    onFoldersChange?: (folders: FolderData[]) => void;
 }
 
 export default function ContactFormDialog({
@@ -63,6 +65,8 @@ export default function ContactFormDialog({
     onSave,
     selectedFolderId,
     initialEmail = '',
+    forceFolderId,
+    onFoldersChange,
 }: ContactFormDialogProps) {
     const { toast } = useToast();
     const { user } = useAuth();
@@ -82,17 +86,20 @@ export default function ContactFormDialog({
     const businessPhoneValue = form.watch('businessPhone');
     const cellPhoneValue = form.watch('cellPhone');
     const homePhoneValue = form.watch('homePhone');
+    
+    useEffect(() => {
+        setCurrentFolders(folders);
+    }, [folders]);
 
     useEffect(() => {
         if (isOpen) {
-            setCurrentFolders(folders);
-            const defaultFolderId = selectedFolderId !== 'all' ? selectedFolderId : (folders.find(f => f.name === 'Clients')?.id || folders[0]?.id || '');
+            const defaultFolderId = forceFolderId || selectedFolderId !== 'all' ? selectedFolderId : (currentFolders.find(f => f.name === 'Clients')?.id || currentFolders[0]?.id || '');
             const initialValues = contactToEdit 
-                ? { ...contactToEdit, folderId: contactToEdit.folderId || defaultFolderId, primaryPhoneType: contactToEdit.primaryPhoneType || null } 
+                ? { ...contactToEdit, folderId: forceFolderId || contactToEdit.folderId || defaultFolderId, primaryPhoneType: contactToEdit.primaryPhoneType || null } 
                 : { name: "", email: initialEmail, businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: defaultFolderId };
             form.reset(initialValues);
         }
-    }, [isOpen, contactToEdit, folders, selectedFolderId, form, initialEmail]);
+    }, [isOpen, contactToEdit, currentFolders, selectedFolderId, form, initialEmail, forceFolderId]);
 
     const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
         onTranscript: (transcript) => {
@@ -119,6 +126,7 @@ export default function ContactFormDialog({
 
         const dataToSave = {
             ...values,
+            folderId: forceFolderId || values.folderId,
             primaryPhoneType: values.primaryPhoneType || null,
         };
 
@@ -152,8 +160,12 @@ export default function ContactFormDialog({
     const handleCreateFolder = async () => {
         if (!user || !newFolderName.trim()) return;
         try {
-            const newFolder = await addFolder({ name: newFolderName, userId: user.uid, parentId: null });
-            setCurrentFolders(prev => [...prev, newFolder]);
+            const newFolder = await addFolder({ name: newFolderName.trim(), userId: user.uid, parentId: null });
+            const updatedFolders = [...currentFolders, newFolder];
+            setCurrentFolders(updatedFolders);
+            if (onFoldersChange) {
+                onFoldersChange(updatedFolders);
+            }
             form.setValue('folderId', newFolder.id);
             toast({ title: "Folder Created" });
         } catch(e: any) { toast({ variant: "destructive", title: "Failed", description: (e as Error).message }); }
@@ -185,7 +197,7 @@ export default function ContactFormDialog({
                                     <FormItem>
                                         <FormLabel>Folder <span className="text-destructive">*</span></FormLabel>
                                         <div className="flex gap-2">
-                                            <Select onValueChange={field.onChange} value={field.value}>
+                                            <Select onValueChange={field.onChange} value={field.value} disabled={!!forceFolderId}>
                                                 <FormControl>
                                                     <SelectTrigger><SelectValue placeholder="Select a folder" /></SelectTrigger>
                                                 </FormControl>
@@ -193,7 +205,7 @@ export default function ContactFormDialog({
                                                     {currentFolders.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
-                                            <Button type="button" variant="outline" size="icon" onClick={() => setIsNewFolderDialogOpen(true)}>
+                                            <Button type="button" variant="outline" size="icon" onClick={() => setIsNewFolderDialogOpen(true)} disabled={!!forceFolderId}>
                                                 <FolderPlus className="h-4 w-4" />
                                             </Button>
                                         </div>

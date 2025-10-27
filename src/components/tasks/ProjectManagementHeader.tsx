@@ -1,30 +1,50 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Briefcase, ListChecks, Inbox, Info, Plus, ListTodo } from 'lucide-react';
-import { NewTaskDialog } from './NewTaskDialog'; // Assuming NewTaskDialog handles project creation
+import { Briefcase, ListChecks, Info, Plus, ListTodo, Route } from 'lucide-react';
+import { NewTaskDialog } from './NewTaskDialog';
 import { useAuth } from '@/context/auth-context';
-import { addProject } from '@/services/project-service';
+import { addProject, getProjects } from '@/services/project-service';
 import { type Project, type Event as TaskEvent } from '@/types/calendar-types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { getContacts, type Contact } from '@/services/contact-service';
 
-
-interface ProjectManagementHeaderProps {
-    // onNewProjectClick is now handled internally
-}
-
-export function ProjectManagementHeader({}: ProjectManagementHeaderProps) {
-    const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = React.useState(false);
-    const [initialDialogData, setInitialDialogData] = React.useState({});
-    const [contacts, setContacts] = React.useState([]); // Assuming contacts are needed for the dialog
+export function ProjectManagementHeader() {
+    const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
+    const [initialDialogData, setInitialDialogData] = useState({});
+    const [contacts, setContacts] = useState<Contact[]>([]);
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     
     const { user } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
+
+    useEffect(() => {
+        async function loadData() {
+            if (!user) {
+                setIsLoading(false);
+                return;
+            }
+            try {
+                const [fetchedProjects, fetchedContacts] = await Promise.all([
+                    getProjects(user.uid),
+                    getContacts(user.uid),
+                ]);
+                setProjects(fetchedProjects);
+                setContacts(fetchedContacts);
+            } catch (error: any) {
+                console.error("Failed to load header data:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        loadData();
+    }, [user]);
     
     const handleNewProjectClick = () => {
         setInitialDialogData({}); // Clear any previous initial data
@@ -36,12 +56,13 @@ export function ProjectManagementHeader({}: ProjectManagementHeaderProps) {
         try {
             const newProject = await addProject({ ...projectData, status: 'planning', userId: user.uid, createdAt: new Date() });
             toast({ title: "Project Created", description: `"${newProject.name}" has been successfully created.` });
-            router.push(`/projects/${newProject.id}/tasks`); // Navigate to the new project board
+            router.push(`/projects/${newProject.id}/tasks`);
         } catch (error: any) {
             toast({ variant: "destructive", title: "Failed to create project", description: error.message });
         }
     };
-
+    
+    const firstProjectId = projects.length > 0 ? projects[0].id : 'placeholder';
 
     return (
         <>
@@ -59,6 +80,16 @@ export function ProjectManagementHeader({}: ProjectManagementHeaderProps) {
                 <Button asChild variant="outline">
                     <Link href="/project-status">
                         <ListChecks className="mr-2 h-4 w-4" /> Status Board
+                    </Link>
+                </Button>
+                 <Button asChild variant="outline" disabled={isLoading || projects.length === 0}>
+                    <Link href={`/projects/${firstProjectId}/timeline`}>
+                        <Route className="mr-2 h-4 w-4" /> Timeline
+                    </Link>
+                </Button>
+                <Button asChild variant="outline">
+                    <Link href="/tasks">
+                        <ListTodo className="mr-2 h-4 w-4" /> All Tasks
                     </Link>
                 </Button>
                  <Button onClick={handleNewProjectClick}>

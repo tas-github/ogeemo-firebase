@@ -42,6 +42,9 @@ import { cn } from '@/lib/utils';
 import { format, set, addMinutes, parseISO } from 'date-fns';
 import { addProjectTemplate, getProjectTemplates, updateProjectWithTasks } from '@/services/project-service';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { Check, ChevronsUpDown } from 'lucide-react';
+
 
 const projectSchema = z.object({
   name: z.string().min(2, { message: "Project name must be at least 2 characters." }),
@@ -64,8 +67,8 @@ interface NewTaskDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   onProjectCreate: (projectData: Omit<Project, 'id' | 'createdAt' | 'userId'>, tasks: Omit<TaskEvent, 'id' | 'userId' | 'projectId'>[]) => void;
   onProjectUpdate?: (project: Project, tasks: Partial<ProjectStep>[]) => void;
-  contacts?: Contact[];
-  onContactsChange?: (contacts: Contact[]) => void;
+  contacts: Contact[];
+  onContactsChange: (contacts: Contact[]) => void;
   projectToEdit?: Project | null;
   initialData?: Partial<any>;
 }
@@ -87,6 +90,7 @@ export function NewTaskDialog({
   const router = useRouter();
   const [clientAction, setClientAction] = useState<'select' | 'add'>('select');
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
+  const [isPmFormOpen, setIsPmFormOpen] = useState(false);
   const [contactFolders, setContactFolders] = useState<FolderData[]>([]);
   const [templates, setTemplates] = useState<ProjectTemplate[]>([]);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
@@ -98,10 +102,27 @@ export function NewTaskDialog({
   const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
   const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
   
+  const [isContactPopoverOpen, setIsContactPopoverOpen] = useState(false);
+  const [isPmPopoverOpen, setIsPmPopoverOpen] = useState(false);
+
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
     defaultValues: { name: "", description: "", contactId: "", urgency: 'important', importance: 'B', projectManagerId: "", startDate: undefined, endDate: undefined, projectValue: undefined, status: 'planning' },
   });
+  
+  useEffect(() => {
+    async function loadDependentData() {
+        if (user && isOpen) {
+            const [folders, fetchedTemplates] = await Promise.all([
+                getFolders(user.uid),
+                getProjectTemplates(user.uid),
+            ]);
+            setContactFolders(folders);
+            setTemplates(fetchedTemplates);
+        }
+    }
+    loadDependentData();
+  }, [user, isOpen]);
   
   const importanceValue = form.watch('importance');
 
@@ -113,9 +134,8 @@ export function NewTaskDialog({
             const returningPlan = JSON.parse(returningPlanRaw);
             form.reset(returningPlan.projectData);
             setSteps(returningPlan.steps);
-            // It's crucial to remove the item after use to prevent stale data
             sessionStorage.removeItem(PROJECT_PLAN_SESSION_KEY);
-            return; // Exit early to avoid overwriting with old data
+            return;
         }
 
         const projectData = projectToEdit || initialData;
@@ -148,23 +168,6 @@ export function NewTaskDialog({
     }
   }, [isOpen, projectToEdit, initialData, form]);
 
-  useEffect(() => {
-      async function loadFolders() {
-          if (user && isContactFormOpen) {
-              const folders = await getFolders(user.uid);
-              setContactFolders(folders);
-          }
-      }
-      async function loadTemplates() {
-          if (user && isOpen) {
-              const fetchedTemplates = await getProjectTemplates(user.uid);
-              setTemplates(fetchedTemplates);
-          }
-      }
-      loadFolders();
-      loadTemplates();
-  }, [user, isContactFormOpen, isOpen]);
-
   async function onSubmit(values: ProjectFormData) {
     if (projectToEdit && onProjectUpdate && user) {
         const updatedProjectData = {
@@ -175,7 +178,7 @@ export function NewTaskDialog({
             projectValue: values.projectValue || null,
             startDate: values.startDate || null,
             endDate: values.endDate || null,
-            steps: steps, // Make sure steps are included
+            steps: steps,
         };
         onProjectUpdate(updatedProjectData, steps);
     } else {
@@ -207,18 +210,23 @@ export function NewTaskDialog({
   }
   
   const handleContactSave = (savedContact: Contact, isEditing: boolean) => {
-    if (onContactsChange) {
-        let updatedContacts;
-        if (isEditing) {
-          updatedContacts = contacts.map(c => c.id === savedContact.id ? savedContact : c);
-        } else {
-          updatedContacts = [...contacts, savedContact];
-        }
-        onContactsChange(updatedContacts);
+    let updatedContacts;
+    if (isEditing) {
+      updatedContacts = contacts.map(c => c.id === savedContact.id ? savedContact : c);
+    } else {
+      updatedContacts = [...contacts, savedContact];
     }
-    form.setValue('contactId', savedContact.id);
+    onContactsChange(updatedContacts);
+
+    if (isContactFormOpen) {
+        form.setValue('contactId', savedContact.id);
+        setIsContactFormOpen(false);
+    }
+    if (isPmFormOpen) {
+        form.setValue('projectManagerId', savedContact.id);
+        setIsPmFormOpen(false);
+    }
     setClientAction('select');
-    setIsContactFormOpen(false);
   };
   
   const handleTemplateSelect = (templateId: string) => {
@@ -335,28 +343,56 @@ export function NewTaskDialog({
                         )}
                         
                         <div className="space-y-2">
-                           <FormItem>
-                                <FormLabel>Client</FormLabel>
-                                <RadioGroup onValueChange={(value: 'select' | 'add') => setClientAction(value)} value={clientAction} className="flex space-x-4">
-                                    <FormItem className="flex items-center space-x-2">
-                                        <RadioGroupItem value="select" id="select-client" />
-                                        <Label htmlFor="select-client">Select Existing Client</Label>
-                                    </FormItem>
-                                    <FormItem className="flex items-center space-x-2">
-                                        <RadioGroupItem value="add" id="add-client" />
-                                        <Label htmlFor="add-client">Create New Client</Label>
-                                    </FormItem>
-                                </RadioGroup>
-                            </FormItem>
-
-                            {clientAction === 'select' ? (
-                            <FormField control={form.control} name="contactId" render={({ field }) => ( <FormItem> <Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Assign a client (optional)" /></SelectTrigger></FormControl><SelectContent>{contacts.map(contact => (<SelectItem key={contact.id} value={contact.id}>{contact.name}</SelectItem>))}</SelectContent></Select><FormMessage /> </FormItem> )} />
-                            ) : (
-                            <Button type="button" variant="outline" className="w-full" onClick={(e) => { e.preventDefault(); setIsContactFormOpen(true); }}><Plus className="mr-2 h-4 w-4" /> Add New Contact</Button>
-                            )}
+                           <FormField
+                                control={form.control}
+                                name="contactId"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Client</FormLabel>
+                                    <div className="flex gap-2">
+                                        <Popover open={isContactPopoverOpen} onOpenChange={setIsContactPopoverOpen}>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="outline" role="combobox" className="w-full justify-between">
+                                                    {field.value ? contacts.find(c => c.id === field.value)?.name : "Select client..."}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                <Command><CommandInput placeholder="Search clients..." /><CommandList><CommandEmpty>No client found.</CommandEmpty><CommandGroup>{contacts.map(c => (<CommandItem key={c.id} value={c.name} onSelect={() => { field.onChange(c.id); setIsContactPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", field.value === c.id ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <Button type="button" variant="outline" size="icon" onClick={() => setIsContactFormOpen(true)}><Plus className="h-4 w-4" /></Button>
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
                         </div>
                         
-                        <FormField control={form.control} name="projectManagerId" render={({ field }) => ( <FormItem><FormLabel>Project Manager</FormLabel><Select onValueChange={field.onChange} value={field.value || ""}><FormControl><SelectTrigger><SelectValue placeholder="Assign a project manager" /></SelectTrigger></FormControl><SelectContent>{contacts.map(contact => (<SelectItem key={contact.id} value={contact.id}>{contact.name}</SelectItem>))}</SelectContent></Select><FormMessage /> </FormItem> )} />
+                        <FormField
+                            control={form.control}
+                            name="projectManagerId"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Project Manager</FormLabel>
+                                    <div className="flex gap-2">
+                                        <Popover open={isPmPopoverOpen} onOpenChange={setIsPmPopoverOpen}>
+                                            <PopoverTrigger asChild>
+                                                <Button variant="outline" role="combobox" className="w-full justify-between">
+                                                    {field.value ? contacts.find(c => c.id === field.value)?.name : "Select project manager..."}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                <Command><CommandInput placeholder="Search contacts..." /><CommandList><CommandEmpty>No contacts found.</CommandEmpty><CommandGroup>{contacts.map(c => (<CommandItem key={c.id} value={c.name} onSelect={() => { field.onChange(c.id); setIsPmPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", field.value === c.id ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <Button type="button" variant="outline" size="icon" onClick={() => setIsPmFormOpen(true)}><Plus className="h-4 w-4" /></Button>
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <FormField control={form.control} name="startDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Start Date</FormLabel><Popover open={isStartDatePickerOpen} onOpenChange={setIsStartDatePickerOpen}><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={(date) => { field.onChange(date); setIsStartDatePickerOpen(false); }} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
                           <FormField control={form.control} name="endDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>End Date</FormLabel><Popover open={isEndDatePickerOpen} onOpenChange={setIsEndDatePickerOpen}><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={(date) => { field.onChange(date); setIsEndDatePickerOpen(false); }} /></PopoverContent></Popover><FormMessage /></FormItem> )} />
@@ -406,13 +442,14 @@ export function NewTaskDialog({
         </DialogContent>
       </Dialog>
       
-      {isContactFormOpen && (
+      {(isContactFormOpen || isPmFormOpen) && (
         <ContactFormDialog
-            isOpen={isContactFormOpen}
-            onOpenChange={setIsContactFormOpen}
+            isOpen={isContactFormOpen || isPmFormOpen}
+            onOpenChange={isContactFormOpen ? setIsContactFormOpen : setIsPmFormOpen}
             contactToEdit={null}
             folders={contactFolders}
             onSave={handleContactSave}
+            onFoldersChange={setContactFolders}
         />
       )}
       

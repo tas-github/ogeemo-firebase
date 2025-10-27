@@ -233,7 +233,7 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                         {project.name}
                     </h1>
                     <p className="text-muted-foreground max-w-2xl mx-auto">
-                        {project.description}
+                        Drag and drop tasks to change their status and manage your project workflow.
                     </p>
                 </header>
                 <ProjectManagementHeader />
