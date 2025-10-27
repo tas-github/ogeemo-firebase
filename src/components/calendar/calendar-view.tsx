@@ -230,9 +230,9 @@ export function CalendarView() {
         }));
         
         return (
-            <div ref={drop} className={cn("border-b border-gray-200 p-1 flex flex-col space-y-1 relative group", isOver && canDrop && 'bg-primary/10')}>
+            <div ref={drop} className={cn("border-b border-gray-200 relative group h-full", isOver && canDrop && 'bg-primary/10')}>
                  <button
-                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity p-1"
                     onClick={() => {
                         const dateStr = format(slotStart, 'yyyy-MM-dd');
                         const hourStr = slotStart.getHours();
@@ -358,7 +358,7 @@ export function CalendarView() {
                         <div className="flex h-full">
                             {/* Time Column */}
                             <div className="w-24 flex-shrink-0">
-                                <div className="h-10 border-b border-gray-200" /> {/* Spacer for header */}
+                                <div className="h-10 border-b border-gray-200 pb-2" /> {/* Spacer for header */}
                                 {Array.from({ length: endHour - startHour + 1 }).map((_, i) => (
                                     <div key={i} className="flex items-center justify-center text-center border-b border-gray-200 h-24">
                                         <div className="flex items-center gap-1">
@@ -455,7 +455,3 @@ export function CalendarView() {
         </>
     );
 }
-
-    
-
-    
