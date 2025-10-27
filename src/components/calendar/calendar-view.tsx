@@ -381,7 +381,7 @@ export function CalendarView() {
 
                                     return (
                                         <div key={dateKey} className={cn("relative border-l border-gray-200", isToday && 'bg-primary/5')}>
-                                            <div className="text-center pt-2 pb-[5px] border-b border-gray-200 h-10">
+                                            <div className="text-center pt-2 pb-2 border-b border-gray-200 h-10">
                                                 <p className="font-semibold text-sm">{format(date, 'EEE')}</p>
                                                 <p className="text-xs">{format(date, 'd')}</p>
                                             </div>
@@ -455,5 +455,7 @@ export function CalendarView() {
         </>
     );
 }
+
+    
 
     
