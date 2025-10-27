@@ -357,7 +357,7 @@ export function CalendarView() {
                     <ScrollArea className="h-full">
                         <div className="flex h-full">
                             {/* Time Column */}
-                            <div className="w-20 flex-shrink-0">
+                            <div className="w-24 flex-shrink-0">
                                 <div className="h-10 border-b border-gray-200" /> {/* Spacer for header */}
                                 {Array.from({ length: endHour - startHour + 1 }).map((_, i) => (
                                     <div key={i} className="flex items-center justify-center text-center border-b border-gray-200 h-24">
@@ -381,7 +381,7 @@ export function CalendarView() {
 
                                     return (
                                         <div key={dateKey} className={cn("relative border-l border-gray-200", isToday && 'bg-primary/5')}>
-                                            <div className="text-center py-2 border-b border-gray-200 h-10">
+                                            <div className="text-center pt-2 pb-[5px] border-b border-gray-200 h-10">
                                                 <p className="font-semibold text-sm">{format(date, 'EEE')}</p>
                                                 <p className="text-xs">{format(date, 'd')}</p>
                                             </div>
