@@ -360,11 +360,13 @@ export function CalendarView() {
                             <div className="w-20 flex-shrink-0">
                                 <div className="h-10 border-b border-gray-200" /> {/* Spacer for header */}
                                 {Array.from({ length: endHour - startHour + 1 }).map((_, i) => (
-                                    <div key={i} className="relative flex items-center justify-center text-center border-b border-gray-200 h-24">
-                                        <p className="text-xs text-muted-foreground select-none">{format(new Date(0, 0, 0, startHour + i), 'h a')}</p>
-                                        <div className="absolute top-0 right-0 p-1 flex flex-col">
-                                            <button onClick={() => changeSlotsForHour(startHour + i, 1)} className="h-3 w-3"><ChevronUp className="h-3 w-3" /></button>
-                                            <button onClick={() => changeSlotsForHour(startHour + i, -1)} className="h-3 w-3"><ChevronDown className="h-3 w-3" /></button>
+                                    <div key={i} className="flex items-center justify-center text-center border-b border-gray-200 h-24">
+                                        <div className="flex items-center gap-1">
+                                            <p className="text-xs text-muted-foreground select-none">{format(new Date(0, 0, 0, startHour + i), 'h a')}</p>
+                                            <div className="flex flex-col">
+                                                <button onClick={() => changeSlotsForHour(startHour + i, 1)} className="h-3 w-3"><ChevronUp className="h-3 w-3" /></button>
+                                                <button onClick={() => changeSlotsForHour(startHour + i, -1)} className="h-3 w-3"><ChevronDown className="h-3 w-3" /></button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
