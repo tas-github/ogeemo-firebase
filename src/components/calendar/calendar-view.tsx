@@ -2,13 +2,13 @@
 "use client"
 
 import * as React from "react"
-import { format, addDays, startOfDay, set, parseISO } from "date-fns"
-import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, X, Info, BookOpen, BellRing, BrainCircuit, Plus, ChevronUp, ChevronDown } from "lucide-react"
+import { format, addDays, startOfDay, set, parseISO, differenceInMilliseconds } from "date-fns"
+import { ChevronLeft, ChevronRight, Settings, Calendar as CalendarIcon, X, Info, BookOpen, BellRing, BrainCircuit, Plus, ChevronDown, Save } from "lucide-react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
-import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -32,12 +32,19 @@ import { CalendarSkeleton } from "./calendar-skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip"
 import { CalendarEvent, ItemTypes } from "./CalendarEvent"
 import { useDrop } from "react-dnd"
-import { differenceInMilliseconds } from "date-fns"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 
 const CALENDAR_DAY_COUNT_KEY = 'calendarDayCount';
 const CALENDAR_START_HOUR_KEY = 'calendarStartHour';
 const CALENDAR_END_HOUR_KEY = 'calendarEndHour';
+
+const BASE_SLOT_HEIGHT_PX = 30;
 
 
 export function CalendarView() {
@@ -52,6 +59,8 @@ export function CalendarView() {
     const [filteredProject, setFilteredProject] = React.useState<Project | null>(null);
     const [eventToDelete, setEventToDelete] = React.useState<Event | null>(null);
     const [hourSlots, setHourSlots] = React.useState<Record<number, number>>({});
+    const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
+
 
     const { user } = useAuth();
     const { toast } = useToast();
@@ -195,9 +204,22 @@ export function CalendarView() {
     };
     
     const handleEventDrop = async (item: Event, newStartTime: Date) => {
-        if (!item.start || !item.end) return;
-        const duration = differenceInMilliseconds(item.end, item.start);
-        const newEndTime = new Date(newStartTime.getTime() + duration);
+        let durationMs: number;
+
+        if (item.duration && item.duration > 0) {
+            durationMs = item.duration * 1000;
+        } else if (item.start && item.end) {
+            durationMs = differenceInMilliseconds(item.end, item.start);
+        } else {
+            durationMs = 30 * 60 * 1000; // Default 30 minutes
+        }
+        
+        if(isNaN(durationMs)) {
+            toast({ variant: 'destructive', title: 'Cannot move event', description: 'Event is missing duration data.' });
+            return;
+        }
+
+        const newEndTime = new Date(newStartTime.getTime() + durationMs);
 
         try {
             await updateTask(item.id, { start: newStartTime, end: newEndTime });
@@ -208,12 +230,8 @@ export function CalendarView() {
         }
     };
     
-    const changeSlotsForHour = (hour: number, change: number) => {
-        const currentSlots = hourSlots[hour] || 1;
-        let newSlots = currentSlots + change;
-        if (newSlots < 1) newSlots = 4;
-        if (newSlots > 4) newSlots = 1;
-        setHourSlots(prev => ({...prev, [hour]: newSlots}));
+    const changeSlotsForHour = (hour: number, numSlots: number) => {
+        setHourSlots(prev => ({...prev, [hour]: numSlots}));
     };
     
     const TimeSlot = ({ hour, slotIndex, totalSlots, date }: { hour: number, slotIndex: number, totalSlots: number, date: Date }) => {
@@ -230,9 +248,9 @@ export function CalendarView() {
         }));
         
         return (
-            <div ref={drop} className={cn("border-b border-gray-200 relative group h-full", isOver && canDrop && 'bg-primary/10')}>
+            <div ref={drop} className={cn("border-b border-black relative group", isOver && canDrop && 'bg-primary/10')} style={{ height: `${BASE_SLOT_HEIGHT_PX}px` }}>
                  <button
-                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                    className="absolute inset-0 flex items-center justify-start pl-2 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() => {
                         const dateStr = format(slotStart, 'yyyy-MM-dd');
                         const hourStr = slotStart.getHours();
@@ -250,7 +268,14 @@ export function CalendarView() {
         return <CalendarSkeleton />;
     }
 
-    const totalHours = endHour - startHour + 1;
+    const slotOptions = [
+        { slots: 1, label: '1 slot (60 min)' },
+        { slots: 2, label: '2 slots (30 min)' },
+        { slots: 3, label: '3 slots (20 min)' },
+        { slots: 4, label: '4 slots (15 min)' },
+        { slots: 6, label: '6 slots (10 min)' },
+        { slots: 12, label: '12 slots (5 min)' },
+    ];
 
     return (
         <>
@@ -272,7 +297,7 @@ export function CalendarView() {
                 <div className="flex items-center justify-between flex-wrap gap-4 pb-4">
                     <div />
                     <div className="flex-1 flex justify-center items-center gap-2">
-                        <Popover>
+                        <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                             <PopoverTrigger asChild>
                                 <Button
                                     
@@ -287,7 +312,14 @@ export function CalendarView() {
                                     <ChevronRight onClick={(e) => { e.stopPropagation(); handleNext(); }} className="h-4 w-4" />
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={currentDate} onSelect={(date) => date && setCurrentDate(date)} initialFocus /></PopoverContent>
+                            <PopoverContent className="w-auto p-0">
+                                <Calendar 
+                                    mode="single" 
+                                    selected={currentDate} 
+                                    onSelect={(date) => { if (date) { setCurrentDate(date); setIsDatePickerOpen(false); }}} 
+                                    initialFocus 
+                                />
+                            </PopoverContent>
                         </Popover>
                         <Button onClick={handleToday} className="bg-card text-card-foreground">Today</Button>
                         <Select value={String(dayCount)} onValueChange={handleDayCountChange}>
@@ -350,26 +382,87 @@ export function CalendarView() {
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
-                        <Popover><PopoverTrigger asChild><Button variant="ghost" size="icon" aria-label="Settings"><Settings className="h-4 w-4" /></Button></PopoverTrigger><PopoverContent className="w-80 relative"><PopoverClose className="absolute right-2 top-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"><X className="h-4 w-4" /><span className="sr-only">Close</span></PopoverClose><div className="grid gap-4"><div className="space-y-2"><h4 className="font-medium leading-none">Display Settings</h4><p className="text-sm text-muted-foreground">Set the visible hours for your calendar day.</p></div><div className="grid gap-2"><div className="grid grid-cols-3 items-center gap-4"><Label htmlFor="start-time">Start Time</Label><Select value={String(startHour)} onValueChange={handleStartHourChange}><SelectTrigger id="start-time" className="col-span-2 h-8"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div><div className="grid grid-cols-3 items-center gap-4"><Label htmlFor="end-time">End Time</Label><Select value={String(endHour)} onValueChange={handleEndHourChange}><SelectTrigger id="end-time" className="col-span-2 h-8"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div></div></div></PopoverContent></Popover>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="ghost" size="icon" aria-label="Settings">
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80">
+                            <div>
+                                <div className="grid gap-4">
+                                  <div className="space-y-2">
+                                    <h4 className="font-medium leading-none">Display Settings</h4>
+                                    <p className="text-sm text-muted-foreground">Set the visible hours for your calendar day.</p>
+                                  </div>
+                                  <div className="grid gap-2">
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                      <Label htmlFor="start-time">Start Time</Label>
+                                      <Select value={String(startHour)} onValueChange={handleStartHourChange}>
+                                        <SelectTrigger id="start-time" className="col-span-2 h-8">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="grid grid-cols-3 items-center gap-4">
+                                      <Label htmlFor="end-time">End Time</Label>
+                                      <Select value={String(endHour)} onValueChange={handleEndHourChange}>
+                                        <SelectTrigger id="end-time" className="col-span-2 h-8">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {hourOptions.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex justify-end pt-4">
+                                  <PopoverClose asChild>
+                                    <Button>Save</Button>
+                                  </PopoverClose>
+                                </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                     </div>
                 </div>
                 <div className="flex-1 min-h-0">
                     <ScrollArea className="h-full">
-                        <div className="flex h-full">
+                        <div className="flex h-full border-t border-l border-black">
                             {/* Time Column */}
-                            <div className="w-24 flex-shrink-0">
-                                <div className="h-10 border-b border-gray-200 pb-2" /> {/* Spacer for header */}
-                                {Array.from({ length: endHour - startHour + 1 }).map((_, i) => (
-                                    <div key={i} className="flex items-center justify-center text-center border-b border-gray-200 h-24">
-                                        <div className="flex items-center gap-1">
-                                            <p className="text-xs text-muted-foreground select-none">{format(new Date(0, 0, 0, startHour + i), 'h a')}</p>
-                                            <div className="flex flex-col">
-                                                <button onClick={() => changeSlotsForHour(startHour + i, 1)} className="h-3 w-3"><ChevronUp className="h-3 w-3" /></button>
-                                                <button onClick={() => changeSlotsForHour(startHour + i, -1)} className="h-3 w-3"><ChevronDown className="h-3 w-3" /></button>
-                                            </div>
+                            <div className="w-24 flex-shrink-0 flex flex-col">
+                                <div className="h-10 border-b border-r border-black flex items-center justify-center" /> {/* Spacer for header */}
+                                {Array.from({ length: endHour - startHour + 1 }).map((_, i) => {
+                                    const hour = startHour + i;
+                                    const numSlots = hourSlots[hour] || 1;
+                                    const hourRowHeight = numSlots * BASE_SLOT_HEIGHT_PX;
+                                    return (
+                                        <div
+                                            key={i}
+                                            className="flex flex-col items-center justify-center text-center border-b border-r border-black"
+                                            style={{ height: `${hourRowHeight}px` }}
+                                        >
+                                            <p className="text-xs text-muted-foreground select-none">{format(new Date(0, 0, 0, hour), 'h a')}</p>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-5 w-5">
+                                                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent>
+                                                    {slotOptions.map(opt => (
+                                                        <DropdownMenuItem key={opt.slots} onSelect={() => changeSlotsForHour(hour, opt.slots)}>
+                                                            {opt.label}
+                                                        </DropdownMenuItem>
+                                                    ))}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </div>
-                                    </div>
-                                ))}
+                                )})}
                             </div>
                             
                             {/* Day Columns */}
@@ -380,10 +473,16 @@ export function CalendarView() {
                                     const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
 
                                     return (
-                                        <div key={dateKey} className={cn("relative border-l border-gray-200", isToday && 'bg-primary/5')}>
-                                            <div className="text-center pt-2 pb-2 border-b border-gray-200 h-10">
-                                                <p className="font-semibold text-sm">{format(date, 'EEE')}</p>
-                                                <p className="text-xs">{format(date, 'd')}</p>
+                                        <div key={dateKey} className={cn("relative border-r border-black", isToday && 'bg-primary/5')}>
+                                            <div className="text-center flex flex-col justify-center border-b border-black h-10">
+                                                 {dayCount === 1 ? (
+                                                    <p className="font-semibold text-sm">{format(date, "cccc, LLLL do")}</p>
+                                                ) : (
+                                                    <>
+                                                        <p className="font-semibold text-sm">{format(date, 'EEE')}</p>
+                                                        <p className="text-xs">{format(date, 'd')}</p>
+                                                    </>
+                                                )}
                                             </div>
                                             
                                             <div className="relative">
@@ -391,13 +490,10 @@ export function CalendarView() {
                                                 {Array.from({ length: endHour - startHour + 1 }).map((_, i) => {
                                                     const hour = startHour + i;
                                                     const numSlots = hourSlots[hour] || 1;
-                                                    const slotHeight = 96 / numSlots; // 96px is h-24
                                                     return (
-                                                        <div key={i} className="flex flex-col">
+                                                        <div key={i} className="flex flex-col" style={{ height: `${numSlots * BASE_SLOT_HEIGHT_PX}px`}}>
                                                             {Array.from({ length: numSlots }).map((_, slotIndex) => (
-                                                                <div key={slotIndex} style={{ height: `${slotHeight}px` }}>
-                                                                    <TimeSlot hour={hour} slotIndex={slotIndex} totalSlots={numSlots} date={date} />
-                                                                </div>
+                                                                <TimeSlot key={slotIndex} hour={hour} slotIndex={slotIndex} totalSlots={numSlots} date={date} />
                                                             ))}
                                                         </div>
                                                     )
@@ -406,17 +502,13 @@ export function CalendarView() {
                                                 {/* Events */}
                                                 {todaysEvents.map(event => {
                                                     if (!event.start || !event.end) return null;
-                                                    const totalMinutes = totalHours * 60;
+                                                    
                                                     const startMinutes = (event.start.getHours() - startHour) * 60 + event.start.getMinutes();
-                                                    const endMinutes = (event.end.getHours() - startHour) * 60 + event.end.getMinutes();
                                                     
-                                                    const topPercent = (startMinutes / totalMinutes) * 100;
-                                                    const heightPercent = ((endMinutes - startMinutes) / totalMinutes) * 100;
-                                                    
-                                                    if (heightPercent <= 0) return null;
+                                                    const topPosition = (startMinutes / 60) * (hourSlots[event.start.getHours()] || 1) * BASE_SLOT_HEIGHT_PX + 3; // +3 for centering
 
                                                     return (
-                                                        <div key={event.id} style={{ top: `${topPercent}%`, height: `${heightPercent}%`, left: 0, right: 0 }} className="absolute z-10 p-1">
+                                                        <div key={event.id} style={{ top: `${topPosition}px` }} className="absolute h-6 left-0.5 right-0.5">
                                                             <CalendarEvent
                                                                 event={event}
                                                                 onEdit={handleEditEvent}
@@ -455,3 +547,19 @@ export function CalendarView() {
         </>
     );
 }
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+

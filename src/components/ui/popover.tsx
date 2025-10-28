@@ -3,6 +3,7 @@
 
 import * as React from "react"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
+import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -15,7 +16,7 @@ const PopoverClose = PopoverPrimitive.Close
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
->(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
+>(({ className, align = "center", sideOffset = 4, children, ...props }, ref) => (
   <PopoverPrimitive.Portal>
     <PopoverPrimitive.Content
       ref={ref}
@@ -26,7 +27,13 @@ const PopoverContent = React.forwardRef<
         className
       )}
       {...props}
-    />
+    >
+      {children}
+      <PopoverPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </PopoverPrimitive.Close>
+    </PopoverPrimitive.Content>
   </PopoverPrimitive.Portal>
 ))
 PopoverContent.displayName = PopoverPrimitive.Content.displayName

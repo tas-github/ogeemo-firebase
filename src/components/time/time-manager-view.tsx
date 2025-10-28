@@ -302,9 +302,11 @@ export function TimeManagerView() {
                     const hourParam = searchParams.get('hour');
                     const minuteParam = searchParams.get('minute');
                     
-                    setScheduleDate(dateParam ? parseISO(dateParam) : new Date());
-                    setScheduleHour(hourParam || String(new Date().getHours()));
-                    setScheduleMinute(minuteParam || String(Math.floor(new Date().getMinutes() / 5) * 5));
+                    const now = new Date();
+                    setScheduleDate(dateParam ? parseISO(dateParam) : now);
+                    setScheduleHour(hourParam || String(now.getHours()));
+                    setScheduleMinute(minuteParam || String(Math.floor(now.getMinutes() / 5) * 5));
+
                     if (projectIdParam) setSelectedProjectId(projectIdParam);
                 }
             }
@@ -729,3 +731,4 @@ export function TimeManagerView() {
 
     
 
+  

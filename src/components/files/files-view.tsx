@@ -18,13 +18,14 @@ import {
   Pencil,
   Trash2,
   BookOpen,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { type FileItem, type FolderItem } from '@/data/files';
 import { useToast } from '@/hooks/use-toast';
-import { getFolders, getFiles, addFolder, deleteFiles, updateFolder, deleteFoldersAndContents, addTextFileClient, addFileRecord, findOrCreateFileFolder, updateFile } from '@/services/file-service';
+import { getFolders, getFiles, addFolder, deleteFiles, updateFolder, deleteFoldersAndContents, addTextFileClient, addFileRecord, findOrCreateFileFolder, updateFile, addFile } from '@/services/file-service';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import {
@@ -90,6 +91,8 @@ export function FilesView() {
   const [isTestCardOpen, setIsTestCardOpen] = useState(false);
   const [testContent, setTestContent] = useState('');
   const [testFileName, setTestFileName] = useState('');
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
 
   const { user } = useAuth();
@@ -336,6 +339,31 @@ export function FilesView() {
             setFolderToDelete(null);
         }
     };
+    
+    const handleUploadClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !user || !selectedFolderId || selectedFolderId === 'all') {
+            toast({ variant: 'destructive', title: 'Upload Canceled', description: 'You must select a specific folder before uploading a file.' });
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('userId', user.uid);
+        formData.append('folderId', selectedFolderId);
+
+        try {
+            const newFile = await addFile(formData);
+            setFiles(prev => [newFile, ...prev]);
+            toast({ title: 'File Uploaded', description: `"${newFile.name}" has been uploaded successfully.` });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
+        }
+    };
 
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -406,6 +434,7 @@ export function FilesView() {
 
   return (
     <>
+    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.md" />
     <div className="p-4 sm:p-6 space-y-4">
       <header className="text-center">
         <h1 className="text-3xl font-bold font-headline text-primary">File Manager</h1>
@@ -440,32 +469,15 @@ export function FilesView() {
             <div className="relative h-8 flex items-center justify-center p-1 border border-black bg-primary/10 rounded-md font-semibold text-sm text-primary">
                 <p>Files</p>
                 <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleSelectFolder('all')} title="Show All Files">
-                          <Files className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent><p>Show All Files</p></TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => router.push('/text-editor')} title="New Note">
-                          <FilePlus2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent><p>New Note</p></TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {}} disabled={!selectedFolderId || selectedFolderId === 'all'}>
-                          <Upload className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent><p>Upload File</p></TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6"><Plus className="h-4 w-4"/></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem onSelect={() => router.push('/text-editor')}><FilePlus2 className="mr-2 h-4 w-4" /> New Note</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={handleUploadClick} disabled={!selectedFolderId || selectedFolderId === 'all'}><Upload className="mr-2 h-4 w-4" /> Upload File</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
             <div className="h-8 flex items-center justify-center p-1 border border-black bg-primary/10 rounded-md text-center font-semibold text-sm text-primary">
@@ -515,6 +527,9 @@ export function FilesView() {
                                     </DropdownMenuItem>
                                      <DropdownMenuItem onSelect={() => handleStartFileRename(file)}>
                                       <Pencil className="mr-2 h-4 w-4" /> Rename
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={() => setIsDriveLinkDialogOpen(true)}>
+                                      <LinkIcon className="mr-2 h-4 w-4" /> Add Link
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setFileToDelete(file); }} className="text-destructive">

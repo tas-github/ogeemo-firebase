@@ -315,6 +315,33 @@ export async function saveEmailForContact(userId: string, contactName: string, e
     return Promise.resolve();
 }
 
+export async function addFileFromDataUrl(
+    { dataUrl, fileName, userId, folderId }: { dataUrl: string; fileName: string; userId: string; folderId: string; }
+): Promise<FileItem> {
+    const storage = await getAppStorage();
+    
+    // Convert data URL to Blob
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+
+    const storagePath = `userFiles/${userId}/${folderId}/${Date.now()}-${fileName}`;
+    const fileRef = storageRef(storage, storagePath);
+
+    await uploadBytes(fileRef, blob);
+
+    const newFileRecord: Omit<FileItem, 'id'> = {
+        name: fileName,
+        type: blob.type,
+        size: blob.size,
+        modifiedAt: new Date(),
+        folderId,
+        userId,
+        storagePath,
+    };
+
+    return addFileRecord(newFileRecord);
+}
+
 // Kept for specific file deletions, but folder deletion is handled by deleteFolders
 export async function deleteFiles(fileIds: string[]): Promise<void> {
     const db = await getDb();
@@ -342,5 +369,3 @@ export async function deleteFiles(fileIds: string[]): Promise<void> {
     
     await batch.commit();
 }
-
-    

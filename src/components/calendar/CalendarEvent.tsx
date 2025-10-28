@@ -56,7 +56,7 @@ export function CalendarEvent({ event, onEdit, onDelete, onToggleComplete }: Cal
     <div
       ref={drag}
       className={cn(
-        'relative rounded-md p-2 text-xs transition-opacity group flex items-start justify-between border',
+        'relative rounded-md px-2 text-xs transition-opacity group flex items-center justify-between border h-full',
         isCompleted ? 'bg-muted text-muted-foreground border-gray-300' : 'bg-primary/20 text-black border-tan',
         isDragging && 'opacity-50'
       )}
@@ -70,7 +70,7 @@ export function CalendarEvent({ event, onEdit, onDelete, onToggleComplete }: Cal
       <div className="flex-shrink-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100">
+            <Button variant="ghost" size="icon" className="h-6 w-6">
               <MoreVertical className="h-4 w-4" />
               <span className="sr-only">Event options</span>
             </Button>
