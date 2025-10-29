@@ -29,6 +29,7 @@ import { getContacts, type Contact } from '@/services/contact-service';
 import { type Project, type Event as TaskEvent } from '@/types/calendar-types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { ProjectManagementHeader } from './ProjectManagementHeader';
 
 interface FeatureCardProps {
   icon: React.ElementType;
@@ -110,6 +111,7 @@ export function ProjectsView() {
   const features = [
     { icon: Briefcase, title: "Project List", description: "A comprehensive list of every project. Use this view to edit project details.", href: "/projects/all", cta: "View Project List" },
     { icon: ListChecks, title: "Status Board", description: "A Kanban-style board to visualize project status and quickly assess your workload.", href: "/project-status", cta: "Go to Status Board" },
+    { icon: Inbox, title: "Action Items Inbox", description: "A central place to capture all your unsorted tasks and ideas before organizing them.", href: "/projects/inbox/tasks", cta: "Go to Inbox" },
     { icon: ListTodo, title: "All Tasks", description: "View a comprehensive list of every task and event across all projects and your calendar.", href: "/tasks", cta: "Open Tasks List" },
     { icon: CalendarIcon, title: "Calendar View", description: "See all scheduled project tasks and events in a visual, drag-and-drop calendar.", href: "/calendar", cta: "Open Calendar" },
   ];
@@ -124,35 +126,11 @@ export function ProjectsView() {
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Your central command for managing projects and tasks, from high-level planning to daily execution.
           </p>
-          <div className="flex justify-center gap-2 pt-4">
-              <Button asChild variant="outline">
-                  <Link href="/projects/all">
-                      <Briefcase className="mr-2 h-4 w-4" /> Project List
-                  </Link>
-              </Button>
-              <Button asChild variant="outline">
-                  <Link href="/project-status">
-                      <ListChecks className="mr-2 h-4 w-4" /> Status Board
-                  </Link>
-              </Button>
-              <Button asChild variant="outline">
-                  <Link href="/tasks">
-                      <Inbox className="mr-2 h-4 w-4" /> All Tasks
-                  </Link>
-              </Button>
-              <Button onClick={handleNewProjectClick}>
-                  <Plus className="mr-2 h-4 w-4" /> New Project
-              </Button>
-              <Button asChild variant="ghost" size="icon">
-                  <Link href="/projects/instructions">
-                      <Info className="h-5 w-5" />
-                      <span className="sr-only">Project Management Instructions</span>
-                  </Link>
-              </Button>
-          </div>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+        <ProjectManagementHeader />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
           {features.map((feature) => (
             <FeatureCard key={feature.title} {...feature} />
           ))}

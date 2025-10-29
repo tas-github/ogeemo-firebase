@@ -76,8 +76,9 @@ const docToTask = (doc: any): TaskEvent => {
     status: data.status || 'todo',
     position: data.position || 0,
     projectId: data.projectId || null,
-    userId: data.userId,
     stepId: data.stepId || null,
+    userId: data.userId,
+    attendees: data.attendees,
     contactId: data.contactId || null,
     isScheduled: data.isScheduled || false,
     duration: data.duration,
@@ -143,8 +144,24 @@ export async function getProjectById(projectId: string): Promise<Project | null>
 
 export async function addProject(projectData: Omit<Project, 'id'>): Promise<Project> {
     const db = await getDb();
-    const docRef = await addDoc(collection(db, PROJECTS_COLLECTION), projectData);
-    return { id: docRef.id, ...projectData };
+    
+    // Ensure optional fields that are undefined are converted to null for Firestore
+    const dataToSave = {
+        ...projectData,
+        startDate: projectData.startDate || null,
+        endDate: projectData.endDate || null,
+        contactId: projectData.contactId || null,
+        description: projectData.description || '',
+        status: projectData.status || 'planning',
+        urgency: projectData.urgency || 'important',
+        importance: projectData.importance || 'B',
+        projectManagerId: projectData.projectManagerId || null,
+        projectValue: projectData.projectValue || null,
+        steps: projectData.steps || [],
+    };
+
+    const docRef = await addDoc(collection(db, PROJECTS_COLLECTION), dataToSave);
+    return { id: docRef.id, ...dataToSave };
 }
 
 
@@ -250,6 +267,26 @@ export async function deleteProject(projectId: string, taskIds: string[]): Promi
     
     const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
     batch.delete(projectRef);
+
+    await batch.commit();
+}
+
+export async function deleteProjects(projectIds: string[]): Promise<void> {
+    const db = await getDb();
+    const batch = writeBatch(db);
+
+    for (const projectId of projectIds) {
+        // Delete the project document
+        const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
+        batch.delete(projectRef);
+
+        // Find and delete all tasks associated with this project
+        const tasksQuery = query(collection(db, TASKS_COLLECTION), where("projectId", "==", projectId));
+        const tasksSnapshot = await getDocs(tasksQuery);
+        tasksSnapshot.forEach(taskDoc => {
+            batch.delete(taskDoc.ref);
+        });
+    }
 
     await batch.commit();
 }
@@ -389,7 +426,7 @@ const defaultChips: Omit<ActionChipData, 'id' | 'userId'>[] = [
   { label: 'OgeeMail', icon: Mail, href: '/ogeemail' },
   { label: 'Contacts', icon: Contact, href: '/contacts' },
   { label: 'Projects', icon: Briefcase, href: '/projects' },
-  { label: 'Files', icon: Folder, href: '/files' },
+  { label: 'Task & Event Mngr', icon: BrainCircuit, href: '/master-mind'},
 ];
 
 async function getChipsFromCollection(userId: string, collectionName: string): Promise<ActionChipData[]> {

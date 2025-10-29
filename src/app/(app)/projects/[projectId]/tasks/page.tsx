@@ -1,8 +1,11 @@
-
 'use client';
 
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { LoaderCircle } from 'lucide-react';
+import { getProjectById } from '@/services/project-service';
+import { type Project } from '@/types/calendar-types';
+import { ProjectManagementHeader } from '@/components/tasks/ProjectManagementHeader';
 
 const ProjectTasksView = dynamic(
   () => import('@/components/tasks/project-tasks-view').then((mod) => mod.ProjectTasksView),
@@ -20,12 +23,25 @@ const ProjectTasksView = dynamic(
 );
 
 export default function ProjectTaskPage({ params }: { params: { projectId: string } }) {
+  const [project, setProject] = useState<Project | null>(null);
+
+  useEffect(() => {
+    async function fetchProject() {
+      if (params.projectId) {
+        try {
+          const projectData = await getProjectById(params.projectId);
+          setProject(projectData);
+        } catch (error) {
+          console.error("Failed to fetch project:", error);
+          // Optionally, handle the error (e.g., show a toast notification)
+        }
+      }
+    }
+    fetchProject();
+  }, [params.projectId]);
+
   return (
     <div className="h-full flex flex-col">
-      {/* ProjectHeader will be added in a subsequent step */}
-      <div className="p-4 sm:p-6">
-        <h1 className="text-2xl font-bold">Project: {params.projectId}</h1>
-      </div>
       <div className="flex-1 min-h-0">
         <ProjectTasksView projectId={params.projectId} />
       </div>

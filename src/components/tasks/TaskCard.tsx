@@ -1,10 +1,9 @@
-
 "use client";
 
 import React, { useRef, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { Card, CardContent } from '@/components/ui/card';
-import { MoreVertical, Edit, Trash2, FolderGit2 } from 'lucide-react';
+import { MoreVertical, Edit, Trash2, Calendar } from 'lucide-react';
 import { type Event as TaskEvent } from '@/types/calendar-types';
 import { cn } from '@/lib/utils';
 import {
@@ -83,6 +82,9 @@ export function TaskCard({ task, onMoveCard, onTaskUpdate, onTaskDelete, isSelec
                 <DropdownMenuContent align="end">
                     <DropdownMenuItem onSelect={handleEdit}>
                         <Edit className="mr-2 h-4 w-4" /> Edit / View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={handleEdit}>
+                        <Calendar className="mr-2 h-4 w-4" /> Schedule to Calendar
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => onTaskDelete(task.id)} className="text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" /> Delete Task

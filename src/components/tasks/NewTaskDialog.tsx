@@ -24,458 +24,268 @@ import {
 } from "@/components/ui/form";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { type Project, type Event as TaskEvent, type ProjectUrgency, type ProjectImportance, type ProjectStatus, type ProjectTemplate, type ProjectStep } from '@/types/calendar-types';
-import { type Contact, type FolderData } from '@/data/contacts';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
-import { Plus, Calendar as CalendarIcon, Save, Trash2, Route } from 'lucide-react';
-import ContactFormDialog from '../contacts/contact-form-dialog';
-import { getFolders } from '@/services/contact-service';
+import { type Project, type Event as TaskEvent, type ProjectStep } from '@/types/calendar-types';
+import { type Contact } from '@/data/contacts';
 import { useAuth } from '@/context/auth-context';
-import { ScrollArea } from '../ui/scroll-area';
+import { addProject, addTask, updateTask, updateProject, getTaskById, addProjectWithTasks } from '@/services/project-service';
+import { LoaderCircle, Route, Calendar as CalendarIcon } from 'lucide-react';
+import { addMinutes, format, parseISO } from 'date-fns';
+import { getContacts, type FolderData } from '@/services/contact-service';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Calendar } from '../ui/calendar';
-import { cn } from '@/lib/utils';
-import { format, set, addMinutes, parseISO } from 'date-fns';
-import { addProjectTemplate, getProjectTemplates, updateProjectWithTasks } from '@/services/project-service';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Calendar } from '../ui/calendar';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+
+export const PROJECT_PLAN_SESSION_KEY = 'ogeemo-project-plan-session';
 
 
 const projectSchema = z.object({
   name: z.string().min(2, { message: "Project name must be at least 2 characters." }),
   description: z.string().optional(),
-  contactId: z.string().optional(),
-  urgency: z.enum(['urgent', 'important', 'optional']).default('important'),
-  importance: z.enum(['A', 'B', 'C']).default('B'),
-  projectManagerId: z.string().optional(),
-  startDate: z.date().optional(),
-  endDate: z.date().optional(),
-  projectValue: z.coerce.number().optional(),
+  contactId: z.string().optional().nullable(),
   status: z.enum(['planning', 'active', 'on-hold', 'completed']).default('planning'),
+  startDate: z.date().optional().nullable(),
+  endDate: z.date().optional().nullable(),
+  projectValue: z.coerce.number().optional(),
 });
 
+const taskSchema = z.object({
+    title: z.string().min(2, { message: "Task title is required." }),
+    description: z.string().optional(),
+});
 
 type ProjectFormData = z.infer<typeof projectSchema>;
+type TaskFormData = z.infer<typeof taskSchema>;
 
 interface NewTaskDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onProjectCreate: (projectData: Omit<Project, 'id' | 'createdAt' | 'userId'>, tasks: Omit<TaskEvent, 'id' | 'userId' | 'projectId'>[]) => void;
-  onProjectUpdate?: (project: Project, tasks: Partial<ProjectStep>[]) => void;
-  contacts: Contact[];
-  onContactsChange: (contacts: Contact[]) => void;
+  onProjectCreate?: (projectData: Omit<Project, 'id' | 'createdAt' | 'userId'>, tasks: Omit<TaskEvent, 'id' | 'userId' | 'projectId'>[]) => void;
+  onProjectUpdate?: (project: Project, tasks: []) => void;
+  onTaskCreate?: (task: TaskEvent) => void;
+  contacts?: Contact[];
+  onContactsChange?: (contacts: Contact[]) => void;
   projectToEdit?: Project | null;
+  projectId?: string; // If provided, we are in "add task" mode
   initialData?: Partial<any>;
 }
-
-export const PROJECT_PLAN_SESSION_KEY = 'ogeemo-project-plan-session';
 
 export function NewTaskDialog({
   isOpen,
   onOpenChange,
   onProjectCreate,
   onProjectUpdate,
+  onTaskCreate,
   contacts = [],
   onContactsChange,
   projectToEdit,
+  projectId,
   initialData,
 }: NewTaskDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const router = useRouter();
-  const [clientAction, setClientAction] = useState<'select' | 'add'>('select');
-  const [isContactFormOpen, setIsContactFormOpen] = useState(false);
-  const [isPmFormOpen, setIsPmFormOpen] = useState(false);
-  const [contactFolders, setContactFolders] = useState<FolderData[]>([]);
-  const [templates, setTemplates] = useState<ProjectTemplate[]>([]);
-  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
-  const [newTemplateName, setNewTemplateName] = useState("");
   
-  const [steps, setSteps] = useState<Partial<ProjectStep>[]>([]);
-  const [displayValue, setDisplayValue] = useState("");
-
-  const [isStartDatePickerOpen, setIsStartDatePickerOpen] = useState(false);
-  const [isEndDatePickerOpen, setIsEndDatePickerOpen] = useState(false);
-  
-  const [isContactPopoverOpen, setIsContactPopoverOpen] = useState(false);
-  const [isPmPopoverOpen, setIsPmPopoverOpen] = useState(false);
+  const isTaskMode = !!projectId;
+  const isEditingProject = !!projectToEdit;
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
-    defaultValues: { name: "", description: "", contactId: "", urgency: 'important', importance: 'B', projectManagerId: "", startDate: undefined, endDate: undefined, projectValue: undefined, status: 'planning' },
+    defaultValues: { name: "", description: "", contactId: null, status: 'planning' },
   });
-  
-  useEffect(() => {
-    async function loadDependentData() {
-        if (user && isOpen) {
-            const [folders, fetchedTemplates] = await Promise.all([
-                getFolders(user.uid),
-                getProjectTemplates(user.uid),
-            ]);
-            setContactFolders(folders);
-            setTemplates(fetchedTemplates);
-        }
-    }
-    loadDependentData();
-  }, [user, isOpen]);
-  
-  const importanceValue = form.watch('importance');
+
+  const taskForm = useForm<TaskFormData>({
+      resolver: zodResolver(taskSchema),
+      defaultValues: { title: "", description: "" },
+  });
+
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-        // Check for returning plan from Project Organizer
-        const returningPlanRaw = sessionStorage.getItem(PROJECT_PLAN_SESSION_KEY);
-        if (returningPlanRaw) {
-            const returningPlan = JSON.parse(returningPlanRaw);
-            form.reset(returningPlan.projectData);
-            setSteps(returningPlan.steps);
-            sessionStorage.removeItem(PROJECT_PLAN_SESSION_KEY);
-            return;
-        }
-
-        const projectData = projectToEdit || initialData;
-        if (projectData) {
-            form.reset({
-                name: projectData.name || "",
-                description: projectData.description || "",
-                contactId: projectData.contactId || "",
-                urgency: projectData.urgency || 'important',
-                importance: projectData.importance || 'B',
-                projectManagerId: projectData.projectManagerId || "",
-                startDate: projectData.startDate ? new Date(projectData.startDate) : undefined,
-                endDate: projectData.endDate ? new Date(projectData.endDate) : undefined,
-                projectValue: projectData.projectValue || undefined,
-                status: projectData.status || 'planning',
-            });
-            if (projectData.projectValue) {
-                setDisplayValue(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(projectData.projectValue));
-            } else {
-                setDisplayValue('');
-            }
-            setSteps(projectData.steps || []);
+        if (isTaskMode) {
+             taskForm.reset({ title: "", description: "" });
         } else {
-            form.reset({ name: "", description: "", contactId: "", urgency: 'important', importance: 'B', projectManagerId: "", startDate: undefined, endDate: undefined, projectValue: undefined, status: 'planning' });
-            setDisplayValue('');
-            setSteps([]);
+            const defaults = projectToEdit 
+                ? { 
+                    name: projectToEdit.name,
+                    description: projectToEdit.description,
+                    contactId: projectToEdit.contactId,
+                    status: projectToEdit.status,
+                    startDate: projectToEdit.startDate ? parseISO(projectToEdit.startDate as unknown as string) : undefined,
+                    endDate: projectToEdit.endDate ? parseISO(projectToEdit.endDate as unknown as string) : undefined,
+                    projectValue: projectToEdit.projectValue
+                  }
+                : { ...initialData };
+            form.reset(defaults);
         }
-        
-        setClientAction('select');
     }
-  }, [isOpen, projectToEdit, initialData, form]);
+  }, [isOpen, projectToEdit, isTaskMode, initialData, form, taskForm]);
 
-  async function onSubmit(values: ProjectFormData) {
-    if (projectToEdit && onProjectUpdate && user) {
-        const updatedProjectData = {
-            ...projectToEdit,
-            ...values,
-            contactId: values.contactId || null,
-            projectManagerId: values.projectManagerId || null,
-            projectValue: values.projectValue || null,
-            startDate: values.startDate || null,
-            endDate: values.endDate || null,
-            steps: steps,
-        };
-        onProjectUpdate(updatedProjectData, steps);
+  async function onProjectSubmit(values: ProjectFormData) {
+    if (!user) return;
+    setIsLoading(true);
+
+    if (isEditingProject && projectToEdit) {
+        if (onProjectUpdate) {
+            onProjectUpdate({ ...projectToEdit, ...values }, []);
+        }
     } else {
-        const tasksFromSteps = steps
-            .filter(step => step.connectToCalendar && step.startTime)
-            .map((step, index) => ({
-                title: step.title!,
-                description: step.description,
-                start: step.startTime!,
-                end: addMinutes(step.startTime!, step.durationMinutes || 30),
-                status: 'todo' as TaskStatus,
-                position: index,
-            }));
-        onProjectCreate({
-            name: values.name,
-            description: values.description,
-            contactId: values.contactId || null,
-            status: values.status as ProjectStatus,
-            urgency: values.urgency as ProjectUrgency,
-            importance: values.importance as ProjectImportance,
-            projectManagerId: values.projectManagerId || null,
-            startDate: values.startDate || null,
-            endDate: values.endDate || null,
-            projectValue: values.projectValue || null,
-            steps: steps as ProjectStep[],
-        }, tasksFromSteps);
+        if (onProjectCreate) {
+            onProjectCreate({ ...values, contactId: values.contactId || null }, []);
+        }
     }
+    
+    setIsLoading(false);
     onOpenChange(false);
   }
   
-  const handleContactSave = (savedContact: Contact, isEditing: boolean) => {
-    let updatedContacts;
-    if (isEditing) {
-      updatedContacts = contacts.map(c => c.id === savedContact.id ? savedContact : c);
-    } else {
-      updatedContacts = [...contacts, savedContact];
-    }
-    onContactsChange(updatedContacts);
+  const handleOpenProjectOrganizer = async () => {
+    if (!user) return;
 
-    if (isContactFormOpen) {
-        form.setValue('contactId', savedContact.id);
-        setIsContactFormOpen(false);
-    }
-    if (isPmFormOpen) {
-        form.setValue('projectManagerId', savedContact.id);
-        setIsPmFormOpen(false);
-    }
-    setClientAction('select');
-  };
-  
-  const handleTemplateSelect = (templateId: string) => {
-    const template = templates.find(t => t.id === templateId);
-    if (template) {
-        form.setValue('name', template.name);
-        form.setValue('description', template.description || '');
-        const templateTasks = template.tasks || [];
-        setSteps(templateTasks.map(t => ({...t, id: `temp_${Date.now()}`})));
-        toast({ title: "Template Applied", description: `Project details and ${templateTasks.length} steps have been loaded.`});
-    }
-  };
+    // Trigger validation
+    const isValid = await form.trigger();
+    if (!isValid) return;
 
-  const handleSaveAsTemplate = async () => {
-    if (!user || !newTemplateName.trim()) {
-        toast({ variant: 'destructive', title: 'Template name is required.' });
-        return;
-    }
+    const values = form.getValues();
     
-    const templateData: Omit<ProjectTemplate, 'id'> = {
-        name: newTemplateName,
-        description: form.getValues('description') || '',
-        tasks: steps.map(({ id, ...rest }) => rest) as any,
-        userId: user.uid,
-    };
-    
+    // Save or update the project first
+    setIsLoading(true);
     try {
-        const newTemplate = await addProjectTemplate(templateData);
-        setTemplates(prev => [...prev, newTemplate]);
-        toast({ title: 'Template Saved', description: `"${newTemplateName}" has been saved.` });
-        setIsTemplateDialogOpen(false);
-        setNewTemplateName('');
+      let currentProjectId: string;
+      if (projectToEdit) {
+        currentProjectId = projectToEdit.id;
+        const dataToUpdate = {
+            ...values,
+            contactId: values.contactId || null,
+        };
+        await updateProject(currentProjectId, dataToUpdate);
+        toast({ title: "Project Saved" });
+      } else {
+        const newProject = await addProject({ 
+            ...values, 
+            contactId: values.contactId || null, 
+            userId: user.uid, 
+            createdAt: new Date()
+        });
+        currentProjectId = newProject.id;
+        toast({ title: "Project Created" });
+      }
+
+      // Store data in session storage and navigate
+      sessionStorage.setItem(PROJECT_PLAN_SESSION_KEY, JSON.stringify({
+        projectData: { ...values, id: currentProjectId },
+        steps: projectToEdit?.steps || [],
+      }));
+      router.push(`/projects/organizer`);
+
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Failed to save template', description: error.message });
+        toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+    } finally {
+        setIsLoading(false);
     }
   };
 
-  const handleOpenProjectOrganizer = () => {
-      const currentProjectData = form.getValues();
-      const sessionData = {
-          projectData: currentProjectData,
-          steps: steps,
-          isEditing: !!projectToEdit,
-          projectId: projectToEdit?.id,
-          contacts: contacts,
-      };
-      sessionStorage.setItem(PROJECT_PLAN_SESSION_KEY, JSON.stringify(sessionData));
-      router.push('/projects/organizer');
-  };
-  
-    const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        const numericValue = parseFloat(value.replace(/[^0-9.]/g, ''));
-        if (!isNaN(numericValue)) {
-            form.setValue('projectValue', numericValue);
-            setDisplayValue(value);
-        } else {
-            form.setValue('projectValue', undefined);
-            setDisplayValue('');
+
+  async function onTaskSubmit(values: TaskFormData) {
+    if (!user || !projectId) return;
+
+    setIsLoading(true);
+    try {
+        const newTaskData: Omit<TaskEvent, 'id'> = {
+            title: values.title,
+            description: values.description,
+            start: new Date(),
+            end: addMinutes(new Date(), 30),
+            status: 'todo',
+            position: 0,
+            projectId: projectId === 'inbox' ? null : projectId,
+            userId: user.uid,
+            isScheduled: false,
+        };
+        const savedTask = await addTask(newTaskData);
+        if (onTaskCreate) {
+          onTaskCreate(savedTask);
         }
-    };
-  
-    const handleCurrencyBlur = () => {
-        const value = form.getValues('projectValue');
-        if (value !== undefined && value !== null) {
-            setDisplayValue(new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value));
-        } else {
-            setDisplayValue('');
-        }
-    };
-  
-    const handleCurrencyFocus = () => {
-        const value = form.getValues('projectValue');
-        setDisplayValue(value !== undefined ? String(value) : '');
-    };
+        toast({ title: "Task Created" });
+        onOpenChange(false);
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Failed to create task', description: error.message });
+    } finally {
+        setIsLoading(false);
+    }
+  }
+
+  const renderProjectForm = () => (
+    <Form {...form}>
+        <form onSubmit={form.handleSubmit(onProjectSubmit)} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>{isEditingProject ? "Edit Project" : "Create New Project"}</DialogTitle>
+              <DialogDescription>
+                {isEditingProject ? "Update the details for this project." : "Start by giving your new project a name and description."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Project Name</FormLabel> <FormControl><Input placeholder="e.g., Q4 Marketing Campaign" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Description (Optional)</FormLabel> <FormControl><Textarea placeholder="Describe the main goal of this project" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                <FormField control={form.control} name="contactId" render={({ field }) => ( <FormItem> <FormLabel>Client (Optional)</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value || ''}><FormControl><SelectTrigger><SelectValue placeholder="Assign a client to this project" /></SelectTrigger></FormControl><SelectContent>{contacts.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /> </FormItem> )} />
+                <FormField control={form.control} name="status" render={({ field }) => ( <FormItem> <FormLabel>Status</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="planning">In Planning</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="on-hold">On-Hold</SelectItem><SelectItem value="completed">Completed</SelectItem></SelectContent></Select><FormMessage /> </FormItem> )} />
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField control={form.control} name="startDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Start Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50"/></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value || undefined} onSelect={field.onChange} initialFocus/></PopoverContent></Popover><FormMessage/></FormItem> )}/>
+                    <FormField control={form.control} name="endDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>End Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50"/></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value || undefined} onSelect={field.onChange} initialFocus/></PopoverContent></Popover><FormMessage/></FormItem> )}/>
+                </div>
+                <FormField control={form.control} name="projectValue" render={({ field }) => ( <FormItem><FormLabel>Project Value ($)</FormLabel><FormControl><Input type="number" placeholder="Enter estimated project value" {...field} onChange={e => field.onChange(Number(e.target.value))}/></FormControl><FormMessage/></FormItem> )} />
+            </div>
+            <DialogFooter className="flex-col-reverse sm:flex-row sm:justify-between sm:space-x-2">
+                <Button type="button" variant="outline" onClick={handleOpenProjectOrganizer} disabled={isLoading}>
+                    <Route className="mr-2 h-4 w-4" /> Open Project Organizer
+                </Button>
+                <div className="flex gap-2">
+                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isLoading}>Cancel</Button>
+                    <Button type="submit" disabled={isLoading}>
+                        {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                        {isEditingProject ? "Save Changes" : "Save Project"}
+                    </Button>
+                </div>
+            </DialogFooter>
+        </form>
+    </Form>
+  );
+
+  const renderTaskForm = () => (
+    <Form {...taskForm}>
+        <form onSubmit={taskForm.handleSubmit(onTaskSubmit)} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>New Task</DialogTitle>
+              <DialogDescription>
+                Add a new task to this project.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+                <FormField control={taskForm.control} name="title" render={({ field }) => ( <FormItem> <FormLabel>Title</FormLabel> <FormControl><Input placeholder="e.g., Draft homepage copy" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                <FormField control={taskForm.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Description (Optional)</FormLabel> <FormControl><Textarea placeholder="Add more details about the task..." {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+            </div>
+            <DialogFooter>
+                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isLoading}>Cancel</Button>
+                <Button type="submit" disabled={isLoading}>
+                    {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                    Add Task
+                </Button>
+            </DialogFooter>
+        </form>
+    </Form>
+  );
 
   return (
-    <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0">
-          <DialogHeader className="p-6 pb-4 border-b text-center sm:text-center">
-            <DialogTitle className="text-2xl font-bold font-headline text-primary">
-                {projectToEdit ? 'Edit Project' : 'Create New Project'}
-            </DialogTitle>
-            <DialogDescription>
-              {projectToEdit ? 'Update the details for your project.' : 'Fill in the details to create a new project.'}
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
-                <ScrollArea className="flex-1">
-                    <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
-                      {/* Left Column: Project Details */}
-                      <div className="space-y-4">
-                        <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Project Name</FormLabel> <FormControl><Input placeholder="e.g., Website Redesign" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                        {!projectToEdit && (
-                          <FormItem>
-                              <FormLabel>Start from a Template</FormLabel>
-                              <Select onValueChange={handleTemplateSelect}>
-                                  <FormControl>
-                                      <SelectTrigger>
-                                          <SelectValue placeholder="Select a template (optional)..." />
-                                      </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                      {templates.map(template => (
-                                          <SelectItem key={template.id} value={template.id}>
-                                              {template.name}
-                                          </SelectItem>
-                                      ))}
-                                  </SelectContent>
-                              </Select>
-                          </FormItem>
-                        )}
-                        
-                        <div className="space-y-2">
-                           <FormField
-                                control={form.control}
-                                name="contactId"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Client</FormLabel>
-                                    <div className="flex gap-2">
-                                        <Popover open={isContactPopoverOpen} onOpenChange={setIsContactPopoverOpen}>
-                                            <PopoverTrigger asChild>
-                                                <Button variant="outline" role="combobox" className="w-full justify-between">
-                                                    {field.value ? contacts.find(c => c.id === field.value)?.name : "Select client..."}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                <Command><CommandInput placeholder="Search clients..." /><CommandList><CommandEmpty>No client found.</CommandEmpty><CommandGroup>{contacts.map(c => (<CommandItem key={c.id} value={c.name} onSelect={() => { field.onChange(c.id); setIsContactPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", field.value === c.id ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command>
-                                            </PopoverContent>
-                                        </Popover>
-                                        <Button type="button" variant="outline" size="icon" onClick={() => setIsContactFormOpen(true)}><Plus className="h-4 w-4" /></Button>
-                                    </div>
-                                    <FormMessage />
-                                </FormItem>
-                                )}
-                            />
-                        </div>
-                        
-                        <FormField
-                            control={form.control}
-                            name="projectManagerId"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Project Manager</FormLabel>
-                                    <div className="flex gap-2">
-                                        <Popover open={isPmPopoverOpen} onOpenChange={setIsPmPopoverOpen}>
-                                            <PopoverTrigger asChild>
-                                                <Button variant="outline" role="combobox" className="w-full justify-between">
-                                                    {field.value ? contacts.find(c => c.id === field.value)?.name : "Select project manager..."}
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                <Command><CommandInput placeholder="Search contacts..." /><CommandList><CommandEmpty>No contacts found.</CommandEmpty><CommandGroup>{contacts.map(c => (<CommandItem key={c.id} value={c.name} onSelect={() => { field.onChange(c.id); setIsPmPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", field.value === c.id ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command>
-                                            </PopoverContent>
-                                        </Popover>
-                                        <Button type="button" variant="outline" size="icon" onClick={() => setIsPmFormOpen(true)}><Plus className="h-4 w-4" /></Button>
-                                    </div>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <FormField control={form.control} name="startDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Start Date</FormLabel><Popover open={isStartDatePickerOpen} onOpenChange={setIsStartDatePickerOpen}><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={(date) => { field.onChange(date); setIsStartDatePickerOpen(false); }} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
-                          <FormField control={form.control} name="endDate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>End Date</FormLabel><Popover open={isEndDatePickerOpen} onOpenChange={setIsEndDatePickerOpen}><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("pl-3 text-left font-normal", !field.value && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={(date) => { field.onChange(date); setIsEndDatePickerOpen(false); }} /></PopoverContent></Popover><FormMessage /></FormItem> )} />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <FormField control={form.control} name="projectValue" render={({ field }) => ( <FormItem><FormLabel>Project Value</FormLabel><FormControl><Input placeholder="$" value={displayValue} onChange={handleCurrencyChange} onBlur={handleCurrencyBlur} onFocus={handleCurrencyFocus} /></FormControl><FormMessage /> </FormItem> )} />
-                          <FormField control={form.control} name="status" render={({ field }) => ( <FormItem><FormLabel>Initial Status</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="planning">Planning</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="on-hold">On-Hold</SelectItem><SelectItem value="completed">Completed</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
-                        </div>
-                        <FormField control={form.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Textarea placeholder="Describe the project goals and objectives..." {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField control={form.control} name="urgency" render={({ field }) => ( <FormItem><FormLabel>Set Urgency</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue>{`${importanceValue} - ${field.value.charAt(0).toUpperCase() + field.value.slice(1)}`}</SelectValue></SelectTrigger></FormControl><SelectContent><SelectItem value="urgent">Urgent</SelectItem><SelectItem value="important">Important</SelectItem><SelectItem value="optional">Optional</SelectItem></SelectContent></Select></FormItem> )} />
-                          <FormField control={form.control} name="importance" render={({ field }) => ( <FormItem><FormLabel>Set Importance</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="A">A - Critical</SelectItem><SelectItem value="B">B - Important</SelectItem><SelectItem value="C">C - Optional</SelectItem></SelectContent></Select></FormItem> )} />
-                        </div>
-                      </div>
-
-                      {/* Right Column: Step Planning */}
-                      <div className="space-y-4">
-                        <Card>
-                          <CardHeader className="p-4 flex-row justify-between items-center">
-                              <CardTitle className="text-base">Project Plan</CardTitle>
-                              <Button onClick={handleOpenProjectOrganizer} type="button">
-                                  <Route className="mr-2 h-4 w-4" /> Open Project Organizer
-                              </Button>
-                          </CardHeader>
-                          <CardContent className="p-4 pt-0">
-                            {steps.length > 0 ? (
-                                <div className="space-y-2 border rounded-md p-2 h-64 overflow-y-auto">{steps.map((step, index) => (<div key={step.id || index} className="p-2 border-b last:border-b-0 flex items-start justify-between"><div className="flex-1"><p className="font-semibold text-sm">{index + 1}. {step.title}</p>{step.connectToCalendar && step.startTime && (<p className="text-xs text-primary mt-1 flex items-center gap-1"><CalendarIcon className="h-3 w-3" />Scheduled for {format(step.startTime as Date, 'PPp')}</p>)}</div></div>))}</div>
-                            ) : (
-                                <div className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-lg"><p className="text-sm">No steps defined yet.</p><p className="text-xs">Use the Project Organizer to build your plan.</p></div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      </div>
-
-                    </div>
-                </ScrollArea>
-                <DialogFooter className="p-6 border-t mt-auto">
-                    <Button type="button" variant="outline" onClick={() => setIsTemplateDialogOpen(true)}>
-                        <Save className="mr-2 h-4 w-4" /> Save as Template
-                    </Button>
-                    <div className="flex-1" />
-                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button type="submit">{projectToEdit ? 'Save Changes' : 'Save Project'}</Button>
-                </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-      
-      {(isContactFormOpen || isPmFormOpen) && (
-        <ContactFormDialog
-            isOpen={isContactFormOpen || isPmFormOpen}
-            onOpenChange={isContactFormOpen ? setIsContactFormOpen : setIsPmFormOpen}
-            contactToEdit={null}
-            folders={contactFolders}
-            onSave={handleContactSave}
-            onFoldersChange={setContactFolders}
-        />
-      )}
-      
-      <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Save as Template</DialogTitle>
-            <DialogDescription>
-              This will save the project's details and steps as a reusable template.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Label htmlFor="template-name">Template Name</Label>
-            <Input 
-                id="template-name"
-                value={newTemplateName}
-                onChange={(e) => setNewTemplateName(e.target.value)}
-                placeholder="e.g., 'Standard Website Build'"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsTemplateDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveAsTemplate}>Save Template</Button>
-          </DialogFooter>
+          {isTaskMode ? renderTaskForm() : renderProjectForm()}
         </DialogContent>
       </Dialog>
-    </>
   );
 }

@@ -42,6 +42,7 @@ import {
   Pencil,
   ListChecks,
   FilePenLine,
+  Route,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -93,4 +94,6 @@ export const allMenuItems: MenuItem[] = [
   { href: "/research", label: "Research", icon: Beaker },
   { href: "/sandbox", label: "Sandbox", icon: Beaker },
   { href: "/accounting", label: "Accounting", icon: Calculator },
+  { href: "/testing", label: "Testing", icon: Beaker },
+  { href: "/test", label: "Test", icon: Beaker },
 ];

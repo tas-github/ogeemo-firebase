@@ -1,6 +1,5 @@
 
-
-"use client";
+'use client';
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -24,6 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ProjectManagementHeader } from './ProjectManagementHeader';
+import { NewTaskDialog } from './NewTaskDialog';
 
 export const ACTION_ITEMS_PROJECT_ID = 'inbox';
 
@@ -38,6 +38,7 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
     const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
     const [isBulkDeleteAlertOpen, setIsBulkDeleteAlertOpen] = useState(false);
     const lastSelectedTaskIndex = useRef<number | null>(null);
+    const [isNewTaskDialogOpen, setIsNewTaskDialogOpen] = useState(false);
     
     const { user } = useAuth();
     const { toast } = useToast();
@@ -60,7 +61,7 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                     name: "To Do",
                     description: "A place for all your unscheduled tasks.",
                     userId: user.uid,
-                    createdAt: new Date(),
+                    createdAt: new Date(0),
                 };
                 const allUserTasks = await getTasksForUser(user.uid);
                 tasksData = allUserTasks.filter(task => (!task.projectId || task.projectId === ACTION_ITEMS_PROJECT_ID) && !task.ritualType);
@@ -112,8 +113,14 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
     }, [tasks]);
 
     const handleAddTask = () => {
-        router.push(`/master-mind?projectId=${projectId}`);
+        setIsNewTaskDialogOpen(true);
     };
+
+    const handleTaskCreated = (newTask: TaskEvent) => {
+        setTasks(prev => [newTask, ...prev]);
+        setIsNewTaskDialogOpen(false);
+    };
+
 
     const handleTaskUpdated = (updatedTask: TaskEvent) => {
         setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
@@ -236,7 +243,7 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                         Drag and drop tasks to change their status and manage your project workflow.
                     </p>
                 </header>
-                <ProjectManagementHeader />
+                <ProjectManagementHeader projectId={projectId} />
                 
                 <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-3 gap-6">
                     <TaskColumn
@@ -274,10 +281,19 @@ export function ProjectTasksView({ projectId }: { projectId: string }) {
                     />
                 </div>
             </div>
+            
+            <NewTaskDialog
+                isOpen={isNewTaskDialogOpen}
+                onOpenChange={setIsNewTaskDialogOpen}
+                onTaskCreate={handleTaskCreated}
+                projectId={projectId}
+                projectToEdit={project}
+            />
+
             <AlertDialog open={isBulkDeleteAlertOpen} onOpenChange={setIsBulkDeleteAlertOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
                             This action will permanently delete {selectedTaskIds.length} selected task(s). This cannot be undone.
                         </AlertDialogDescription>

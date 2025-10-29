@@ -4,50 +4,39 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Briefcase, ListChecks, Info, Plus, ListTodo, Route } from 'lucide-react';
+import { Briefcase, ListChecks, Info, Plus, ListTodo, Route, Beaker } from 'lucide-react';
 import { NewTaskDialog } from './NewTaskDialog';
 import { useAuth } from '@/context/auth-context';
-import { addProject, getProjects } from '@/services/project-service';
+import { addProject } from '@/services/project-service';
 import { type Project, type Event as TaskEvent } from '@/types/calendar-types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { getContacts, type Contact } from '@/services/contact-service';
 
-export function ProjectManagementHeader() {
+export function ProjectManagementHeader({ projectId }: { projectId?: string }) {
     const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
     const [initialDialogData, setInitialDialogData] = useState({});
     const [contacts, setContacts] = useState<Contact[]>([]);
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     
     const { user } = useAuth();
     const { toast } = useToast();
     const router = useRouter();
 
     useEffect(() => {
-        async function loadData() {
-            if (!user) {
-                setIsLoading(false);
-                return;
-            }
+        async function loadContacts() {
+            if (!user) return;
             try {
-                const [fetchedProjects, fetchedContacts] = await Promise.all([
-                    getProjects(user.uid),
-                    getContacts(user.uid),
-                ]);
-                setProjects(fetchedProjects);
+                const fetchedContacts = await getContacts(user.uid);
                 setContacts(fetchedContacts);
             } catch (error: any) {
-                console.error("Failed to load header data:", error);
-            } finally {
-                setIsLoading(false);
+                console.error("Failed to load contacts for header:", error);
             }
         }
-        loadData();
+        loadContacts();
     }, [user]);
     
     const handleNewProjectClick = () => {
-        setInitialDialogData({}); // Clear any previous initial data
+        setInitialDialogData({});
         setIsNewProjectDialogOpen(true);
     };
 
@@ -62,7 +51,7 @@ export function ProjectManagementHeader() {
         }
     };
     
-    const firstProjectId = projects.length > 0 ? projects[0].id : 'placeholder';
+    const timelineHref = `/projects/${projectId || 'placeholder'}/timeline`;
 
     return (
         <>
@@ -73,6 +62,11 @@ export function ProjectManagementHeader() {
                     </Link>
                 </Button>
                 <Button asChild variant="outline">
+                    <Link href={timelineHref}>
+                        <Route className="mr-2 h-4 w-4" /> Timeline
+                    </Link>
+                </Button>
+                <Button asChild variant="outline">
                     <Link href="/projects/all">
                         <Briefcase className="mr-2 h-4 w-4" /> Project List
                     </Link>
@@ -80,11 +74,6 @@ export function ProjectManagementHeader() {
                 <Button asChild variant="outline">
                     <Link href="/project-status">
                         <ListChecks className="mr-2 h-4 w-4" /> Status Board
-                    </Link>
-                </Button>
-                 <Button asChild variant="outline" disabled={isLoading || projects.length === 0}>
-                    <Link href={`/projects/${firstProjectId}/timeline`}>
-                        <Route className="mr-2 h-4 w-4" /> Timeline
                     </Link>
                 </Button>
                 <Button asChild variant="outline">
