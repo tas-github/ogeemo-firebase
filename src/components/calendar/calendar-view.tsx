@@ -14,7 +14,8 @@ import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuth } from "@/context/auth-context"
 import { useToast } from "@/hooks/use-toast"
-import { getTasksForUser, getProjectById, type Project, updateTask, deleteTask } from "@/services/project-service"
+import { getTasksForUser, getProjectById, updateTask, deleteTask } from "@/services/project-service"
+import type { Project } from "@/services/project-service"
 import { type Event, type TaskStatus } from "@/types/calendar-types"
 import { Label } from "../ui/label"
 import Link from 'next/link'
@@ -53,8 +54,8 @@ export function CalendarView() {
     const [dayCount, setDayCount] = React.useState<number>(1);
     const [allEvents, setAllEvents] = React.useState<Event[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
-    const [startHour, setStartHour] = React.useState(8);
-    const [endHour, setEndHour] = React.useState(17);
+    const [startHour, setStartHour] = React.useState(0);
+    const [endHour, setEndHour] = React.useState(23);
     
     const [filteredProject, setFilteredProject] = React.useState<Project | null>(null);
     const [eventToDelete, setEventToDelete] = React.useState<Event | null>(null);
@@ -83,7 +84,7 @@ export function CalendarView() {
             const fetchedTasks = await getTasksForUser(user.uid);
             setAllEvents(fetchedTasks);
 
-            const projectId = searchParams.get('projectId');
+            const projectId = searchParams ? searchParams.get('projectId') : null;
             if (projectId) {
                 const project = await getProjectById(projectId);
                 setFilteredProject(project);
@@ -248,7 +249,7 @@ export function CalendarView() {
         }));
         
         return (
-            <div ref={drop} className={cn("border-b border-black relative group", isOver && canDrop && 'bg-primary/10')} style={{ height: `${BASE_SLOT_HEIGHT_PX}px` }}>
+            <div ref={drop as any} className={cn("border-b border-black relative group", isOver && canDrop && 'bg-primary/10')} style={{ height: `${BASE_SLOT_HEIGHT_PX}px` }}>
                  <button
                     className="absolute inset-0 flex items-center justify-start pl-2 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() => {
@@ -502,26 +503,43 @@ export function CalendarView() {
                                                 {/* Events */}
                                                 {todaysEvents.map(event => {
                                                     if (!event.start || !event.end) return null;
+
+                                                    // Clamp the event's start and end times to the visible hours
+                                                    const visibleStart = new Date(event.start);
+                                                    if (visibleStart.getHours() < startHour) {
+                                                        visibleStart.setHours(startHour, 0, 0, 0);
+                                                    }
+
+                                                    const visibleEnd = new Date(event.end);
+                                                    if (visibleEnd.getHours() > endHour || (visibleEnd.getHours() === endHour && visibleEnd.getMinutes() > 0)) {
+                                                        visibleEnd.setHours(endHour + 1, 0, 0, 0);
+                                                    }
                                                     
+                                                    // If the event is completely outside the visible range, don't render it
+                                                    if (visibleEnd <= visibleStart || visibleStart.getHours() > endHour) return null;
+
+                                                    // Calculate top position based on the visible start time
                                                     let topPosition = 0;
-                                                    const eventStartHour = event.start.getHours();
+                                                    const eventStartHour = visibleStart.getHours();
+                                                    
                                                     for (let h = startHour; h < eventStartHour; h++) {
                                                         const slotsInHour = hourSlots[h] || 1;
                                                         topPosition += slotsInHour * BASE_SLOT_HEIGHT_PX;
                                                     }
                                                     
-                                                    const eventStartMinute = event.start.getMinutes();
+                                                    const eventStartMinute = visibleStart.getMinutes();
                                                     const slotsInEventHour = hourSlots[eventStartHour] || 1;
                                                     const minuteOffset = (eventStartMinute / 60) * (slotsInEventHour * BASE_SLOT_HEIGHT_PX);
                                                     topPosition += minuteOffset;
 
-                                                    const durationMinutes = differenceInMilliseconds(event.end, event.start) / (1000 * 60);
+                                                    // Recalculate duration and height based on visible times
+                                                    const durationMinutes = differenceInMilliseconds(visibleEnd, visibleStart) / (1000 * 60);
                                                     let height = 0;
                                                     let minutesRemaining = durationMinutes;
-                                                    let currentHour = event.start.getHours();
-                                                    let currentMinute = event.start.getMinutes();
+                                                    let currentHour = visibleStart.getHours();
+                                                    let currentMinute = visibleStart.getMinutes();
 
-                                                    while (minutesRemaining > 0) {
+                                                    while (minutesRemaining > 0 && currentHour <= endHour) {
                                                         const slotsThisHour = hourSlots[currentHour] || 1;
                                                         const minutesPerSlot = 60 / slotsThisHour;
                                                         const minutesLeftInHour = 60 - currentMinute;
@@ -534,7 +552,7 @@ export function CalendarView() {
                                                         currentMinute = 0;
                                                     }
                                                     
-                                                    height = Math.max(height, BASE_SLOT_HEIGHT_PX);
+                                                    if (height <= 0) return null; // Don't render events with no visible height
 
                                                     return (
                                                         <div key={event.id} style={{ top: `${topPosition}px`, height: `${height}px` }} className="absolute left-0.5 right-0.5 flex items-center">

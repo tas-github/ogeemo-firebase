@@ -23,6 +23,8 @@ import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator
 import type { LucideIcon } from 'lucide-react';
 import { addMinutes } from 'date-fns';
 
+// Re-export the Project type to make it available for other modules.
+export type { Project };
 
 const PROJECTS_COLLECTION = 'projects';
 const TASKS_COLLECTION = 'tasks';
@@ -71,8 +73,8 @@ const docToTask = (doc: any): TaskEvent => {
     id: doc.id,
     title: data.title,
     description: data.description || '',
-    start: (data.start as Timestamp)?.toDate ? (data.start as Timestamp).toDate() : null,
-    end: (data.end as Timestamp)?.toDate ? (data.end as Timestamp).toDate() : null,
+    start: (data.start as Timestamp)?.toDate(),
+    end: (data.end as Timestamp)?.toDate(),
     status: data.status || 'todo',
     position: data.position || 0,
     projectId: data.projectId || null,
@@ -97,7 +99,7 @@ const docToTemplate = (doc: any): ProjectTemplate => ({ id: doc.id, ...doc.data(
 const docToFolder = (doc: any): ProjectFolder => ({ id: doc.id, ...doc.data() } as ProjectFolder);
 const docToActionChip = (chipData: any): ActionChipData => {
     const iconName = chipData.iconName as keyof typeof iconMap;
-    return { 
+    return {
         ...chipData,
         icon: iconMap[iconName] || Wand2, // Fallback icon
     } as ActionChipData;
@@ -144,7 +146,7 @@ export async function getProjectById(projectId: string): Promise<Project | null>
 
 export async function addProject(projectData: Omit<Project, 'id'>): Promise<Project> {
     const db = await getDb();
-    
+
     // Ensure optional fields that are undefined are converted to null for Firestore
     const dataToSave = {
         ...projectData,
@@ -211,7 +213,7 @@ export async function updateProjectWithTasks(userId: string, projectId: string, 
     const existingTasksQuery = query(collection(db, TASKS_COLLECTION), where("projectId", "==", projectId));
     const existingTasksSnapshot = await getDocs(existingTasksQuery);
     const existingTasks = existingTasksSnapshot.docs.map(docToTask);
-    
+
     const tasksByStepId = new Map(existingTasks.filter(t => t.stepId).map(t => [t.stepId, t]));
     const stepsInPlan = new Set(stepsToSave.map(s => s.id));
 
@@ -251,7 +253,7 @@ export async function updateProjectWithTasks(userId: string, projectId: string, 
             batch.delete(taskRef);
         }
     }
-    
+
     await batch.commit();
 }
 
@@ -259,12 +261,12 @@ export async function updateProjectWithTasks(userId: string, projectId: string, 
 export async function deleteProject(projectId: string, taskIds: string[]): Promise<void> {
     const db = await getDb();
     const batch = writeBatch(db);
-    
+
     taskIds.forEach(taskId => {
         const taskRef = doc(db, TASKS_COLLECTION, taskId);
         batch.delete(taskRef);
     });
-    
+
     const projectRef = doc(db, PROJECTS_COLLECTION, projectId);
     batch.delete(projectRef);
 
@@ -318,7 +320,7 @@ export async function getTasksForUser(userId: string): Promise<TaskEvent[]> {
 
 export async function addTask(taskData: Omit<TaskEvent, 'id'>): Promise<TaskEvent> {
     const db = await getDb();
-    
+
     const dataToSave = {
         ...taskData,
         start: taskData.start || null,
@@ -327,7 +329,7 @@ export async function addTask(taskData: Omit<TaskEvent, 'id'>): Promise<TaskEven
     };
 
     const docRef = await addDoc(collection(db, TASKS_COLLECTION), dataToSave);
-    
+
     return { ...taskData, id: docRef.id };
 }
 
@@ -339,12 +341,6 @@ export async function updateTask(taskId: string, taskData: Partial<Omit<TaskEven
     const dataToUpdate = { ...taskData };
     if ('projectId' in dataToUpdate && dataToUpdate.projectId === undefined) {
         dataToUpdate.projectId = null;
-    }
-    if ('start' in dataToUpdate && dataToUpdate.start === undefined) {
-        dataToUpdate.start = null;
-    }
-    if ('end' in dataToUpdate && dataToUpdate.end === undefined) {
-        dataToUpdate.end = null;
     }
 
     await updateDoc(taskRef, dataToUpdate);
@@ -480,8 +476,9 @@ export async function getActionChips(userId: string): Promise<ActionChipData[]> 
         const docRef = doc(db, ACTION_CHIPS_COLLECTION, userId);
         const docSnap = await getDoc(docRef);
         if (!docSnap.exists()) {
-            await updateActionChips(userId, defaultChips);
-            return defaultChips.map(c => ({...c, id: `default-${c.label}`, userId}));
+            const chipsToSave = defaultChips.map(c => ({...c, id: `default-${c.label}`, userId}));
+            await updateActionChips(userId, chipsToSave);
+            return chipsToSave;
         }
     }
     return chips;
@@ -509,7 +506,7 @@ export async function trashActionChips(userId: string, chipsToTrash: ActionChipD
     const trashedChips = await getTrashedActionChips(userId);
 
     const chipIdsToTrash = new Set(chipsToTrash.map(c => c.id));
-    
+
     const newUserChips = userChips.filter(c => !chipIdsToTrash.has(c.id));
     const newAvailableChips = availableChips.filter(c => !chipIdsToTrash.has(c.id));
     const newTrashedChips = [...trashedChips, ...chipsToTrash];
@@ -524,12 +521,12 @@ export async function trashActionChips(userId: string, chipsToTrash: ActionChipD
 export async function restoreActionChips(userId: string, chipsToRestore: ActionChipData[]): Promise<void> {
     const availableChips = await getAvailableActionChips(userId);
     const trashedChips = await getTrashedActionChips(userId);
-    
+
     const chipIdsToRestore = new Set(chipsToRestore.map(c => c.id));
 
     const newAvailableChips = [...availableChips, ...chipsToRestore];
     const newTrashedChips = trashedChips.filter(c => !chipIdsToRestore.has(c.id));
-    
+
     await Promise.all([
         updateAvailableActionChips(userId, newAvailableChips),
         updateChipsInCollection(userId, TRASHED_ACTION_CHIPS_COLLECTION, newTrashedChips)
@@ -543,7 +540,7 @@ export async function deleteActionChips(userId: string, chipIdsToDelete: string[
 
   if (docSnap.exists()) {
     const currentChips = (docSnap.data().chips || []).map(docToActionChip);
-    const updatedChips = currentChips.filter(chip => !chipIdsToDelete.includes(chip.id));
+    const updatedChips = currentChips.filter((chip: ActionChipData) => !chipIdsToDelete.includes(chip.id));
     await updateChipsInCollection(userId, TRASHED_ACTION_CHIPS_COLLECTION, updatedChips);
   }
 }
@@ -552,28 +549,28 @@ export async function addActionChip(chipData: Omit<ActionChipData, 'id'>): Promi
   const db = await getDb();
   const docRef = doc(db, AVAILABLE_ACTION_CHIPS_COLLECTION, chipData.userId);
   const docSnap = await getDoc(docRef);
-  
+
   const existingChips = docSnap.exists() ? (docSnap.data().chips || []).map(docToActionChip) : [];
-  
+
   // Find the icon name (string) from the icon component (function)
   const iconName = Object.keys(iconMap).find(key => iconMap[key] === chipData.icon);
-  
+
   // Create a new object for saving that doesn't include the 'icon' function
   const { icon, ...restOfChipData } = chipData;
   const newChipDataForDb = { ...restOfChipData, iconName: iconName || 'Wand2' };
-  
+
   const newChipForState = { ...chipData, id: `chip_${Date.now()}` };
   const updatedChips = [...existingChips, newChipForState];
 
   await updateChipsInCollection(chipData.userId, AVAILABLE_ACTION_CHIPS_COLLECTION, updatedChips);
-  
+
   return newChipForState;
 }
 
 export async function updateActionChip(userId: string, updatedChip: ActionChipData): Promise<void> {
     const userChips = await getActionChips(userId);
     const availableChips = await getAvailableActionChips(userId);
-    
+
     const isUserChip = userChips.some(c => c.id === updatedChip.id);
 
     // Find the icon name (string) from the icon component (function) before saving
@@ -589,5 +586,3 @@ export async function updateActionChip(userId: string, updatedChip: ActionChipDa
         await updateAvailableActionChips(userId, newAvailableChips);
     }
 }
-
-    
