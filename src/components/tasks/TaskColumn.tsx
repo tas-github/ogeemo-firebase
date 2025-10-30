@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React from 'react';
@@ -7,18 +8,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { type Event as TaskEvent, type TaskStatus } from '@/types/calendar';
+import { type Event as TaskEvent, type TaskStatus, type ProjectStep } from '@/types/calendar';
 import { TaskCard } from './TaskCard';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '../ui/checkbox';
+import { ItemTypes as StepItemTypes } from './DraggableStep';
 
 interface TaskColumnProps {
   status: TaskStatus;
   tasks: TaskEvent[];
   onAddTask: () => void;
-  onMoveTask: (taskId: string, newStatus: TaskStatus, newPosition: number) => void;
-  onTaskUpdate: (task: TaskEvent) => void;
+  onMoveTask: (item: TaskEvent | ProjectStep, newStatus: TaskStatus, newPosition: number) => void;
   onTaskDelete: (taskId: string) => void;
+  onToggleComplete: (taskId: string) => void;
+  onEdit: (task: TaskEvent) => void;
   selectedTaskIds: string[];
   onToggleSelect: (taskId: string, event?: React.MouseEvent) => void;
   onToggleSelectAll: (status: TaskStatus) => void;
@@ -35,16 +38,17 @@ export function TaskColumn({
   tasks,
   onAddTask,
   onMoveTask,
-  onTaskUpdate,
   onTaskDelete,
+  onToggleComplete,
+  onEdit,
   selectedTaskIds,
   onToggleSelect,
   onToggleSelectAll,
 }: TaskColumnProps) {
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
-    accept: 'task',
-    drop: (item: TaskEvent) => {
-      onMoveTask(item.id, status, tasks.length); // Drop at the end of the list
+    accept: ['task', StepItemTypes.STEP],
+    drop: (item: TaskEvent | ProjectStep) => {
+      onMoveTask(item, status, tasks.length); // Drop at the end of the list
     },
     collect: (monitor) => ({
       isOver: monitor.isOver(),
@@ -56,7 +60,7 @@ export function TaskColumn({
     const dragTask = tasks.find(t => t.id === dragId);
     const hoverTask = tasks.find(t => t.id === hoverId);
     if (dragTask && hoverTask) {
-        onMoveTask(dragTask.id, status, hoverTask.position);
+        onMoveTask(dragTask, status, hoverTask.position);
     }
   };
   
@@ -86,8 +90,9 @@ export function TaskColumn({
                 key={task.id} 
                 task={task} 
                 onMoveCard={moveCard}
-                onTaskUpdate={onTaskUpdate}
+                onEdit={onEdit}
                 onTaskDelete={onTaskDelete}
+                onToggleComplete={onToggleComplete}
                 isSelected={selectedTaskIds.includes(task.id)}
                 onToggleSelect={onToggleSelect}
             />
@@ -97,3 +102,5 @@ export function TaskColumn({
     </Card>
   );
 }
+
+    

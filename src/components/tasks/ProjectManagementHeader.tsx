@@ -77,7 +77,7 @@ export function ProjectManagementHeader({ projectId }: { projectId?: string }) {
                     </Link>
                 </Button>
                 <Button asChild variant="outline">
-                    <Link href="/tasks">
+                    <Link href="/all-project-tasks">
                         <ListTodo className="mr-2 h-4 w-4" /> All Tasks
                     </Link>
                 </Button>

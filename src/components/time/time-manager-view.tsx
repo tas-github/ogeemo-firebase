@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LoaderCircle, Save, Calendar as CalendarIcon, ChevronsUpDown, Check, Plus, X, Info, Timer, Play, Pause, Trash2, MoreVertical, Edit, MessageSquare, RefreshCw, BellRing, Mail } from 'lucide-react';
+import { LoaderCircle, Save, ChevronsUpDown, Check, Plus, X, Info, Timer, Play, Pause, Trash2, MoreVertical, Edit, MessageSquare, RefreshCw, BellRing, Mail } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { type Project, type Event as TaskEvent, type TimeSession } from '@/types/calendar-types';
@@ -17,9 +17,7 @@ import { addTask, getProjects, addProject, updateProject, getTaskById, updateTas
 import { getContacts, getFolders } from '@/services/contact-service';
 import { Textarea } from '../ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { Calendar } from '../ui/calendar';
 import { cn, formatTime } from '@/lib/utils';
-import { format, set, addMinutes, parseISO } from 'date-fns';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import ContactFormDialog from '@/components/contacts/contact-form-dialog';
@@ -40,6 +38,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { format as formatDate, set, addMinutes } from 'date-fns';
+import { Calendar } from '../ui/calendar';
+import { Calendar as CalendarIcon } from 'lucide-react';
 
 export interface StoredTimerState {
     eventId: string;
@@ -68,9 +69,9 @@ export function TimeManagerView() {
     const [billableRate, setBillableRate] = React.useState<number | ''>(100);
     
     // State for scheduling
-    const [scheduleDate, setScheduleDate] = React.useState<Date | undefined>(new Date());
-    const [scheduleHour, setScheduleHour] = React.useState<string | undefined>(String(new Date().getHours()));
-    const [scheduleMinute, setScheduleMinute] = React.useState<string | undefined>(String(Math.floor(new Date().getMinutes() / 5) * 5));
+    const [scheduleDate, setScheduleDate] = React.useState<Date | undefined>(undefined);
+    const [scheduleHour, setScheduleHour] = React.useState<string | undefined>(undefined);
+    const [scheduleMinute, setScheduleMinute] = React.useState<string | undefined>(undefined);
 
     // State for new client selection UI
     const [isContactPopoverOpen, setIsContactPopoverOpen] = React.useState(false);
@@ -104,7 +105,7 @@ export function TimeManagerView() {
     const router = useRouter();
     const hasStartedTimerRef = useRef(false);
 
-    const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: format(set(new Date(), { hours: i }), 'h a') }));
+    const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: formatDate(set(new Date(), { hours: i }), 'h a') }));
     const minuteOptions = Array.from({ length: 12 }, (_, i) => { const minutes = i * 5; return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` }; });
     
     const createAndSaveNewEvent = useCallback(async (): Promise<TaskEvent | null> => {
@@ -116,14 +117,10 @@ export function TimeManagerView() {
         const eventData: Omit<TaskEvent, 'id'> = {
             title: subject,
             description: notes,
-            start: new Date(),
-            end: addMinutes(new Date(), 30), // Default 30 min duration
             status: 'inProgress',
             position: 0,
             projectId: selectedProjectId,
             contactId: selectedContactId,
-            isScheduled: true,
-            sessions: [],
             isBillable: isBillable,
             billableRate: isBillable ? Number(billableRate) || 0 : 0,
             userId: user.uid,
@@ -258,59 +255,22 @@ export function TimeManagerView() {
             setContacts(fetchedContacts);
             setContactFolders(fetchedFolders);
             
-            const titleParam = searchParams.get('title');
-            const notesParam = searchParams.get('notes');
-            const contactIdParam = searchParams.get('contactId');
-            const projectIdParam = searchParams.get('projectId');
-            
-            if (titleParam) setSubject(titleParam);
-            if (notesParam) setNotes(notesParam);
-            if (contactIdParam) setSelectedContactId(contactIdParam);
-
-
-            // Check for data from Idea Board
-            const ideaToScheduleRaw = sessionStorage.getItem('ogeemo-idea-to-schedule');
-            if (ideaToScheduleRaw) {
-                const ideaData = JSON.parse(ideaToScheduleRaw);
-                setSubject(ideaData.title);
-                setNotes(ideaData.description || "");
-                sessionStorage.removeItem('ogeemo-idea-to-schedule');
-                toast({ title: "Idea Loaded", description: "Your idea has been imported. Please review and save." });
-            } else {
-                const eventIdParam = searchParams.get('eventId');
-                if (eventIdParam) {
-                    const eventData = await getTaskById(eventIdParam);
-                    if (eventData) {
-                        setEventToEdit(eventData);
-                        setSubject(eventData.title);
-                        setNotes(eventData.description || "");
-                        setSelectedProjectId(eventData.projectId || null);
-                        setSelectedContactId(eventData.contactId || null);
-                        setIsBillable(eventData.isBillable || false);
-                        setBillableRate(eventData.billableRate || 0);
-                        setSessions(eventData.sessions || []);
-                        if (eventData.start) {
-                            setScheduleDate(eventData.start);
-                            setScheduleHour(String(eventData.start.getHours()));
-                            setScheduleMinute(String(eventData.start.getMinutes()));
-                        }
-                    } else {
-                        toast({ variant: 'destructive', title: 'Error', description: 'Could not load event data.' });
-                    }
+            const eventIdParam = searchParams.get('eventId');
+            if (eventIdParam) {
+                const eventData = await getTaskById(eventIdParam);
+                if (eventData) {
+                    setEventToEdit(eventData);
+                    setSubject(eventData.title);
+                    setNotes(eventData.description || "");
+                    setSelectedProjectId(eventData.projectId || null);
+                    setSelectedContactId(eventData.contactId || null);
+                    setIsBillable(eventData.isBillable || false);
+                    setBillableRate(eventData.billableRate || 0);
+                    setSessions(eventData.sessions || []);
                 } else {
-                    const dateParam = searchParams.get('date');
-                    const hourParam = searchParams.get('hour');
-                    const minuteParam = searchParams.get('minute');
-                    
-                    const now = new Date();
-                    setScheduleDate(dateParam ? parseISO(dateParam) : now);
-                    setScheduleHour(hourParam || String(now.getHours()));
-                    setScheduleMinute(minuteParam || String(Math.floor(now.getMinutes() / 5) * 5));
-
-                    if (projectIdParam) setSelectedProjectId(projectIdParam);
+                    toast({ variant: 'destructive', title: 'Error', description: 'Could not load event data.' });
                 }
             }
-
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
         } finally {
@@ -376,27 +336,39 @@ export function TimeManagerView() {
         return totalAccumulatedSeconds + elapsedSeconds;
     }, [totalAccumulatedSeconds, elapsedSeconds]);
 
-    const handleSave = async () => {
+    const handleSaveEvent = async () => {
         if (!user || !subject.trim()) {
             toast({ variant: 'destructive', title: 'Missing Information', description: 'Please enter a subject for the event.' });
             return;
         }
-        
+
+        let start: Date | null = null;
+        let end: Date | null = null;
+        let isScheduled = false;
+
+        if (scheduleDate && scheduleHour && scheduleMinute) {
+            start = set(scheduleDate, { hours: parseInt(scheduleHour), minutes: parseInt(scheduleMinute) });
+            end = addMinutes(start, 30); // Default 30 min duration for scheduled events
+            isScheduled = true;
+        } else {
+            // Default to now if not scheduled
+            start = new Date();
+            end = new Date(start.getTime() + 30 * 60000);
+        }
+
         const eventData: Partial<Omit<TaskEvent, 'id' | 'userId'>> = {
             title: subject,
             description: notes,
-            start: scheduleDate && scheduleHour && scheduleMinute ? set(scheduleDate, { hours: parseInt(scheduleHour), minutes: parseInt(scheduleMinute) }) : new Date(),
-            end: scheduleDate && scheduleHour && scheduleMinute ? addMinutes(set(scheduleDate, { hours: parseInt(scheduleHour), minutes: parseInt(scheduleMinute) }), 30) : addMinutes(new Date(), 30),
-            status: 'todo',
-            position: 0,
+            start,
+            end,
+            isScheduled,
+            status: isScheduled ? 'todo' : 'inProgress',
             projectId: selectedProjectId,
             contactId: selectedContactId,
-            isScheduled: true,
             duration: totalTime,
             sessions: sessions,
-            isBillable,
+            isBillable: isBillable,
             billableRate: isBillable ? (Number(billableRate) || 0) : 0,
-            attendees: ['You'],
         };
 
         try {
@@ -406,11 +378,11 @@ export function TimeManagerView() {
             } else {
                 const newEvent = await addTask({ ...eventData as Omit<TaskEvent, 'id'>, userId: user.uid });
                 setEventToEdit(newEvent);
-                toast({ title: "Event Scheduled", description: `"${eventData.title}" has been saved.` });
+                toast({ title: "Event Saved", description: `"${newEvent.title}" has been saved.` });
             }
             router.back();
         } catch (error: any) {
-             toast({ variant: 'destructive', title: 'Failed to save event', description: error.message });
+            toast({ variant: 'destructive', title: 'Failed to save event', description: error.message });
         }
     };
     
@@ -445,16 +417,7 @@ export function TimeManagerView() {
             toast({ variant: "destructive", title: "Failed to create project", description: error.message });
         }
     };
-
     
-    const handleSetReminder = () => {
-        if (subject.trim()) {
-            router.push(`/calendar/reminders?title=${encodeURIComponent(subject)}`);
-        } else {
-            router.push('/calendar/reminders');
-        }
-    };
-
     if (isLoadingData) {
         return (
             <div className="flex h-full w-full items-center justify-center">
@@ -472,8 +435,8 @@ export function TimeManagerView() {
                              <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" onClick={handleSave}>
-                                            <Plus className="h-5 w-5 text-muted-foreground" />
+                                        <Button variant="outline" onClick={handleSaveEvent}>
+                                            <Save className="mr-2 h-4 w-4" /> Save
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -587,40 +550,6 @@ export function TimeManagerView() {
                             <Textarea id="notes" placeholder="Add more details about the work..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} />
                         </div>
                         
-                        <div className="space-y-4 p-4 border rounded-md">
-                            <div className="flex flex-wrap items-center justify-between gap-4">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <Label className="font-semibold">Set Start Time</Label>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button variant={"outline"} className={cn("w-auto justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}>
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {scheduleDate ? format(scheduleDate, "PPP") : <span>Pick a date</span>}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={scheduleDate} onSelect={setScheduleDate} initialFocus /></PopoverContent>
-                                    </Popover>
-                                    <Select value={scheduleHour} onValueChange={setScheduleHour}><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
-                                    <Select value={scheduleMinute} onValueChange={setScheduleMinute}><SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="font-semibold">Billing Status</Label>
-                                    <RadioGroup value={isBillable ? 'billable' : 'non-billable'} onValueChange={(value) => setIsBillable(value === 'billable')} className="flex items-center gap-4">
-                                        <div className="flex items-center space-x-2"><RadioGroupItem value="non-billable" id="r-nonbillable" /><Label htmlFor="r-nonbillable">Non-Billable</Label></div>
-                                        <div className="flex items-center space-x-2"><RadioGroupItem value="billable" id="r-billable" /><Label htmlFor="r-billable">Billable</Label></div>
-                                    </RadioGroup>
-                                </div>
-                                {isBillable && (
-                                    <div className="flex items-center gap-2 animate-in fade-in-50 duration-300">
-                                        <Label htmlFor="billable-rate">Rate ($/hr)</Label>
-                                        <div className="relative w-32">
-                                            <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                                            <Input id="billable-rate" type="number" placeholder="100" value={billableRate} onChange={(e) => setBillableRate(e.target.value === '' ? '' : Number(e.target.value))} className="pl-7" />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
                         <Card className="bg-muted/50">
                             <CardHeader className="p-4">
                                 <CardTitle className="text-base">Time Log</CardTitle>
@@ -662,20 +591,14 @@ export function TimeManagerView() {
                         </Card>
                     </CardContent>
                     <CardFooter className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                         <div className="flex items-center gap-2">
                             <Button size="lg" onClick={() => router.push('/ogeemail/compose')} variant="outline">
                                 <Mail className="mr-2 h-4 w-4" /> Compose Email
-                            </Button>
-                             <Button size="lg" onClick={handleSetReminder} variant="outline">
-                                <BellRing className="mr-2 h-4 w-4" /> Set Reminder
                             </Button>
                         </div>
                         <div className="flex items-center gap-2">
                             <Button size="lg" onClick={() => router.back()} variant="ghost">
                                 Close
-                            </Button>
-                            <Button size="lg" onClick={handleSave} variant="default">
-                                <Save className="mr-2 h-4 w-4" /> Log Events &amp; Save to Database
                             </Button>
                         </div>
                     </CardFooter>
@@ -727,8 +650,5 @@ export function TimeManagerView() {
 
     
 
-
-
     
 
-  

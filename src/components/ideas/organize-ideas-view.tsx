@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useDrag, useDrop } from 'react-dnd';
-import { MoreVertical, Calendar, Briefcase, Pencil, Trash2, Archive, LoaderCircle, Info, Lightbulb, ArrowLeft } from 'lucide-react';
+import { MoreVertical, Briefcase, Pencil, Trash2, Archive, LoaderCircle, Info, Lightbulb, ArrowLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,13 +37,12 @@ interface IdeaCardProps {
     ideas: Idea[];
     onDelete: (id: string) => void;
     onEdit: (idea: Idea) => void;
-    onSchedule: (idea: Idea) => void;
     onMakeProject: (idea: Idea) => void;
     onArchive: (idea: Idea) => void;
     onMoveCard: (id: string, toIndex: number, toStatus: 'Yes' | 'No' | 'Maybe') => void;
 }
 
-const IdeaCard = ({ idea, ideas, onDelete, onEdit, onSchedule, onMakeProject, onArchive, onMoveCard }: IdeaCardProps) => {
+const IdeaCard = ({ idea, ideas, onDelete, onEdit, onMakeProject, onArchive, onMoveCard }: IdeaCardProps) => {
     const ref = useRef<HTMLDivElement>(null);
 
     const [{ isDragging }, drag] = useDrag({
@@ -82,10 +81,6 @@ const IdeaCard = ({ idea, ideas, onDelete, onEdit, onSchedule, onMakeProject, on
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => onSchedule(idea)}>
-                                <Calendar className="mr-2 h-4 w-4" />
-                                <span>Schedule Item to calendar</span>
-                            </DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => onMakeProject(idea)}>
                                 <Briefcase className="mr-2 h-4 w-4" />
                                 <span>Create New Project</span>
@@ -208,10 +203,6 @@ export function OrganizeIdeasView() {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not save your changes.' });
         }
     };
-
-    const handleSchedule = (idea: Idea) => {
-        router.push(`/master-mind?title=${encodeURIComponent(idea.title)}&description=${encodeURIComponent(idea.description || '')}`);
-    };
     
     const handleMakeProject = (idea: Idea) => {
         setInitialDialogData({ name: idea.title, description: idea.description });
@@ -323,7 +314,6 @@ export function OrganizeIdeasView() {
                                 ideas={columnIdeas}
                                 onDelete={deleteIdea}
                                 onEdit={handleEdit}
-                                onSchedule={handleSchedule}
                                 onMakeProject={handleMakeProject}
                                 onArchive={handleArchive}
                                 onMoveCard={moveCard}

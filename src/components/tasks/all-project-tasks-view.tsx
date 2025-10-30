@@ -90,9 +90,6 @@ const TaskListItem = ({ task, project, onEdit, onDelete, onAssignProject, projec
                         <DropdownMenuItem onSelect={() => onEdit(task)}>
                             <Edit className="mr-2 h-4 w-4"/> Open / Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => onEdit(task)}>
-                            <Calendar className="mr-2 h-4 w-4"/> Schedule
-                        </DropdownMenuItem>
                         <DropdownMenuSub>
                             <DropdownMenuSubTrigger>
                                 <Folder className="mr-2 h-4 w-4" />
@@ -285,7 +282,7 @@ export default function AllProjectTasksView() {
         <>
             <div className="p-4 sm:p-6 flex flex-col h-full items-center">
                 <header className="text-center mb-6">
-                    <h1 className="text-3xl font-bold font-headline text-primary">All Tasks</h1>
+                    <h1 className="text-3xl font-bold font-headline text-primary">All Project Tasks</h1>
                     <p className="text-muted-foreground max-w-2xl mx-auto">
                         View all tasks across all projects, or filter by a specific project.
                     </p>

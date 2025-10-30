@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useRef } from 'react';
@@ -27,7 +28,7 @@ export function DraggableStep({ step, index, moveStep, children }: DraggableStep
 
   const [{ isDragging }, drag] = useDrag({
     type: ItemTypes.STEP,
-    item: () => ({ id: step.id, index }),
+    item: () => ({ ...step, index, type: ItemTypes.STEP }), // Add the full step data and type
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),

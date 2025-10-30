@@ -25,12 +25,13 @@ export const ItemTypes = {
 
 interface CalendarEventProps {
   event: Event;
+  height: number;
   onEdit: (event: Event) => void;
   onDelete: (event: Event) => void;
   onToggleComplete: (event: Event) => void;
 }
 
-export function CalendarEvent({ event, onEdit, onDelete, onToggleComplete }: CalendarEventProps) {
+export function CalendarEvent({ event, height, onEdit, onDelete, onToggleComplete }: CalendarEventProps) {
   const startTime = format(event.start, 'h:mm a');
   const isCompleted = event.status === 'done';
   const router = useRouter();
@@ -55,13 +56,14 @@ export function CalendarEvent({ event, onEdit, onDelete, onToggleComplete }: Cal
   return (
     <div
       ref={drag}
+      style={{ height: `${height - 4}px` }} // Subtract a few pixels for padding/border
       className={cn(
-        'relative rounded-md px-2 text-xs transition-opacity group flex items-center justify-between border h-full',
+        'relative rounded-md px-2 text-xs transition-opacity group flex items-start justify-between border w-full',
         isCompleted ? 'bg-muted text-muted-foreground border-gray-300' : 'bg-primary/20 text-black border-tan',
         isDragging && 'opacity-50'
       )}
     >
-      <div className="flex-1 overflow-hidden cursor-pointer" onClick={() => onEdit(event)}>
+      <div className="flex-1 overflow-hidden cursor-pointer pt-1" onClick={() => onEdit(event)}>
         <p className={cn("font-bold", isCompleted && "line-through")}>
           {event.title}
         </p>

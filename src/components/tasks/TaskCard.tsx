@@ -1,9 +1,10 @@
+
 "use client";
 
 import React, { useRef, useState } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { Card, CardContent } from '@/components/ui/card';
-import { MoreVertical, Edit, Trash2, Calendar } from 'lucide-react';
+import { MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { type Event as TaskEvent } from '@/types/calendar-types';
 import { cn } from '@/lib/utils';
 import {
@@ -20,16 +21,15 @@ import { Checkbox } from '../ui/checkbox';
 interface TaskCardProps {
   task: TaskEvent;
   onMoveCard: (dragId: string, hoverId: string) => void;
-  onTaskUpdate: (task: TaskEvent) => void;
+  onEdit: (task: TaskEvent) => void;
   onTaskDelete: (taskId: string) => void;
+  onToggleComplete: (taskId: string) => void;
   isSelected: boolean;
   onToggleSelect: (taskId: string, event?: React.MouseEvent) => void;
 }
 
-export function TaskCard({ task, onMoveCard, onTaskUpdate, onTaskDelete, isSelected, onToggleSelect }: TaskCardProps) {
+export function TaskCard({ task, onMoveCard, onEdit, onTaskDelete, onToggleComplete, isSelected, onToggleSelect }: TaskCardProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
-  const router = useRouter();
 
   const [{ isDragging }, drag] = useDrag({
     type: 'task',
@@ -49,29 +49,27 @@ export function TaskCard({ task, onMoveCard, onTaskUpdate, onTaskDelete, isSelec
 
   drag(drop(ref));
   
-  const handleEdit = () => {
-      router.push(`/master-mind?eventId=${task.id}`);
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit(task);
   };
+
+  const isCompleted = task.status === 'done';
 
   return (
     <>
       <div ref={ref} style={{ opacity: isDragging ? 0.5 : 1 }}>
-        <Card className={cn("group", isSelected && "bg-primary/20 border-primary")}>
+        <Card className={cn("group", isSelected && "bg-primary/20 border-primary", isCompleted && "bg-muted/70")}>
           <CardContent className="p-3 flex items-start gap-2">
             <Checkbox
-              checked={isSelected}
-              onClick={(e) => onToggleSelect(task.id, e)}
-              onKeyDown={(e) => {
-                if (e.key === ' ') {
-                   onToggleSelect(task.id, e as unknown as React.MouseEvent);
-                }
-              }}
+              checked={isCompleted}
+              onClick={(e) => { e.stopPropagation(); onToggleComplete(task.id); }}
               className="mt-1"
-              aria-label={`Select task ${task.title}`}
+              aria-label={`Mark task ${task.title} as ${isCompleted ? 'not done' : 'done'}`}
             />
-            <div className="flex-1 cursor-pointer" onClick={handleEdit}>
-              <p className="font-semibold text-sm">{task.title}</p>
-              <p className="text-xs text-muted-foreground line-clamp-2">{task.description}</p>
+            <div className="flex-1 cursor-pointer" onClick={handleEditClick}>
+              <p className={cn("font-semibold text-sm", isCompleted && "line-through text-muted-foreground")}>{task.title}</p>
+              <p className={cn("text-xs text-muted-foreground line-clamp-2", isCompleted && "line-through")}>{task.description}</p>
             </div>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -80,11 +78,8 @@ export function TaskCard({ task, onMoveCard, onTaskUpdate, onTaskDelete, isSelec
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={handleEdit}>
+                    <DropdownMenuItem onSelect={() => onEdit(task)}>
                         <Edit className="mr-2 h-4 w-4" /> Edit / View Details
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={handleEdit}>
-                        <Calendar className="mr-2 h-4 w-4" /> Schedule to Calendar
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => onTaskDelete(task.id)} className="text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" /> Delete Task
@@ -97,3 +92,5 @@ export function TaskCard({ task, onMoveCard, onTaskUpdate, onTaskDelete, isSelec
     </>
   );
 }
+
+    

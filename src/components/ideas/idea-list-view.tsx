@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Plus, MoreVertical, Trash2, Briefcase, ListChecks, LoaderCircle, Calendar, Pencil, ArrowDownUp } from 'lucide-react';
+import { Plus, MoreVertical, Trash2, Briefcase, ListChecks, LoaderCircle, Pencil, ArrowDownUp } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -118,17 +118,13 @@ export function IdeaListView() {
     try {
       await updateIdea(editingId, { title: editingText.trim() });
     } catch (error) {
-      setIdeas(prev => prev.map(t => t.id === editingId ? ideaToUpdate : t));
+      setIdeas(prev => prev.map(t => t.id === editingId ? todoToUpdate : t));
       toast({ variant: 'destructive', title: 'Error', description: 'Could not update item.' });
     } finally {
       setEditingId(null);
     }
   };
   
-  const handleMakeTask = (idea: Idea) => {
-    router.push(`/master-mind?title=${encodeURIComponent(idea.title)}`);
-  };
-
   const handleMakeProject = (idea: Idea) => {
     setInitialDialogData({ name: idea.title, description: idea.description });
     setIsNewProjectDialogOpen(true);
@@ -215,9 +211,6 @@ export function IdeaListView() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onSelect={() => handleStartEdit(idea)}>
                           <Pencil className="mr-2 h-4 w-4" /> Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleMakeTask(idea)}>
-                          <Calendar className="mr-2 h-4 w-4" /> Schedule to Calendar
                         </DropdownMenuItem>
                         <DropdownMenuItem onSelect={() => handleMakeProject(idea)}>
                           <Briefcase className="mr-2 h-4 w-4" /> Make a Project

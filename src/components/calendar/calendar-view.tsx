@@ -503,14 +503,44 @@ export function CalendarView() {
                                                 {todaysEvents.map(event => {
                                                     if (!event.start || !event.end) return null;
                                                     
-                                                    const startMinutes = (event.start.getHours() - startHour) * 60 + event.start.getMinutes();
+                                                    let topPosition = 0;
+                                                    const eventStartHour = event.start.getHours();
+                                                    for (let h = startHour; h < eventStartHour; h++) {
+                                                        const slotsInHour = hourSlots[h] || 1;
+                                                        topPosition += slotsInHour * BASE_SLOT_HEIGHT_PX;
+                                                    }
                                                     
-                                                    const topPosition = (startMinutes / 60) * (hourSlots[event.start.getHours()] || 1) * BASE_SLOT_HEIGHT_PX + 3; // +3 for centering
+                                                    const eventStartMinute = event.start.getMinutes();
+                                                    const slotsInEventHour = hourSlots[eventStartHour] || 1;
+                                                    const minuteOffset = (eventStartMinute / 60) * (slotsInEventHour * BASE_SLOT_HEIGHT_PX);
+                                                    topPosition += minuteOffset;
+
+                                                    const durationMinutes = differenceInMilliseconds(event.end, event.start) / (1000 * 60);
+                                                    let height = 0;
+                                                    let minutesRemaining = durationMinutes;
+                                                    let currentHour = event.start.getHours();
+                                                    let currentMinute = event.start.getMinutes();
+
+                                                    while (minutesRemaining > 0) {
+                                                        const slotsThisHour = hourSlots[currentHour] || 1;
+                                                        const minutesPerSlot = 60 / slotsThisHour;
+                                                        const minutesLeftInHour = 60 - currentMinute;
+                                                        const minutesToProcess = Math.min(minutesRemaining, minutesLeftInHour);
+                                                        
+                                                        height += (minutesToProcess / minutesPerSlot) * BASE_SLOT_HEIGHT_PX;
+
+                                                        minutesRemaining -= minutesToProcess;
+                                                        currentHour++;
+                                                        currentMinute = 0;
+                                                    }
+                                                    
+                                                    height = Math.max(height, BASE_SLOT_HEIGHT_PX);
 
                                                     return (
-                                                        <div key={event.id} style={{ top: `${topPosition}px` }} className="absolute h-6 left-0.5 right-0.5">
+                                                        <div key={event.id} style={{ top: `${topPosition}px`, height: `${height}px` }} className="absolute left-0.5 right-0.5 flex items-center">
                                                             <CalendarEvent
                                                                 event={event}
+                                                                height={height}
                                                                 onEdit={handleEditEvent}
                                                                 onDelete={() => setEventToDelete(event)}
                                                                 onToggleComplete={handleToggleComplete}
@@ -547,19 +577,3 @@ export function CalendarView() {
         </>
     );
 }
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -71,8 +71,8 @@ const docToTask = (doc: any): TaskEvent => {
     id: doc.id,
     title: data.title,
     description: data.description || '',
-    start: (data.start as Timestamp)?.toDate ? (data.start as Timestamp).toDate() : new Date(),
-    end: (data.end as Timestamp)?.toDate ? (data.end as Timestamp).toDate() : new Date(),
+    start: (data.start as Timestamp)?.toDate ? (data.start as Timestamp).toDate() : null,
+    end: (data.end as Timestamp)?.toDate ? (data.end as Timestamp).toDate() : null,
     status: data.status || 'todo',
     position: data.position || 0,
     projectId: data.projectId || null,
@@ -317,19 +317,36 @@ export async function getTasksForUser(userId: string): Promise<TaskEvent[]> {
 }
 
 export async function addTask(taskData: Omit<TaskEvent, 'id'>): Promise<TaskEvent> {
-  const db = await getDb();
-  const docRef = await addDoc(collection(db, TASKS_COLLECTION), taskData);
-  return { id: docRef.id, ...taskData };
+    const db = await getDb();
+    
+    const dataToSave = {
+        ...taskData,
+        start: taskData.start || null,
+        end: taskData.end || null,
+        isScheduled: taskData.isScheduled || false,
+    };
+
+    const docRef = await addDoc(collection(db, TASKS_COLLECTION), dataToSave);
+    
+    return { ...taskData, id: docRef.id };
 }
+
 
 export async function updateTask(taskId: string, taskData: Partial<Omit<TaskEvent, 'id' | 'userId'>>): Promise<void> {
     const db = await getDb();
     const taskRef = doc(db, TASKS_COLLECTION, taskId);
-    // Ensure projectId is not undefined
+    
     const dataToUpdate = { ...taskData };
-    if (dataToUpdate.projectId === undefined) {
+    if ('projectId' in dataToUpdate && dataToUpdate.projectId === undefined) {
         dataToUpdate.projectId = null;
     }
+    if ('start' in dataToUpdate && dataToUpdate.start === undefined) {
+        dataToUpdate.start = null;
+    }
+    if ('end' in dataToUpdate && dataToUpdate.end === undefined) {
+        dataToUpdate.end = null;
+    }
+
     await updateDoc(taskRef, dataToUpdate);
 }
 
@@ -572,3 +589,5 @@ export async function updateActionChip(userId: string, updatedChip: ActionChipDa
         await updateAvailableActionChips(userId, newAvailableChips);
     }
 }
+
+    

@@ -86,7 +86,7 @@ export const allMenuItems: MenuItem[] = [
   { href: "https://messages.google.com/web", label: "Text Messages", icon: MessageSquare },
   { href: "/contacts", label: "Contacts", icon: Contact },
   { href: "/projects", label: "Projects", icon: Briefcase },
-  { href: "/tasks", label: "All Project Tasks", icon: ListTodo },
+  { href: "/all-project-tasks", label: "All Project Tasks", icon: ListTodo },
   { href: "/to-do", label: "A To Do List", icon: ListChecks },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/file-manager", label: "File Manager", icon: Folder },

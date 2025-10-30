@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -34,9 +33,9 @@ export function ReportsHubView() {
     },
      {
       icon: ListTodo,
-      title: "Task & Event List",
+      title: "All Project Tasks",
       description: "View a comprehensive list of every task and event across all projects and your calendar.",
-      href: "/tasks",
+      href: "/all-project-tasks",
       cta: "View All Tasks",
     },
     {
