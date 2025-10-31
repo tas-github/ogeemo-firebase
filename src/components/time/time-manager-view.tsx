@@ -267,9 +267,24 @@ export function TimeManagerView() {
                     setIsBillable(eventData.isBillable || false);
                     setBillableRate(eventData.billableRate || 0);
                     setSessions(eventData.sessions || []);
+                    if (eventData.start) {
+                        const startDate = new Date(eventData.start);
+                        setScheduleDate(startDate);
+                        setScheduleHour(String(startDate.getHours()));
+                        setScheduleMinute(String(startDate.getMinutes()));
+                    }
                 } else {
                     toast({ variant: 'destructive', title: 'Error', description: 'Could not load event data.' });
                 }
+            } else {
+                 const title = searchParams.get('title');
+                 const notes = searchParams.get('notes');
+                 const contactId = searchParams.get('contactId');
+                 const projectId = searchParams.get('projectId');
+                 if (title) setSubject(title);
+                 if (notes) setNotes(notes);
+                 if (contactId) setSelectedContactId(contactId);
+                 if (projectId) setSelectedProjectId(projectId);
             }
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
@@ -342,18 +357,16 @@ export function TimeManagerView() {
             return;
         }
 
-        let start: Date | null = null;
-        let end: Date | null = null;
+        let start: Date | null = new Date();
+        let end: Date | null = new Date(start.getTime() + 30 * 60000); // Default 30 min duration
         let isScheduled = false;
 
-        if (scheduleDate && scheduleHour && scheduleMinute) {
-            start = set(scheduleDate, { hours: parseInt(scheduleHour), minutes: parseInt(scheduleMinute) });
-            end = addMinutes(start, 30); // Default 30 min duration for scheduled events
+        if (scheduleDate) {
+            const hour = scheduleHour ? parseInt(scheduleHour) : new Date().getHours();
+            const minute = scheduleMinute ? parseInt(scheduleMinute) : new Date().getMinutes();
+            start = set(scheduleDate, { hours: hour, minutes: minute });
+            end = addMinutes(start, 30); // Default duration if not otherwise specified
             isScheduled = true;
-        } else {
-            // Default to now if not scheduled
-            start = new Date();
-            end = new Date(start.getTime() + 30 * 60000);
         }
 
         const eventData: Partial<Omit<TaskEvent, 'id' | 'userId'>> = {
@@ -446,7 +459,7 @@ export function TimeManagerView() {
                             </TooltipProvider>
                         </div>
                         <div className="text-center">
-                            <h1 className="text-2xl font-bold font-headline text-primary whitespace-nowrap">Task & Event Manager</h1>
+                            <h1 className="text-2xl font-bold font-headline text-primary whitespace-nowrap">Task &amp; Event Manager</h1>
                             <p className="text-muted-foreground whitespace-nowrap">Your ‘Master Mind’ for getting things done.</p>
                         </div>
                         <div className="flex items-center justify-end gap-2">
@@ -472,137 +485,150 @@ export function TimeManagerView() {
                     </div>
                 </header>
 
-                <Card className="w-full max-w-4xl">
-                    <CardContent className="pt-6 space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="subject">Subject Title <span className="text-destructive">*</span></Label>
-                            <Input id="subject" placeholder="What is the main task or event?" value={subject} onChange={(e) => setSubject(e.target.value)} />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Card>
-                                <CardHeader className="p-4"><CardTitle className="text-base">Select a Client</CardTitle></CardHeader>
-                                <CardContent className="p-4 pt-0">
-                                    <div className="space-y-2">
-                                        <RadioGroup onValueChange={(value) => setClientAction(value)} value={clientAction} className="flex space-x-4">
-                                            <div className="flex items-center space-x-2"><RadioGroupItem value="select" id="select-client" /><Label htmlFor="select-client">Select/Search</Label></div>
-                                            <div className="flex items-center space-x-2"><RadioGroupItem value="add" id="add-client" /><Label htmlFor="add-client">Add New</Label></div>
-                                        </RadioGroup>
+                <div className="w-full max-w-4xl space-y-6">
+                    <Card>
+                        <CardContent className="pt-6 space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="subject">Subject Title <span className="text-destructive">*</span></Label>
+                                <Input id="subject" placeholder="What is the main task or event?" value={subject} onChange={(e) => setSubject(e.target.value)} />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Card>
+                                    <CardHeader className="p-4"><CardTitle className="text-base">Select a Client</CardTitle></CardHeader>
+                                    <CardContent className="p-4 pt-0">
+                                        <div className="space-y-2">
+                                            <RadioGroup onValueChange={(value) => setClientAction(value)} value={clientAction} className="flex space-x-4">
+                                                <div className="flex items-center space-x-2"><RadioGroupItem value="select" id="select-client" /><Label htmlFor="select-client">Select/Search</Label></div>
+                                                <div className="flex items-center space-x-2"><RadioGroupItem value="add" id="add-client" /><Label htmlFor="add-client">Add New</Label></div>
+                                            </RadioGroup>
 
-                                        {clientAction === 'select' ? (
-                                            <Popover open={isContactPopoverOpen} onOpenChange={setIsContactPopoverOpen}>
-                                                <PopoverTrigger asChild>
-                                                    <Button variant="outline" role="combobox" className="w-full justify-between mt-2">
-                                                        {selectedContactId ? contacts.find(c => c.id === selectedContactId)?.name : "Select client..."}
-                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                    <Command><CommandInput placeholder="Search clients..." /><CommandList><CommandEmpty>No client found.</CommandEmpty><CommandGroup>{contacts.map(c => (<CommandItem key={c.id} value={c.name} onSelect={() => { setSelectedContactId(c.id); setIsContactPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", selectedContactId === c.id ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command>
-                                                </PopoverContent>
-                                            </Popover>
-                                        ) : (
-                                            <Button variant="outline" onClick={() => setIsContactFormOpen(true)} className="w-full mt-2">
-                                                <Plus className="mr-2 h-4 w-4" /> Create New Contact
-                                            </Button>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader className="p-4"><CardTitle className="text-base">Select or Create a Project</CardTitle></CardHeader>
-                                <CardContent className="p-4 pt-0">
-                                    <div className="space-y-2">
-                                        <RadioGroup onValueChange={(value) => setProjectAction(value)} value={projectAction} className="flex space-x-4">
-                                            <div className="flex items-center space-x-2"><RadioGroupItem value="select" id="select-project" /><Label htmlFor="select-project">Select/Search</Label></div>
-                                            <div className="flex items-center space-x-2"><RadioGroupItem value="add" id="add-project" /><Label htmlFor="add-project">Add New</Label></div>
-                                        </RadioGroup>
+                                            {clientAction === 'select' ? (
+                                                <Popover open={isContactPopoverOpen} onOpenChange={setIsContactPopoverOpen}>
+                                                    <PopoverTrigger asChild>
+                                                        <Button variant="outline" role="combobox" className="w-full justify-between mt-2">
+                                                            {selectedContactId ? contacts.find(c => c.id === selectedContactId)?.name : "Select client..."}
+                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                        <Command><CommandInput placeholder="Search clients..." /><CommandList><CommandEmpty>No client found.</CommandEmpty><CommandGroup>{contacts.map(c => (<CommandItem key={c.id} value={c.name} onSelect={() => { setSelectedContactId(c.id); setIsContactPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", selectedContactId === c.id ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command>
+                                                    </PopoverContent>
+                                                </Popover>
+                                            ) : (
+                                                <Button variant="outline" onClick={() => setIsContactFormOpen(true)} className="w-full mt-2">
+                                                    <Plus className="mr-2 h-4 w-4" /> Create New Contact
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                <Card>
+                                    <CardHeader className="p-4"><CardTitle className="text-base">Select or Create a Project</CardTitle></CardHeader>
+                                    <CardContent className="p-4 pt-0">
+                                        <div className="space-y-2">
+                                            <RadioGroup onValueChange={(value) => setProjectAction(value)} value={projectAction} className="flex space-x-4">
+                                                <div className="flex items-center space-x-2"><RadioGroupItem value="select" id="select-project" /><Label htmlFor="select-project">Select/Search</Label></div>
+                                                <div className="flex items-center space-x-2"><RadioGroupItem value="add" id="add-project" /><Label htmlFor="add-project">Add New</Label></div>
+                                            </RadioGroup>
 
-                                        {projectAction === 'select' ? (
-                                            <Popover open={isProjectPopoverOpen} onOpenChange={setIsProjectPopoverOpen}>
-                                                <PopoverTrigger asChild>
-                                                    <Button variant="outline" role="combobox" className="w-full justify-between mt-2">
-                                                        {selectedProjectId ? projects.find(p => p.id === selectedProjectId)?.name : "Select project..."}
-                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                    <Command><CommandInput placeholder="Search projects..." /><CommandList><CommandEmpty>No project found.</CommandEmpty><CommandGroup>{projects.map(p => (<CommandItem key={p.id} value={p.name} onSelect={() => { setSelectedProjectId(p.id); setIsProjectPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", selectedProjectId === p.id ? "opacity-100" : "opacity-0")}/>{p.name}</CommandItem>))}</CommandGroup></CommandList></Command>
-                                                </PopoverContent>
-                                            </Popover>
-                                        ) : (
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <Input
-                                                    placeholder="Enter new project name..."
-                                                    value={newProjectName}
-                                                    onChange={e => setNewProjectName(e.target.value)}
-                                                    onKeyDown={e => e.key === 'Enter' && handleCreateProject()}
-                                                />
-                                                <Button onClick={handleCreateProject}><Plus className="mr-2 h-4 w-4"/> Create</Button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-                        
-                        <div className="space-y-2">
-                            <Label htmlFor="notes">Notes / Details</Label>
-                            <Textarea id="notes" placeholder="Add more details about the work..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} />
-                        </div>
-                        
-                        <Card className="bg-muted/50">
-                            <CardHeader className="p-4">
-                                <CardTitle className="text-base">Time Log</CardTitle>
-                                <CardDescription>Start a timer to log time for this event and edit logged sessions as needed.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-4 pt-0 space-y-4">
-                                <div className="space-y-4 p-4 border rounded-lg bg-background">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                             <Button onClick={handleStartTimer} disabled={timerState?.isActive && !timerState.isPaused} className="bg-green-600 hover:bg-green-700"><Play className="mr-2 h-4 w-4"/> Start New Session</Button>
-                                             <Button onClick={handlePauseTimer} disabled={!timerState?.isActive || timerState.isPaused} variant="destructive" className="bg-orange-500 hover:bg-orange-600"><Pause className="mr-2 h-4 w-4"/> Pause Session</Button>
-                                             <Button onClick={handleResumeTimer} disabled={!timerState?.isActive || !timerState.isPaused} variant="outline"><Play className="mr-2 h-4 w-4"/> Resume Session</Button>
+                                            {projectAction === 'select' ? (
+                                                <Popover open={isProjectPopoverOpen} onOpenChange={setIsProjectPopoverOpen}>
+                                                    <PopoverTrigger asChild>
+                                                        <Button variant="outline" role="combobox" className="w-full justify-between mt-2">
+                                                            {selectedProjectId ? projects.find(p => p.id === selectedProjectId)?.name : "Select project..."}
+                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                        <Command><CommandInput placeholder="Search projects..." /><CommandList><CommandEmpty>No project found.</CommandEmpty><CommandGroup>{projects.map(p => (<CommandItem key={p.id} value={p.name} onSelect={() => { setSelectedProjectId(p.id); setIsProjectPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", selectedProjectId === p.id ? "opacity-100" : "opacity-0")}/>{p.name}</CommandItem>))}</CommandGroup></CommandList></Command>
+                                                    </PopoverContent>
+                                                </Popover>
+                                            ) : (
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <Input
+                                                        placeholder="Enter new project name..."
+                                                        value={newProjectName}
+                                                        onChange={e => setNewProjectName(e.target.value)}
+                                                        onKeyDown={e => e.key === 'Enter' && handleCreateProject()}
+                                                    />
+                                                    <Button onClick={handleCreateProject}><Plus className="mr-2 h-4 w-4"/> Create</Button>
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="text-right">
-                                            <Label className="text-xs">Current Session</Label>
-                                            <div className="font-mono text-2xl font-bold">{formatTime(elapsedSeconds)}</div>
-                                        </div>
-                                         <div className="text-right">
-                                            <Label className="text-xs">Total Logged Time</Label>
-                                            <p className="font-mono text-lg font-bold text-primary">{formatTime(totalTime)}</p>
-                                        </div>
-                                    </div>
-                                    {timerState?.isActive && (
-                                        <div className="space-y-2 animate-in fade-in-50 duration-300">
-                                            <Label htmlFor="session-notes">Session Notes</Label>
-                                            <Textarea id="session-notes" placeholder="What are you working on right now?" value={currentSessionNotes} onChange={(e) => setCurrentSessionNotes(e.target.value)} />
-                                            <Button size="sm" onClick={handleLogCurrentSession}>Log Session</Button>
-                                        </div>
-                                    )}
+                                    </CardContent>
+                                </Card>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <Label htmlFor="notes">Notes / Details</Label>
+                                <Textarea id="notes" placeholder="Add more details about the work..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="p-4">
+                            <CardTitle className="text-base">Schedule (Optional)</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 pt-0">
+                             <div className="flex flex-col sm:flex-row gap-2">
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}>
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {scheduleDate ? formatDate(scheduleDate, "PPP") : <span>Pick a date</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={scheduleDate} onSelect={setScheduleDate} initialFocus /></PopoverContent>
+                                </Popover>
+                                <div className="flex-1 flex gap-2">
+                                    <Select value={scheduleHour} onValueChange={setScheduleHour}><SelectTrigger><SelectValue placeholder="Hour" /></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+                                    <Select value={scheduleMinute} onValueChange={setScheduleMinute}><SelectTrigger><SelectValue placeholder="Min" /></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label>Logged Sessions</Label>
-                                    <ScrollArea className="h-24 w-full rounded-md border bg-background">
-                                       <ScrollBar forceMount />
-                                       <div className="p-2">{sessions.length > 0 ? (sessions.map((session, index) => (<div key={session.id} className="p-2 rounded-md hover:bg-muted/50 group"><div className="flex items-center justify-between"><p className="font-medium text-sm">Session {index + 1}</p><div className="flex items-center gap-4"><span className="font-mono text-sm">{formatTime(session.durationSeconds)}</span><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => handleOpenEditSession(session)}><Edit className="mr-2 h-4 w-4"/> Edit</DropdownMenuItem><DropdownMenuItem className="text-destructive" onSelect={() => setSessions(prev => prev.filter(s => s.id !== session.id))}><Trash2 className="mr-2 h-4 w-4"/> Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></div>{session.notes && <p className="text-xs text-muted-foreground mt-1 pl-2 whitespace-pre-wrap">{session.notes}</p>}</div>))) : (<div className="text-center text-sm text-muted-foreground p-4">No sessions logged yet.</div>)}</div>
-                                    </ScrollArea>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-muted/50">
+                        <CardHeader className="p-4">
+                            <CardTitle className="text-base">Time Log</CardTitle>
+                            <CardDescription>Start a timer to log time for this event and edit logged sessions as needed.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-4 pt-0 space-y-4">
+                            <div className="space-y-4 p-4 border rounded-lg bg-background">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                         <Button onClick={handleStartTimer} disabled={timerState?.isActive && !timerState.isPaused} className="bg-green-600 hover:bg-green-700"><Play className="mr-2 h-4 w-4"/> Start New Session</Button>
+                                         <Button onClick={handlePauseTimer} disabled={!timerState?.isActive || timerState.isPaused} variant="destructive" className="bg-orange-500 hover:bg-orange-600"><Pause className="mr-2 h-4 w-4"/> Pause Session</Button>
+                                         <Button onClick={handleResumeTimer} disabled={!timerState?.isActive || !timerState.isPaused} variant="outline"><Play className="mr-2 h-4 w-4"/> Resume Session</Button>
+                                    </div>
+                                    <div className="text-right">
+                                        <Label className="text-xs">Current Session</Label>
+                                        <div className="font-mono text-2xl font-bold">{formatTime(elapsedSeconds)}</div>
+                                    </div>
+                                     <div className="text-right">
+                                        <Label className="text-xs">Total Logged Time</Label>
+                                        <p className="font-mono text-lg font-bold text-primary">{formatTime(totalTime)}</p>
+                                    </div>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    </CardContent>
-                    <CardFooter className="flex items-center justify-between">
-                         <div className="flex items-center gap-2">
-                            <Button size="lg" onClick={() => router.push('/ogeemail/compose')} variant="outline">
-                                <Mail className="mr-2 h-4 w-4" /> Compose Email
-                            </Button>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Button size="lg" onClick={() => router.back()} variant="ghost">
-                                Close
-                            </Button>
-                        </div>
-                    </CardFooter>
-                </Card>
+                                {timerState?.isActive && (
+                                    <div className="space-y-2 animate-in fade-in-50 duration-300">
+                                        <Label htmlFor="session-notes">Session Notes</Label>
+                                        <Textarea id="session-notes" placeholder="What are you working on right now?" value={currentSessionNotes} onChange={(e) => setCurrentSessionNotes(e.target.value)} />
+                                        <Button size="sm" onClick={handleLogCurrentSession}>Log Session</Button>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Logged Sessions</Label>
+                                <ScrollArea className="h-24 w-full rounded-md border bg-background">
+                                   <ScrollBar forceMount />
+                                   <div className="p-2">{sessions.length > 0 ? (sessions.map((session, index) => (<div key={session.id} className="p-2 rounded-md hover:bg-muted/50 group"><div className="flex items-center justify-between"><p className="font-medium text-sm">Session {index + 1}</p><div className="flex items-center gap-4"><span className="font-mono text-sm">{formatTime(session.durationSeconds)}</span><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => handleOpenEditSession(session)}><Edit className="mr-2 h-4 w-4"/> Edit</DropdownMenuItem><DropdownMenuItem className="text-destructive" onSelect={() => setSessions(prev => prev.filter(s => s.id !== session.id))}><Trash2 className="mr-2 h-4 w-4"/> Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></div>{session.notes && <p className="text-xs text-muted-foreground mt-1 pl-2 whitespace-pre-wrap">{session.notes}</p>}</div>))) : (<div className="text-center text-sm text-muted-foreground p-4">No sessions logged yet.</div>)}</div>
+                                </ScrollArea>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
             {isContactFormOpen && (
                 <ContactFormDialog 
@@ -648,7 +674,5 @@ export function TimeManagerView() {
     );
 }
 
-    
 
     
-

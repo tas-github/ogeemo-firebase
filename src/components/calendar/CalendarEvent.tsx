@@ -4,7 +4,15 @@
 import React from 'react';
 import { useDrag } from 'react-dnd';
 import { format } from 'date-fns';
-import { MoreVertical, Pencil, Trash2, CheckCircle, Briefcase, Clock, PlayCircle } from 'lucide-react';
+import {
+  MoreVertical,
+  Pencil,
+  Trash2,
+  CheckCircle,
+  Briefcase,
+  Clock,
+  PlayCircle,
+} from 'lucide-react';
 import { type Event } from '@/types/calendar-types';
 import { cn } from '@/lib/utils';
 import {
@@ -13,7 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import { Button } from '../ui/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -25,13 +33,21 @@ export const ItemTypes = {
 
 interface CalendarEventProps {
   event: Event;
-  height: number;
   onEdit: (event: Event) => void;
   onDelete: (event: Event) => void;
   onToggleComplete: (event: Event) => void;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
-export function CalendarEvent({ event, height, onEdit, onDelete, onToggleComplete }: CalendarEventProps) {
+export function CalendarEvent({
+  event,
+  onEdit,
+  onDelete,
+  onToggleComplete,
+  className,
+  style,
+}: CalendarEventProps) {
   const startTime = format(event.start, 'h:mm a');
   const isCompleted = event.status === 'done';
   const router = useRouter();
@@ -49,26 +65,35 @@ export function CalendarEvent({ event, height, onEdit, onDelete, onToggleComplet
       name: event.title,
       description: event.description,
     };
-    sessionStorage.setItem('ogeemo-event-to-project', JSON.stringify(projectData));
+    sessionStorage.setItem(
+      'ogeemo-event-to-project',
+      JSON.stringify(projectData)
+    );
     router.push('/projects/all');
   };
 
   return (
     <div
       ref={drag}
-      style={{ height: `${height - 4}px` }} // Subtract a few pixels for padding/border
+      style={{ height: '25px', ...style }}
       className={cn(
-        'relative rounded-md px-2 text-xs transition-opacity group flex items-start justify-between border w-full',
-        isCompleted ? 'bg-muted text-muted-foreground border-gray-300' : 'bg-primary/20 text-black border-tan',
-        isDragging && 'opacity-50'
+        'relative rounded-md px-2 text-xs transition-opacity group flex items-center justify-between border w-full',
+        isCompleted
+          ? 'bg-muted text-muted-foreground border-gray-300'
+          : 'bg-primary/20 text-black border-tan',
+        isDragging && 'opacity-50',
+        className
       )}
     >
-      <div className="flex-1 overflow-hidden cursor-pointer pt-1" onClick={() => onEdit(event)}>
-        <p className={cn("font-bold", isCompleted && "line-through")}>
+      <div
+        className="flex-1 overflow-hidden cursor-pointer pt-1"
+        onClick={() => onEdit(event)}
+      >
+        <p className={cn('font-bold', isCompleted && 'line-through')}>
           {event.title}
         </p>
       </div>
-      
+
       <div className="flex-shrink-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -77,36 +102,42 @@ export function CalendarEvent({ event, height, onEdit, onDelete, onToggleComplet
               <span className="sr-only">Event options</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuContent
+            align="end"
+            onClick={(e) => e.stopPropagation()}
+          >
             <DropdownMenuItem onSelect={() => onEdit(event)}>
               <Pencil className="mr-2 h-4 w-4" /> Open / Edit
             </DropdownMenuItem>
-             <DropdownMenuItem asChild>
-                <Link href={`/master-mind?eventId=${event.id}&startTimer=true`}>
-                    <PlayCircle className="mr-2 h-4 w-4" /> Start Timer
-                </Link>
+            <DropdownMenuItem asChild>
+              <Link href={`/master-mind?eventId=${event.id}&startTimer=true`}>
+                <PlayCircle className="mr-2 h-4 w-4" /> Start Timer
+              </Link>
             </DropdownMenuItem>
-             <DropdownMenuItem asChild>
-                <Link href={`/master-mind?logTimeFor=${event.id}`}>
-                    <Clock className="mr-2 h-4 w-4" /> Log Actual Time
-                </Link>
+            <DropdownMenuItem asChild>
+              <Link href={`/master-mind?logTimeFor=${event.id}`}>
+                <Clock className="mr-2 h-4 w-4" /> Log Actual Time
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => onToggleComplete(event)}>
-                <CheckCircle className="mr-2 h-4 w-4" /> 
-                {isCompleted ? "Mark as Not Completed" : "Mark as Completed"}
+              <CheckCircle className="mr-2 h-4 w-4" />
+              {isCompleted ? 'Mark as Not Completed' : 'Mark as Completed'}
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={handleConvertToProject}>
               <Briefcase className="mr-2 h-4 w-4" /> Convert to Project
             </DropdownMenuItem>
             {event.projectId && (
-                <DropdownMenuItem asChild>
-                    <Link href={`/projects/${event.projectId}/tasks`}>
-                        <Briefcase className="mr-2 h-4 w-4" /> Go to Project Workspace
-                    </Link>
-                </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/projects/${event.projectId}/tasks`}>
+                  <Briefcase className="mr-2 h-4 w-4" /> Go to Project Workspace
+                </Link>
+              </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => onDelete(event)} className="text-destructive">
+            <DropdownMenuItem
+              onSelect={() => onDelete(event)}
+              className="text-destructive"
+            >
               <Trash2 className="mr-2 h-4 w-4" /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
