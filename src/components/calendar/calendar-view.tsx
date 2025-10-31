@@ -691,11 +691,13 @@ export function CalendarView() {
                             return null;
 
                           let topPosition = 0;
+                          let borderOffset = 0; // The fix
                           const eventStartHour = visibleStart.getHours();
 
                           for (let h = startHour; h < eventStartHour; h++) {
                             const slotsInHour = hourSlots[h] || 1;
                             topPosition += slotsInHour * BASE_SLOT_HEIGHT_PX;
+                            borderOffset += slotsInHour; // The fix
                           }
 
                           const eventStartMinute = visibleStart.getMinutes();
@@ -704,6 +706,11 @@ export function CalendarView() {
                             (eventStartMinute / 60) *
                             (slotsInEventHour * BASE_SLOT_HEIGHT_PX);
                           topPosition += minuteOffset;
+                          borderOffset += Math.floor(
+                            (eventStartMinute / 60) * slotsInEventHour
+                          ); // The fix
+
+                          topPosition += borderOffset; // The fix
 
                           const durationMinutes =
                             differenceInMilliseconds(visibleEnd, visibleStart) /
