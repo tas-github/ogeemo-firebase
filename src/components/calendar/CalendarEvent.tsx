@@ -3,7 +3,6 @@
 
 import React from 'react';
 import { useDrag } from 'react-dnd';
-import { format } from 'date-fns';
 import {
   MoreVertical,
   Pencil,
@@ -36,8 +35,6 @@ interface CalendarEventProps {
   onEdit: (event: Event) => void;
   onDelete: (event: Event) => void;
   onToggleComplete: (event: Event) => void;
-  className?: string;
-  style?: React.CSSProperties;
 }
 
 export function CalendarEvent({
@@ -45,16 +42,13 @@ export function CalendarEvent({
   onEdit,
   onDelete,
   onToggleComplete,
-  className,
-  style,
 }: CalendarEventProps) {
-  const startTime = format(event.start, 'h:mm a');
   const isCompleted = event.status === 'done';
   const router = useRouter();
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.EVENT,
-    item: event,
+    item: event, // The item being dragged is the entire event object
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
@@ -75,21 +69,20 @@ export function CalendarEvent({
   return (
     <div
       ref={drag}
-      style={{ height: '25px', ...style }}
       className={cn(
-        'relative rounded-md px-2 text-xs transition-opacity group flex items-center justify-between border w-full',
+        'relative rounded-md p-1 group flex items-center justify-between border w-full my-0.5',
         isCompleted
           ? 'bg-muted text-muted-foreground border-gray-300'
           : 'bg-primary/20 text-black border-tan',
-        isDragging && 'opacity-50',
-        className
+        isDragging && 'opacity-50 cursor-grabbing',
+        !isDragging && 'cursor-grab'
       )}
     >
       <div
-        className="flex-1 overflow-hidden cursor-pointer pt-1"
+        className="flex-1 overflow-hidden px-2 py-1"
         onClick={() => onEdit(event)}
       >
-        <p className={cn('font-bold', isCompleted && 'line-through')}>
+        <p className={cn('text-xs font-semibold', isCompleted && 'line-through')}>
           {event.title}
         </p>
       </div>

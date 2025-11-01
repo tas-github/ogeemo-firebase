@@ -2,13 +2,15 @@
 'use client';
 
 import * as React from 'react';
+import { useCallback } from 'react';
 import {
   format,
   addDays,
   startOfDay,
   set,
-  parseISO,
-  differenceInMilliseconds,
+  isWithinInterval,
+  addMinutes,
+  differenceInMinutes,
 } from 'date-fns';
 import {
   ChevronLeft,
@@ -22,7 +24,6 @@ import {
   BrainCircuit,
   Plus,
   ChevronDown,
-  Save,
 } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
@@ -84,8 +85,7 @@ import {
 const CALENDAR_DAY_COUNT_KEY = 'calendarDayCount';
 const CALENDAR_START_HOUR_KEY = 'calendarStartHour';
 const CALENDAR_END_HOUR_KEY = 'calendarEndHour';
-
-const BASE_SLOT_HEIGHT_PX = 30;
+const CALENDAR_SLOTS_CONFIG_KEY = 'calendarSlotsConfig';
 
 export function CalendarView() {
   const [isClient, setIsClient] = React.useState(false);
@@ -100,8 +100,8 @@ export function CalendarView() {
     null
   );
   const [eventToDelete, setEventToDelete] = React.useState<Event | null>(null);
-  const [hourSlots, setHourSlots] = React.useState<Record<number, number>>({});
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
+  const [slotsConfig, setSlotsConfig] = React.useState<Record<number, number>>({});
 
   const { user } = useAuth();
   const { toast } = useToast();
@@ -146,29 +146,6 @@ export function CalendarView() {
     loadEvents();
   }, [loadEvents]);
 
-  const eventsByDate = React.useMemo(() => {
-    const eventMap: { [key: string]: Event[] } = {};
-    const sourceEvents = filteredProject
-      ? allEvents.filter((e) => e.projectId === filteredProject.id)
-      : allEvents;
-
-    sourceEvents.forEach((event) => {
-      if (event.start) {
-        const dateKey = format(event.start, 'yyyy-MM-dd');
-        if (!eventMap[dateKey]) {
-          eventMap[dateKey] = [];
-        }
-        eventMap[dateKey].push(event);
-      }
-    });
-
-    for (const dateKey in eventMap) {
-      eventMap[dateKey].sort((a, b) => a.start!.getTime() - b.start!.getTime());
-    }
-
-    return eventMap;
-  }, [allEvents, filteredProject]);
-
   React.useEffect(() => {
     if (!isClient) return;
     try {
@@ -180,6 +157,10 @@ export function CalendarView() {
 
       const savedEndHour = localStorage.getItem(CALENDAR_END_HOUR_KEY);
       if (savedEndHour) setEndHour(parseInt(savedEndHour, 10));
+
+      const savedSlotsConfig = localStorage.getItem(CALENDAR_SLOTS_CONFIG_KEY);
+      if (savedSlotsConfig) setSlotsConfig(JSON.parse(savedSlotsConfig));
+
     } catch (error) {
       console.error('Failed to load calendar preferences:', error);
     }
@@ -207,6 +188,16 @@ export function CalendarView() {
     localStorage.setItem(CALENDAR_END_HOUR_KEY, value);
   };
 
+  const handleSlotsChange = (hour: number, slots: number) => {
+    const newConfig = { ...slotsConfig, [hour]: slots };
+    setSlotsConfig(newConfig);
+    try {
+      localStorage.setItem(CALENDAR_SLOTS_CONFIG_KEY, JSON.stringify(newConfig));
+    } catch (error) {
+      console.error('Failed to save slot configuration:', error);
+    }
+  };
+
   const visibleDates = React.useMemo(() => {
     const start = startOfDay(currentDate);
     return Array.from({ length: dayCount }, (_, i) => addDays(start, i));
@@ -220,7 +211,7 @@ export function CalendarView() {
     value: String(i),
     label: format(set(new Date(), { hours: i }), 'h a'),
   }));
-
+  
   const handleEditEvent = (event: Event) => {
     router.push(`/master-mind?eventId=${event.id}`);
   };
@@ -253,114 +244,79 @@ export function CalendarView() {
     }
   };
 
-  const handleEventDrop = async (item: Event, newStartTime: Date) => {
-    let durationMs: number;
-
-    if (item.duration && item.duration > 0) {
-      durationMs = item.duration * 1000;
-    } else if (item.start && item.end) {
-      durationMs = differenceInMilliseconds(item.end, item.start);
-    } else {
-      durationMs = 30 * 60 * 1000; // Default 30 minutes
-    }
-
-    if (isNaN(durationMs)) {
-      toast({
-        variant: 'destructive',
-        title: 'Cannot move event',
-        description: 'Event is missing duration data.',
-      });
-      return;
-    }
-
-    const newEndTime = new Date(newStartTime.getTime() + durationMs);
-
-    try {
-      await updateTask(item.id, { start: newStartTime, end: newEndTime });
-      toast({
-        title: 'Event Rescheduled',
-        description: `"${item.title}" moved to ${format(newStartTime, 'PPp')}`,
-      });
-      loadEvents();
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Failed to move event',
-        description: error.message,
-      });
-    }
+  const hoursToDisplay = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i);
+  
+  const handleDrop = async (item: Event, date: Date, hour: number, slot: number) => {
+      const slotsPerHour = slotsConfig[hour] || 1;
+      const slotDuration = 60 / slotsPerHour;
+      const newStartTime = set(date, { hours: hour, minutes: slot * slotDuration, seconds: 0, milliseconds: 0 });
+      const originalDuration = item.end && item.start ? differenceInMinutes(item.end, item.start) : 30;
+      const newEndTime = addMinutes(newStartTime, originalDuration);
+      
+      try {
+          await updateTask(item.id, { start: newStartTime, end: newEndTime });
+          toast({ title: "Event Rescheduled", description: `"${item.title}" moved to ${format(newStartTime, 'PPP p')}.`});
+          await loadEvents();
+      } catch (error: any) {
+          console.error("Failed to update event time:", error);
+          toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not save the new time.'});
+      }
   };
-
-  const changeSlotsForHour = (hour: number, numSlots: number) => {
-    setHourSlots((prev) => ({ ...prev, [hour]: numSlots }));
-  };
-
-  const TimeSlot = ({
-    hour,
-    slotIndex,
-    totalSlots,
-    date,
-  }: {
-    hour: number;
-    slotIndex: number;
-    totalSlots: number;
-    date: Date;
-  }) => {
-    const slotStartMinute = slotIndex * (60 / totalSlots);
-    const slotStart = set(date, {
-      hours: hour,
-      minutes: slotStartMinute,
-      seconds: 0,
-      milliseconds: 0,
-    });
+  
+  if (!isClient) {
+    return <CalendarSkeleton />;
+  }
+  
+  const TimeSlot = ({ date, hour, slot, slotsPerHour }: { date: Date; hour: number; slot: number, slotsPerHour: number }) => {
+    const slotDuration = 60 / slotsPerHour;
+    const slotStartTime = set(date, { hours: hour, minutes: slot * slotDuration, seconds: 0, milliseconds: 0 });
+    const slotEndTime = addMinutes(slotStartTime, slotDuration -1);
+    
+    const slotEvents = allEvents.filter(event => 
+        event.start && isWithinInterval(event.start, { start: slotStartTime, end: slotEndTime })
+    );
 
     const [{ isOver, canDrop }, drop] = useDrop(() => ({
-      accept: ItemTypes.EVENT,
-      drop: (item: Event) => handleEventDrop(item, slotStart),
-      collect: (monitor) => ({
-        isOver: monitor.isOver(),
-        canDrop: monitor.canDrop(),
-      }),
+        accept: ItemTypes.EVENT,
+        drop: (item: Event) => handleDrop(item, date, hour, slot),
+        collect: (monitor) => ({
+            isOver: monitor.isOver(),
+            canDrop: monitor.canDrop(),
+        }),
     }));
+    
+    const handleSlotClick = () => {
+        const timeString = format(slotStartTime, 'HH:mm');
+        const dateString = format(slotStartTime, 'yyyy-MM-dd');
+        router.push(`/master-mind?date=${dateString}&time=${timeString}`);
+    };
 
     return (
       <div
-        ref={drop as any}
+        ref={drop}
         className={cn(
-          'border-b border-black relative group',
-          isOver && canDrop && 'bg-primary/10'
+            "relative h-full flex items-start p-1 gap-1 group border-b border-b-black", 
+            isOver && canDrop && "bg-primary/20"
         )}
-        style={{ height: `${BASE_SLOT_HEIGHT_PX}px` }}
       >
-        <button
-          className="absolute inset-0 flex items-center justify-start pl-2 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => {
-            const dateStr = format(slotStart, 'yyyy-MM-dd');
-            const hourStr = slotStart.getHours();
-            const minuteStr = slotStart.getMinutes();
-            router.push(
-              `/master-mind?date=${dateStr}&hour=${hourStr}&minute=${minuteStr}`
-            );
-          }}
-        >
-          <Plus className="h-5 w-5 text-muted-foreground" />
-        </button>
+        <Button variant="ghost" size="icon" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-20" onClick={handleSlotClick}>
+            <Plus className="h-5 w-5"/>
+        </Button>
+        <div className="flex-1 flex flex-col gap-1 w-full h-full">
+          {slotEvents.map(event => (
+            <CalendarEvent
+              key={event.id}
+              event={event}
+              onEdit={handleEditEvent}
+              onDelete={setEventToDelete}
+              onToggleComplete={handleToggleComplete}
+            />
+          ))}
+        </div>
       </div>
     );
   };
 
-  if (!isClient) {
-    return <CalendarSkeleton />;
-  }
-
-  const slotOptions = [
-    { slots: 1, label: '1 slot (60 min)' },
-    { slots: 2, label: '2 slots (30 min)' },
-    { slots: 3, label: '3 slots (20 min)' },
-    { slots: 4, label: '4 slots (15 min)' },
-    { slots: 6, label: '6 slots (10 min)' },
-    { slots: 12, label: '12 slots (5 min)' },
-  ];
 
   return (
     <>
@@ -560,213 +516,62 @@ export function CalendarView() {
             </Popover>
           </div>
         </div>
-        <div className="flex-1 min-h-0">
-          <ScrollArea className="h-full">
-            <div className="flex h-full border-t border-l border-black">
-              {/* Time Column */}
-              <div className="w-24 flex-shrink-0 flex flex-col">
-                <div className="h-10 border-b border-r border-black flex items-center justify-center" />{' '}
-                {/* Spacer for header */}
-                {Array.from({ length: endHour - startHour + 1 }).map((_, i) => {
-                  const hour = startHour + i;
-                  const numSlots = hourSlots[hour] || 1;
-                  const hourRowHeight = numSlots * BASE_SLOT_HEIGHT_PX;
-                  return (
-                    <div
-                      key={i}
-                      className="flex flex-col items-center justify-center text-center border-b border-r border-black"
-                      style={{ height: `${hourRowHeight}px` }}
-                    >
-                      <p className="text-xs text-muted-foreground select-none">
-                        {format(new Date(0, 0, 0, hour), 'h a')}
-                      </p>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-5 w-5">
-                            <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          {slotOptions.map((opt) => (
-                            <DropdownMenuItem
-                              key={opt.slots}
-                              onSelect={() => changeSlotsForHour(hour, opt.slots)}
-                            >
-                              {opt.label}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  );
-                })}
-              </div>
 
-              {/* Day Columns */}
-              <div
-                className="flex-1 grid"
-                style={{ gridTemplateColumns: `repeat(${dayCount}, 1fr)` }}
-              >
-                {visibleDates.map((date) => {
-                  const dateKey = format(date, 'yyyy-MM-dd');
-                  const todaysEvents = eventsByDate[dateKey] || [];
-                  const isToday =
-                    format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-
-                  return (
-                    <div
-                      key={dateKey}
-                      className={cn(
-                        'relative border-r border-black',
-                        isToday && 'bg-primary/5'
-                      )}
-                    >
-                      <div className="text-center flex flex-col justify-center border-b border-black h-10">
-                        {dayCount === 1 ? (
-                          <p className="font-semibold text-sm">
-                            {format(date, 'cccc, LLLL do')}
-                          </p>
-                        ) : (
-                          <>
-                            <p className="font-semibold text-sm">
-                              {format(date, 'EEE')}
-                            </p>
-                            <p className="text-xs">{format(date, 'd')}</p>
-                          </>
-                        )}
-                      </div>
-
-                      <div className="relative">
-                        {/* Hour background lines */}
-                        {Array.from({ length: endHour - startHour + 1 }).map(
-                          (_, i) => {
-                            const hour = startHour + i;
-                            const numSlots = hourSlots[hour] || 1;
-                            return (
-                              <div
-                                key={i}
-                                className="flex flex-col"
-                                style={{
-                                  height: `${numSlots * BASE_SLOT_HEIGHT_PX}px`,
-                                }}
-                              >
-                                {Array.from({ length: numSlots }).map(
-                                  (_, slotIndex) => (
-                                    <TimeSlot
-                                      key={slotIndex}
-                                      hour={hour}
-                                      slotIndex={slotIndex}
-                                      totalSlots={numSlots}
-                                      date={date}
-                                    />
-                                  )
-                                )}
-                              </div>
-                            );
-                          }
-                        )}
-
-                        {/* Events */}
-                        {todaysEvents.map((event) => {
-                          if (!event.start || !event.end) return null;
-
-                          const visibleStart = new Date(event.start);
-                          if (visibleStart.getHours() < startHour) {
-                            visibleStart.setHours(startHour, 0, 0, 0);
-                          }
-
-                          const visibleEnd = new Date(event.end);
-                          if (
-                            visibleEnd.getHours() > endHour ||
-                            (visibleEnd.getHours() === endHour &&
-                              visibleEnd.getMinutes() > 0)
-                          ) {
-                            visibleEnd.setHours(endHour + 1, 0, 0, 0);
-                          }
-
-                          if (
-                            visibleEnd <= visibleStart ||
-                            visibleStart.getHours() > endHour
-                          )
-                            return null;
-
-                          let topPosition = 0;
-                          let borderOffset = 0; // The fix
-                          const eventStartHour = visibleStart.getHours();
-
-                          for (let h = startHour; h < eventStartHour; h++) {
-                            const slotsInHour = hourSlots[h] || 1;
-                            topPosition += slotsInHour * BASE_SLOT_HEIGHT_PX;
-                            borderOffset += slotsInHour; // The fix
-                          }
-
-                          const eventStartMinute = visibleStart.getMinutes();
-                          const slotsInEventHour = hourSlots[eventStartHour] || 1;
-                          const minuteOffset =
-                            (eventStartMinute / 60) *
-                            (slotsInEventHour * BASE_SLOT_HEIGHT_PX);
-                          topPosition += minuteOffset;
-                          borderOffset += Math.floor(
-                            (eventStartMinute / 60) * slotsInEventHour
-                          ); // The fix
-
-                          topPosition += borderOffset; // The fix
-
-                          const durationMinutes =
-                            differenceInMilliseconds(visibleEnd, visibleStart) /
-                            (1000 * 60);
-                          
-                          let height = 0;
-                          let currentHour = visibleStart.getHours();
-                          let currentMinute = visibleStart.getMinutes();
-                          let minutesRemaining = durationMinutes;
-
-                          while (minutesRemaining > 0 && currentHour <= endHour) {
-                            const slotsThisHour = hourSlots[currentHour] || 1;
-                            const minutesPerSlot = 60 / slotsThisHour;
-                            const minutesLeftInHour = 60 - currentMinute;
-                            const minutesToProcess = Math.min(
-                              minutesRemaining,
-                              minutesLeftInHour
-                            );
-
-                            height +=
-                              (minutesToProcess / minutesPerSlot) *
-                              BASE_SLOT_HEIGHT_PX;
-
-                            minutesRemaining -= minutesToProcess;
-                            currentHour++;
-                            currentMinute = 0;
-                          }
-
-                          if (height <= 0) return null;
-
-                          return (
-                            <div
-                              key={event.id}
-                              style={{
-                                top: `${topPosition}px`,
-                                height: `${height}px`,
-                              }}
-                              className="absolute left-0 right-0 flex items-center"
-                            >
-                              <CalendarEvent
-                                event={event}
-                                onEdit={handleEditEvent}
-                                onDelete={() => setEventToDelete(event)}
-                                onToggleComplete={handleToggleComplete}
-                                className="w-full"
-                                style={{ height: '25px' }}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+        <div className="flex flex-1 min-h-0 border-black border rounded-lg overflow-hidden flex-col bg-white">
+          <div className="grid grid-cols-[5rem,1fr] flex-shrink-0">
+            <div className="border-r-black border-r border-b border-b-black h-14"></div>
+            <div className="grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
+              {visibleDates.map((date, index) => (
+                <div key={index} className={cn("text-center py-3 border-b border-b-black", index < visibleDates.length - 1 && "border-r border-r-black")}>
+                   <p className="font-semibold text-base">{format(date, 'EEE d')}</p>
+                </div>
+              ))}
             </div>
+          </div>
+          
+          <ScrollArea className="flex-1 border-t-0">
+            {hoursToDisplay.map((hour, hourIndex) => {
+                const slotsPerHour = slotsConfig[hour] || 1;
+                return (
+                    <div key={hour} className="flex">
+                        {/* Time Gutter Cell */}
+                        <div className="w-[5rem] flex-shrink-0 border-r-black border-r flex items-center justify-center p-1">
+                            <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-full w-full text-xs text-muted-foreground flex flex-row items-center justify-between px-2">
+                                    <span>{format(set(new Date(), { hours: hour }), 'h a')}</span>
+                                    <ChevronDown className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                {[1, 2, 3, 4, 5, 6, 12].map(slotOption => (
+                                    <DropdownMenuItem key={slotOption} onSelect={() => handleSlotsChange(hour, slotOption)}>
+                                        {slotOption} slot{slotOption > 1 ? 's' : ''}/hr
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                        {/* Grid Content for the hour */}
+                        <div className="flex-1 grid" style={{ gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))` }}>
+                            {visibleDates.map((date, index) => (
+                                <div 
+                                    key={index} 
+                                    className={cn("relative grid border-r-black", index < visibleDates.length - 1 && "border-r")} 
+                                    style={{ 
+                                        gridTemplateRows: `repeat(${slotsPerHour}, 1fr)`,
+                                        minHeight: `${slotsPerHour * 3}rem`,
+                                    }}
+                                >
+                                    {Array.from({ length: slotsPerHour }).map((_, slot) => (
+                                        <TimeSlot key={slot} date={date} hour={hour} slot={slot} slotsPerHour={slotsPerHour} />
+                                    ))}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )
+            })}
           </ScrollArea>
         </div>
       </div>
