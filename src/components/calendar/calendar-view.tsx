@@ -286,17 +286,19 @@ export function CalendarView() {
     }));
     
     const handleSlotClick = () => {
-        const timeString = format(slotStartTime, 'HH:mm');
-        const dateString = format(slotStartTime, 'yyyy-MM-dd');
-        router.push(`/master-mind?date=${dateString}&time=${timeString}`);
+        const calculatedEndTime = addMinutes(slotStartTime, slotDuration);
+        const startTimeString = slotStartTime.toISOString();
+        const endTimeString = calculatedEndTime.toISOString();
+        router.push(`/master-mind?start=${startTimeString}&end=${endTimeString}`);
     };
 
     return (
       <div
         ref={drop}
         className={cn(
-            "relative h-full flex items-start p-1 gap-1 group border-b border-b-black", 
-            isOver && canDrop && "bg-primary/20"
+            "relative h-full flex items-start p-1 gap-1 group", 
+            isOver && canDrop && "bg-primary/20",
+            slot < slotsPerHour - 1 && "border-b border-b-gray-200" // Add bottom border to all but the last slot
         )}
       >
         <Button variant="ghost" size="icon" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-20" onClick={handleSlotClick}>
@@ -533,7 +535,7 @@ export function CalendarView() {
             {hoursToDisplay.map((hour, hourIndex) => {
                 const slotsPerHour = slotsConfig[hour] || 1;
                 return (
-                    <div key={hour} className="flex">
+                    <div key={hour} className="flex border-b border-black">
                         {/* Time Gutter Cell */}
                         <div className="w-[5rem] flex-shrink-0 border-r-black border-r flex items-center justify-center p-1">
                             <DropdownMenu>

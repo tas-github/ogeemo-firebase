@@ -38,7 +38,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { format as formatDate, set, addMinutes } from 'date-fns';
+import { format as formatDate, set, addMinutes, parseISO } from 'date-fns';
 import { Calendar } from '../ui/calendar';
 import { Calendar as CalendarIcon } from 'lucide-react';
 
@@ -72,6 +72,9 @@ export function TimeManagerView() {
     const [scheduleDate, setScheduleDate] = React.useState<Date | undefined>(undefined);
     const [scheduleHour, setScheduleHour] = React.useState<string | undefined>(undefined);
     const [scheduleMinute, setScheduleMinute] = React.useState<string | undefined>(undefined);
+    const [scheduleEnd, setScheduleEnd] = React.useState<{hour?: string, minute?: string}>({});
+    const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
+
 
     // State for new client selection UI
     const [isContactPopoverOpen, setIsContactPopoverOpen] = React.useState(false);
@@ -256,6 +259,9 @@ export function TimeManagerView() {
             setContactFolders(fetchedFolders);
             
             const eventIdParam = searchParams.get('eventId');
+            const startParam = searchParams.get('start');
+            const endParam = searchParams.get('end');
+
             if (eventIdParam) {
                 const eventData = await getTaskById(eventIdParam);
                 if (eventData) {
@@ -275,6 +281,18 @@ export function TimeManagerView() {
                     }
                 } else {
                     toast({ variant: 'destructive', title: 'Error', description: 'Could not load event data.' });
+                }
+            } else if (startParam) {
+                const startDate = parseISO(startParam);
+                setScheduleDate(startDate);
+                setScheduleHour(String(startDate.getHours()));
+                setScheduleMinute(String(startDate.getMinutes()));
+                 if (endParam) {
+                    const endDate = parseISO(endParam);
+                    setScheduleEnd({
+                        hour: String(endDate.getHours()),
+                        minute: String(endDate.getMinutes())
+                    });
                 }
             } else {
                  const title = searchParams.get('title');
@@ -357,15 +375,23 @@ export function TimeManagerView() {
             return;
         }
 
-        let start: Date | null = new Date();
-        let end: Date | null = new Date(start.getTime() + 30 * 60000); // Default 30 min duration
+        let start: Date | null = null;
+        let end: Date | null = null;
         let isScheduled = false;
 
         if (scheduleDate) {
             const hour = scheduleHour ? parseInt(scheduleHour) : new Date().getHours();
             const minute = scheduleMinute ? parseInt(scheduleMinute) : new Date().getMinutes();
             start = set(scheduleDate, { hours: hour, minutes: minute });
-            end = addMinutes(start, 30); // Default duration if not otherwise specified
+            
+            const endHour = scheduleEnd.hour ? parseInt(scheduleEnd.hour) : hour;
+            const endMinute = scheduleEnd.minute ? parseInt(scheduleEnd.minute) : minute;
+            end = set(scheduleDate, { hours: endHour, minutes: endMinute });
+
+            if (end <= start) {
+                end = addMinutes(start, 30); // Default to 30 min duration if end is invalid
+            }
+
             isScheduled = true;
         }
 
@@ -572,14 +598,24 @@ export function TimeManagerView() {
                         </CardHeader>
                         <CardContent className="p-4 pt-0">
                              <div className="flex flex-col sm:flex-row gap-2">
-                                <Popover>
+                                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                                     <PopoverTrigger asChild>
                                         <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}>
                                             <CalendarIcon className="mr-2 h-4 w-4" />
                                             {scheduleDate ? formatDate(scheduleDate, "PPP") : <span>Pick a date</span>}
                                         </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={scheduleDate} onSelect={setScheduleDate} initialFocus /></PopoverContent>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                        <Calendar
+                                            mode="single"
+                                            selected={scheduleDate}
+                                            onSelect={(date) => {
+                                                setScheduleDate(date);
+                                                setIsDatePickerOpen(false);
+                                            }}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
                                 </Popover>
                                 <div className="flex-1 flex gap-2">
                                     <Select value={scheduleHour} onValueChange={setScheduleHour}><SelectTrigger><SelectValue placeholder="Hour" /></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
