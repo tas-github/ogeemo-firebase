@@ -89,12 +89,11 @@ export async function findOrCreateFileFolder(userId: string, folderName: string,
     }
 }
 
-export async function addFolder(folderData: Omit<FolderItem, 'id' | 'createdAt'>): Promise<FolderItem> {
+export async function addFolder(folderData: Omit<FolderItem, 'id'>): Promise<FolderItem> {
   const db = await getDb();
   const dataToSave = {
     ...folderData,
     parentId: folderData.parentId || null,
-    createdAt: new Date(),
   };
   const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), dataToSave);
   return { id: docRef.id, ...dataToSave };
@@ -360,6 +359,7 @@ export async function deleteFiles(fileIds: string[]): Promise<void> {
                 } catch (error: any) {
                     if (error.code !== 'storage/object-not-found') {
                         console.error(`Failed to delete file from storage: ${fileData.storagePath}`, error);
+                        // Do not throw, allow Firestore deletion to proceed.
                     }
                 }
             }

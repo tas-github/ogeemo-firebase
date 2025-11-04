@@ -53,6 +53,7 @@ export default function TextEditorPage() {
 
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string>('');
+  
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
@@ -61,113 +62,96 @@ export default function TextEditorPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const loadInitialData = useCallback(async () => {
-    if (!user || !firebaseServices) {
-      setIsLoading(false);
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const fetchedFolders = await getFolders(user.uid);
-      setFolders(fetchedFolders);
+  useEffect(() => {
+    const loadData = async () => {
+      if (!user || !firebaseServices) {
+        setIsLoading(false);
+        return;
+      }
+      setIsLoading(true);
+      try {
+        const fetchedFolders = await getFolders(user.uid);
+        setFolders(fetchedFolders);
 
-      const fileId = searchParams?.get('fileId');
+        const fileId = searchParams?.get('fileId');
 
-      if (fileId) {
-        setFileToEditId(fileId);
-        const fileData = await getFileById(fileId);
-        if (fileData) {
-          setFileName(fileData.name);
-          setSelectedFolderId(fileData.folderId);
-
-          if (fileData.storagePath) {
+        if (fileId) {
+          setFileToEditId(fileId);
+          const fileData = await getFileById(fileId);
+          if (fileData) {
+            setFileName(fileData.name);
+            setSelectedFolderId(fileData.folderId);
             const content = await getFileContentFromStorage(firebaseServices.auth, fileData.storagePath);
             setFileContent(content);
+          } else {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not find the specified file.' });
           }
-
         } else {
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Could not find the specified file.',
-          });
+          // Default folder selection for new files
+          if (fetchedFolders.length > 0) {
+              const defaultFolder = fetchedFolders.find(f => !f.parentId) || fetchedFolders[0];
+              setSelectedFolderId(defaultFolder.id);
+          }
         }
-      } else {
-        // If creating a new file, pre-select the first folder if available
-        if (fetchedFolders.length > 0) {
-            setSelectedFolderId(fetchedFolders[0].id);
-        }
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Failed to load data',
-        description: error.message,
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    };
+    
+    loadData();
   }, [user, firebaseServices, toast, searchParams]);
-
-  useEffect(() => {
-    loadInitialData();
-  }, [loadInitialData]);
-
+  
   const handleSave = async () => {
-    if (!user) return;
-    if (!fileName.trim()) {
-      toast({ variant: 'destructive', title: 'File Name Required' });
-      return;
+    if (!user || !fileName.trim() || !selectedFolderId) {
+        toast({ variant: 'destructive', title: 'Missing Information', description: 'File name and folder are required.' });
+        return;
     }
-    if (!selectedFolderId) {
-      toast({ variant: 'destructive', title: 'Folder Required', description: 'Please select a folder to save the file in.' });
-      return;
-    }
-
+    
     setIsSaving(true);
     try {
-      if (fileToEditId) {
-        // Updating an existing file
-        await updateFile(fileToEditId, {
-          name: fileName,
-          content: fileContent,
-          folderId: selectedFolderId,
-        });
-        toast({ title: 'File Updated' });
-      } else {
-        // Creating a new file
-        const newFile = await addTextFileClient(
-          user.uid,
-          selectedFolderId,
-          fileName,
-          fileContent
-        );
-        setFileToEditId(newFile.id);
-        toast({ title: 'File Saved' });
-        // Update URL without a full page reload to reflect the new file ID and storage path
-        router.push(`/text-editor?fileId=${newFile.id}&storagePath=${encodeURIComponent(newFile.storagePath)}`, { scroll: false });
-      }
+        if (fileToEditId) {
+            // Update existing file
+            await updateFile(fileToEditId, {
+                name: fileName,
+                content: fileContent,
+                folderId: selectedFolderId,
+            });
+            toast({ title: 'File Updated', description: `"${fileName}" has been saved.` });
+        } else {
+            // Create new file
+            const newFile = await addTextFileClient(
+                user.uid,
+                selectedFolderId,
+                fileName,
+                fileContent
+            );
+            toast({ title: 'File Saved', description: `"${fileName}" has been created.` });
+            // Update URL to edit mode for the newly created file, preventing duplicate creations on subsequent saves.
+            router.replace(`/text-editor?fileId=${newFile.id}`);
+            setFileToEditId(newFile.id);
+        }
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Save Failed',
-        description: error.message,
-      });
+        toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
     } finally {
-      setIsSaving(false);
+        setIsSaving(false);
     }
   };
+
 
   const handleCreateFolder = async () => {
     if (!user || !newFolderName.trim()) return;
     try {
         const newFolder = await addFolder({ name: newFolderName.trim(), userId: user.uid, parentId: null });
-        setFolders(prev => [...prev, newFolder]);
-        setSelectedFolderId(newFolder.id); // Select the new folder
-        setIsNewFolderDialogOpen(false);
-        setNewFolderName('');
+        setFolders(prev => [...prev, newFolder].sort((a, b) => a.name.localeCompare(b.name)));
+        setSelectedFolderId(newFolder.id);
+        toast({ title: "Folder Created" });
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Failed to create folder', description: error.message });
+    } finally {
+        setIsNewFolderDialogOpen(false);
+        setNewFolderName('');
     }
   };
 
@@ -183,9 +167,9 @@ export default function TextEditorPage() {
           </Button>
           <Card>
             <CardHeader>
-              <CardTitle>Text Editor</CardTitle>
+              <CardTitle>{fileToEditId ? 'Edit File' : 'Create New Text File'}</CardTitle>
               <CardDescription>
-                Create and edit simple text files and notes.
+                {fileToEditId ? `Editing "${fileName}"` : 'Create a new text file or note.'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -199,7 +183,7 @@ export default function TextEditorPage() {
                     <Label htmlFor="file-name">File Name</Label>
                     <Input
                       id="file-name"
-                      placeholder="Enter the file name"
+                      placeholder="Enter the file name (e.g., my-notes.txt)"
                       value={fileName}
                       onChange={(e) => setFileName(e.target.value)}
                     />
@@ -241,9 +225,9 @@ export default function TextEditorPage() {
             </CardContent>
             <CardFooter className="flex justify-end">
               <Button onClick={handleSave} disabled={isSaving || isLoading}>
-                {isSaving && (
+                {isSaving ? (
                   <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                )}
+                ) : <Save className="mr-2 h-4 w-4" />}
                 {fileToEditId ? 'Save Changes' : 'Save New File'}
               </Button>
             </CardFooter>
