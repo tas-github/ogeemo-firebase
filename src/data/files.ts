@@ -21,6 +21,7 @@ export interface FolderItem {
   parentId?: string | null;
   userId: string;
   createdAt: Date;
+  driveLink?: string;
 }
 
 // NOTE: Mock data below is for demonstration in other components

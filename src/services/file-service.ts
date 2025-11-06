@@ -258,17 +258,19 @@ export async function updateFile(fileId: string, data: Partial<Omit<FileItem, 'i
     if (!fileSnap.exists()) throw new Error("File not found to update.");
     const existingFileData = docToFile(fileSnap);
 
+    const metadataToUpdate: {[key: string]: any} = { ...data };
+
     // If content is being updated, upload it to storage first.
     if (typeof data.content === 'string') {
         const storage = await getAppStorage();
         const fileBlob = new Blob([data.content], { type: existingFileData.type || 'text/plain;charset=utf-8' });
         const storageFileRef = storageRef(storage, existingFileData.storagePath);
         await uploadBytes(storageFileRef, fileBlob);
-        data.size = fileBlob.size; // Update the size in the metadata
+        metadataToUpdate.size = fileBlob.size; // Update the size in the metadata
     }
 
-    const metadataToUpdate: {[key: string]: any} = { ...data };
-    delete metadataToUpdate.content; // Ensure content is never written to Firestore
+    // Ensure content is never written to Firestore
+    delete metadataToUpdate.content; 
     metadataToUpdate.modifiedAt = new Date();
     
     if (Object.keys(metadataToUpdate).length > 0) {
@@ -280,16 +282,14 @@ export async function updateFile(fileId: string, data: Partial<Omit<FileItem, 'i
 export async function addTextFileClient(userId: string, folderId: string, fileName: string, content: string = ''): Promise<FileItem> {
     const storage = await getAppStorage();
     const fileBlob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    
-    const finalFileName = fileName.endsWith('.txt') ? fileName : `${fileName}.txt`;
 
-    const storagePath = `userFiles/${userId}/${folderId || 'unfiled'}/${Date.now()}-${finalFileName}`;
+    const storagePath = `userFiles/${userId}/${folderId || 'unfiled'}/${Date.now()}-${fileName}`;
     const fileRef = storageRef(storage, storagePath);
 
     await uploadBytes(fileRef, fileBlob);
 
     const newFileRecord: Omit<FileItem, 'id'> = {
-        name: finalFileName,
+        name: fileName,
         type: 'text/plain',
         size: fileBlob.size,
         modifiedAt: new Date(),

@@ -9,7 +9,6 @@ import {
   GoogleContact,
 } from '@/types/google';
 import stream from 'stream';
-import { findOrCreateFileFolder, addFileRecord } from './file-service';
 
 export async function getGoogleContacts(
   accessToken: string
@@ -62,6 +61,36 @@ async function getGoogleAuth(accessToken: string) {
     auth.setCredentials({ access_token: accessToken });
     return auth;
 }
+
+export async function createGoogleDriveFile(params: {
+    fileName: string;
+    fileType: 'doc' | 'sheet' | 'slide';
+}): Promise<{ driveLink: string; googleFileId: string; mimeType: string }> {
+    const { fileType } = params;
+
+    const creationUrls = {
+        doc: 'https://docs.google.com/document/create',
+        sheet: 'https://docs.google.com/spreadsheets/create',
+        slide: 'https://docs.google.com/presentation/create',
+    };
+
+    const mimeTypeMap = {
+        doc: 'application/vnd.google-apps.document',
+        sheet: 'application/vnd.google-apps.spreadsheet',
+        slide: 'application/vnd.google-apps.presentation',
+    };
+
+    const driveLink = creationUrls[fileType];
+    const mimeType = mimeTypeMap[fileType];
+    const googleFileId = `google-create-${fileType}-${Date.now()}`;
+
+    if (!driveLink) {
+        throw new Error(`Invalid file type specified: ${fileType}`);
+    }
+
+    return { driveLink, googleFileId, mimeType };
+}
+
 
 // Uploads a file from Firebase Storage to Google Drive and returns the link
 export async function uploadToDriveAndGetLink(params: { fileName: string, storagePath: string, accessToken: string }): Promise<{ driveLink: string, googleFileId: string }> {
