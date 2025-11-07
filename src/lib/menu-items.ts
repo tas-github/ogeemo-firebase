@@ -88,7 +88,7 @@ export const allMenuItems: MenuItem[] = [
   { href: "/all-project-tasks", label: "All Project Tasks", icon: ListTodo },
   { href: "/to-do", label: "A To Do List", icon: ListChecks },
   { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/file-manager", label: "File Manager", icon: Folder },
+  { href: "/file-manager", label: "Document Manager", icon: Folder },
   { href: "/idea-board", label: "Idea Board", icon: Lightbulb },
   { href: "/research", label: "Research", icon: Beaker },
   { href: "/sandbox", label: "Sandbox", icon: Beaker },

@@ -9,18 +9,16 @@ import {
   File as FileIconLucide,
   LoaderCircle,
   FolderPlus,
-  Plus,
   ChevronRight,
   ExternalLink,
-  Upload,
-  FilePlus2,
-  Files,
   MoreVertical,
   Pencil,
   Trash2,
   BookOpen,
   Link as LinkIcon,
   Info,
+  Files,
+  FilePlus,
   FileText,
   Sheet,
   Presentation,
@@ -33,16 +31,16 @@ import { useToast } from '@/hooks/use-toast';
 // Import from the NEW isolated folder service
 import { getFolders, addFolder, updateFolder, deleteFolders } from '@/services/file-manager-folders';
 // Continue to use file-service for FILE operations
-import { getFiles, deleteFiles, updateFile, addTextFileClient, addFile, findOrCreateFileFolder, addFileRecord } from '@/services/file-service';
+import { getFiles, deleteFiles, updateFile, addTextFileClient, addFileRecord } from '@/services/file-service';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
@@ -64,20 +62,47 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '../ui/resizable';
-import { Textarea } from '../ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import Link from 'next/link';
 import { Checkbox } from '../ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { createGoogleDriveFile } from '@/services/google-service';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
 
 const ItemTypes = {
   FILE: 'file',
-  FOLDER: 'folder', // Keep if you plan to drag folders
+  FOLDER: 'folder',
 };
 
-type GoogleAppType = 'doc' | 'sheet' | 'slide';
+type DroppableItem = (FileItem & { type?: 'file' }) | (FolderItem & { type: 'folder' });
 
+const googleDriveFileTypes = [
+    { value: 'doc', label: 'Google Doc', icon: FileText, href: 'https://docs.google.com/document/create' },
+    { value: 'sheet', label: 'Google Sheet', icon: Sheet, href: 'https://docs.google.com/spreadsheets/create' },
+    { value: 'slide', label: 'Google Slide', icon: Presentation, href: 'https://docs.google.com/presentation/create' },
+];
+
+const newFileSchema = z.object({
+    fileName: z.string().min(1, 'File name is required.'),
+    fileType: z.enum(['file', 'link', 'gdrive']),
+    fileUrl: z.string().optional(),
+    gdriveFileType: z.string().optional(),
+    targetFolderId: z.string().min(1, 'Please select a folder.'),
+}).refine(data => {
+    if (data.fileType === 'link') {
+        return !!data.fileUrl && z.string().url().safeParse(data.fileUrl).success;
+    }
+    return true;
+}, {
+    message: 'A valid URL is required for link type.',
+    path: ['fileUrl'],
+});
+
+type NewFileFormData = z.infer<typeof newFileSchema>;
 
 export function FilesView() {
   const [folders, setFolders] = useState<FolderItem[]>([]);
@@ -89,6 +114,12 @@ export function FilesView() {
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
   const [newFolderDriveLink, setNewFolderDriveLink] = useState('');
+
+  const [isNewFileDialogOpen, setIsNewFileDialogOpen] = useState(false);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+
+
+  const [isSaving, setIsSaving] = useState(false);
   
   const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
   const [fileToDelete, setFileToDelete] = useState<FileItem | null>(null);
@@ -97,10 +128,6 @@ export function FilesView() {
 
   const [renamingFile, setRenamingFile] = useState<FileItem | null>(null);
   const [renameFileValue, setRenameFileValue] = useState("");
-
-  const [isNewFileDialogOpen, setIsNewFileDialogOpen] = useState(false);
-  const [newFileName, setNewFileName] = useState('');
-  const [newFileType, setNewFileType] = useState<GoogleAppType | 'text'>('doc');
   
   const [isDriveLinkDialogOpen, setIsDriveLinkDialogOpen] = useState(false);
   const [folderToLink, setFolderToLink] = useState<FolderItem | null>(null);
@@ -110,18 +137,27 @@ export function FilesView() {
   const [driveFileLink, setDriveFileLink] = useState('');
   const [fileToLink, setFileToLink] = useState<FileItem | null>(null);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [isBulkDeleteAlertOpen, setIsBulkDeleteAlertOpen] = useState(false);
+  const [scrollToFileId, setScrollToFileId] = useState<string | null>(null);
+  const fileRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
-  // New state for the "New File" dialog's folder selection
-  const [newFileFolderId, setNewFileFolderId] = useState<string>('');
-
-
-  const { user, getGoogleAccessToken } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const router = useRouter();
+
+  const form = useForm<NewFileFormData>({
+    resolver: zodResolver(newFileSchema),
+    defaultValues: {
+      fileName: '',
+      fileType: 'file',
+      fileUrl: '',
+      gdriveFileType: 'doc',
+      targetFolderId: 'all',
+    },
+  });
+
+  const fileTypeWatcher = form.watch('fileType');
+
 
   const loadData = useCallback(async () => {
     if (!user) {
@@ -130,7 +166,6 @@ export function FilesView() {
     }
     setIsLoading(true);
     try {
-      // Use the NEW getFolders function
       const [fetchedFolders, fetchedFiles] = await Promise.all([
         getFolders(user.uid),
         getFiles(user.uid),
@@ -160,14 +195,14 @@ export function FilesView() {
   
   const handleSelectFolder = (folderId: string) => {
     setSelectedFolderId(folderId);
-    setSelectedFileIds([]); // Clear selection when changing folders
+    setSelectedFileIds([]);
   };
 
   const handleSelectFile = (file: FileItem) => {
     if (file.driveLink) {
         window.open(file.driveLink, '_blank', 'noopener,noreferrer');
     } else {
-        toast({ title: "To open this file, you need to create a link to the GDrive location of the file by using the 3 dot menu. We will likely change this latter."})
+        toast({ title: "This file does not have a Google Drive link."})
     }
   };
   
@@ -179,29 +214,29 @@ export function FilesView() {
   const handleOpenNewFolderDialog = (parentId: string | null) => {
     setNewFolderParentId(parentId);
     setNewFolderName('');
-    setNewFolderDriveLink(''); // Reset drive link field
+    setNewFolderDriveLink('');
     setIsNewFolderDialogOpen(true);
   };
 
   const handleCreateFolder = async () => {
-    if (!user || !newFolderName.trim()) {
-        toast({ variant: 'destructive', title: 'Folder name is required.'});
-        return;
-    };
+    if (!user || !newFolderName.trim()) return;
+    setIsCreatingFolder(true);
     try {
-        // Use the NEW addFolder function
-        const newFolder = await addFolder({
+        const folderData: Omit<FolderItem, 'id' | 'createdAt'> = {
             name: newFolderName.trim(),
             userId: user.uid,
             parentId: newFolderParentId,
-            createdAt: new Date(),
-            driveLink: newFolderDriveLink.trim() || undefined,
-        });
+            ...(newFolderDriveLink.trim() && { driveLink: newFolderDriveLink.trim() }),
+        };
+        const newFolder = await addFolder(folderData);
         const updatedFolders = [...folders, newFolder];
         setFolders(updatedFolders);
-        if(isNewFileDialogOpen) {
-            setNewFileFolderId(newFolder.id);
+        
+        // If creating from the New File dialog, update the form's selected folder
+        if (isNewFileDialogOpen) {
+            form.setValue('targetFolderId', newFolder.id);
         }
+
         if (newFolder.parentId) {
             setExpandedFolders(prev => new Set(prev).add(newFolder.parentId!));
         }
@@ -211,8 +246,85 @@ export function FilesView() {
         toast({ title: 'Folder Created' });
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Failed to create folder', description: error.message });
+    } finally {
+        setIsCreatingFolder(false);
     }
   };
+  
+  const handleOpenNewFileDialog = () => {
+    form.reset({
+        fileName: '',
+        fileType: 'file',
+        fileUrl: '',
+        gdriveFileType: 'doc',
+        targetFolderId: selectedFolderId === 'all' ? '' : selectedFolderId,
+    });
+    setIsNewFileDialogOpen(true);
+  };
+
+  async function handleCreateNewFile (values: NewFileFormData) {
+    if (!user) {
+      toast({ variant: 'destructive', title: 'You must be logged in.' });
+      return;
+    }
+    if (values.targetFolderId === 'all' || !values.targetFolderId) {
+      toast({ variant: 'destructive', title: 'Please select a folder first.' });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      let newFile: FileItem;
+      if (values.fileType === 'link') {
+        const newFileRecord: Omit<FileItem, 'id'> = {
+          name: values.fileName.trim(),
+          type: 'url-link',
+          size: 0,
+          modifiedAt: new Date(),
+          folderId: values.targetFolderId,
+          userId: user.uid,
+          storagePath: '',
+          driveLink: values.fileUrl?.trim(),
+        };
+        newFile = await addFileRecord(newFileRecord);
+      } else if (values.fileType === 'gdrive') {
+        const driveApp = googleDriveFileTypes.find(app => app.value === values.gdriveFileType);
+        if (!driveApp) throw new Error("Invalid Google Drive file type selected.");
+
+        const newFileRecord: Omit<FileItem, 'id'> = {
+          name: values.fileName.trim(),
+          type: driveApp.value, // Special type for these links
+          size: 0,
+          modifiedAt: new Date(),
+          folderId: values.targetFolderId,
+          userId: user.uid,
+          storagePath: '',
+          driveLink: driveApp.href,
+        };
+        newFile = await addFileRecord(newFileRecord);
+      } else {
+        newFile = await addTextFileClient(user.uid, values.targetFolderId, values.fileName.trim());
+      }
+      
+      setFiles(prev => [...prev, newFile]);
+      setScrollToFileId(newFile.id);
+      toast({ title: 'File Created', description: `File "${newFile.name}" has been created.` });
+      setIsNewFileDialogOpen(false);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Create Failed', description: error.message });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (scrollToFileId) {
+      const fileElement = fileRefs.current.get(scrollToFileId);
+      fileElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setSelectedFileIds([scrollToFileId]);
+      setScrollToFileId(null);
+    }
+  }, [scrollToFileId, files]);
 
   const handleStartRename = (item: FolderItem) => {
     setRenamingFolder(item);
@@ -231,7 +343,6 @@ export function FilesView() {
     }
 
     try {
-      // Use the NEW updateFolder function
       await updateFolder(renamingFolder.id, { name: renameInputValue.trim() });
       setFolders(prev => prev.map(f => f.id === renamingFolder.id ? { ...f, name: renameInputValue.trim() } : f));
       toast({ title: "Folder Renamed" });
@@ -299,7 +410,7 @@ export function FilesView() {
     try {
         const updateData = {
             driveLink: driveFileLink.trim() || undefined,
-            type: driveFileLink.trim() ? 'google-drive-link' : fileToLink.type === 'google-drive-link' ? 'text/plain' : fileToLink.type, // Revert type if link is removed
+            type: driveFileLink.trim() ? 'google-drive-link' : fileToLink.type === 'google-drive-link' ? 'text/plain' : fileToLink.type,
         };
         await updateFile(fileToLink.id, updateData);
         setFiles(prev => prev.map(f => f.id === fileToLink.id ? { ...f, ...updateData } : f));
@@ -337,7 +448,6 @@ export function FilesView() {
   const handleConfirmDeleteFolder = async () => {
         if (!user || !folderToDelete) return;
         try {
-            // Use the NEW simplified delete function
             await deleteFolders([folderToDelete.id]);
             setFolders(prev => prev.filter(f => f.id !== folderToDelete.id));
             toast({ title: "Folder Deleted" });
@@ -347,88 +457,6 @@ export function FilesView() {
             setFolderToDelete(null);
         }
     };
-    
-    const handleUploadClick = () => {
-        if (!selectedFolderId || selectedFolderId === 'all') {
-            toast({ variant: 'destructive', title: 'No Folder Selected', description: 'Please select a folder to upload a file into.'});
-            return;
-        }
-        fileInputRef.current?.click();
-    };
-
-    const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file || !user || !selectedFolderId || selectedFolderId === 'all') {
-            toast({ variant: 'destructive', title: 'Upload Canceled', description: 'You must select a specific folder before uploading a file.' });
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('userId', user.uid);
-        formData.append('folderId', selectedFolderId);
-
-        try {
-            const newFile = await addFile(formData);
-            setFiles(prev => [newFile, ...prev]);
-            toast({ title: 'File Uploaded', description: `\'\'\'${newFile.name}\'\'\' has been uploaded successfully.` });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Upload Failed', description: error.message });
-        }
-    };
-
-  const handleCreateNewFile = async () => {
-    if (!user || !newFileName.trim()) {
-      toast({ variant: 'destructive', title: 'File name is required.' });
-      return;
-    }
-    if (!newFileFolderId) {
-      toast({ variant: 'destructive', title: 'Please select a folder.' });
-      return;
-    }
-
-    if (newFileType === 'text') {
-        try {
-            const newFile = await addTextFileClient(user.uid, newFileFolderId, newFileName);
-            setFiles(prev => [newFile, ...prev]);
-            toast({ title: 'File Created' });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Failed to create file', description: error.message });
-        }
-    } else {
-        try {
-            const { driveLink, googleFileId, mimeType } = await createGoogleDriveFile({
-                fileName: newFileName,
-                fileType: newFileType,
-            });
-
-            const newFileRecord: Omit<FileItem, 'id'> = {
-                name: newFileName,
-                type: mimeType,
-                size: 0,
-                modifiedAt: new Date(),
-                folderId: newFileFolderId,
-                userId: user.uid,
-                storagePath: `gdrive/${googleFileId}`, // Special path for GDrive files
-                googleFileId: googleFileId,
-                driveLink: driveLink,
-            };
-
-            const savedFile = await addFileRecord(newFileRecord);
-            setFiles(prev => [savedFile, ...prev]);
-            toast({ title: 'Google File Created', description: 'A link to your new Google Drive file has been added.' });
-            
-        } catch (error: any) {
-            console.error("Error creating Google Drive file:", error);
-            toast({ variant: 'destructive', title: 'Google File Creation Failed', description: error.message });
-        }
-    }
-
-    setIsNewFileDialogOpen(false);
-    setNewFileName('');
-    setNewFileFolderId('');
-  };
-
 
   const handleToggleSelect = (fileId: string) => {
     setSelectedFileIds(prev => prev.includes(fileId) ? prev.filter(id => id !== fileId) : [...prev, fileId]);
@@ -443,7 +471,7 @@ export function FilesView() {
     try {
         await deleteFiles(selectedFileIds);
         setFiles(prev => prev.filter(f => !selectedFileIds.includes(f.id)));
-        toast({ title: `\'\'\'${selectedFileIds.length}\'\'\' file(s) deleted.`});
+        toast({ title: `${selectedFileIds.length} file(s) deleted.`});
         setSelectedFileIds([]);
     } catch (error: any) {
         toast({ variant: "destructive", title: "Bulk Delete Failed", description: error.message });
@@ -574,9 +602,15 @@ export function FilesView() {
     );
   }
 
+  const flattenedFolders = (folders: FolderItem[], parentId: string | null = null, level = 0): { folder: FolderItem, level: number }[] => {
+      return folders
+          .filter(f => f.parentId === parentId)
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .flatMap(f => [{ folder: f, level }, ...flattenedFolders(folders, f.id, level + 1)]);
+  };
+
   return (
     <>
-    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.md" />
     <div className="p-4 sm:p-6 space-y-4">
         <header className="text-center">
             <div className="flex items-center justify-center gap-2">
@@ -599,22 +633,18 @@ export function FilesView() {
 
         <Card>
             <CardHeader className="p-2">
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                     <Button className="flex-1" onClick={() => handleOpenNewFolderDialog(null)}>
                         <FolderPlus className="mr-2 h-4 w-4"/> New Folder
                     </Button>
-                    <Button className="flex-1" onClick={() => { setNewFileFolderId(selectedFolderId !== 'all' ? selectedFolderId : ''); setIsNewFileDialogOpen(true); }}>
-                        <FilePlus2 className="mr-2 h-4 w-4"/> New File
-                    </Button>
-                     <Button className="flex-1" onClick={handleUploadClick}>
-                        <Upload className="mr-2 h-4 w-4"/> Upload File
+                    <Button className="flex-1" onClick={handleOpenNewFileDialog}>
+                        <FilePlus className="mr-2 h-4 w-4"/> New File
                     </Button>
                 </div>
             </CardHeader>
         </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        {/* Column 1: Folders */}
         <div className="md:col-span-1 flex flex-col gap-2">
             <div className="h-8 flex items-center p-1 border border-black bg-primary/10 rounded-md text-primary">
                 <p className="flex-1 text-center font-semibold text-sm">Folders</p>
@@ -627,14 +657,13 @@ export function FilesView() {
                   <Button variant="ghost" className="w-full justify-start gap-2 h-7"><Files className="h-4 w-4" />All Files</Button>
               </div>
               <ScrollArea className="flex-1 rounded-md p-2">
-                  {folders.filter(f => !f.parentId).sort((a,b) => a.name.localeCompare(b.name)).map(folder => (
+                  {folders.filter(f => !f.parentId).map(folder => (
                     <FolderTreeItem key={folder.id} folder={folder} allFolders={folders} />
                   ))}
               </ScrollArea>
             </div>
         </div>
 
-        {/* Column 2 & 3: Files */}
         <div className="md:col-span-2 flex flex-col gap-2">
             <div className="h-8 flex items-center p-1 border border-black bg-primary/10 rounded-md text-primary">
                 {selectedFileIds.length > 0 ? (
@@ -671,7 +700,7 @@ export function FilesView() {
                           const isRenaming = renamingFile?.id === file.id;
                           return (
                            <DraggableFileRow key={file.id} file={file}>
-                            <div className="flex items-center border-b h-8 group">
+                            <div className="flex items-center border-b h-8 group" ref={(el) => fileRefs.current.set(file.id, el)}>
                                 <Checkbox
                                     checked={selectedFileIds.includes(file.id)}
                                     onCheckedChange={() => handleToggleSelect(file.id)}
@@ -752,61 +781,107 @@ export function FilesView() {
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleCreateFolder}>Create</Button>
+              <Button onClick={handleCreateFolder} disabled={isCreatingFolder}>
+                {isCreatingFolder && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                Create
+              </Button>
             </DialogFooter>
         </DialogContent>
     </Dialog>
 
     <Dialog open={isNewFileDialogOpen} onOpenChange={setIsNewFileDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-            <DialogHeader>
+        <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0 sm:max-w-2xl sm:h-auto sm:top-[50%] sm:left-[50%] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg">
+             <DialogHeader className="p-6">
                 <DialogTitle>Create New File</DialogTitle>
-                <DialogDescription>
-                    Create a new Google Doc, Sheet, Slide, or a plain text file.
-                </DialogDescription>
             </DialogHeader>
-            <div className="py-4 space-y-4">
-                 <div className="space-y-2">
-                    <Label htmlFor="file-type-select">File Type</Label>
-                    <Select value={newFileType} onValueChange={(value: GoogleAppType | 'text') => setNewFileType(value)}>
-                        <SelectTrigger id="file-type-select">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="doc"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-blue-500" /> Google Doc</div></SelectItem>
-                            <SelectItem value="sheet"><div className="flex items-center gap-2"><Sheet className="h-4 w-4 text-green-500" /> Google Sheet</div></SelectItem>
-                            <SelectItem value="slide"><div className="flex items-center gap-2"><Presentation className="h-4 w-4 text-yellow-500" /> Google Slide</div></SelectItem>
-                            <SelectItem value="text"><div className="flex items-center gap-2"><FileIconLucide className="h-4 w-4" /> Plain Text File</div></SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="file-name-new">File Name</Label>
-                    <Input id="file-name-new" value={newFileName} onChange={(e) => setNewFileName(e.target.value)} onKeyDown={async (e) => { if (e.key === 'Enter') { await handleCreateNewFile(); } }}/>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="file-folder-select">Folder</Label>
-                    <div className="flex gap-2">
-                        <Select value={newFileFolderId} onValueChange={setNewFileFolderId}>
-                            <SelectTrigger id="file-folder-select">
-                                <SelectValue placeholder="Select a folder..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {folders.map(folder => (
-                                    <SelectItem key={folder.id} value={folder.id}>{folder.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Button type="button" variant="outline" size="icon" onClick={() => { setIsNewFileDialogOpen(false); handleOpenNewFolderDialog(null); }}>
-                            <FolderPlus className="h-4 w-4" />
-                        </Button>
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(handleCreateNewFile)} className="flex-1 flex flex-col min-h-0">
+                    <div className="flex-1 flex items-center justify-center p-6">
+                        <div className="w-full max-w-sm space-y-6">
+                            <FormField
+                                control={form.control}
+                                name="fileType"
+                                render={({ field }) => (
+                                <FormItem className="space-y-3">
+                                    <FormLabel>File Type</FormLabel>
+                                    <FormControl>
+                                    <RadioGroup
+                                        onValueChange={field.onChange}
+                                        value={field.value}
+                                        className="flex flex-col gap-3"
+                                    >
+                                        <div className="flex items-start space-x-3">
+                                            <FormControl><RadioGroupItem value="file" id="type-file" className="mt-1" /></FormControl>
+                                            <div className="grid gap-1.5 leading-none">
+                                                <Label htmlFor="type-file">Empty file</Label>
+                                                <FormDescription>Creates an empty file inside Ogeemo, ready for future content.</FormDescription>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start space-x-3">
+                                            <FormControl><RadioGroupItem value="link" id="type-link" className="mt-1" /></FormControl>
+                                            <div className="grid gap-1.5 leading-none">
+                                                <Label htmlFor="type-link">Link (URL)</Label>
+                                                <FormDescription>Creates a shortcut to an external website or web page.</FormDescription>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start space-x-3">
+                                            <FormControl><RadioGroupItem value="gdrive" id="type-gdrive" className="mt-1"/></FormControl>
+                                            <div className="grid gap-1.5 leading-none">
+                                                <Label htmlFor="type-gdrive">Google Drive File</Label>
+                                                <FormDescription>Creates a shortcut that opens a new document in your Google Drive.</FormDescription>
+                                            </div>
+                                        </div>
+                                    </RadioGroup>
+                                    </FormControl>
+                                </FormItem>
+                                )}
+                            />
+
+                            <FormField control={form.control} name="fileName" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            
+                            {fileTypeWatcher === 'link' && (
+                                <FormField control={form.control} name="fileUrl" render={({ field }) => ( <FormItem> <FormLabel>URL</FormLabel> <FormControl><Input type="url" placeholder="https://example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                            )}
+                            {fileTypeWatcher === 'gdrive' && (
+                                <FormField control={form.control} name="gdriveFileType" render={({ field }) => ( <FormItem> <FormLabel>Google Drive File Type</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{googleDriveFileTypes.map(app => ( <SelectItem key={app.value} value={app.value}><div className="flex items-center gap-2"><app.icon className="h-4 w-4" /> {app.label}</div></SelectItem>))}</SelectContent></Select><FormMessage /> </FormItem> )} />
+                            )}
+                             <FormField control={form.control} name="targetFolderId" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Select Folder</FormLabel>
+                                    <div className="flex gap-2">
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select a folder..." />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="all" disabled>Select a folder</SelectItem>
+                                                {flattenedFolders(folders).map(({ folder, level }) => (
+                                                    <SelectItem key={folder.id} value={folder.id}>
+                                                        <span style={{ paddingLeft: `${level * 1.5}rem` }}>{folder.name}</span>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Button type="button" variant="outline" size="icon" onClick={() => handleOpenNewFolderDialog(form.getValues('targetFolderId'))}>
+                                            <FolderPlus className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                        </div>
                     </div>
-                </div>
-            </div>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setIsNewFileDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleCreateNewFile}>Create File</Button>
-            </DialogFooter>
+                    <DialogFooter className="p-6 border-t">
+                        <Button type="button" variant="ghost" onClick={() => setIsNewFileDialogOpen(false)} disabled={isSaving}>Cancel</Button>
+                        <Button type="submit" disabled={isSaving}>
+                            {isSaving && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                            Create
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </Form>
         </DialogContent>
     </Dialog>
 
@@ -888,11 +963,15 @@ export function FilesView() {
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>This will permanently delete {selectedFileIds.length} file(s). This action cannot be undone.</AlertDialogDescription>
+                <AlertDialogDescription>
+                    This will permanently delete {selectedFileIds.length} file(s). This action cannot be undone.
+                </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirmBulkDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                <AlertDialogAction onClick={handleConfirmBulkDelete} className="bg-destructive hover:bg-destructive/90">
+                    Delete
+                </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
     </AlertDialog>

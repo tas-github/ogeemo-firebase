@@ -19,6 +19,7 @@ import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { getFolders, addFolder, addFileFromDataUrl, type FolderItem } from '@/services/file-service';
 import { setFileForHint } from '@/services/image-placeholder-service';
+import { SITE_IMAGES_FOLDER_ID } from '@/services/file-service';
 import { cn } from '@/lib/utils';
 
 interface ImageSaveDialogProps {
@@ -168,7 +169,7 @@ export default function ImageSaveDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Save Image to File Manager</DialogTitle>
+          <DialogTitle>Save Image to Document Manager</DialogTitle>
           <DialogDescription>
             Choose a folder and a name for your new image.
           </DialogDescription>

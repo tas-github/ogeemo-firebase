@@ -1,7 +1,7 @@
 
 "use client";
 
-import { FileText, FileImage, FileAudio, FileVideo, FileArchive, Table2, FileCode2, FileQuestion } from "lucide-react";
+import { FileText, FileImage, FileAudio, FileVideo, FileArchive, Table2, FileCode2, FileQuestion, Presentation, Sheet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 interface FileIconProps {
@@ -35,6 +35,12 @@ const mimeTypeToIcon: { [key: string]: LucideIcon } = {
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": Table2,
   // Ogeemo Custom Types
   "application/vnd.og-report-template+html": FileText,
+  // Google Drive Link Types
+  "url-link": LinkIcon,
+  "google-drive-link": LinkIcon,
+  "doc": FileText,
+  "sheet": Sheet,
+  "slide": Presentation,
 };
 
 

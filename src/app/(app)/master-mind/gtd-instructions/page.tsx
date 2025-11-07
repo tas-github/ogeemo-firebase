@@ -107,7 +107,7 @@ export default function GtdInstructionsPage() {
                                         <li><strong>If it's a task for an existing project:</strong> Drag it from the "Action Items" board to the appropriate project's task board.</li>
                                         <li><strong>If it takes less than 2 minutes:</strong> Do it immediately.</li>
                                         <li><strong>If it needs to happen on a specific day/time:</strong> Ensure it has a date and time set so it appears on your <Link href="/calendar">Calendar</Link>.</li>
-                                        <li><strong>If it's reference material:</strong> Move any related documents to a relevant folder in the <Link href="/files">File Manager</Link>.</li>
+                                        <li><strong>If it's reference material:</strong> Move any related documents to a relevant folder in the <Link href="/file-manager">Document Manager</Link>.</li>
                                     </ul>
                                 </div>
                             </AccordionContent>

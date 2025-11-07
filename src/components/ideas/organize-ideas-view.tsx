@@ -229,7 +229,7 @@ export function OrganizeIdeasView() {
             await archiveIdeaAsFile(user.uid, idea.title, idea.description || '');
             toast({
                 title: "Idea Archived",
-                description: `"${idea.title}" has been saved to your File Manager.`,
+                description: `"${idea.title}" has been saved to your Document Manager.`,
             });
             await deleteIdea(idea.id);
         } catch (error: any) {

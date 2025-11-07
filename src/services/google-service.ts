@@ -1,7 +1,7 @@
 
 'use server';
 
-import { google, drive_v3 } from 'googleapis';
+import { google } from 'googleapis';
 import { adminDb as db, getAdminStorage } from '@/lib/firebase-admin';
 import { type FileItem } from '@/data/files';
 import {
@@ -81,8 +81,11 @@ export async function createGoogleDriveFile(params: {
     };
 
     const driveLink = creationUrls[fileType];
+    // Since we are just linking, we don't have a real Google File ID.
+    // We create a placeholder ID to signify it's a link to a new document.
+    const googleFileId = `new-google-${fileType}-${Date.now()}`;
     const mimeType = mimeTypeMap[fileType];
-    const googleFileId = `google-create-${fileType}-${Date.now()}`;
+
 
     if (!driveLink) {
         throw new Error(`Invalid file type specified: ${fileType}`);
