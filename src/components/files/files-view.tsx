@@ -41,6 +41,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Label } from '../ui/label';
 import { Input } from '../ui/input';
@@ -71,6 +73,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 
 
 const ItemTypes = {
@@ -117,6 +120,7 @@ export function FilesView() {
 
   const [isNewFileDialogOpen, setIsNewFileDialogOpen] = useState(false);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [isInfoDialogOpen, setIsInfoDialogOpen] = useState(false);
 
 
   const [isSaving, setIsSaving] = useState(false);
@@ -614,21 +618,72 @@ export function FilesView() {
     <div className="p-4 sm:p-6 space-y-4">
         <header className="text-center">
             <div className="flex items-center justify-center gap-2">
-                <h1 className="text-3xl font-bold font-headline text-primary">File Manager</h1>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button asChild variant="ghost" size="icon">
-                        <Link href="/files/manage">
-                           <Info className="h-5 w-5 text-muted-foreground" />
-                        </Link>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>View Instructions</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <h1 className="text-3xl font-bold font-headline text-primary">Document Manager</h1>
+                 <Dialog open={isInfoDialogOpen} onOpenChange={setIsInfoDialogOpen}>
+                   <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                           <DialogTrigger asChild>
+                               <Button variant="ghost" size="icon">
+                                   <Info className="h-5 w-5 text-muted-foreground" />
+                               </Button>
+                           </DialogTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>View Instructions</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <DialogContent className="sm:max-w-2xl">
+                        <DialogHeader>
+                            <DialogTitle className="text-2xl">About the Document Manager</DialogTitle>
+                            <DialogDescription>A guide to creating and managing your files and folders.</DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4 max-h-[60vh] overflow-y-auto pr-2">
+                             <Accordion type="single" collapsible defaultValue="item-1">
+                                <AccordionItem value="item-1">
+                                    <AccordionTrigger>Unified File System</AccordionTrigger>
+                                    <AccordionContent>
+                                    The Document Manager provides a single, unified interface to manage both local files stored securely within Ogeemo and shortcuts to your files and folders in Google Drive, keeping all your resources organized in one place.
+                                    </AccordionContent>
+                                </AccordionItem>
+                                <AccordionItem value="item-2">
+                                    <AccordionTrigger>Creating Folders and Files</AccordionTrigger>
+                                    <AccordionContent>
+                                        <ul className="list-disc space-y-2 pl-5">
+                                            <li><strong>New Folder:</strong> Click the "+ New Folder" button to create a new folder. You can create them at the root level or nested inside other folders.</li>
+                                            <li><strong>New File:</strong> Click "+ New File" to create different types of items. You can create a blank text file, a link to a website, or a shortcut to create a new Google Doc, Sheet, or Slide.</li>
+                                        </ul>
+                                    </AccordionContent>
+                                </AccordionItem>
+                                 <AccordionItem value="item-3">
+                                    <AccordionTrigger>Google Drive Integration</AccordionTrigger>
+                                    <AccordionContent>
+                                        <div className="space-y-2">
+                                            <p>You can link both folders and individual files directly to their counterparts in Google Drive. This creates a powerful, centralized view of all your project assets.</p>
+                                            <h4 className="font-semibold">How to Link:</h4>
+                                            <ul className="list-decimal space-y-2 pl-5">
+                                                <li>Use the "New File" button and select "Google Drive File" to create a shortcut that opens a new Google Doc, Sheet, or Slide in a new tab.</li>
+                                                <li>Once you've created your document in Google Drive, copy its URL from your browser's address bar.</li>
+                                                <li>Return to Ogeemo, click the 3-dot menu on the new file entry, and select "Link Google Drive File".</li>
+                                                <li>Paste the URL into the dialog and save. An icon will appear, giving you one-click access to that specific file.</li>
+                                            </ul>
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                                 <AccordionItem value="item-4" className="border-b-0">
+                                    <AccordionTrigger>Organization</AccordionTrigger>
+                                    <AccordionContent>
+                                        <p>Simply drag and drop files into folders to organize them. You can also drag and drop folders to nest them within each other, creating the structure that works best for you.</p>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            </Accordion>
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild><Button>Close</Button></DialogClose>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
-            <p className="text-muted-foreground">Your unified space for notes, documents, and files.</p>
+            <p className="text-muted-foreground max-w-2xl mx-auto">An integration hub to manage Google Drive Files & Folders</p>
         </header>
 
         <Card>
@@ -790,101 +845,87 @@ export function FilesView() {
     </Dialog>
 
     <Dialog open={isNewFileDialogOpen} onOpenChange={setIsNewFileDialogOpen}>
-        <DialogContent className="w-full h-full max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none sm:rounded-none flex flex-col p-0 sm:max-w-2xl sm:h-auto sm:top-[50%] sm:left-[50%] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg">
-             <DialogHeader className="p-6">
-                <DialogTitle>Create New File</DialogTitle>
-            </DialogHeader>
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleCreateNewFile)} className="flex-1 flex flex-col min-h-0">
-                    <div className="flex-1 flex items-center justify-center p-6">
-                        <div className="w-full max-w-sm space-y-6">
-                            <FormField
-                                control={form.control}
-                                name="fileType"
-                                render={({ field }) => (
-                                <FormItem className="space-y-3">
-                                    <FormLabel>File Type</FormLabel>
-                                    <FormControl>
-                                    <RadioGroup
-                                        onValueChange={field.onChange}
-                                        value={field.value}
-                                        className="flex flex-col gap-3"
-                                    >
-                                        <div className="flex items-start space-x-3">
-                                            <FormControl><RadioGroupItem value="file" id="type-file" className="mt-1" /></FormControl>
-                                            <div className="grid gap-1.5 leading-none">
-                                                <Label htmlFor="type-file">Empty file</Label>
-                                                <FormDescription>Creates an empty file inside Ogeemo, ready for future content.</FormDescription>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-start space-x-3">
-                                            <FormControl><RadioGroupItem value="link" id="type-link" className="mt-1" /></FormControl>
-                                            <div className="grid gap-1.5 leading-none">
-                                                <Label htmlFor="type-link">Link (URL)</Label>
-                                                <FormDescription>Creates a shortcut to an external website or web page.</FormDescription>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-start space-x-3">
-                                            <FormControl><RadioGroupItem value="gdrive" id="type-gdrive" className="mt-1"/></FormControl>
-                                            <div className="grid gap-1.5 leading-none">
-                                                <Label htmlFor="type-gdrive">Google Drive File</Label>
-                                                <FormDescription>Creates a shortcut that opens a new document in your Google Drive.</FormDescription>
-                                            </div>
-                                        </div>
-                                    </RadioGroup>
-                                    </FormControl>
-                                </FormItem>
-                                )}
-                            />
-
-                            <FormField control={form.control} name="fileName" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                            
-                            {fileTypeWatcher === 'link' && (
-                                <FormField control={form.control} name="fileUrl" render={({ field }) => ( <FormItem> <FormLabel>URL</FormLabel> <FormControl><Input type="url" placeholder="https://example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                            )}
-                            {fileTypeWatcher === 'gdrive' && (
-                                <FormField control={form.control} name="gdriveFileType" render={({ field }) => ( <FormItem> <FormLabel>Google Drive File Type</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{googleDriveFileTypes.map(app => ( <SelectItem key={app.value} value={app.value}><div className="flex items-center gap-2"><app.icon className="h-4 w-4" /> {app.label}</div></SelectItem>))}</SelectContent></Select><FormMessage /> </FormItem> )} />
-                            )}
-                             <FormField control={form.control} name="targetFolderId" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Select Folder</FormLabel>
-                                    <div className="flex gap-2">
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select a folder..." />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="all" disabled>Select a folder</SelectItem>
-                                                {flattenedFolders(folders).map(({ folder, level }) => (
-                                                    <SelectItem key={folder.id} value={folder.id}>
-                                                        <span style={{ paddingLeft: `${level * 1.5}rem` }}>{folder.name}</span>
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <Button type="button" variant="outline" size="icon" onClick={() => handleOpenNewFolderDialog(form.getValues('targetFolderId'))}>
-                                            <FolderPlus className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                        </div>
-                    </div>
-                    <DialogFooter className="p-6 border-t">
-                        <Button type="button" variant="ghost" onClick={() => setIsNewFileDialogOpen(false)} disabled={isSaving}>Cancel</Button>
-                        <Button type="submit" disabled={isSaving}>
-                            {isSaving && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-                            Create
+      <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Create New File</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleCreateNewFile)}>
+              <div className="flex items-center justify-center p-6">
+                <div className="w-full max-w-sm space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="fileType"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel>What would you like to create?</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="flex flex-col gap-3"
+                          >
+                            <div className="flex items-start space-x-3">
+                              <FormControl><RadioGroupItem value="file" id="type-file" className="mt-1" /></FormControl>
+                              <div className="grid gap-1.5 leading-none">
+                                <Label htmlFor="type-file">Empty Folder</Label>
+                                <FormDescription>Creates an empty folder, ready for future files.</FormDescription>
+                              </div>
+                            </div>
+                            <div className="flex items-start space-x-3">
+                              <FormControl><RadioGroupItem value="link" id="type-link" className="mt-1" /></FormControl>
+                              <div className="grid gap-1.5 leading-none">
+                                <Label htmlFor="type-link">Link (URL)</Label>
+                                <FormDescription>Creates a shortcut to an external website or web page.</FormDescription>
+                              </div>
+                            </div>
+                            <div className="flex items-start space-x-3">
+                              <FormControl><RadioGroupItem value="gdrive" id="type-gdrive" className="mt-1"/></FormControl>
+                              <div className="grid gap-1.5 leading-none">
+                                <Label htmlFor="type-gdrive">Google Drive File</Label>
+                                <FormDescription>Creates a shortcut that opens a new document in your Google Drive.</FormDescription>
+                              </div>
+                            </div>
+                          </RadioGroup>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField control={form.control} name="fileName" render={({ field }) => ( <FormItem> <FormLabel>Name</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                  {fileTypeWatcher === 'link' && ( <FormField control={form.control} name="fileUrl" render={({ field }) => ( <FormItem> <FormLabel>URL</FormLabel> <FormControl><Input type="url" placeholder="https://example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} /> )}
+                  {fileTypeWatcher === 'gdrive' && ( <FormField control={form.control} name="gdriveFileType" render={({ field }) => ( <FormItem> <FormLabel>Google Drive File Type</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent>{googleDriveFileTypes.map(app => ( <SelectItem key={app.value} value={app.value}><div className="flex items-center gap-2"><app.icon className="h-4 w-4" /> {app.label}</div></SelectItem>))}</SelectContent></Select><FormMessage /> </FormItem> )} /> )}
+                  <FormField control={form.control} name="targetFolderId" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Folder</FormLabel>
+                      <div className="flex gap-2">
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Select a folder..." /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="all" disabled>Select a folder</SelectItem>
+                            {flattenedFolders(folders).map(({ folder, level }) => (
+                              <SelectItem key={folder.id} value={folder.id}>
+                                <span style={{ paddingLeft: `${level * 1.5}rem` }}>{folder.name}</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button type="button" variant="outline" size="icon" onClick={() => handleOpenNewFolderDialog(form.getValues('targetFolderId'))}>
+                          <FolderPlus className="h-4 w-4" />
                         </Button>
-                    </DialogFooter>
-                </form>
-            </Form>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="ghost" onClick={() => setIsNewFileDialogOpen(false)} disabled={isSaving}>Cancel</Button>
+                <Button type="submit" disabled={isSaving}>{isSaving && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />} Create</Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
-    </Dialog>
-
+      </Dialog>
     <AlertDialog open={!!folderToDelete} onOpenChange={() => setFolderToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -962,7 +1003,7 @@ export function FilesView() {
     <AlertDialog open={isBulkDeleteAlertOpen} onOpenChange={setIsBulkDeleteAlertOpen}>
         <AlertDialogContent>
             <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
                     This will permanently delete {selectedFileIds.length} file(s). This action cannot be undone.
                 </AlertDialogDescription>
@@ -978,3 +1019,7 @@ export function FilesView() {
     </>
   );
 }
+
+    
+
+    

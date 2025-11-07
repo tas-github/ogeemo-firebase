@@ -1,3 +1,4 @@
+
 import {
   LayoutDashboard,
   Users,
@@ -72,7 +73,6 @@ export const allMenuItems: MenuItem[] = [
   { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/my-worker", label: "My Worker", icon: HardHat },
   { href: "/debug", label: "Debug", icon: Bug },
-  { href: "/bug-repair", label: "Bug Repair", icon: Bug },
   { href: "/data", label: "Data", icon: Database },
   { href: "/dev-notes", label: "Dev Notes", icon: BookText },
   { href: "/forms", label: "Forms", icon: FilePlus2 },
@@ -88,7 +88,7 @@ export const allMenuItems: MenuItem[] = [
   { href: "/all-project-tasks", label: "All Project Tasks", icon: ListTodo },
   { href: "/to-do", label: "A To Do List", icon: ListChecks },
   { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/file-manager", label: "Document Manager", icon: Folder },
+  { href: "/document-manager", label: "Document Manager", icon: Folder },
   { href: "/idea-board", label: "Idea Board", icon: Lightbulb },
   { href: "/research", label: "Research", icon: Beaker },
   { href: "/sandbox", label: "Sandbox", icon: Beaker },
