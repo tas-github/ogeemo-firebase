@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
@@ -50,9 +50,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { type Contact, type FolderData } from '@/data/contacts';
+import { type Contact } from '@/data/contacts';
 import { useToast } from '@/hooks/use-toast';
-import { addFolder, getContacts, getFolders, deleteContacts, addContact, updateContact, updateFolder, deleteFoldersAndContents } from '@/services/contact-service';
+import { getContacts, addContact, updateContact, deleteContacts } from '@/services/contact-service';
+import { getFolders, addFolder, updateFolder, deleteFolders, type FolderItem } from '@/services/file-manager-folders';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import {
@@ -80,11 +81,11 @@ const ItemTypes = {
   FOLDER: 'folder',
 };
 
-type DroppableItem = (Contact & { type?: 'contact' }) | (FolderData & { type: 'folder' });
+type DroppableItem = (Contact & { type?: 'contact' }) | (FolderItem & { type: 'folder' });
 
 
 export function ContactsView() {
-  const [folders, setFolders] = useState<FolderData[]>([]);
+  const [folders, setFolders] = useState<FolderItem[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFolderId, setSelectedFolderId] = useState<string>('all');
@@ -93,14 +94,14 @@ export function ContactsView() {
   
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderInitialParentId, setNewFolderInitialParentId] = useState<string | null>(null);
-  const [renamingFolder, setRenamingFolder] = useState<FolderData | null>(null);
+  const [renamingFolder, setRenamingFolder] = useState<FolderItem | null>(null);
   const [renameInputValue, setRenameInputValue] = useState("");
   
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [contactToEdit, setContactToEdit] = useState<Contact | null>(null);
   const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
   
-  const [folderToDelete, setFolderToDelete] = useState<FolderData | null>(null);
+  const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
   const [foldersToDelete, setFoldersToDelete] = useState<string[] | null>(null);
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -174,7 +175,7 @@ export function ContactsView() {
   
   const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
       accept: ItemTypes.FOLDER,
-      drop: (item: FolderData) => handleFolderDrop(item, null),
+      drop: (item: FolderItem) => handleFolderDrop(item, null),
       collect: (monitor) => ({
           isOverRoot: monitor.isOver(),
           canDropToRoot: monitor.canDrop(),
@@ -227,12 +228,12 @@ export function ContactsView() {
 
   const handleDeleteSelected = async () => {
     if (!user || selectedContactIds.length === 0) return;
-    if (!window.confirm(`Are you sure you want to delete ${selectedContactIds.length} contact(s)? This action cannot be undone.`)) return;
+    if (!window.confirm(`Are you sure you want to delete ${'${selectedContactIds.length}'} contact(s)? This action cannot be undone.`)) return;
 
     try {
       await deleteContacts(selectedContactIds);
       setContacts(contacts.filter(c => !selectedContactIds.includes(c.id)));
-      toast({ title: `${selectedContactIds.length} Contacts Deleted` });
+      toast({ title: `${'${selectedContactIds.length}'} Contacts Deleted` });
       setSelectedContactIds([]);
     } catch (error: any) {
       toast({ variant: "destructive", title: "Delete Failed", description: error.message });
@@ -244,7 +245,7 @@ export function ContactsView() {
     setIsNewFolderDialogOpen(true);
   };
   
-  const handleDeleteFolder = async (folder: FolderData) => {
+  const handleDeleteFolder = async (folder: FolderItem) => {
       setFolderToDelete(folder);
   };
   
@@ -259,7 +260,7 @@ export function ContactsView() {
     if (idsToDelete.length === 0) return;
 
     try {
-        await deleteFoldersAndContents(user.uid, idsToDelete);
+        await deleteFolders(idsToDelete);
         
         setFolders(prev => prev.filter(f => !idsToDelete.includes(f.id)));
         setContacts(prev => prev.filter(c => !idsToDelete.includes(c.folderId)));
@@ -267,7 +268,7 @@ export function ContactsView() {
         if (idsToDelete.includes(selectedFolderId)) setSelectedFolderId('all');
         setSelectedFolderIds([]);
         
-        toast({ title: `${idsToDelete.length} Folder(s) Deleted` });
+        toast({ title: `${'${idsToDelete.length}'} Folder(s) Deleted` });
     } catch (error: any) {
         toast({ variant: "destructive", title: "Delete Failed", description: error.message });
     } finally {
@@ -277,7 +278,7 @@ export function ContactsView() {
   };
 
 
-  const handleStartRename = (folder: FolderData) => {
+  const handleStartRename = (folder: FolderItem) => {
     setRenamingFolder(folder);
     setRenameInputValue(folder.name);
   };
@@ -318,7 +319,7 @@ export function ContactsView() {
     }
   };
 
-  const handleFolderDrop = async (folder: FolderData, newParentId: string | null) => {
+  const handleFolderDrop = async (folder: FolderItem, newParentId: string | null) => {
     if (folder.id === newParentId) return; // Can't drop on self
     if (folder.parentId === newParentId) return; // Already in the target folder
 
@@ -356,8 +357,8 @@ export function ContactsView() {
     );
   };
 
-  const FolderTree = ({ parentId = null, level = 0 }: { parentId?: string | null; level?: number }) => {
-    const children = folders.filter(f => f.parentId === parentId).sort((a,b) => a.name.localeCompare(b.name));
+  const FolderTree = ({ parentId = null, allFolders, level = 0 }: { parentId?: string | null; allFolders: FolderItem[]; level?: number }) => {
+    const children = allFolders.filter(f => f.parentId === parentId).sort((a,b) => a.name.localeCompare(b.name));
     
     if (children.length === 0 && level === 0 && parentId === null) {
       return <p className="p-4 text-center text-sm text-muted-foreground">No folders yet. Create one to get started.</p>;
@@ -368,7 +369,7 @@ export function ContactsView() {
     return (
       <div style={{ marginLeft: level > 0 ? '1rem' : '0' }}>
         {children.map(folder => {
-          const hasChildren = folders.some(f => f.parentId === folder.id);
+          const hasChildren = allFolders.some(f => f.parentId === folder.id);
           const isExpanded = expandedFolders.has(folder.id);
           const isRenaming = renamingFolder?.id === folder.id;
 
@@ -488,7 +489,7 @@ export function ContactsView() {
                       <Button variant={selectedFolderId === 'all' ? "secondary" : "ghost"} className="w-full justify-start gap-3 my-1" onClick={() => setSelectedFolderId('all')}>
                           <Users className="h-4 w-4" /> <span>All Folders</span>
                       </Button>
-                      <FolderTree />
+                      <FolderTree parentId={null} allFolders={folders} />
                   </ScrollArea>
               </div>
             </ResizablePanel>
@@ -595,7 +596,7 @@ export function ContactsView() {
             <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    {foldersToDelete ? `This will permanently delete ${foldersToDelete.length} folder(s), including all their subfolders and contacts.` : `This will permanently delete the "${folderToDelete?.name}" folder, including all its subfolders and contacts.`} This action cannot be undone.
+                    {foldersToDelete ? `This will permanently delete ${'${foldersToDelete.length}'} folder(s), including all their subfolders and contacts.` : `This will permanently delete the "${folderToDelete?.name}" folder, including all its subfolders and contacts.`} This action cannot be undone.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

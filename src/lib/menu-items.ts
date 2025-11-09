@@ -44,6 +44,7 @@ import {
   ListChecks,
   FilePenLine,
   Route,
+  Link as LinkIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -94,5 +95,6 @@ export const allMenuItems: MenuItem[] = [
   { href: "/sandbox", label: "Sandbox", icon: Beaker },
   { href: "/accounting", label: "Accounting", icon: Calculator },
   { href: "/testing", label: "Testing", icon: Beaker },
-  { href: "/test", label: "Test", icon: Beaker },
+  { href: "/notes", label: "Note Manager", icon: FilePenLine },
+  { href: "/link", label: "link", icon: LinkIcon },
 ];

@@ -56,13 +56,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '../ui/resizable';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import Link from 'next/link';
@@ -74,6 +67,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 
 const ItemTypes = {
@@ -148,6 +148,7 @@ export function FilesView() {
 
   const { user } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<NewFileFormData>({
     resolver: zodResolver(newFileSchema),
@@ -203,10 +204,12 @@ export function FilesView() {
   };
 
   const handleSelectFile = (file: FileItem) => {
-    if (file.driveLink) {
+    if (file.type === 'text/plain' || file.type === 'application/vnd.ogeemo-flowchart+json') {
+        router.push(`/notes/editor?fileId=${file.id}`);
+    } else if (file.driveLink) {
         window.open(file.driveLink, '_blank', 'noopener,noreferrer');
     } else {
-        toast({ title: "This file does not have a Google Drive link."})
+        toast({ title: "Preview not available", description: "This file type cannot be previewed directly." });
     }
   };
   
@@ -450,17 +453,38 @@ export function FilesView() {
   };
 
   const handleConfirmDeleteFolder = async () => {
-        if (!user || !folderToDelete) return;
-        try {
-            await deleteFolders([folderToDelete.id]);
-            setFolders(prev => prev.filter(f => f.id !== folderToDelete.id));
-            toast({ title: "Folder Deleted" });
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Delete Failed", description: error.message });
-        } finally {
-            setFolderToDelete(null);
+    if (!user || !folderToDelete) return;
+
+    const allFoldersIncludingChildren = (function getDescendants(parentId: string, all: FolderItem[]): string[] {
+        const children = all.filter(f => f.parentId === parentId).map(f => f.id);
+        return [parentId, ...children.flatMap(childId => getDescendants(childId, all))];
+    })(folderToDelete.id, folders);
+
+    try {
+        // Delete all files in the folder and its children first
+        const filesToDelete = files.filter(f => allFoldersIncludingChildren.includes(f.folderId));
+        if (filesToDelete.length > 0) {
+            await deleteFiles(filesToDelete.map(f => f.id));
         }
-    };
+
+        // Then delete the folders
+        await deleteFolders(allFoldersIncludingChildren);
+
+        setFolders(prev => prev.filter(f => !allFoldersIncludingChildren.includes(f.id)));
+        setFiles(prev => prev.filter(f => !allFoldersIncludingChildren.includes(f.folderId)));
+        
+        if (allFoldersIncludingChildren.includes(selectedFolderId)) {
+            setSelectedFolderId('all');
+        }
+        
+        toast({ title: "Folder and its contents deleted" });
+    } catch (error: any) {
+        toast({ variant: "destructive", title: "Delete Failed", description: error.message });
+    } finally {
+        setFolderToDelete(null);
+    }
+  };
+
 
   const handleToggleSelect = (fileId: string) => {
     setSelectedFileIds(prev => prev.includes(fileId) ? prev.filter(id => id !== fileId) : [...prev, fileId]);
@@ -543,7 +567,7 @@ export function FilesView() {
                             onChange={e => setRenameInputValue(e.target.value)}
                             onBlur={handleConfirmRename}
                             onKeyDown={e => { if (e.key === 'Enter') handleConfirmRename(); if (e.key === 'Escape') handleCancelRename(); }}
-                            className="h-full py-0 px-2 text-sm font-medium bg-transparent"
+                            className="h-full py-0 px-2 text-xs font-medium bg-transparent"
                             onClick={e => e.stopPropagation()}
                         />
                     ) : (
@@ -683,7 +707,7 @@ export function FilesView() {
                     </DialogContent>
                 </Dialog>
             </div>
-            <p className="text-muted-foreground max-w-2xl mx-auto">An integration hub to manage Google Drive Files & Folders</p>
+            <p className="text-muted-foreground max-w-2xl mx-auto">An integration hub to manage Google Drive Files &amp; Folders</p>
         </header>
 
         <Card>
@@ -1019,7 +1043,3 @@ export function FilesView() {
     </>
   );
 }
-
-    
-
-    

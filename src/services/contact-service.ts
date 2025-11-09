@@ -15,9 +15,8 @@ import {
     Timestamp 
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
-import type { Contact, FolderData } from '@/data/contacts';
+import type { Contact } from '@/data/contacts';
 
-const FOLDERS_COLLECTION = 'contactFolders';
 const CONTACTS_COLLECTION = 'contacts';
 const CLIENT_ACCOUNTS_COLLECTION = 'clientAccounts';
 
@@ -35,7 +34,6 @@ async function getDb() {
     return db;
 }
 
-const docToFolder = (doc: any): FolderData => ({ id: doc.id, ...doc.data() } as FolderData);
 const docToContact = (doc: any): Contact => ({ id: doc.id, ...doc.data() } as Contact);
 
 
@@ -54,94 +52,6 @@ async function createClientAccount(userId: string, contactId: string, contactNam
       };
       await addDoc(collection(db, CLIENT_ACCOUNTS_COLLECTION), accountData);
     }
-}
-
-
-// --- Folder functions ---
-export async function getFolders(userId: string): Promise<FolderData[]> {
-  const db = await getDb();
-  const q = query(collection(db, FOLDERS_COLLECTION), where("userId", "==", userId));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(docToFolder);
-}
-
-export async function findOrCreateFolder(userId: string, folderName: string, parentId: string | null = null): Promise<FolderData> {
-    const db = await getDb();
-    const q = query(
-        collection(db, FOLDERS_COLLECTION), 
-        where("userId", "==", userId), 
-        where("name", "==", folderName),
-        where("parentId", "==", parentId)
-    );
-    const snapshot = await getDocs(q);
-
-    if (!snapshot.empty) {
-        return docToFolder(snapshot.docs[0]);
-    } else {
-        const newFolderData = {
-            name: folderName,
-            userId,
-            parentId,
-        };
-        const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), newFolderData);
-        return { id: docRef.id, ...newFolderData };
-    }
-}
-
-export async function addFolder(folderData: Omit<FolderData, 'id'>): Promise<FolderData> {
-  const db = await getDb();
-  const dataToSave = {
-    ...folderData,
-    parentId: folderData.parentId || null,
-  };
-  const docRef = await addDoc(collection(db, FOLDERS_COLLECTION), dataToSave);
-  return { id: docRef.id, ...dataToSave };
-}
-
-export async function updateFolder(folderId: string, folderData: Partial<Omit<FolderData, 'id' | 'userId'>>): Promise<void> {
-    const db = await getDb();
-    const folderRef = doc(db, FOLDERS_COLLECTION, folderId);
-    await updateDoc(folderRef, folderData);
-}
-
-export async function deleteFoldersAndContents(userId: string, folderIds: string[]): Promise<void> {
-    const db = await getDb();
-    const batch = writeBatch(db);
-    const allFolders = await getFolders(userId);
-    
-    const folderIdsToDelete = new Set<string>(folderIds);
-    
-    const findDescendants = (parentId: string) => {
-        allFolders
-            .filter(f => f.parentId === parentId)
-            .forEach(child => {
-                folderIdsToDelete.add(child.id);
-                findDescendants(child.id);
-            });
-    };
-    
-    // Find all descendants for each initially selected folder
-    folderIds.forEach(id => findDescendants(id));
-
-    if (folderIdsToDelete.size > 0) {
-        // Firestore 'in' query supports up to 30 elements. For more, chunking is needed.
-        const folderIdArray = Array.from(folderIdsToDelete);
-        for (let i = 0; i < folderIdArray.length; i += 30) {
-            const chunk = folderIdArray.slice(i, i + 30);
-            const contactsQuery = query(collection(db, CONTACTS_COLLECTION), where('folderId', 'in', chunk));
-            const contactsSnapshot = await getDocs(contactsQuery);
-            contactsSnapshot.forEach(contactDoc => {
-                batch.delete(contactDoc.ref);
-            });
-        }
-    }
-
-    folderIdsToDelete.forEach(id => {
-        const folderRef = doc(db, FOLDERS_COLLECTION, id);
-        batch.delete(folderRef);
-    });
-
-    await batch.commit();
 }
 
 
