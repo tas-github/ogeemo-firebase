@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -342,5 +341,6 @@ export async function findOrCreateFileFolder(userId: string, folderName: string)
     return { id: docRef.id, ...newFolderData };
 }
     
+
 
 

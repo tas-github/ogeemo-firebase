@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { LoaderCircle, Save, ArrowLeft, FolderPlus, Check } from 'lucide-react';
+import { LoaderCircle, Save, ArrowLeft, FolderPlus, Check, Link as LinkIcon } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { addTextFileClient } from '@/services/file-service';
+import { addFileRecord } from '@/services/file-service';
 import { getFolders, addFolder, type FolderItem } from '@/services/file-manager-folders';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -31,9 +31,11 @@ export default function CreateNotePage() {
 
     const [folders, setFolders] = useState<FolderItem[]>([]);
     const [title, setTitle] = useState('');
+    const [driveLink, setDriveLink] = useState('');
     const [selectedFolderId, setSelectedFolderId] = useState('');
     
     const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
     const [isFolderPopoverOpen, setIsFolderPopoverOpen] = useState(false);
 
     const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
@@ -90,12 +92,27 @@ export default function CreateNotePage() {
             return;
         }
 
+        setIsSaving(true);
         try {
-            const newFile = await addTextFileClient(user.uid, selectedFolderId, title);
-            toast({ title: "Note Created", description: `"${newFile.name}" has been added to your notes.` });
-            router.push(`/notes`); // Redirect back to the notes list
+            const newFileRecord = {
+                name: title.trim(),
+                folderId: selectedFolderId,
+                userId: user.uid,
+                type: driveLink.trim() ? 'google-drive-link' : 'text/plain',
+                size: 0,
+                modifiedAt: new Date(),
+                storagePath: '',
+                content: driveLink.trim() ? '' : undefined, // No content for links, start with empty for text
+                driveLink: driveLink.trim() || undefined,
+            };
+
+            await addFileRecord(newFileRecord);
+            toast({ title: "Note Created", description: `"${title.trim()}" has been added.` });
+            router.push(`/notes`);
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Creation Failed', description: error.message });
+        } finally {
+            setIsSaving(false);
         }
     };
     
@@ -116,7 +133,7 @@ export default function CreateNotePage() {
                 <CardHeader>
                     <CardTitle>Create New Note</CardTitle>
                     <CardDescription>
-                        Give your note a name and choose where to save it. You'll add content on the next screen.
+                        Give your note a name and choose where to save it. You can optionally add a link to a Google Drive file.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -124,10 +141,23 @@ export default function CreateNotePage() {
                         <Label htmlFor="note-title">Note Name</Label>
                         <Input 
                             id="note-title"
-                            placeholder="My new note"
+                            placeholder="My new note or document title"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                         />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="drive-link">Google Drive Link (Optional)</Label>
+                        <div className="relative">
+                            <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                id="drive-link"
+                                placeholder="https://docs.google.com/..."
+                                value={driveLink}
+                                onChange={(e) => setDriveLink(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="folder-select">Folder</Label>
@@ -168,8 +198,8 @@ export default function CreateNotePage() {
                             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Notes
                         </Link>
                     </Button>
-                    <Button onClick={handleSave}>
-                        <Save className="mr-2 h-4 w-4" />
+                    <Button onClick={handleSave} disabled={isSaving}>
+                        {isSaving && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
                         Create Note
                     </Button>
                 </CardFooter>

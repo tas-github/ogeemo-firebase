@@ -6,10 +6,10 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { LoaderCircle, Plus, MoreVertical, Edit, Trash2, FileText } from 'lucide-react';
+import { LoaderCircle, Plus, MoreVertical, Edit, Trash2, FileText, Link as LinkIcon } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
-import { getFiles, deleteFiles, type FileItem } from '@/services/file-service';
+import { getFiles, deleteFiles, updateFile, type FileItem } from '@/services/file-service';
 import { getFolders, type FolderItem } from '@/services/file-manager-folders';
 import { format } from 'date-fns';
 import {
@@ -17,6 +17,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -28,12 +29,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+
 
 export default function NotesManagerPage() {
     const [notes, setNotes] = useState<FileItem[]>([]);
     const [folders, setFolders] = useState<FolderItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [noteToDelete, setNoteToDelete] = useState<FileItem | null>(null);
+
+    const [fileToLink, setFileToLink] = useState<FileItem | null>(null);
+    const [driveLink, setDriveLink] = useState('');
+    const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
 
     const { user } = useAuth();
     const { toast } = useToast();
@@ -62,6 +78,30 @@ export default function NotesManagerPage() {
     useEffect(() => {
         loadNotes();
     }, [loadNotes]);
+    
+    const handleOpenLinkDialog = (note: FileItem) => {
+        setFileToLink(note);
+        setDriveLink(note.driveLink || '');
+        setIsLinkDialogOpen(true);
+    };
+
+    const handleAddDriveLink = async () => {
+        if (!fileToLink) return;
+        try {
+            const updateData = {
+                driveLink: driveLink.trim() || undefined,
+            };
+            await updateFile(fileToLink.id, updateData);
+            setNotes(prev => prev.map(n => n.id === fileToLink.id ? { ...n, ...updateData } : n));
+            toast({ title: driveLink.trim() ? 'Note Linked' : 'Note Link Removed' });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Failed to link note', description: error.message });
+        } finally {
+            setIsLinkDialogOpen(false);
+            setFileToLink(null);
+            setDriveLink('');
+        }
+    };
 
     const handleConfirmDelete = async () => {
         if (!noteToDelete) return;
@@ -73,6 +113,14 @@ export default function NotesManagerPage() {
             toast({ variant: 'destructive', title: 'Delete failed', description: error.message });
         } finally {
             setNoteToDelete(null);
+        }
+    };
+    
+    const handleNoteClick = (note: FileItem) => {
+        if (note.driveLink) {
+            window.open(note.driveLink, '_blank', 'noopener,noreferrer');
+        } else {
+            router.push(`/notes/editor?fileId=${note.id}`);
         }
     };
     
@@ -126,10 +174,11 @@ export default function NotesManagerPage() {
                                     {notes.length > 0 ? notes.map(note => (
                                         <TableRow key={note.id}>
                                             <TableCell className="font-medium">
-                                                <Link href={`/notes/editor?fileId=${note.id}`} className="flex items-center gap-2 hover:underline">
+                                                <button onClick={() => handleNoteClick(note)} className="flex items-center gap-2 hover:underline text-left">
                                                     <FileText className="h-4 w-4 text-muted-foreground"/>
-                                                    {note.name}
-                                                </Link>
+                                                    <span>{note.name}</span>
+                                                    {note.driveLink && <LinkIcon className="h-3 w-3 text-blue-500" />}
+                                                </button>
                                             </TableCell>
                                             <TableCell>{folderMap.get(note.folderId) || 'Unassigned'}</TableCell>
                                             <TableCell>{format(new Date(note.modifiedAt), 'PPp')}</TableCell>
@@ -137,7 +186,11 @@ export default function NotesManagerPage() {
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onSelect={() => router.push(`/notes/editor?fileId=${note.id}`)}><Edit className="mr-2 h-4 w-4"/> Edit</DropdownMenuItem>
+                                                        <DropdownMenuItem onSelect={() => handleNoteClick(note)}><Edit className="mr-2 h-4 w-4"/> Edit / Open</DropdownMenuItem>
+                                                        <DropdownMenuItem onSelect={() => handleOpenLinkDialog(note)}>
+                                                          <LinkIcon className="mr-2 h-4 w-4" /> Link Google Drive File
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
                                                         <DropdownMenuItem onSelect={() => setNoteToDelete(note)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/> Delete</DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
@@ -164,6 +217,30 @@ export default function NotesManagerPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+              <DialogContent>
+                  <DialogHeader>
+                      <DialogTitle>Link to Google Drive File</DialogTitle>
+                      <DialogDescription>
+                          Paste the URL of a Google Drive file to create a shortcut to it. To remove a link, clear the URL and save.
+                      </DialogDescription>
+                  </DialogHeader>
+                  <div className="py-4 space-y-4">
+                      <div className="space-y-2">
+                          <Label>Note Name</Label>
+                          <Input value={fileToLink?.name || ''} readOnly disabled />
+                      </div>
+                      <div className="space-y-2">
+                          <Label htmlFor="drive-link">Google Drive URL</Label>
+                          <Input id="drive-link" value={driveLink} onChange={(e) => setDriveLink(e.target.value)} placeholder="https://docs.google.com/document/d/..." />
+                      </div>
+                  </div>
+                  <DialogFooter>
+                      <Button variant="ghost" onClick={() => setIsLinkDialogOpen(false)}>Cancel</Button>
+                      <Button onClick={handleAddDriveLink}>Save Link</Button>
+                  </DialogFooter>
+              </DialogContent>
+            </Dialog>
         </>
     );
 }
