@@ -52,7 +52,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useAuth } from "@/context/auth-context";
+import { useAuth } from '@/context/auth-context';
 import { getIncomeTransactions, addIncomeTransaction, updateIncomeTransaction, deleteIncomeTransaction, type IncomeTransaction, getExpenseTransactions, addExpenseTransaction, updateExpenseTransaction, deleteExpenseTransaction, type ExpenseTransaction } from "@/services/accounting-service";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { InvoicePaymentsView } from "./invoice-payments-view";
@@ -67,6 +67,15 @@ const defaultCompanies = ["Client Alpha", "Client Beta", "E-commerce Store", "Af
 const defaultDepositAccounts = ["Bank Account #1", "Credit Card #1", "Cash Account"];
 
 const emptyTransactionForm = { date: '', company: '', description: '', amount: '', category: '', incomeType: '', explanation: '', documentNumber: '', type: 'business' as 'business' | 'personal', depositedTo: '' };
+
+const tabTitles: Record<string, string> = {
+    bks: 'BKS (General Ledger)',
+    income: 'Income Ledger',
+    expenses: 'Expense Ledger',
+    receivables: 'Accounts Receivable',
+    payables: 'Accounts Payable',
+};
+
 
 export function LedgersView() {
   const [incomeLedger, setIncomeLedger] = React.useState<IncomeTransaction[]>([]);
@@ -84,6 +93,7 @@ export function LedgersView() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') || 'bks';
+  const [activeTab, setActiveTab] = React.useState(initialTab);
 
   React.useEffect(() => {
     if (!user) {
@@ -205,14 +215,14 @@ export function LedgersView() {
   return (
     <>
       <div className="p-4 sm:p-6 space-y-6">
-        <AccountingPageHeader pageTitle="Ledgers" hubPath="/accounting" hubLabel="Accounting Tools" />
+        <AccountingPageHeader pageTitle={tabTitles[activeTab] || 'Ledgers'} hubPath="/accounting" hubLabel="Accounting Tools" />
         <div className="flex flex-col">
           <header className="text-center mb-6 w-full mx-auto">
             <h1 className="text-3xl font-bold font-headline text-primary">BKS Ledgers</h1>
             <p className="text-muted-foreground">A unified view of your income and expenses.</p>
           </header>
 
-            <Tabs defaultValue={initialTab} className="w-full">
+            <Tabs defaultValue={initialTab} onValueChange={setActiveTab} className="w-full">
               <div className="flex justify-center items-center mb-4">
                 <TabsList className="grid w-full max-w-2xl grid-cols-5">
                   <TabsTrigger value="bks">BKS (General Ledger)</TabsTrigger>
