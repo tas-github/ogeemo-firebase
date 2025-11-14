@@ -1,0 +1,162 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user-specific information and preferences.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string", "format": "uri" }
+      }
+    },
+    "Invoice": {
+        "title": "Invoice",
+        "description": "Represents an invoice for a client.",
+        "type": "object",
+        "properties": {
+            "invoiceNumber": { "type": "string" },
+            "clientName": { "type": "string" },
+            "contactId": { "type": "string" },
+            "originalAmount": { "type": "number" },
+            "amountPaid": { "type": "number" },
+            "dueDate": { "type": "string", "format": "date-time" },
+            "invoiceDate": { "type": "string", "format": "date-time" },
+            "status": { "type": "string", "enum": ["outstanding", "paid", "partially_paid", "overdue"] },
+            "notes": { "type": "string" },
+            "taxRate": { "type": "number" },
+            "taxType": { "type": "string" },
+            "userId": { "type": "string" }
+        },
+        "required": ["invoiceNumber", "clientName", "contactId", "originalAmount", "amountPaid", "dueDate", "invoiceDate", "status", "userId"]
+    },
+    "InvoiceLineItem": {
+        "title": "Invoice Line Item",
+        "description": "Represents a single line item on an invoice.",
+        "type": "object",
+        "properties": {
+            "invoiceId": { "type": "string" },
+            "description": { "type": "string" },
+            "quantity": { "type": "number" },
+            "price": { "type": "number" }
+        },
+        "required": ["invoiceId", "description", "quantity", "price"]
+    },
+    "IncomeTransaction": {
+        "title": "Income Transaction",
+        "description": "Records an income transaction.",
+        "type": "object",
+        "properties": {
+            "date": { "type": "string", "format": "date" },
+            "company": { "type": "string" },
+            "description": { "type": "string" },
+            "amount": { "type": "number" },
+            "incomeType": { "type": "string" },
+            "depositedTo": { "type": "string" },
+            "explanation": { "type": "string" },
+            "documentNumber": { "type": "string" },
+            "type": { "type": "string", "enum": ["business", "personal"] },
+            "userId": { "type": "string" }
+        },
+        "required": ["date", "company", "amount", "incomeType", "userId"]
+    },
+    "ExpenseTransaction": {
+        "title": "Expense Transaction",
+        "description": "Records an expense transaction.",
+        "type": "object",
+        "properties": {
+            "date": { "type": "string", "format": "date" },
+            "company": { "type": "string" },
+            "description": { "type": "string" },
+            "amount": { "type": "number" },
+            "category": { "type": "string" },
+            "explanation": { "type": "string" },
+            "documentNumber": { "type": "string" },
+            "type": { "type": "string", "enum": ["business", "personal"] },
+            "userId": { "type": "string" }
+        },
+        "required": ["date", "company", "amount", "category", "userId"]
+    },
+    "PayableBill": {
+        "title": "Payable Bill",
+        "description": "Represents an outstanding bill from a vendor.",
+        "type": "object",
+        "properties": {
+            "vendor": { "type": "string" },
+            "invoiceNumber": { "type": "string" },
+            "dueDate": { "type": "string", "format": "date" },
+            "amount": { "type": "number" },
+            "category": { "type": "string" },
+            "description": { "type": "string" },
+            "userId": { "type": "string" }
+        },
+        "required": ["vendor", "dueDate", "amount", "category", "userId"]
+    },
+    "Asset": {
+        "title": "Capital Asset",
+        "description": "Represents a capital asset owned by the business.",
+        "type": "object",
+        "properties": {
+            "name": { "type": "string" },
+            "description": { "type": "string" },
+            "assetClass": { "type": "string" },
+            "purchaseDate": { "type": "string", "format": "date" },
+            "cost": { "type": "number" },
+            "undepreciatedCapitalCost": { "type": "number" },
+            "applyHalfYearRule": { "type": "boolean" },
+            "userId": { "type": "string" }
+        },
+        "required": ["name", "purchaseDate", "cost", "undepreciatedCapitalCost", "userId"]
+    },
+    "EquityTransaction": {
+        "title": "Equity Transaction",
+        "description": "Represents an owner's contribution or draw.",
+        "type": "object",
+        "properties": {
+            "date": { "type": "string", "format": "date" },
+            "description": { "type": "string" },
+            "amount": { "type": "number" },
+            "type": { "type": "string", "enum": ["contribution", "draw"] },
+            "userId": { "type": "string" }
+        },
+        "required": ["date", "amount", "type", "userId"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com", "password"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Stores user profile data."
+    },
+    "/invoices/{invoiceId}": {
+        "schema": { "$ref": "#/entities/Invoice" },
+        "description": "Collection of all invoices."
+    },
+    "/invoiceLineItems/{itemId}": {
+        "schema": { "$ref": "#/entities/InvoiceLineItem" },
+        "description": "Collection of all invoice line items."
+    },
+    "/incomeTransactions/{transactionId}": {
+        "schema": { "$ref": "#/entities/IncomeTransaction" },
+        "description": "Collection of all income transactions."
+    },
+    "/expenseTransactions/{transactionId}": {
+        "schema": { "$ref": "#/entities/ExpenseTransaction" },
+        "description": "Collection of all expense transactions."
+    },
+    "/payableBills/{billId}": {
+        "schema": { "$ref": "#/entities/PayableBill" },
+        "description": "Collection of all payable bills."
+    },
+    "/assets/{assetId}": {
+        "schema": { "$ref": "#/entities/Asset" },
+        "description": "Collection of all capital assets."
+    },
+    "/equityTransactions/{transactionId}": {
+        "schema": { "$ref": "#/entities/EquityTransaction" },
+        "description": "Collection of all equity transactions."
+    }
+  }
+}
