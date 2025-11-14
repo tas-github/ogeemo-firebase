@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ArrowLeft, ChevronDown, FileOutput, FileDigit, TrendingUp, TrendingDown, BookText, FileInput, WalletCards, BarChart3, Activity, UserPlus, Info, Banknote } from 'lucide-react';
+import { ArrowLeft, ChevronDown, FileOutput, FileDigit, TrendingUp, TrendingDown, BookText, FileInput, WalletCards, BarChart3, Activity, UserPlus, Info, Banknote, ShieldCheck } from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -26,10 +26,12 @@ const accountingLinks = [
     { href: "/accounting/ledgers?tab=income", icon: TrendingUp, label: "Manage Income" },
     { href: "/accounting/ledgers?tab=expenses", icon: TrendingDown, label: "Manage Expenses" },
     { href: "/accounting/ledgers", icon: BookText, label: "General Ledger" },
+    { href: "/accounting/reports/t2125", icon: FileText, label: "Business Activity Statement"},
     { href: "/accounting/accounts-payable", icon: FileInput, label: "Accounts Payable" },
     { href: "/accounting/bank-statements", icon: WalletCards, label: "Bank Statements" },
     { href: "/accounting/payroll", icon: Banknote, label: "Payroll" },
     { href: "/accounting/reports", icon: BarChart3, label: "Reporting Hub" },
+    { href: "/accounting/tax", icon: ShieldCheck, label: "Tax Center" },
     { href: "/accounting/vitals", icon: Activity, label: "Financial Vitals" },
     { href: "/accounting/onboarding", icon: UserPlus, label: "Client Onboarding" },
     { href: "/accounting/bks", icon: Info, label: "BKS Welcome" },
