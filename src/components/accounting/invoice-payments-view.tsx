@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -194,7 +193,7 @@ export function InvoicePaymentsView() {
                     <CardHeader className="flex-row justify-between items-start">
                         <div>
                             <CardTitle>Accounts Receivable</CardTitle>
-                            <CardDescription>A list of all client invoices from the database.</CardDescription>
+                            <CardDescription>A list of outstanding invoices</CardDescription>
                         </div>
                         <div className="text-right">
                             <p className="text-sm text-muted-foreground">Total Balance Due</p>
