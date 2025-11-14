@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -21,6 +22,7 @@ import {
   Briefcase,
   ListTodo,
 } from "lucide-react";
+import { AccountingPageHeader } from "../accounting/page-header";
 
 export function ReportsHubView() {
   const features = [
@@ -77,6 +79,7 @@ export function ReportsHubView() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <AccountingPageHeader pageTitle="Reporting Hub" />
       <header className="text-center mb-6">
         <h1 className="text-3xl font-bold font-headline text-primary">
           Reporting Hub

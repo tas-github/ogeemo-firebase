@@ -32,6 +32,7 @@ import {
   BarChart3,
   FileInput,
 } from 'lucide-react';
+import { AccountingPageHeader } from './page-header';
 
 interface FeatureCardProps {
   icon: React.ElementType;
@@ -83,6 +84,7 @@ export function AccountingToolsView() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <AccountingPageHeader pageTitle="Accounting Tools" />
       <header className="text-center mb-6">
         <div className="flex justify-center items-center gap-4 mb-2">
             <Calculator className="h-8 w-8 text-primary" />
