@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ArrowLeft, ChevronDown, FileOutput, FileDigit, TrendingUp, TrendingDown, BookText, FileInput, WalletCards, BarChart3, Activity, UserPlus, Info, Banknote, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ChevronDown, FileOutput, FileDigit, TrendingUp, TrendingDown, BookText, FileInput, WalletCards, BarChart3, Activity, UserPlus, Info, Banknote, ShieldCheck, FileText } from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbItem,
