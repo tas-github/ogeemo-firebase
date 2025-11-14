@@ -193,7 +193,7 @@ export function InvoicePaymentsView() {
                 <Card>
                     <CardHeader className="flex-row justify-between items-start">
                         <div>
-                            <CardTitle>Outstanding Invoices</CardTitle>
+                            <CardTitle>Accounts Receivable</CardTitle>
                             <CardDescription>A list of all client invoices from the database.</CardDescription>
                         </div>
                         <div className="text-right">
