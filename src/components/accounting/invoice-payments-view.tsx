@@ -190,13 +190,6 @@ export function InvoicePaymentsView() {
     return (
         <>
             <div className="space-y-6">
-                <header className="text-center">
-                    <h1 className="text-3xl font-bold font-headline text-primary">Accounts Receivable</h1>
-                    <p className="text-muted-foreground max-w-2xl mx-auto">
-                        Manage all outstanding invoices and payments due from clients.
-                    </p>
-                </header>
-
                 <Card>
                     <CardHeader className="flex-row justify-between items-start">
                         <div>
