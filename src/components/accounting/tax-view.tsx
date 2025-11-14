@@ -287,7 +287,7 @@ export function TaxView() {
   return (
     <>
       <div className="p-4 sm:p-6 space-y-6">
-        <AccountingPageHeader pageTitle="Tax Account" />
+        <AccountingPageHeader pageTitle="Tax Center" />
         <header className="text-center">
           <h1 className="text-3xl font-bold font-headline text-primary">
             Tax Account Manager

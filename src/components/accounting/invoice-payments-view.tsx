@@ -44,6 +44,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format as formatDate } from "date-fns";
 import { useAuth } from '@/context/auth-context';
 import { getInvoices, updateInvoiceWithLineItems, deleteInvoice, type Invoice } from '@/services/accounting-service';
+import { AccountingPageHeader } from './page-header';
 
 const EDIT_INVOICE_ID_KEY = 'editInvoiceId';
 const RECEIPT_DATA_KEY = 'ogeemo-receipt-data';
@@ -189,7 +190,8 @@ export function InvoicePaymentsView() {
 
     return (
         <>
-            <div className="space-y-6">
+            <div className="p-4 sm:p-6 space-y-6">
+                <AccountingPageHeader pageTitle="Accounts Receivable" />
                 <header className="text-center">
                     <h1 className="text-3xl font-bold font-headline text-primary">Accounts Receivable</h1>
                     <p className="text-muted-foreground max-w-2xl mx-auto">

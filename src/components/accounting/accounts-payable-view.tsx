@@ -49,6 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useAuth } from "@/context/auth-context";
 import { getPayableBills, addPayableBill, updatePayableBill, deletePayableBill, addExpenseTransaction, type PayableBill, type ExpenseTransaction } from "@/services/accounting-service";
+import { AccountingPageHeader } from "./page-header";
 
 
 // TODO: These should be moved to a settings service
@@ -180,7 +181,8 @@ export function AccountsPayableView() {
   
   return (
     <>
-      <div className="space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
+        <AccountingPageHeader pageTitle="Accounts Payable" />
         <header className="text-center">
           <h1 className="text-2xl font-bold font-headline text-primary">Accounts Payable</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
