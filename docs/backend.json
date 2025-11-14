@@ -1,0 +1,193 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the Ogeemo Firebase Console application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user entity."
+        }
+      },
+      "required": [
+        "id"
+      ]
+    },
+    "IncomeTransaction": {
+      "title": "Income Transaction",
+      "type": "object",
+      "description": "Represents a single income transaction for a user.",
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "company": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "incomeType": { "type": "string" },
+        "depositedTo": { "type": "string" },
+        "explanation": { "type": "string" },
+        "documentNumber": { "type": "string" },
+        "type": { "type": "string", "enum": ["business", "personal"] },
+        "userId": { "type": "string" }
+      },
+      "required": ["date", "company", "amount", "incomeType", "userId"]
+    },
+    "ExpenseTransaction": {
+      "title": "Expense Transaction",
+      "type": "object",
+      "description": "Represents a single expense transaction for a user.",
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "company": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "explanation": { "type": "string" },
+        "documentNumber": { "type": "string" },
+        "type": { "type": "string", "enum": ["business", "personal"] },
+        "userId": { "type": "string" }
+      },
+      "required": ["date", "company", "amount", "category", "userId"]
+    },
+    "PayableBill": {
+      "title": "Payable Bill",
+      "type": "object",
+      "description": "Represents an accounts payable bill.",
+      "properties": {
+        "vendor": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "dueDate": { "type": "string", "format": "date" },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["vendor", "dueDate", "amount", "category", "userId"]
+    },
+    "Asset": {
+      "title": "Asset",
+      "type": "object",
+      "description": "Represents a capital asset.",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "assetClass": { "type": "string" },
+        "purchaseDate": { "type": "string", "format": "date" },
+        "cost": { "type": "number" },
+        "undepreciatedCapitalCost": { "type": "number" },
+        "applyHalfYearRule": { "type": "boolean" },
+        "depreciationEntries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "date": { "type": "string", "format": "date" },
+              "amount": { "type": "number" }
+            },
+            "required": ["id", "date", "amount"]
+          }
+        },
+        "userId": { "type": "string" }
+      },
+      "required": ["name", "purchaseDate", "cost", "undepreciatedCapitalCost", "userId"]
+    },
+    "EquityTransaction": {
+      "title": "Equity Transaction",
+      "type": "object",
+      "description": "Represents an owner's equity transaction (contribution or draw).",
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["contribution", "draw"] },
+        "userId": { "type": "string" }
+      },
+      "required": ["date", "amount", "type", "userId"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "type": "object",
+      "description": "Represents a client invoice.",
+      "properties": {
+        "invoiceNumber": { "type": "string" },
+        "clientName": { "type": "string" },
+        "contactId": { "type": "string" },
+        "originalAmount": { "type": "number" },
+        "amountPaid": { "type": "number" },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "invoiceDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string" },
+        "notes": { "type": "string" },
+        "taxRate": { "type": "number" },
+        "taxType": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["invoiceNumber", "clientName", "contactId", "originalAmount", "dueDate", "invoiceDate", "userId", "createdAt"]
+    },
+    "InvoiceLineItem": {
+      "title": "Invoice Line Item",
+      "type": "object",
+      "description": "Represents a single line item on an invoice.",
+      "properties": {
+        "invoiceId": { "type": "string" },
+        "description": { "type": "string" },
+        "quantity": { "type": "number" },
+        "price": { "type": "number" }
+      },
+      "required": ["invoiceId", "description", "quantity", "price"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": { "$ref": "#/entities/User" },
+        "description": "Stores user profiles."
+      },
+      {
+        "path": "/incomeTransactions/{transactionId}",
+        "definition": { "$ref": "#/entities/IncomeTransaction" },
+        "description": "Stores all income transactions for all users."
+      },
+      {
+        "path": "/expenseTransactions/{transactionId}",
+        "definition": { "$ref": "#/entities/ExpenseTransaction" },
+        "description": "Stores all expense transactions for all users."
+      },
+      {
+        "path": "/payableBills/{billId}",
+        "definition": { "$ref": "#/entities/PayableBill" },
+        "description": "Stores all payable bills for all users."
+      },
+      {
+        "path": "/assets/{assetId}",
+        "definition": { "$ref": "#/entities/Asset" },
+        "description": "Stores all capital assets for all users."
+      },
+      {
+        "path": "/equityTransactions/{transactionId}",
+        "definition": { "$ref": "#/entities/EquityTransaction" },
+        "description": "Stores all equity transactions for all users."
+      },
+      {
+        "path": "/invoices/{invoiceId}",
+        "definition": { "$ref": "#/entities/Invoice" },
+        "description": "Stores all invoices for all users."
+      },
+      {
+        "path": "/invoiceLineItems/{lineItemId}",
+        "definition": { "$ref": "#/entities/InvoiceLineItem" },
+        "description": "Stores all invoice line items for all users."
+      }
+    ]
+  }
+}

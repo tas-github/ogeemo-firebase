@@ -1,0 +1,52 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read, update, delete: if isOwner(userId);
+      allow create: if request.auth.uid == userId;
+    }
+
+    match /incomeTransactions/{transactionId} {
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+    
+    match /expenseTransactions/{transactionId} {
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+    
+    match /payableBills/{billId} {
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    match /assets/{assetId} {
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    match /equityTransactions/{transactionId} {
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    match /invoices/{invoiceId} {
+      allow read, update, delete: if isOwner(resource.data.userId);
+      allow create: if isOwner(request.resource.data.userId);
+    }
+
+    match /invoiceLineItems/{lineItemId} {
+      // Allow read if user can read the parent invoice.
+      allow read: if isOwner(get(/databases/$(database)/documents/invoices/$(resource.data.invoiceId)).data.userId);
+      // Allow create/update/delete if user owns the parent invoice.
+      allow write: if isOwner(get(/databases/$(database)/documents/invoices/$(request.resource.data.invoiceId)).data.userId);
+    }
+  }
+}
