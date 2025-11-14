@@ -126,7 +126,7 @@ export function AccountsPayableView() {
       try {
         if (billToEdit) {
             await updatePayableBill(billToEdit.id, billData);
-            setPayableLedger(prev => prev.map(item => item.id === billToEdit.id ? { ...item, ...billData } : item));
+            setPayableLedger(prev => prev.map(item => item.id === billToEdit.id ? { ...item, ...billData, id: billToEdit.id, userId: user.uid } : item));
             toast({ title: "Bill Updated" });
         } else {
             const newEntry = await addPayableBill({ ...billData, userId: user.uid });
