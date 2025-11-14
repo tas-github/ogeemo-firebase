@@ -11,8 +11,8 @@ import { Separator } from '@/components/ui/separator';
 import { Printer, Mail, ArrowLeft, LoaderCircle, AlertTriangle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { Textarea } from '@/components/ui/textarea';
 import { useReactToPrint } from '@/hooks/use-react-to-print';
+import { Textarea } from '@/components/ui/textarea';
 
 const RECEIPT_DATA_KEY = 'ogeemo-receipt-data';
 
@@ -22,9 +22,9 @@ interface DeserializedInvoice {
   clientName: string;
   originalAmount: number;
   amountPaid: number;
-  dueDate: Date;
-  invoiceDate: Date;
-  createdAt: Date;
+  dueDate: string; // ISO string
+  invoiceDate: string; // ISO string
+  createdAt: string; // ISO string
 }
 
 interface ReceiptData {
@@ -50,13 +50,7 @@ export default function ReceiptPage() {
             const dataRaw = sessionStorage.getItem(RECEIPT_DATA_KEY);
             if (dataRaw) {
                 const parsedData = JSON.parse(dataRaw);
-                const deserializedInvoice: DeserializedInvoice = {
-                    ...parsedData.invoice,
-                    dueDate: parseISO(parsedData.invoice.dueDate),
-                    invoiceDate: parseISO(parsedData.invoice.invoiceDate),
-                    createdAt: parseISO(parsedData.invoice.createdAt),
-                };
-                setReceiptData({ ...parsedData, invoice: deserializedInvoice });
+                setReceiptData(parsedData);
             } else {
                 setError('No receipt data found. Please return to the previous page and try again.');
             }
@@ -92,7 +86,7 @@ export default function ReceiptPage() {
                         <AlertTriangle className="mx-auto h-12 w-12 text-destructive" />
                         <h2 className="mt-4 text-xl font-semibold">Could not load receipt</h2>
                         <p className="mt-2 text-muted-foreground">{error || "An unknown error occurred."}</p>
-                        <Button className="mt-6" onClick={() => router.push('/accounting/invoices/payments')}>
+                        <Button className="mt-6" onClick={() => router.push('/accounting/accounts-receivable')}>
                              <ArrowLeft className="mr-2 h-4 w-4" />
                             Return to Accounts Receivable
                         </Button>
@@ -105,11 +99,12 @@ export default function ReceiptPage() {
     const { invoice, carryForwardAmount } = receiptData;
     const totalBalanceDue = (invoice.originalAmount - invoice.amountPaid) + carryForwardAmount;
     const isPaidInFull = totalBalanceDue <= 0.001;
+    const dueDate = parseISO(invoice.dueDate);
 
     return (
         <div className="p-4 sm:p-6 space-y-4">
             <div className="flex justify-between items-center max-w-4xl mx-auto">
-                 <Button variant="outline" onClick={() => router.push('/accounting/invoices/payments')}>
+                 <Button variant="outline" onClick={() => router.push('/accounting/accounts-receivable')}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back to Accounts Receivable
                 </Button>
@@ -144,7 +139,7 @@ export default function ReceiptPage() {
                         </div>
                         <div className="text-right">
                             <p><span className="font-bold text-gray-500">Date Issued:</span> {format(new Date(), 'PP')}</p>
-                            <p><span className="font-bold text-gray-500">Original Due Date:</span> {format(invoice.dueDate, 'PP')}</p>
+                            <p><span className="font-bold text-gray-500">Original Due Date:</span> {format(dueDate, 'PP')}</p>
                         </div>
                     </section>
                     <section className="mt-8">

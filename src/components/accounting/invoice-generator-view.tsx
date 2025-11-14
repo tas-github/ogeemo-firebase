@@ -144,8 +144,8 @@ export function InvoiceGeneratorView() {
                 if (invoiceToLoad) {
                     setInvoiceNumber(invoiceToLoad.invoiceNumber);
                     setSelectedContactId(invoiceToLoad.contactId);
-                    setInvoiceDate(format(invoiceToLoad.invoiceDate, 'yyyy-MM-dd'));
-                    setDueDate(format(invoiceToLoad.dueDate, 'yyyy-MM-dd'));
+                    setInvoiceDate(format(new Date(invoiceToLoad.invoiceDate), 'yyyy-MM-dd'));
+                    setDueDate(format(new Date(invoiceToLoad.dueDate), 'yyyy-MM-dd'));
                     if (invoiceToLoad.taxType && invoiceToLoad.taxRate) {
                         setTaxes([{ id: 1, name: invoiceToLoad.taxType, rate: invoiceToLoad.taxRate }]);
                     } else {
