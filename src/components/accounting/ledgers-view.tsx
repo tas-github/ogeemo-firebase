@@ -389,20 +389,21 @@ export function LedgersView() {
                                     onValueChange={setCompanySearchValue}
                                 />
                                 <CommandList>
-                                    <CommandEmpty
-                                      onSelect={() => handleCreateCompany(companySearchValue)}
-                                    >
-                                      <div className="p-2 cursor-pointer hover:bg-accent">
-                                        <PlusCircle className="mr-2 h-4 w-4 inline" />
-                                        Create "{companySearchValue}"
-                                      </div>
+                                    <CommandEmpty>
+                                        <div 
+                                            className="p-2 cursor-pointer hover:bg-accent"
+                                            onClick={() => handleCreateCompany(companySearchValue)}
+                                        >
+                                            <PlusCircle className="mr-2 h-4 w-4 inline" />
+                                            Create "{companySearchValue}"
+                                        </div>
                                     </CommandEmpty>
                                     <CommandGroup>
                                         {companies.map((c) => (
                                             <CommandItem
                                                 key={c.id}
                                                 value={c.name}
-                                                onSelect={(currentValue) => {
+                                                onSelect={() => {
                                                     setNewTransaction(prev => ({ ...prev, company: c.name }));
                                                     setIsCompanyPopoverOpen(false);
                                                 }}
