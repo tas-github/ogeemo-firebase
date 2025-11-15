@@ -191,7 +191,7 @@ export async function deleteInvoice(invoiceId: string): Promise<void> {
 
 // --- Income Interfaces & Functions ---
 export interface IncomeTransaction extends BaseTransaction {
-  incomeType: string;
+  incomeCategory: string;
   depositedTo: string;
 }
 
@@ -208,8 +208,10 @@ export async function getIncomeTransactions(userId: string): Promise<IncomeTrans
         const newEntries: IncomeTransaction[] = [];
         mockIncome.forEach(item => {
             const docRef = doc(collection(db, INCOME_COLLECTION));
-            batch.set(docRef, { ...item, userId });
-            newEntries.push({ ...item, id: docRef.id, userId });
+            const newItem = { ...item, incomeCategory: item.incomeType };
+            delete (newItem as any).incomeType;
+            batch.set(docRef, { ...newItem, userId });
+            newEntries.push({ ...newItem, id: docRef.id, userId });
         });
         await batch.commit();
         return newEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -451,5 +453,29 @@ export async function getExpenseCategories(userId: string): Promise<ExpenseCateg
 export async function addExpenseCategory(data: Omit<ExpenseCategory, 'id'>): Promise<ExpenseCategory> {
   const db = await getDb();
   const docRef = await addDoc(collection(db, EXPENSE_CATEGORIES_COLLECTION), data);
+  return { id: docRef.id, ...data };
+}
+
+
+// --- Income Category Interfaces & Functions ---
+export interface IncomeCategory {
+  id: string;
+  name: string;
+  userId: string;
+}
+
+const INCOME_CATEGORIES_COLLECTION = 'incomeCategories';
+const docToIncomeCategory = (doc: any): IncomeCategory => ({ id: doc.id, ...doc.data() } as IncomeCategory);
+
+export async function getIncomeCategories(userId: string): Promise<IncomeCategory[]> {
+  const db = await getDb();
+  const q = query(collection(db, INCOME_CATEGORIES_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docToIncomeCategory);
+}
+
+export async function addIncomeCategory(data: Omit<IncomeCategory, 'id'>): Promise<IncomeCategory> {
+  const db = await getDb();
+  const docRef = await addDoc(collection(db, INCOME_CATEGORIES_COLLECTION), data);
   return { id: docRef.id, ...data };
 }
