@@ -389,18 +389,13 @@ export function LedgersView() {
                                     onValueChange={setCompanySearchValue}
                                 />
                                 <CommandList>
-                                    <CommandEmpty>
-                                        <Button
-                                            variant="ghost"
-                                            className="w-full justify-start"
-                                            onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                handleCreateCompany(companySearchValue);
-                                            }}
-                                        >
-                                            <PlusCircle className="mr-2 h-4 w-4" />
-                                            Create "{companySearchValue}"
-                                        </Button>
+                                    <CommandEmpty
+                                      onSelect={() => handleCreateCompany(companySearchValue)}
+                                    >
+                                      <div className="p-2 cursor-pointer hover:bg-accent">
+                                        <PlusCircle className="mr-2 h-4 w-4 inline" />
+                                        Create "{companySearchValue}"
+                                      </div>
                                     </CommandEmpty>
                                     <CommandGroup>
                                         {companies.map((c) => (
