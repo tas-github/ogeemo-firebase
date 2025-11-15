@@ -34,6 +34,7 @@ interface BaseTransaction {
   amount: number;
   explanation?: string;
   documentNumber?: string;
+  documentUrl?: string;
   type: 'business' | 'personal';
   userId: string;
 }

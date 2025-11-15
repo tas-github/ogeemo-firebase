@@ -49,7 +49,10 @@ const addActionSchema = z.discriminatedUnion("linkType", [
     linkType: z.literal("custom"),
     label: z.string().min(1, { message: "Label is required." }),
     targetPage: z.string().optional(),
-    customUrl: z.string().url({ message: "Please enter a valid URL." }),
+    customUrl: z.string().min(1, { message: "URL or path is required." }).refine(
+        (value) => value.startsWith('/') || value.startsWith('http://') || value.startsWith('https://'),
+        { message: "Please enter a valid URL (e.g., https://...) or an internal path (e.g., /dashboard)." }
+    ),
   }),
 ]);
 
@@ -87,14 +90,14 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
   useEffect(() => {
     if (isOpen) {
       if (chipToEdit) {
-        const isCustomUrl = typeof chipToEdit.href === 'string' && chipToEdit.href.startsWith('http');
-        const linkType = isCustomUrl ? 'custom' : 'internal';
+        const isInternal = allMenuItems.some(item => item.href === chipToEdit.href);
+        const linkType = isInternal ? 'internal' : 'custom';
         
         form.reset({
           linkType: linkType,
           label: chipToEdit.label,
-          targetPage: !isCustomUrl && typeof chipToEdit.href === 'string' ? chipToEdit.href : undefined,
-          customUrl: isCustomUrl ? chipToEdit.href as string : "",
+          targetPage: isInternal ? chipToEdit.href as string : undefined,
+          customUrl: !isInternal ? chipToEdit.href as string : "",
         });
       } else {
         form.reset({
@@ -105,7 +108,7 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
         });
       }
     }
-  }, [chipToEdit, isOpen, form]);
+  }, [chipToEdit, isOpen, form, allMenuItems]);
 
 
   async function onSubmit(values: AddActionFormData) {
@@ -258,9 +261,9 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
                 name="customUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Custom URL</FormLabel>
+                    <FormLabel>Custom URL or Path</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://example.com" {...field} />
+                      <Input placeholder="https://example.com or /my-page" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

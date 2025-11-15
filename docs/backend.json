@@ -55,6 +55,7 @@
             "depositedTo": { "type": "string" },
             "explanation": { "type": "string" },
             "documentNumber": { "type": "string" },
+            "documentUrl": { "type": "string", "format": "uri" },
             "type": { "type": "string", "enum": ["business", "personal"] },
             "userId": { "type": "string" }
         },
@@ -72,6 +73,7 @@
             "category": { "type": "string" },
             "explanation": { "type": "string" },
             "documentNumber": { "type": "string" },
+            "documentUrl": { "type": "string", "format": "uri" },
             "type": { "type": "string", "enum": ["business", "personal"] },
             "userId": { "type": "string" }
         },
