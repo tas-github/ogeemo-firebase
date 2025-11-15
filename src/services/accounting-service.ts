@@ -406,3 +406,26 @@ export async function deleteEquityTransaction(id: string): Promise<void> {
     const db = await getDb();
     await deleteDoc(doc(db, EQUITY_COLLECTION, id));
 }
+
+// --- Company Interfaces & Functions ---
+export interface Company {
+  id: string;
+  name: string;
+  userId: string;
+}
+
+const COMPANIES_COLLECTION = 'companies';
+const docToCompany = (doc: any): Company => ({ id: doc.id, ...doc.data() } as Company);
+
+export async function getCompanies(userId: string): Promise<Company[]> {
+  const db = await getDb();
+  const q = query(collection(db, COMPANIES_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docToCompany);
+}
+
+export async function addCompany(data: Omit<Company, 'id'>): Promise<Company> {
+  const db = await getDb();
+  const docRef = await addDoc(collection(db, COMPANIES_COLLECTION), data);
+  return { id: docRef.id, ...data };
+}
