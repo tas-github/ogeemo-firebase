@@ -429,3 +429,26 @@ export async function addCompany(data: Omit<Company, 'id'>): Promise<Company> {
   const docRef = await addDoc(collection(db, COMPANIES_COLLECTION), data);
   return { id: docRef.id, ...data };
 }
+
+// --- Expense Category Interfaces & Functions ---
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  userId: string;
+}
+
+const EXPENSE_CATEGORIES_COLLECTION = 'expenseCategories';
+const docToExpenseCategory = (doc: any): ExpenseCategory => ({ id: doc.id, ...doc.data() } as ExpenseCategory);
+
+export async function getExpenseCategories(userId: string): Promise<ExpenseCategory[]> {
+  const db = await getDb();
+  const q = query(collection(db, EXPENSE_CATEGORIES_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docToExpenseCategory);
+}
+
+export async function addExpenseCategory(data: Omit<ExpenseCategory, 'id'>): Promise<ExpenseCategory> {
+  const db = await getDb();
+  const docRef = await addDoc(collection(db, EXPENSE_CATEGORIES_COLLECTION), data);
+  return { id: docRef.id, ...data };
+}
