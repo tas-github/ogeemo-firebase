@@ -92,6 +92,7 @@ export function LedgersView() {
   const [newTransactionType, setNewTransactionType] = React.useState<'income' | 'expense'>('income');
   const [newTransaction, setNewTransaction] = React.useState(emptyTransactionForm);
   const [isCompanyPopoverOpen, setIsCompanyPopoverOpen] = React.useState(false);
+  const [companySearchValue, setCompanySearchValue] = React.useState('');
 
   const [showTotals, setShowTotals] = React.useState(false);
   const { toast } = useToast();
@@ -227,6 +228,7 @@ export function LedgersView() {
             setCompanies(prev => [...prev, newCompany]);
             setNewTransaction(prev => ({ ...prev, company: companyName.trim() }));
             setIsCompanyPopoverOpen(false);
+            setCompanySearchValue('');
             toast({ title: 'Company Created', description: `"${companyName.trim()}" has been added.` });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Failed to create company', description: error.message });
@@ -381,7 +383,11 @@ export function LedgersView() {
                         </PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                             <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
-                                <CommandInput placeholder="Search company..." />
+                                <CommandInput 
+                                    placeholder="Search company..." 
+                                    value={companySearchValue}
+                                    onValueChange={setCompanySearchValue}
+                                />
                                 <CommandList>
                                     <CommandEmpty>
                                         <Button
@@ -389,12 +395,11 @@ export function LedgersView() {
                                             className="w-full justify-start"
                                             onMouseDown={(e) => {
                                                 e.preventDefault();
-                                                const searchInput = (e.currentTarget.closest('.cmdk-root')?.querySelector('input[cmdk-input]') as HTMLInputElement).value;
-                                                handleCreateCompany(searchInput);
+                                                handleCreateCompany(companySearchValue);
                                             }}
                                         >
                                             <PlusCircle className="mr-2 h-4 w-4" />
-                                            Create "{((isCompanyPopoverOpen && document.querySelector('input[cmdk-input]')) ? (document.querySelector('input[cmdk-input]') as HTMLInputElement).value : '')}"
+                                            Create "{companySearchValue}"
                                         </Button>
                                     </CommandEmpty>
                                     <CommandGroup>
@@ -403,7 +408,7 @@ export function LedgersView() {
                                                 key={c.id}
                                                 value={c.name}
                                                 onSelect={(currentValue) => {
-                                                    setNewTransaction(prev => ({ ...prev, company: currentValue }));
+                                                    setNewTransaction(prev => ({ ...prev, company: c.name }));
                                                     setIsCompanyPopoverOpen(false);
                                                 }}
                                             >
