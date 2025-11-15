@@ -47,24 +47,25 @@ import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, MoreVertical, BookOpen, Pencil, Trash2, LoaderCircle } from "lucide-react";
+import { PlusCircle, MoreVertical, BookOpen, Pencil, Trash2, LoaderCircle, Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth } from '@/context/auth-context';
-import { getIncomeTransactions, addIncomeTransaction, updateIncomeTransaction, deleteIncomeTransaction, type IncomeTransaction, getExpenseTransactions, addExpenseTransaction, updateExpenseTransaction, deleteExpenseTransaction, type ExpenseTransaction } from "@/services/accounting-service";
+import { getIncomeTransactions, addIncomeTransaction, updateIncomeTransaction, deleteIncomeTransaction, type IncomeTransaction, getExpenseTransactions, addExpenseTransaction, updateExpenseTransaction, deleteExpenseTransaction, type ExpenseTransaction, getCompanies, addCompany, type Company } from "@/services/accounting-service";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { InvoicePaymentsView } from "./invoice-payments-view";
 import { AccountsPayableView } from "./accounts-payable-view";
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 
 
 type GeneralTransaction = (IncomeTransaction | ExpenseTransaction) & { transactionType: 'income' | 'expense' };
 
 const defaultIncomeTypes = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income", "Invoice Payment"];
 const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
-const defaultCompanies = ["Client Alpha", "Client Beta", "E-commerce Store", "Affiliate Payout", "Cloud Hosting Inc.", "SaaS Tools Co.", "Office Supply Hub", "Jane Designs"];
 const defaultDepositAccounts = ["Bank Account #1", "Credit Card #1", "Cash Account"];
 
 const emptyTransactionForm = { date: '', company: '', description: '', amount: '', category: '', incomeType: '', explanation: '', documentNumber: '', documentUrl: '', type: 'business' as 'business' | 'personal', depositedTo: '' };
@@ -81,6 +82,7 @@ const tabTitles: Record<string, string> = {
 export function LedgersView() {
   const [incomeLedger, setIncomeLedger] = React.useState<IncomeTransaction[]>([]);
   const [expenseLedger, setExpenseLedger] = React.useState<ExpenseTransaction[]>([]);
+  const [companies, setCompanies] = React.useState<Company[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const { user } = useAuth();
   
@@ -89,6 +91,7 @@ export function LedgersView() {
   const [transactionToDelete, setTransactionToDelete] = React.useState<GeneralTransaction | null>(null);
   const [newTransactionType, setNewTransactionType] = React.useState<'income' | 'expense'>('income');
   const [newTransaction, setNewTransaction] = React.useState(emptyTransactionForm);
+  const [isCompanyPopoverOpen, setIsCompanyPopoverOpen] = React.useState(false);
 
   const [showTotals, setShowTotals] = React.useState(false);
   const { toast } = useToast();
@@ -104,12 +107,14 @@ export function LedgersView() {
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const [income, expenses] = await Promise.all([
+            const [income, expenses, fetchedCompanies] = await Promise.all([
                 getIncomeTransactions(user.uid),
                 getExpenseTransactions(user.uid),
+                getCompanies(user.uid),
             ]);
             setIncomeLedger(income);
             setExpenseLedger(expenses);
+            setCompanies(fetchedCompanies);
         } catch (error: any) {
              toast({ variant: "destructive", title: "Failed to load ledger data", description: error.message });
         } finally {
@@ -213,6 +218,21 @@ export function LedgersView() {
             setTransactionToDelete(null);
         }
     };
+    
+    const handleCreateCompany = async (companyName: string) => {
+        if (!user || !companyName.trim()) return;
+        
+        try {
+            const newCompany = await addCompany({ name: companyName.trim(), userId: user.uid });
+            setCompanies(prev => [...prev, newCompany]);
+            setNewTransaction(prev => ({ ...prev, company: companyName.trim() }));
+            setIsCompanyPopoverOpen(false);
+            toast({ title: 'Company Created', description: `"${companyName.trim()}" has been added.` });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Failed to create company', description: error.message });
+        }
+    };
+
 
     const renderDocumentNumber = (item: GeneralTransaction) => {
         if (item.documentUrl) {
@@ -349,7 +369,55 @@ export function LedgersView() {
                 <div><RadioGroupItem value="expense" id="r-expense" className="peer sr-only" /><Label htmlFor="r-expense" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-red-600 [&:has([data-state=checked])]:border-red-600">Expense</Label></div>
             </RadioGroup>
             <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-date-gl" className="text-right">Date <span className="text-destructive">*</span></Label><Input id="tx-date-gl" type="date" value={newTransaction.date} onChange={(e) => setNewTransaction(prev => ({...prev, date: e.target.value}))} className="col-span-3" /></div>
-            <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-company-gl" className="text-right">Company <span className="text-destructive">*</span></Label><div className="col-span-3"><Select value={newTransaction.company} onValueChange={(value) => setNewTransaction(prev => ({...prev, company: value}))}><SelectTrigger id="tx-company-gl" className="w-full"><SelectValue placeholder="Select a company" /></SelectTrigger><SelectContent>{defaultCompanies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div></div>
+            <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="tx-company-gl" className="text-right">Company <span className="text-destructive">*</span></Label>
+                <div className="col-span-3">
+                    <Popover open={isCompanyPopoverOpen} onOpenChange={setIsCompanyPopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" role="combobox" className="w-full justify-between">
+                                {newTransaction.company || "Select or create company..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                                <CommandInput placeholder="Search company..." />
+                                <CommandList>
+                                    <CommandEmpty>
+                                        <Button
+                                            variant="ghost"
+                                            className="w-full justify-start"
+                                            onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                const searchInput = (e.currentTarget.closest('.cmdk-root')?.querySelector('input[cmdk-input]') as HTMLInputElement).value;
+                                                handleCreateCompany(searchInput);
+                                            }}
+                                        >
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            Create "{((isCompanyPopoverOpen && document.querySelector('input[cmdk-input]')) ? (document.querySelector('input[cmdk-input]') as HTMLInputElement).value : '')}"
+                                        </Button>
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                        {companies.map((c) => (
+                                            <CommandItem
+                                                key={c.id}
+                                                value={c.name}
+                                                onSelect={(currentValue) => {
+                                                    setNewTransaction(prev => ({ ...prev, company: currentValue }));
+                                                    setIsCompanyPopoverOpen(false);
+                                                }}
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", newTransaction.company.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
+                                                {c.name}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                </div>
+            </div>
             <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-doc-number-gl" className="text-right">Document #</Label><Input id="tx-doc-number-gl" value={newTransaction.documentNumber} onChange={(e) => setNewTransaction(prev => ({...prev, documentNumber: e.target.value}))} className="col-span-3" /></div>
             <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-doc-url-gl" className="text-right">Document Link</Label><Input id="tx-doc-url-gl" placeholder="https://..." value={newTransaction.documentUrl} onChange={(e) => setNewTransaction(prev => ({...prev, documentUrl: e.target.value}))} className="col-span-3" /></div>
             <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-description-gl" className="text-right">Description</Label><Input id="tx-description-gl" value={newTransaction.description} onChange={(e) => setNewTransaction(prev => ({...prev, description: e.target.value}))} className="col-span-3" /></div>
