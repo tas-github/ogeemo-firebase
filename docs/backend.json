@@ -51,7 +51,7 @@
             "company": { "type": "string" },
             "description": { "type": "string" },
             "amount": { "type": "number" },
-            "incomeType": { "type": "string" },
+            "incomeCategory": { "type": "string" },
             "depositedTo": { "type": "string" },
             "explanation": { "type": "string" },
             "documentNumber": { "type": "string" },
@@ -59,7 +59,7 @@
             "type": { "type": "string", "enum": ["business", "personal"] },
             "userId": { "type": "string" }
         },
-        "required": ["date", "company", "amount", "incomeType", "userId"]
+        "required": ["date", "company", "amount", "incomeCategory", "userId"]
     },
     "ExpenseTransaction": {
         "title": "Expense Transaction",
@@ -142,6 +142,16 @@
         "userId": { "type": "string" }
       },
       "required": ["name", "userId"]
+    },
+    "IncomeCategory": {
+      "title": "Income Category",
+      "description": "Represents a user-defined income category.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["name", "userId"]
     }
   },
   "auth": {
@@ -187,6 +197,10 @@
     "/expenseCategories/{categoryId}": {
       "schema": { "$ref": "#/entities/ExpenseCategory" },
       "description": "Stores user-defined expense categories."
+    },
+    "/incomeCategories/{categoryId}": {
+      "schema": { "$ref": "#/entities/IncomeCategory" },
+      "description": "Stores user-defined income categories."
     }
   }
 }
