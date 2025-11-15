@@ -122,6 +122,16 @@
             "userId": { "type": "string" }
         },
         "required": ["date", "amount", "type", "userId"]
+    },
+    "Company": {
+      "title": "Company",
+      "description": "Represents a company, client, or vendor.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["name", "userId"]
     }
   },
   "auth": {
@@ -159,6 +169,10 @@
     "/equityTransactions/{transactionId}": {
         "schema": { "$ref": "#/entities/EquityTransaction" },
         "description": "Collection of all equity transactions."
+    },
+    "/companies/{companyId}": {
+      "schema": { "$ref": "#/entities/Company" },
+      "description": "Stores company, client, or vendor names for use in transactions."
     }
   }
 }

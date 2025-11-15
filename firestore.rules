@@ -39,6 +39,10 @@ service cloud.firestore {
     match /equityTransactions/{transactionId} {
       allow read, write: if isOwner(resource.data.userId);
     }
+    
+    match /companies/{companyId} {
+      allow read, write: if isOwner(resource.data.userId);
+    }
 
     // Fallback rule for any other path
     match /{document=**} {
