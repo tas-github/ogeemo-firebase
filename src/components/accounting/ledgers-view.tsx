@@ -1,6 +1,6 @@
 
 
-"use client";
+'use client';
 
 import * as React from "react";
 import { useSearchParams } from 'next/navigation';
@@ -54,7 +54,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth } from '@/context/auth-context';
-import { getIncomeTransactions, addIncomeTransaction, updateIncomeTransaction, deleteIncomeTransaction, type IncomeTransaction, getExpenseTransactions, addExpenseTransaction, updateExpenseTransaction, deleteExpenseTransaction, type ExpenseTransaction, getCompanies, addCompany, type Company, getExpenseCategories, addExpenseCategory, type ExpenseCategory } from "@/services/accounting-service";
+import { 
+    getIncomeTransactions, addIncomeTransaction, updateIncomeTransaction, deleteIncomeTransaction, type IncomeTransaction, 
+    getExpenseTransactions, addExpenseTransaction, updateExpenseTransaction, deleteExpenseTransaction, type ExpenseTransaction, 
+    getCompanies, addCompany, type Company, 
+    getExpenseCategories, addExpenseCategory, type ExpenseCategory,
+    getIncomeCategories, addIncomeCategory, type IncomeCategory
+} from "@/services/accounting-service";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { InvoicePaymentsView } from "./invoice-payments-view";
 import { AccountsPayableView } from "./accounts-payable-view";
@@ -64,10 +70,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 
 type GeneralTransaction = (IncomeTransaction | ExpenseTransaction) & { transactionType: 'income' | 'expense' };
 
-const defaultIncomeTypes = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income", "Invoice Payment"];
 const defaultDepositAccounts = ["Bank Account #1", "Credit Card #1", "Cash Account"];
 
-const emptyTransactionForm = { date: '', company: '', description: '', amount: '', category: '', incomeType: '', explanation: '', documentNumber: '', documentUrl: '', type: 'business' as 'business' | 'personal', depositedTo: '' };
+const emptyTransactionForm = { date: '', company: '', description: '', amount: '', category: '', incomeCategory: '', explanation: '', documentNumber: '', documentUrl: '', type: 'business' as 'business' | 'personal', depositedTo: '' };
 
 const tabTitles: Record<string, string> = {
     bks: 'BKS (General Ledger)',
@@ -83,6 +88,8 @@ export function LedgersView() {
   const [expenseLedger, setExpenseLedger] = React.useState<ExpenseTransaction[]>([]);
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [expenseCategories, setExpenseCategories] = React.useState<ExpenseCategory[]>([]);
+  const [incomeCategories, setIncomeCategories] = React.useState<IncomeCategory[]>([]);
+
   const [isLoading, setIsLoading] = React.useState(true);
   const { user } = useAuth();
   
@@ -91,10 +98,15 @@ export function LedgersView() {
   const [transactionToDelete, setTransactionToDelete] = React.useState<GeneralTransaction | null>(null);
   const [newTransactionType, setNewTransactionType] = React.useState<'income' | 'expense'>('income');
   const [newTransaction, setNewTransaction] = React.useState(emptyTransactionForm);
+  
   const [isCompanyPopoverOpen, setIsCompanyPopoverOpen] = React.useState(false);
   const [companySearchValue, setCompanySearchValue] = React.useState('');
+
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = React.useState(false);
   const [categorySearchValue, setCategorySearchValue] = React.useState('');
+  
+  const [isIncomeCategoryPopoverOpen, setIsIncomeCategoryPopoverOpen] = React.useState(false);
+  const [incomeCategorySearchValue, setIncomeCategorySearchValue] = React.useState('');
 
   const [showTotals, setShowTotals] = React.useState(false);
   const { toast } = useToast();
@@ -110,16 +122,18 @@ export function LedgersView() {
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const [income, expenses, fetchedCompanies, fetchedCategories] = await Promise.all([
+            const [income, expenses, fetchedCompanies, fetchedExpenseCategories, fetchedIncomeCategories] = await Promise.all([
                 getIncomeTransactions(user.uid),
                 getExpenseTransactions(user.uid),
                 getCompanies(user.uid),
                 getExpenseCategories(user.uid),
+                getIncomeCategories(user.uid),
             ]);
             setIncomeLedger(income);
             setExpenseLedger(expenses);
             setCompanies(fetchedCompanies);
-            setExpenseCategories(fetchedCategories);
+            setExpenseCategories(fetchedExpenseCategories);
+            setIncomeCategories(fetchedIncomeCategories);
         } catch (error: any) {
              toast({ variant: "destructive", title: "Failed to load ledger data", description: error.message });
         } finally {
@@ -152,7 +166,7 @@ export function LedgersView() {
                 description: transaction.description,
                 amount: String(transaction.amount),
                 category: (transaction as ExpenseTransaction).category || '',
-                incomeType: (transaction as IncomeTransaction).incomeType || '',
+                incomeCategory: (transaction as IncomeTransaction).incomeCategory || '',
                 explanation: transaction.explanation || '',
                 documentNumber: transaction.documentNumber || '',
                 documentUrl: transaction.documentUrl || '',
@@ -169,7 +183,7 @@ export function LedgersView() {
     const handleSaveTransaction = async () => {
         if (!user) return;
         const amountNum = parseFloat(newTransaction.amount);
-        if (!newTransaction.date || !newTransaction.company || (newTransactionType === 'income' ? !newTransaction.incomeType : !newTransaction.category) || !newTransaction.amount || isNaN(amountNum) || amountNum <= 0) {
+        if (!newTransaction.date || !newTransaction.company || (newTransactionType === 'income' ? !newTransaction.incomeCategory : !newTransaction.category) || !newTransaction.amount || isNaN(amountNum) || amountNum <= 0) {
             toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please fill all required fields correctly.' });
             return;
         }
@@ -177,7 +191,7 @@ export function LedgersView() {
         try {
             if (transactionToEdit) {
                  if (transactionToEdit.transactionType === 'income') {
-                    const updatedData = { date: newTransaction.date, company: newTransaction.company, description: newTransaction.description, amount: amountNum, incomeType: newTransaction.incomeType, depositedTo: newTransaction.depositedTo, explanation: newTransaction.explanation, documentNumber: newTransaction.documentNumber, documentUrl: newTransaction.documentUrl, type: newTransaction.type };
+                    const updatedData = { date: newTransaction.date, company: newTransaction.company, description: newTransaction.description, amount: amountNum, incomeCategory: newTransaction.incomeCategory, depositedTo: newTransaction.depositedTo, explanation: newTransaction.explanation, documentNumber: newTransaction.documentNumber, documentUrl: newTransaction.documentUrl, type: newTransaction.type };
                     await updateIncomeTransaction(transactionToEdit.id, updatedData);
                     setIncomeLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, ...updatedData } : item));
                     toast({ title: "Income Transaction Updated" });
@@ -189,7 +203,7 @@ export function LedgersView() {
                 }
             } else {
                  if (newTransactionType === 'income') {
-                    const newEntryData: Omit<IncomeTransaction, 'id'> = { date: newTransaction.date, company: newTransaction.company, description: newTransaction.description, amount: amountNum, incomeType: newTransaction.incomeType, depositedTo: newTransaction.depositedTo, explanation: newTransaction.explanation, documentNumber: newTransaction.documentNumber, documentUrl: newTransaction.documentUrl, type: newTransaction.type, userId: user.uid };
+                    const newEntryData: Omit<IncomeTransaction, 'id'> = { date: newTransaction.date, company: newTransaction.company, description: newTransaction.description, amount: amountNum, incomeCategory: newTransaction.incomeCategory, depositedTo: newTransaction.depositedTo, explanation: newTransaction.explanation, documentNumber: newTransaction.documentNumber, documentUrl: newTransaction.documentUrl, type: newTransaction.type, userId: user.uid };
                     const newEntry = await addIncomeTransaction(newEntryData);
                     setIncomeLedger(prev => [newEntry, ...prev]);
                     toast({ title: "Income Transaction Added" });
@@ -252,6 +266,21 @@ export function LedgersView() {
             toast({ variant: 'destructive', title: 'Failed to create category', description: error.message });
         }
     };
+
+    const handleCreateIncomeCategory = async (categoryName: string) => {
+        if (!user || !categoryName.trim()) return;
+        try {
+            const newCategory = await addIncomeCategory({ name: categoryName.trim(), userId: user.uid });
+            setIncomeCategories(prev => [...prev, newCategory]);
+            setNewTransaction(prev => ({ ...prev, incomeCategory: categoryName.trim() }));
+            setIsIncomeCategoryPopoverOpen(false);
+            setIncomeCategorySearchValue('');
+            toast({ title: 'Category Created', description: `"${categoryName.trim()}" has been added.` });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Failed to create category', description: error.message });
+        }
+    };
+
 
     const renderDocumentNumber = (item: GeneralTransaction) => {
         if (item.documentUrl) {
@@ -319,7 +348,7 @@ export function LedgersView() {
                                 <TableCell>{item.date}</TableCell>
                                 <TableCell>{item.company}</TableCell>
                                 <TableCell>{item.description}</TableCell>
-                                <TableCell>{(item as IncomeTransaction).incomeType || (item as ExpenseTransaction).category}</TableCell>
+                                <TableCell>{(item as IncomeTransaction).incomeCategory || (item as ExpenseTransaction).category}</TableCell>
                                 <TableCell><Badge variant={item.transactionType === 'income' ? 'secondary' : 'destructive'} className={cn(item.transactionType === 'income' && 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200')}>{item.transactionType}</Badge></TableCell>
                                 <TableCell>{renderDocumentNumber(item)}</TableCell>
                                 <TableCell className={cn("text-right font-mono", item.transactionType === 'income' ? 'text-green-600' : 'text-red-600')}>{item.transactionType === 'income' ? item.amount.toLocaleString("en-US", { style: "currency", currency: "USD" }) : `(${item.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })})`}</TableCell>
@@ -342,8 +371,8 @@ export function LedgersView() {
                     <CardContent>
                         {isLoading ? <div className="flex justify-center items-center h-48"><LoaderCircle className="h-8 w-8 animate-spin" /></div> : (
                             <Table>
-                                <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Company</TableHead><TableHead>Description</TableHead><TableHead>Doc #</TableHead><TableHead>Income Type</TableHead><TableHead className="text-right">Amount</TableHead><TableHead><span className="sr-only">Actions</span></TableHead></TableRow></TableHeader>
-                                <TableBody>{incomeLedger.map(item => ( <TableRow key={item.id}><TableCell>{item.date}</TableCell><TableCell>{item.company}</TableCell><TableCell>{item.description}</TableCell><TableCell>{renderDocumentNumber(item)}</TableCell><TableCell>{item.incomeType}</TableCell><TableCell className="text-right font-mono text-green-600">{item.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell><TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', {...item, transactionType: 'income'})}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem><DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({...item, transactionType: 'income'})}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell></TableRow>))}</TableBody>
+                                <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Company</TableHead><TableHead>Description</TableHead><TableHead>Doc #</TableHead><TableHead>Income Category</TableHead><TableHead className="text-right">Amount</TableHead><TableHead><span className="sr-only">Actions</span></TableHead></TableRow></TableHeader>
+                                <TableBody>{incomeLedger.map(item => ( <TableRow key={item.id}><TableCell>{item.date}</TableCell><TableCell>{item.company}</TableCell><TableCell>{item.description}</TableCell><TableCell>{renderDocumentNumber(item)}</TableCell><TableCell>{item.incomeCategory}</TableCell><TableCell className="text-right font-mono text-green-600">{item.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell><TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', {...item, transactionType: 'income'})}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem><DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({...item, transactionType: 'income'})}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell></TableRow>))}</TableBody>
                             </Table>
                         )}
                     </CardContent>
@@ -407,21 +436,15 @@ export function LedgersView() {
                                 />
                                 <CommandList>
                                      <CommandEmpty>
-                                        <div onClick={() => handleCreateCompany(companySearchValue)} className="p-2 cursor-pointer hover:bg-accent">
-                                            <PlusCircle className="mr-2 h-4 w-4 inline" />
-                                            Create "{companySearchValue}"
-                                        </div>
+                                        {companySearchValue.trim() && (
+                                            <CommandItem onSelect={() => handleCreateCompany(companySearchValue)} className="cursor-pointer">
+                                                <PlusCircle className="mr-2 h-4 w-4" /> Create "{companySearchValue}"
+                                            </CommandItem>
+                                        )}
                                     </CommandEmpty>
                                     <CommandGroup>
                                         {companies.map((c) => (
-                                            <CommandItem
-                                                key={c.id}
-                                                value={c.name}
-                                                onSelect={() => {
-                                                    setNewTransaction(prev => ({ ...prev, company: c.name }));
-                                                    setIsCompanyPopoverOpen(false);
-                                                }}
-                                            >
+                                            <CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, company: c.name })); setIsCompanyPopoverOpen(false); }}>
                                                 <Check className={cn("mr-2 h-4 w-4", newTransaction.company.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
                                                 {c.name}
                                             </CommandItem>
@@ -440,7 +463,41 @@ export function LedgersView() {
             
             {newTransactionType === 'income' && (
                 <>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-income-type-gl" className="text-right">Income Type <span className="text-destructive">*</span></Label><div className="col-span-3"><Select value={newTransaction.incomeType} onValueChange={(value) => setNewTransaction(prev => ({...prev, incomeType: value}))}><SelectTrigger id="tx-income-type-gl" className="w-full"><SelectValue placeholder="Select a type" /></SelectTrigger><SelectContent>{defaultIncomeTypes.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select></div></div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="tx-income-category-gl" className="text-right">Income Category <span className="text-destructive">*</span></Label>
+                    <div className="col-span-3">
+                        <Popover open={isIncomeCategoryPopoverOpen} onOpenChange={setIsIncomeCategoryPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className="w-full justify-between">
+                                    {newTransaction.incomeCategory || "Select or create category..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                                    <CommandInput placeholder="Search category..." value={incomeCategorySearchValue} onValueChange={setIncomeCategorySearchValue} />
+                                    <CommandList>
+                                        <CommandEmpty>
+                                            {incomeCategorySearchValue.trim() && (
+                                                <CommandItem onSelect={() => handleCreateIncomeCategory(incomeCategorySearchValue)} className="cursor-pointer">
+                                                    <PlusCircle className="mr-2 h-4 w-4" /> Create "{incomeCategorySearchValue}"
+                                                </CommandItem>
+                                            )}
+                                        </CommandEmpty>
+                                        <CommandGroup>
+                                            {incomeCategories.map((c) => (
+                                                <CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, incomeCategory: c.name })); setIsIncomeCategoryPopoverOpen(false); }}>
+                                                    <Check className={cn("mr-2 h-4 w-4", newTransaction.incomeCategory.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
+                                                    {c.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-deposit-account-gl" className="text-right">Deposited To</Label><div className="col-span-3"><Select value={newTransaction.depositedTo} onValueChange={(value) => setNewTransaction(prev => ({...prev, depositedTo: value}))}><SelectTrigger id="tx-deposit-account-gl" className="w-full"><SelectValue placeholder="Select an account" /></SelectTrigger><SelectContent>{defaultDepositAccounts.map(acc => <SelectItem key={acc} value={acc}>{acc}</SelectItem>)}</SelectContent></Select></div></div>
                 </>
             )}
@@ -464,10 +521,11 @@ export function LedgersView() {
                                     />
                                     <CommandList>
                                         <CommandEmpty>
-                                            <div onClick={() => handleCreateExpenseCategory(categorySearchValue)} className="p-2 cursor-pointer hover:bg-accent">
-                                                <PlusCircle className="mr-2 h-4 w-4 inline" />
-                                                Create "{categorySearchValue}"
-                                            </div>
+                                            {categorySearchValue.trim() && (
+                                                <CommandItem onSelect={() => handleCreateExpenseCategory(categorySearchValue)} className="cursor-pointer">
+                                                    <PlusCircle className="mr-2 h-4 w-4" /> Create "{categorySearchValue}"
+                                                </CommandItem>
+                                            )}
                                         </CommandEmpty>
                                         <CommandGroup>
                                             {expenseCategories.map((c) => (
