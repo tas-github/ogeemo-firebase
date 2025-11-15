@@ -132,6 +132,16 @@
         "userId": { "type": "string" }
       },
       "required": ["name", "userId"]
+    },
+    "ExpenseCategory": {
+      "title": "Expense Category",
+      "description": "Represents a user-defined expense category.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["name", "userId"]
     }
   },
   "auth": {
@@ -173,6 +183,10 @@
     "/companies/{companyId}": {
       "schema": { "$ref": "#/entities/Company" },
       "description": "Stores company, client, or vendor names for use in transactions."
+    },
+    "/expenseCategories/{categoryId}": {
+      "schema": { "$ref": "#/entities/ExpenseCategory" },
+      "description": "Stores user-defined expense categories."
     }
   }
 }
