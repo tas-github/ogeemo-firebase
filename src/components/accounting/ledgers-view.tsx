@@ -54,7 +54,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth } from '@/context/auth-context';
-import { getIncomeTransactions, addIncomeTransaction, updateIncomeTransaction, deleteIncomeTransaction, type IncomeTransaction, getExpenseTransactions, addExpenseTransaction, updateExpenseTransaction, deleteExpenseTransaction, type ExpenseTransaction, getCompanies, addCompany, type Company } from "@/services/accounting-service";
+import { getIncomeTransactions, addIncomeTransaction, updateIncomeTransaction, deleteIncomeTransaction, type IncomeTransaction, getExpenseTransactions, addExpenseTransaction, updateExpenseTransaction, deleteExpenseTransaction, type ExpenseTransaction, getCompanies, addCompany, type Company, getExpenseCategories, addExpenseCategory, type ExpenseCategory } from "@/services/accounting-service";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { InvoicePaymentsView } from "./invoice-payments-view";
 import { AccountsPayableView } from "./accounts-payable-view";
@@ -65,7 +65,6 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 type GeneralTransaction = (IncomeTransaction | ExpenseTransaction) & { transactionType: 'income' | 'expense' };
 
 const defaultIncomeTypes = ["Service Revenue", "Consulting", "Sales Revenue", "Other Income", "Invoice Payment"];
-const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
 const defaultDepositAccounts = ["Bank Account #1", "Credit Card #1", "Cash Account"];
 
 const emptyTransactionForm = { date: '', company: '', description: '', amount: '', category: '', incomeType: '', explanation: '', documentNumber: '', documentUrl: '', type: 'business' as 'business' | 'personal', depositedTo: '' };
@@ -83,6 +82,7 @@ export function LedgersView() {
   const [incomeLedger, setIncomeLedger] = React.useState<IncomeTransaction[]>([]);
   const [expenseLedger, setExpenseLedger] = React.useState<ExpenseTransaction[]>([]);
   const [companies, setCompanies] = React.useState<Company[]>([]);
+  const [expenseCategories, setExpenseCategories] = React.useState<ExpenseCategory[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const { user } = useAuth();
   
@@ -93,6 +93,8 @@ export function LedgersView() {
   const [newTransaction, setNewTransaction] = React.useState(emptyTransactionForm);
   const [isCompanyPopoverOpen, setIsCompanyPopoverOpen] = React.useState(false);
   const [companySearchValue, setCompanySearchValue] = React.useState('');
+  const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = React.useState(false);
+  const [categorySearchValue, setCategorySearchValue] = React.useState('');
 
   const [showTotals, setShowTotals] = React.useState(false);
   const { toast } = useToast();
@@ -108,14 +110,16 @@ export function LedgersView() {
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const [income, expenses, fetchedCompanies] = await Promise.all([
+            const [income, expenses, fetchedCompanies, fetchedCategories] = await Promise.all([
                 getIncomeTransactions(user.uid),
                 getExpenseTransactions(user.uid),
                 getCompanies(user.uid),
+                getExpenseCategories(user.uid),
             ]);
             setIncomeLedger(income);
             setExpenseLedger(expenses);
             setCompanies(fetchedCompanies);
+            setExpenseCategories(fetchedCategories);
         } catch (error: any) {
              toast({ variant: "destructive", title: "Failed to load ledger data", description: error.message });
         } finally {
@@ -235,6 +239,19 @@ export function LedgersView() {
         }
     };
 
+    const handleCreateExpenseCategory = async (categoryName: string) => {
+        if (!user || !categoryName.trim()) return;
+        try {
+            const newCategory = await addExpenseCategory({ name: categoryName.trim(), userId: user.uid });
+            setExpenseCategories(prev => [...prev, newCategory]);
+            setNewTransaction(prev => ({ ...prev, category: categoryName.trim() }));
+            setIsCategoryPopoverOpen(false);
+            setCategorySearchValue('');
+            toast({ title: 'Category Created', description: `"${categoryName.trim()}" has been added.` });
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Failed to create category', description: error.message });
+        }
+    };
 
     const renderDocumentNumber = (item: GeneralTransaction) => {
         if (item.documentUrl) {
@@ -389,11 +406,8 @@ export function LedgersView() {
                                     onValueChange={setCompanySearchValue}
                                 />
                                 <CommandList>
-                                    <CommandEmpty>
-                                        <div 
-                                            className="p-2 cursor-pointer hover:bg-accent"
-                                            onClick={() => handleCreateCompany(companySearchValue)}
-                                        >
+                                     <CommandEmpty>
+                                        <div onClick={() => handleCreateCompany(companySearchValue)} className="p-2 cursor-pointer hover:bg-accent">
                                             <PlusCircle className="mr-2 h-4 w-4 inline" />
                                             Create "{companySearchValue}"
                                         </div>
@@ -431,7 +445,51 @@ export function LedgersView() {
                 </>
             )}
             {newTransactionType === 'expense' && (
-                 <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-category-gl" className="text-right">Category <span className="text-destructive">*</span></Label><div className="col-span-3"><Select value={newTransaction.category} onValueChange={(value) => setNewTransaction(prev => ({...prev, category: value}))}><SelectTrigger id="tx-category-gl" className="w-full"><SelectValue placeholder="Select a category" /></SelectTrigger><SelectContent>{defaultExpenseCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select></div></div>
+                 <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="tx-category-gl" className="text-right">Category <span className="text-destructive">*</span></Label>
+                    <div className="col-span-3">
+                         <Popover open={isCategoryPopoverOpen} onOpenChange={setIsCategoryPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className="w-full justify-between">
+                                    {newTransaction.category || "Select or create category..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                                    <CommandInput
+                                        placeholder="Search category..."
+                                        value={categorySearchValue}
+                                        onValueChange={setCategorySearchValue}
+                                    />
+                                    <CommandList>
+                                        <CommandEmpty>
+                                            <div onClick={() => handleCreateExpenseCategory(categorySearchValue)} className="p-2 cursor-pointer hover:bg-accent">
+                                                <PlusCircle className="mr-2 h-4 w-4 inline" />
+                                                Create "{categorySearchValue}"
+                                            </div>
+                                        </CommandEmpty>
+                                        <CommandGroup>
+                                            {expenseCategories.map((c) => (
+                                                <CommandItem
+                                                    key={c.id}
+                                                    value={c.name}
+                                                    onSelect={() => {
+                                                        setNewTransaction(prev => ({ ...prev, category: c.name }));
+                                                        setIsCategoryPopoverOpen(false);
+                                                    }}
+                                                >
+                                                    <Check className={cn("mr-2 h-4 w-4", newTransaction.category.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
+                                                    {c.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                </div>
             )}
             
             <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-explanation-gl" className="text-right">Explanation</Label><Input id="tx-explanation-gl" value={newTransaction.explanation} onChange={(e) => setNewTransaction(prev => ({...prev, explanation: e.target.value}))} className="col-span-3" /></div>
