@@ -428,21 +428,20 @@ export function LedgersView() {
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                            <Command>
                                 <CommandInput 
                                     placeholder="Search company..." 
                                     value={companySearchValue}
                                     onValueChange={setCompanySearchValue}
                                 />
                                 <CommandList>
-                                    <CommandEmpty>
-                                        {companySearchValue.trim() ? (
+                                    <CommandEmpty>No company found.</CommandEmpty>
+                                    <CommandGroup>
+                                        {companySearchValue && !companies.some(c => c.name.toLowerCase() === companySearchValue.toLowerCase()) ? (
                                             <CommandItem onSelect={() => handleCreateCompany(companySearchValue)} className="cursor-pointer">
                                                 <PlusCircle className="mr-2 h-4 w-4" /> Create "{companySearchValue}"
                                             </CommandItem>
-                                        ) : "No company found."}
-                                    </CommandEmpty>
-                                    <CommandGroup>
+                                        ) : null}
                                         {companies.map((c) => (
                                             <CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, company: c.name })); setIsCompanyPopoverOpen(false); }}>
                                                 <Check className={cn("mr-2 h-4 w-4", newTransaction.company.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
@@ -474,17 +473,16 @@ export function LedgersView() {
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                                <Command>
                                     <CommandInput placeholder="Search category..." value={incomeCategorySearchValue} onValueChange={setIncomeCategorySearchValue} />
                                     <CommandList>
-                                        <CommandEmpty>
-                                            {incomeCategorySearchValue.trim() ? (
+                                        <CommandEmpty>No category found.</CommandEmpty>
+                                        <CommandGroup>
+                                            {incomeCategorySearchValue && !incomeCategories.some(c => c.name.toLowerCase() === incomeCategorySearchValue.toLowerCase()) ? (
                                                 <CommandItem onSelect={() => handleCreateIncomeCategory(incomeCategorySearchValue)} className="cursor-pointer">
                                                     <PlusCircle className="mr-2 h-4 w-4" /> Create "{incomeCategorySearchValue}"
                                                 </CommandItem>
-                                            ) : "No category found."}
-                                        </CommandEmpty>
-                                        <CommandGroup>
+                                            ) : null}
                                             {incomeCategories.map((c) => (
                                                 <CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, incomeCategory: c.name })); setIsIncomeCategoryPopoverOpen(false); }}>
                                                     <Check className={cn("mr-2 h-4 w-4", newTransaction.incomeCategory.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
@@ -513,21 +511,20 @@ export function LedgersView() {
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                                <Command>
                                     <CommandInput
                                         placeholder="Search category..."
                                         value={categorySearchValue}
                                         onValueChange={setCategorySearchValue}
                                     />
                                     <CommandList>
-                                        <CommandEmpty>
-                                            {categorySearchValue.trim() ? (
+                                        <CommandEmpty>No category found.</CommandEmpty>
+                                        <CommandGroup>
+                                            {categorySearchValue && !expenseCategories.some(c => c.name.toLowerCase() === categorySearchValue.toLowerCase()) ? (
                                                 <CommandItem onSelect={() => handleCreateExpenseCategory(categorySearchValue)} className="cursor-pointer">
                                                     <PlusCircle className="mr-2 h-4 w-4" /> Create "{categorySearchValue}"
                                                 </CommandItem>
-                                            ) : "No category found."}
-                                        </CommandEmpty>
-                                        <CommandGroup>
+                                            ) : null}
                                             {expenseCategories.map((c) => (
                                                 <CommandItem
                                                     key={c.id}
