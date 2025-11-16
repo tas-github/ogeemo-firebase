@@ -50,7 +50,10 @@
             "date": { "type": "string", "format": "date" },
             "company": { "type": "string" },
             "description": { "type": "string" },
-            "amount": { "type": "number" },
+            "totalAmount": { "type": "number", "description": "The total amount of the transaction including tax." },
+            "preTaxAmount": { "type": "number", "description": "The amount of the transaction before tax." },
+            "taxAmount": { "type": "number", "description": "The amount of tax collected." },
+            "taxRate": { "type": "number", "description": "The tax rate applied." },
             "incomeCategory": { "type": "string" },
             "depositedTo": { "type": "string" },
             "explanation": { "type": "string" },
@@ -59,7 +62,7 @@
             "type": { "type": "string", "enum": ["business", "personal"] },
             "userId": { "type": "string" }
         },
-        "required": ["date", "company", "amount", "incomeCategory", "userId"]
+        "required": ["date", "company", "totalAmount", "incomeCategory", "userId"]
     },
     "ExpenseTransaction": {
         "title": "Expense Transaction",
@@ -69,7 +72,10 @@
             "date": { "type": "string", "format": "date" },
             "company": { "type": "string" },
             "description": { "type": "string" },
-            "amount": { "type": "number" },
+            "totalAmount": { "type": "number", "description": "The total amount of the transaction including tax." },
+            "preTaxAmount": { "type": "number", "description": "The amount of the transaction before tax." },
+            "taxAmount": { "type": "number", "description": "The amount of tax paid." },
+            "taxRate": { "type": "number", "description": "The tax rate applied." },
             "category": { "type": "string" },
             "explanation": { "type": "string" },
             "documentNumber": { "type": "string" },
@@ -77,7 +83,7 @@
             "type": { "type": "string", "enum": ["business", "personal"] },
             "userId": { "type": "string" }
         },
-        "required": ["date", "company", "amount", "category", "userId"]
+        "required": ["date", "company", "totalAmount", "category", "userId"]
     },
     "PayableBill": {
         "title": "Payable Bill",
@@ -90,6 +96,7 @@
             "amount": { "type": "number" },
             "category": { "type": "string" },
             "description": { "type": "string" },
+            "documentUrl": { "type": "string", "format": "uri" },
             "userId": { "type": "string" }
         },
         "required": ["vendor", "dueDate", "amount", "category", "userId"]

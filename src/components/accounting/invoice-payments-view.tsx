@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -190,12 +192,10 @@ export function InvoicePaymentsView() {
         <>
             <div className="space-y-6">
                 <Card>
-                    <CardHeader className="flex-row justify-between items-start">
-                        <div>
-                            <CardTitle>Accounts Receivable</CardTitle>
-                            <CardDescription>A list of outstanding invoices</CardDescription>
-                        </div>
-                        <div className="text-right">
+                    <CardHeader className="text-center">
+                        <CardTitle>Accounts Receivable</CardTitle>
+                        <CardDescription>A list of outstanding invoices</CardDescription>
+                         <div className="pt-2">
                             <p className="text-sm text-muted-foreground">Total Balance Due</p>
                             <p className="text-2xl font-bold text-primary">{totalBalanceDue.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
                         </div>
@@ -282,3 +282,5 @@ export function InvoicePaymentsView() {
         </>
     );
 }
+
+    

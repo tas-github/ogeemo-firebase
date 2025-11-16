@@ -18,7 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreVertical, Pencil, Trash2, HandCoins, LoaderCircle } from "lucide-react";
+import { PlusCircle, MoreVertical, Pencil, Trash2, HandCoins, LoaderCircle, ChevronsUpDown, Check } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,62 +44,96 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useAuth } from "@/context/auth-context";
-import { getPayableBills, addPayableBill, updatePayableBill, deletePayableBill, addExpenseTransaction, type PayableBill, type ExpenseTransaction } from "@/services/accounting-service";
-import { AccountingPageHeader } from "./page-header";
+import { 
+    addPayableBill, updatePayableBill, deletePayableBill, 
+    type PayableBill,
+    getCompanies, addCompany, type Company,
+    getExpenseCategories, addExpenseCategory, type ExpenseCategory,
+} from "@/services/accounting-service";
+import { cn } from "@/lib/utils";
 
 
-// TODO: These should be moved to a settings service
-const defaultExpenseCategories = ["Utilities", "Software", "Office Supplies", "Contractors", "Marketing", "Travel", "Meals"];
-const defaultCompanies = ["Cloud Hosting Inc.", "SaaS Tools Co.", "Jane Designs", "Office Supply Hub"];
-const emptyBillForm = { vendor: '', invoiceNumber: '', dueDate: '', amount: '', category: '', description: '' };
+const emptyBillForm = { vendor: '', invoiceNumber: '', dueDate: '', totalAmount: '', taxRate: '', preTaxAmount: '', taxAmount: '', category: '', description: '', documentUrl: '' };
 
-export function AccountsPayableView() {
-  const [payableLedger, setPayableLedger] = React.useState<PayableBill[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+interface AccountsPayableViewProps {
+    payableLedger: PayableBill[];
+    isLoading: boolean;
+    onRecordPayment: (bill: PayableBill) => Promise<void>;
+    companies: Company[];
+    expenseCategories: ExpenseCategory[];
+    onCompaniesChange: (companies: Company[]) => void;
+    onExpenseCategoriesChange: (categories: ExpenseCategory[]) => void;
+    onPayableLedgerChange: (ledger: PayableBill[]) => void;
+}
+
+export function AccountsPayableView({ 
+    payableLedger, 
+    isLoading, 
+    onRecordPayment,
+    companies,
+    expenseCategories,
+    onCompaniesChange,
+    onExpenseCategoriesChange,
+    onPayableLedgerChange
+}: AccountsPayableViewProps) {
   const { user } = useAuth();
-  
-  const [expenseCategories, setExpenseCategories] = React.useState<string[]>(defaultExpenseCategories);
-  const [companies, setCompanies] = React.useState<string[]>(defaultCompanies);
   
   const [isBillDialogOpen, setIsBillDialogOpen] = React.useState(false);
   const [billToEdit, setBillToEdit] = React.useState<PayableBill | null>(null);
   const [billToDelete, setBillToDelete] = React.useState<PayableBill | null>(null);
   const [newBill, setNewBill] = React.useState(emptyBillForm);
+  
+  const [isVendorPopoverOpen, setIsVendorPopoverOpen] = React.useState(false);
+  const [vendorSearchValue, setVendorSearchValue] = React.useState('');
+  const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = React.useState(false);
+  const [categorySearchValue, setCategorySearchValue] = React.useState('');
+
 
   const { toast } = useToast();
-
-  React.useEffect(() => {
-    if (!user) {
-        setIsLoading(false);
-        return;
-    }
-    const loadData = async () => {
-        setIsLoading(true);
-        try {
-            const bills = await getPayableBills(user.uid);
-            setPayableLedger(bills);
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Failed to load payable bills", description: error.message });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-    loadData();
-  }, [user, toast]);
   
   const totalPayableAmount = React.useMemo(() => {
-    return payableLedger.reduce((sum, bill) => sum + bill.amount, 0);
+    return payableLedger.reduce((sum, bill) => sum + (bill.totalAmount || 0), 0);
   }, [payableLedger]);
 
+    React.useEffect(() => {
+        const totalAmount = parseFloat(newBill.totalAmount);
+        const taxRate = parseFloat(newBill.taxRate);
+
+        if (!isNaN(totalAmount) && !isNaN(taxRate) && taxRate > 0) {
+            const preTax = totalAmount / (1 + taxRate / 100);
+            const tax = totalAmount - preTax;
+            setNewBill(prev => ({
+                ...prev,
+                preTaxAmount: preTax.toFixed(2),
+                taxAmount: tax.toFixed(2)
+            }));
+        } else if (!isNaN(totalAmount)) {
+             setNewBill(prev => ({
+                ...prev,
+                preTaxAmount: totalAmount.toFixed(2),
+                taxAmount: '0.00'
+            }));
+        } else {
+            setNewBill(prev => ({ ...prev, preTaxAmount: '', taxAmount: '' }));
+        }
+    }, [newBill.totalAmount, newBill.taxRate]);
   
   const handleOpenBillDialog = (bill?: PayableBill) => {
       if (bill) {
           setBillToEdit(bill);
-          setNewBill({ ...bill, amount: String(bill.amount) });
+          setNewBill({ 
+              ...bill, 
+              totalAmount: String(bill.totalAmount), 
+              taxRate: String(bill.taxRate || ''),
+              preTaxAmount: String(bill.preTaxAmount || ''),
+              taxAmount: String(bill.taxAmount || ''),
+              documentUrl: bill.documentUrl || '' 
+            });
       } else {
           setBillToEdit(null);
           setNewBill(emptyBillForm);
@@ -109,29 +143,37 @@ export function AccountsPayableView() {
   
   const handleSaveBill = async () => {
     if (!user) return;
-      const amountNum = parseFloat(newBill.amount);
-      if (!newBill.vendor || !newBill.dueDate || !newBill.category || !newBill.amount || isNaN(amountNum) || amountNum <= 0) {
+      const totalAmountNum = parseFloat(newBill.totalAmount);
+      const taxRateNum = parseFloat(newBill.taxRate) || 0;
+      if (!newBill.vendor || !newBill.dueDate || !newBill.category || !newBill.totalAmount || isNaN(totalAmountNum) || totalAmountNum <= 0) {
           toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please fill all required fields correctly.' });
           return;
       }
+      
+      const preTaxAmount = totalAmountNum / (1 + taxRateNum / 100);
+      const taxAmount = totalAmountNum - preTaxAmount;
       
       const billData = {
           vendor: newBill.vendor,
           invoiceNumber: newBill.invoiceNumber,
           dueDate: newBill.dueDate,
-          amount: amountNum,
+          totalAmount: totalAmountNum,
+          preTaxAmount: preTaxAmount,
+          taxAmount: taxAmount,
+          taxRate: taxRateNum,
           category: newBill.category,
           description: newBill.description,
+          documentUrl: newBill.documentUrl,
       };
 
       try {
         if (billToEdit) {
             await updatePayableBill(billToEdit.id, billData);
-            setPayableLedger(prev => prev.map(item => item.id === billToEdit.id ? { ...item, ...billData, id: billToEdit.id, userId: user.uid } : item));
+            onPayableLedgerChange(payableLedger.map(item => item.id === billToEdit.id ? { ...item, ...billData, id: billToEdit.id, userId: user.uid } : item));
             toast({ title: "Bill Updated" });
         } else {
             const newEntry = await addPayableBill({ ...billData, userId: user.uid });
-            setPayableLedger(prev => [newEntry, ...prev]);
+            onPayableLedgerChange([newEntry, ...payableLedger]);
             toast({ title: "Bill Added" });
         }
         setIsBillDialogOpen(false);
@@ -140,37 +182,11 @@ export function AccountsPayableView() {
       }
   };
   
-  const handleRecordPayment = async (bill: PayableBill) => {
-    if (!user) return;
-      try {
-          const newExpense: Omit<ExpenseTransaction, 'id'> = {
-              date: format(new Date(), 'yyyy-MM-dd'),
-              company: bill.vendor,
-              description: bill.description || `Payment for Invoice #${bill.invoiceNumber}`,
-              amount: bill.amount,
-              category: bill.category,
-              explanation: `Paid bill from A/P on ${format(new Date(), 'PP')}`,
-              documentNumber: bill.invoiceNumber,
-              type: 'business',
-              userId: user.uid,
-          };
-          
-          await addExpenseTransaction(newExpense);
-          await deletePayableBill(bill.id);
-          setPayableLedger(prev => prev.filter(b => b.id !== bill.id));
-
-          toast({ title: "Payment Recorded", description: `Bill from ${bill.vendor} marked as paid and moved to expenses.` });
-      } catch (error: any) {
-           console.error("Failed to record payment:", error);
-           toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not record payment.' });
-      }
-  };
-
   const handleConfirmDelete = async () => {
       if (!billToDelete) return;
       try {
         await deletePayableBill(billToDelete.id);
-        setPayableLedger(prev => prev.filter(b => b.id !== billToDelete.id));
+        onPayableLedgerChange(payableLedger.filter(b => b.id !== billToDelete.id));
         toast({ title: 'Bill Deleted', variant: 'destructive' });
       } catch (error: any) {
         toast({ variant: 'destructive', title: 'Delete Failed', description: error.message });
@@ -179,34 +195,68 @@ export function AccountsPayableView() {
       }
   };
   
+  const handleCreateCompany = async (companyName: string) => {
+    if (!user || !companyName.trim()) return;
+    try {
+        const newCompany = await addCompany({ name: companyName.trim(), userId: user.uid });
+        onCompaniesChange([...companies, newCompany]);
+        setNewBill(prev => ({ ...prev, vendor: companyName.trim() }));
+        setIsVendorPopoverOpen(false);
+        setVendorSearchValue('');
+        toast({ title: 'Vendor Created', description: `"${companyName.trim()}" has been added.` });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Failed to create vendor', description: error.message });
+    }
+  };
+
+  const handleCreateExpenseCategory = async (categoryName: string) => {
+    if (!user || !categoryName.trim()) return;
+    try {
+        const newCategory = await addExpenseCategory({ name: categoryName.trim(), userId: user.uid });
+        onExpenseCategoriesChange([...expenseCategories, newCategory]);
+        setNewBill(prev => ({ ...prev, category: categoryName.trim() }));
+        setIsCategoryPopoverOpen(false);
+        setCategorySearchValue('');
+        toast({ title: 'Category Created', description: `"${categoryName.trim()}" has been added.` });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Failed to create category', description: error.message });
+    }
+  };
+
+  const renderDocumentNumber = (bill: PayableBill) => {
+    if (bill.documentUrl) {
+      return (
+        <a href={bill.documentUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+          {bill.invoiceNumber || 'View'}
+        </a>
+      );
+    }
+    return bill.invoiceNumber;
+  };
+  
   return (
     <>
-      <div className="p-4 sm:p-6 space-y-6">
-        <AccountingPageHeader pageTitle="Accounts Payable" />
-        <header className="text-center">
-          <h1 className="text-2xl font-bold font-headline text-primary">Accounts Payable</h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Manage and track all outstanding bills from your vendors.
-          </p>
-        </header>
-
+      <div className="space-y-6">
         <Card>
-          <CardHeader className="flex flex-row items-start justify-between">
-            <div>
-              <CardTitle>Bills to Pay</CardTitle>
-              <CardDescription>A list of unpaid invoices from vendors.</CardDescription>
+          <CardHeader className="flex flex-col items-center">
+            <div className="flex justify-between items-start w-full">
+              <div className="w-1/4"></div>
+              <div className="text-center flex-1">
+                  <CardTitle>Accounts Payable</CardTitle>
+                  <CardDescription>Payments due to others</CardDescription>
+              </div>
+              <div className="text-right w-1/4">
+                  <p className="text-sm text-muted-foreground">Total Due</p>
+                  <p className="text-2xl font-bold text-destructive">{totalPayableAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+              </div>
             </div>
-             <div className="text-right">
-                <p className="text-sm text-muted-foreground">Total Due</p>
-                <p className="text-2xl font-bold text-destructive">{totalPayableAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-end mb-4">
+            <div className="pt-2">
               <Button variant="outline" onClick={() => handleOpenBillDialog()}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Bill
               </Button>
             </div>
+          </CardHeader>
+          <CardContent>
             {isLoading ? (
                 <div className="flex justify-center items-center h-48">
                     <LoaderCircle className="h-8 w-8 animate-spin" />
@@ -217,6 +267,7 @@ export function AccountsPayableView() {
                     <TableRow>
                     <TableHead>Vendor</TableHead>
                     <TableHead>Description</TableHead>
+                    <TableHead>Invoice #</TableHead>
                     <TableHead>Due Date</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
@@ -228,10 +279,11 @@ export function AccountsPayableView() {
                     <TableRow key={bill.id}>
                         <TableCell className="font-medium">{bill.vendor}</TableCell>
                         <TableCell>{bill.description}</TableCell>
+                        <TableCell>{renderDocumentNumber(bill)}</TableCell>
                         <TableCell>{bill.dueDate}</TableCell>
                         <TableCell>{bill.category}</TableCell>
                         <TableCell className="text-right font-mono">
-                        {bill.amount.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                        {(bill.totalAmount || 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}
                         </TableCell>
                         <TableCell className="text-right">
                         <DropdownMenu>
@@ -241,7 +293,7 @@ export function AccountsPayableView() {
                             </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => handleRecordPayment(bill)}><HandCoins className="mr-2 h-4 w-4"/>Record Payment</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => onRecordPayment(bill)}><HandCoins className="mr-2 h-4 w-4"/>Record Payment</DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => handleOpenBillDialog(bill)}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
                             <DropdownMenuItem className="text-destructive" onSelect={() => setBillToDelete(bill)}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
                             </DropdownMenuContent>
@@ -262,25 +314,88 @@ export function AccountsPayableView() {
           <div className="grid gap-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="vendor">Vendor <span className="text-destructive">*</span></Label>
-                <Select value={newBill.vendor} onValueChange={(value) => setNewBill(p => ({ ...p, vendor: value }))}>
-                  <SelectTrigger id="vendor"><SelectValue placeholder="Select a vendor" /></SelectTrigger>
-                  <SelectContent>{companies.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                </Select>
+                <Popover open={isVendorPopoverOpen} onOpenChange={setIsVendorPopoverOpen}>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" className="w-full justify-between">
+                            {newBill.vendor || "Select or create vendor..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                            <CommandInput placeholder="Search vendor..." value={vendorSearchValue} onValueChange={setVendorSearchValue} />
+                            <CommandList>
+                                <CommandEmpty>
+                                    {vendorSearchValue && !companies.some(c => c.name.toLowerCase() === vendorSearchValue.toLowerCase()) && (
+                                        <CommandItem onSelect={() => handleCreateCompany(vendorSearchValue)} className="cursor-pointer">
+                                            <PlusCircle className="mr-2 h-4 w-4" /> Create "{vendorSearchValue}"
+                                        </CommandItem>
+                                    )}
+                                </CommandEmpty>
+                                <CommandGroup>
+                                    {companies.map((c) => (
+                                        <CommandItem key={c.id} value={c.name} onSelect={() => { setNewBill(prev => ({ ...prev, vendor: c.name })); setIsVendorPopoverOpen(false); }}>
+                                            <Check className={cn("mr-2 h-4 w-4", newBill.vendor === c.name ? "opacity-100" : "opacity-0")} />
+                                            {c.name}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="dueDate">Due Date <span className="text-destructive">*</span></Label>
                 <Input id="dueDate" type="date" value={newBill.dueDate} onChange={e => setNewBill(p => ({ ...p, dueDate: e.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="amount">Amount <span className="text-destructive">*</span></Label>
-                <Input id="amount" type="number" placeholder="0.00" value={newBill.amount} onChange={e => setNewBill(p => ({ ...p, amount: e.target.value }))} />
+                <Label htmlFor="totalAmount">Total Amount <span className="text-destructive">*</span></Label>
+                <Input id="totalAmount" type="number" placeholder="0.00" value={newBill.totalAmount} onChange={e => setNewBill(p => ({ ...p, totalAmount: e.target.value }))} />
               </div>
+               <div className="space-y-2">
+                    <Label htmlFor="taxRate">Tax Rate (%)</Label>
+                    <Input id="taxRate" type="number" value={newBill.taxRate} onChange={e => setNewBill(p => ({ ...p, taxRate: e.target.value }))} placeholder="e.g., 15"/>
+                </div>
               <div className="space-y-2">
                 <Label htmlFor="category">Expense Category <span className="text-destructive">*</span></Label>
-                <Select value={newBill.category} onValueChange={(value) => setNewBill(p => ({ ...p, category: value }))}>
-                  <SelectTrigger id="category"><SelectValue placeholder="Select a category" /></SelectTrigger>
-                  <SelectContent>{expenseCategories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                </Select>
+                <Popover open={isCategoryPopoverOpen} onOpenChange={setIsCategoryPopoverOpen}>
+                    <PopoverTrigger asChild>
+                        <Button variant="outline" role="combobox" className="w-full justify-between">
+                            {newBill.category || "Select or create category..."}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                            <CommandInput placeholder="Search category..." value={categorySearchValue} onValueChange={setCategorySearchValue} />
+                            <CommandList>
+                                <CommandEmpty>
+                                     {categorySearchValue && !expenseCategories.some(c => c.name.toLowerCase() === categorySearchValue.toLowerCase()) && (
+                                        <CommandItem onSelect={() => handleCreateExpenseCategory(categorySearchValue)} className="cursor-pointer">
+                                            <PlusCircle className="mr-2 h-4 w-4" /> Create "{categorySearchValue}"
+                                        </CommandItem>
+                                    )}
+                                </CommandEmpty>
+                                <CommandGroup>
+                                    {expenseCategories.map((c) => (
+                                        <CommandItem
+                                            key={c.id}
+                                            value={c.name}
+                                            onSelect={() => {
+                                                setNewBill(prev => ({ ...prev, category: c.name }));
+                                                setIsCategoryPopoverOpen(false);
+                                            }}
+                                        >
+                                            <Check className={cn("mr-2 h-4 w-4", newBill.category.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
+                                            {c.name}
+                                        </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                            </CommandList>
+                        </Command>
+                    </PopoverContent>
+                </Popover>
               </div>
                <div className="space-y-2">
                 <Label htmlFor="invoiceNumber">Invoice / Document #</Label>
@@ -289,6 +404,10 @@ export function AccountsPayableView() {
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Input id="description" value={newBill.description} onChange={e => setNewBill(p => ({ ...p, description: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="documentUrl">Document Link</Label>
+                <Input id="documentUrl" placeholder="https://..." value={newBill.documentUrl} onChange={e => setNewBill(p => ({ ...p, documentUrl: e.target.value }))} />
               </div>
           </div>
           <DialogFooter>

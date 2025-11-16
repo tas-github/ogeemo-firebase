@@ -32,7 +32,10 @@ interface BaseTransaction {
   date: string;
   company: string;
   description: string;
-  amount: number;
+  totalAmount: number;
+  preTaxAmount?: number;
+  taxAmount?: number;
+  taxRate?: number;
   explanation?: string;
   documentNumber?: string;
   documentUrl?: string;
@@ -208,10 +211,9 @@ export async function getIncomeTransactions(userId: string): Promise<IncomeTrans
         const newEntries: IncomeTransaction[] = [];
         mockIncome.forEach(item => {
             const docRef = doc(collection(db, INCOME_COLLECTION));
-            const newItem = { ...item, incomeCategory: item.incomeType };
-            delete (newItem as any).incomeType;
-            batch.set(docRef, { ...newItem, userId });
-            newEntries.push({ ...newItem, id: docRef.id, userId });
+            const transactionData = { ...item, userId };
+            batch.set(docRef, transactionData);
+            newEntries.push({ ...transactionData, id: docRef.id });
         });
         await batch.commit();
         return newEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -255,8 +257,9 @@ export async function getExpenseTransactions(userId: string): Promise<ExpenseTra
         const newEntries: ExpenseTransaction[] = [];
         mockExpenses.forEach(item => {
             const docRef = doc(collection(db, EXPENSE_COLLECTION));
-            batch.set(docRef, { ...item, userId });
-            newEntries.push({ ...item, id: docRef.id, userId });
+            const transactionData = { ...item, userId };
+            batch.set(docRef, transactionData);
+            newEntries.push({ ...transactionData, id: docRef.id });
         });
         await batch.commit();
         return newEntries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -287,14 +290,24 @@ export interface PayableBill {
   vendor: string;
   invoiceNumber: string;
   dueDate: string;
-  amount: number;
+  totalAmount: number;
+  preTaxAmount?: number;
+  taxAmount?: number;
+  taxRate?: number;
   category: string;
   description: string;
+  documentUrl?: string;
   userId: string;
 }
 
+
 const PAYABLES_COLLECTION = 'payableBills';
-const docToPayableBill = (doc: any): PayableBill => ({ id: doc.id, ...doc.data() } as PayableBill);
+const docToPayableBill = (doc: any): PayableBill => {
+    const data = doc.data();
+    // Ensure backward compatibility for items that still have 'amount' instead of 'totalAmount'
+    const totalAmount = data.totalAmount ?? data.amount ?? 0;
+    return { id: doc.id, ...data, totalAmount } as PayableBill;
+};
 
 export async function getPayableBills(userId: string): Promise<PayableBill[]> {
   const db = await getDb();
