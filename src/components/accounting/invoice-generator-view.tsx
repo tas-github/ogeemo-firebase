@@ -74,6 +74,11 @@ export function InvoiceGeneratorView() {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+
+  const printRef = useRef<HTMLDivElement>(null);
+  const { handlePrint } = useReactToPrint({
+    content: () => printRef.current,
+  });
   
   // State hooks
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -115,11 +120,6 @@ export function InvoiceGeneratorView() {
   const [newServiceItemDesc, setNewServiceItemDesc] = useState("");
   const [newServiceItemPrice, setNewServiceItemPrice] = useState<number | ''>('');
   
-  const printRef = useRef<HTMLDivElement>(null);
-  const { handlePrint } = useReactToPrint({
-    content: () => printRef.current,
-  });
-
   const clearInvoice = useCallback(() => {
     setCustomItems([]);
     setSelectedContactId('');
