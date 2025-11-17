@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useDrag, useDrop } from 'react-dnd';
 import {
@@ -190,7 +190,7 @@ export function ContactsView() {
   
 
   const allVisibleSelected = displayedContacts.length > 0 && selectedContactIds.length === displayedContacts.length;
-  const someSelected = selectedContactIds.length > 0 && !allVisibleSelected;
+  const someSelected = useMemo(() => selectedContactIds.length > 0 && !allVisibleSelected, [selectedContactIds, allVisibleSelected]);
 
   const handleToggleSelect = (contactId: string) => {
     setSelectedContactIds((prev) =>
@@ -638,5 +638,3 @@ export function ContactsView() {
     </>
   );
 }
-
-    
