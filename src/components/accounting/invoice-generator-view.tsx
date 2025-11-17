@@ -22,19 +22,19 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import { useAuth } from '@/context/auth-context';
 import { getContacts, type FolderData } from '@/services/contact-service';
 import { getFolders } from '@/services/file-manager-folders';
-import { 
-    addInvoiceWithLineItems, 
-    updateInvoiceWithLineItems, 
-    getInvoices, 
-    getInvoiceById, 
-    getLineItemsForInvoice, 
+import {
+    addInvoiceWithLineItems,
+    updateInvoiceWithLineItems,
+    getInvoices,
+    getInvoiceById,
+    getLineItemsForInvoice,
     getCompanies,
     addCompany,
     getServiceItems,
     addServiceItem,
     type Company,
-    type Invoice, 
-    type InvoiceLineItem, 
+    type Invoice,
+    type InvoiceLineItem,
     type ServiceItem
 } from '@/services/accounting-service';
 import ContactFormDialog from '../contacts/contact-form-dialog';
@@ -74,11 +74,6 @@ export function InvoiceGeneratorView() {
   const { user } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-
-  const printRef = useRef<HTMLDivElement>(null);
-  const { handlePrint } = useReactToPrint({
-    content: () => printRef.current,
-  });
   
   // State hooks
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -90,13 +85,13 @@ export function InvoiceGeneratorView() {
   const [invoiceToEditId, setInvoiceToEditId] = useState<string | null>(null);
   const [selectedContactId, setSelectedContactId] = useState<string>('');
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
-  
+
   const [customItems, setCustomItems] = useState<CustomLineItem[]>([]);
-  
+
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dueDate, setDueDate] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
-  
+
   const [taxes, setTaxes] = useState<TaxItem[]>([]);
   const [invoiceNotes, setInvoiceNotes] = useState('Thank you for your business!');
 
@@ -115,11 +110,14 @@ export function InvoiceGeneratorView() {
   // States for 'Add New' dialogs
   const [isNewCompanyDialogOpen, setIsNewCompanyDialogOpen] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
-  
+
   const [isNewServiceItemDialogOpen, setIsNewServiceItemDialogOpen] = useState(false);
   const [newServiceItemDesc, setNewServiceItemDesc] = useState("");
   const [newServiceItemPrice, setNewServiceItemPrice] = useState<number | ''>('');
-  
+
+  // Correctly placed hook for printing
+  const { handlePrint, contentRef } = useReactToPrint();
+
   const clearInvoice = useCallback(() => {
     setCustomItems([]);
     setSelectedContactId('');
@@ -161,7 +159,7 @@ export function InvoiceGeneratorView() {
             if (savedTemplatesRaw) {
                 setTemplates(JSON.parse(savedTemplatesRaw));
             }
-            
+
             if (reportDataRaw) {
                 const reportData = JSON.parse(reportDataRaw);
                 setSelectedContactId(reportData.contactId);
@@ -202,7 +200,7 @@ export function InvoiceGeneratorView() {
                     clearInvoice();
                 }
             }
-            
+
             const fetchedInvoices = await getInvoices(user.uid);
             const maxInvoiceNum = fetchedInvoices.reduce((max, inv) => {
                 const num = parseInt(inv.invoiceNumber.replace(/\D/g, ''), 10);
@@ -230,10 +228,10 @@ export function InvoiceGeneratorView() {
       localStorage.removeItem(EDIT_INVOICE_ID_KEY);
     }
   }, []);
-  
+
   const selectedContact = useMemo(() => contacts.find(c => c.id === selectedContactId), [contacts, selectedContactId]);
   const selectedCompany = useMemo(() => companies.find(c => c.id === selectedCompanyId), [companies, selectedCompanyId]);
-  
+
   const filteredContacts = useMemo(() => {
     if (!selectedCompanyId || !selectedCompany) return contacts;
     return contacts.filter(contact => contact.businessName === selectedCompany.name);
@@ -250,17 +248,17 @@ export function InvoiceGeneratorView() {
         setCustomItems([...customItems, { id: Date.now(), ...itemToAdd, quantity: 1 }]);
     }
   };
-  
+
   const updateCustomItem = (id: number, field: keyof Omit<CustomLineItem, 'id'>, value: string | number) => {
     setCustomItems(customItems.map(item =>
       item.id === id ? { ...item, [field]: value } : item
     ));
   };
-  
+
   const removeCustomItem = (id: number) => {
     setCustomItems(customItems.filter(item => item.id !== id));
   };
-  
+
   const applyTemplate = (templateName: string) => {
     const template = templates.find(t => t.name === templateName);
     if (!template) return;
@@ -272,7 +270,7 @@ export function InvoiceGeneratorView() {
       description: `Added ${newItems.length} items from "${template.name}".`
     })
   };
-  
+
   const addTax = () => setTaxes(prev => [...prev, { id: Date.now(), name: '', rate: 0 }]);
   const removeTax = (id: number) => setTaxes(prev => prev.filter(tax => tax.id !== id));
   const updateTax = (id: number, field: keyof Omit<TaxItem, 'id'>, value: string | number) => {
@@ -295,15 +293,15 @@ export function InvoiceGeneratorView() {
   const total = useMemo(() => {
     return subtotal + taxAmount;
   }, [subtotal, taxAmount]);
-  
+
   const handleSaveInvoice = async () => {
     if (!user) { toast({ variant: "destructive", title: "Authentication error" }); return; }
     if (!selectedCompany) { toast({ variant: 'destructive', title: 'Company Name Required', description: 'Please select or create a company.' }); return; }
     if (!selectedContact) { toast({ variant: 'destructive', title: 'Contact Name Required', description: 'Please select a contact.' }); return; }
     if (customItems.length === 0) { toast({ variant: 'destructive', title: 'Empty Invoice', description: 'Please add at least one line item.' }); return; }
-    
+
     const lineItemsToSave: Omit<InvoiceLineItem, 'id' | 'invoiceId'>[] = customItems.map(({ id, ...item }) => item);
-    
+
     const primaryTax = taxes[0] || { name: 'none', rate: 0 };
 
     try {
@@ -340,7 +338,7 @@ export function InvoiceGeneratorView() {
             await addInvoiceWithLineItems(newInvoiceData, lineItemsToSave);
             toast({ title: "Invoice Saved", description: `Invoice ${invoiceNumber} has been saved.` });
         }
-        
+
         router.push('/accounting/accounts-receivable');
         clearInvoice();
 
@@ -349,7 +347,7 @@ export function InvoiceGeneratorView() {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not save the invoice.' });
     }
   };
-  
+
   const handleSendEmail = () => {
       if (!selectedContact) { toast({ variant: 'destructive', title: 'Cannot Send', description: 'Please select a client first.' }); return; }
       toast({ title: "Email Sent (Simulation)", description: `Invoice ${invoiceNumber} has been sent to ${selectedContact.name}.` });
@@ -365,7 +363,7 @@ export function InvoiceGeneratorView() {
   const handleSaveTemplate = () => {
     if (!newTemplateName.trim()) { toast({ variant: 'destructive', title: 'Template name is required.' }); return; }
     if (customItems.length === 0) { toast({ variant: 'destructive', title: 'Cannot save an empty template. Please add line items.' }); return; }
-    
+
     const templateData: InvoiceTemplate = { name: newTemplateName, items: customItems.map(({ id, ...item }) => item) };
     try {
       const updatedTemplates = [...templates, templateData];
@@ -393,9 +391,9 @@ export function InvoiceGeneratorView() {
           toast({ variant: "destructive", title: "Failed to create company", description: error.message });
       }
   };
-  
+
   const onCompaniesChange = setCompanies;
-  
+
   const handleContactSave = (savedContact: Contact, isEditing: boolean) => {
     if (isEditing) {
         setContacts(prev => prev.map(c => c.id === savedContact.id ? savedContact : c));
@@ -414,7 +412,7 @@ export function InvoiceGeneratorView() {
     }
     setIsContactFormOpen(false);
   };
-  
+
   const handleSelectContact = (contact: Contact) => {
     setSelectedContactId(contact.id);
     if (contact.businessName) {
@@ -425,7 +423,7 @@ export function InvoiceGeneratorView() {
     }
     setIsContactPopoverOpen(false);
   };
-  
+
   const handleSelectCompany = (company: Company) => {
     setSelectedCompanyId(company.id);
     setIsCompanyPopoverOpen(false);
@@ -433,10 +431,10 @@ export function InvoiceGeneratorView() {
       setSelectedContactId('');
     }
   };
-  
+
   const handleSaveServiceItem = async () => {
       if (!user || !newServiceItemDesc.trim() || newServiceItemPrice === '') return;
-      
+
       try {
           const newItem = await addServiceItem({
               description: newServiceItemDesc,
@@ -494,7 +492,7 @@ export function InvoiceGeneratorView() {
                         </PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                             <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
-                                <CommandInput 
+                                <CommandInput
                                   placeholder="Search or create company..."
                                   value={companySearchValue}
                                   onValueChange={setCompanySearchValue}
@@ -621,7 +619,7 @@ export function InvoiceGeneratorView() {
                 </div>
             </CardHeader>
             <CardContent>
-                <div id="printable-area" ref={printRef} className="bg-white text-black p-8 border rounded-lg shadow-sm w-full font-sans">
+                <div id="printable-area" ref={contentRef} className="bg-white text-black p-8 border rounded-lg shadow-sm w-full font-sans">
                     <header className="flex justify-between items-start pb-6 border-b"><Logo className="text-primary"/><div className="text-right"><h1 className="text-4xl font-bold uppercase text-gray-700">Invoice</h1><div className="flex items-center justify-end gap-1"><p className="text-gray-500">#</p><Input type="text" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className="w-32 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /><Pencil className="h-3 w-3 text-gray-400" /></div></div></header>
                     <section className="flex justify-between mt-6"><div><h2 className="font-bold text-gray-500 uppercase mb-2">Bill To</h2>{selectedCompany ? (<><p className="font-bold text-lg">{selectedCompany.name}</p><p>{selectedContact?.name}</p><p>{selectedContact?.email}</p></>) : (<p className="text-gray-500">Select a client</p>)}</div><div className="text-right"><p><span className="font-bold text-gray-500">Invoice Date:</span> <Input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} className="inline-block w-40 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p><p><span className="font-bold text-gray-500">Due Date:</span> <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="inline-block w-40 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p></div></section>
                     <section className="mt-8"><Table className="text-sm"><TableHeader className="bg-gray-100"><TableRow><TableHead className="w-1/2 text-gray-600">Description</TableHead><TableHead className="text-center text-gray-600">Rate / Price</TableHead><TableHead className="text-center text-gray-600">Qty</TableHead><TableHead className="text-right text-gray-600">Total</TableHead></TableRow></TableHeader><TableBody>{customItems.map((item) => (<TableRow key={item.id}><TableCell className="whitespace-pre-wrap">{item.description}</TableCell><TableCell className="text-center">{item.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell><TableCell className="text-center">{item.quantity}</TableCell><TableCell className="text-right">{(item.quantity * item.price).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell></TableRow>))}</TableBody></Table></section>
@@ -682,6 +680,6 @@ export function InvoiceGeneratorView() {
                 <Button onClick={handleSaveServiceItem}>Save Item</Button>
             </DialogFooter>
         </DialogContent>
-    </>
+      </>
   );
 }
