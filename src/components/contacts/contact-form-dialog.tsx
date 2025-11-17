@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -27,7 +28,7 @@ import { type Company } from '@/services/accounting-service';
 import { addCompany } from '@/services/accounting-service';
 import { ScrollArea } from '../ui/scroll-area';
 import { addContact, updateContact } from '@/services/contact-service';
-import { addFolder } from '@/services/file-manager-folders';
+import { addFolder } from '@/services/contact-folder-service';
 import { useAuth } from '@/context/auth-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useUserPreferences } from '@/hooks/use-user-preferences';

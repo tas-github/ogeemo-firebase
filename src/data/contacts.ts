@@ -9,7 +9,7 @@ export interface Contact {
   cellPhone?: string;
   homePhone?: string;
   faxNumber?: string;
-  primaryPhoneType?: 'businessPhone' | 'cellPhone' | 'homePhone';
+  primaryPhoneType?: 'businessPhone' | 'cellPhone' | 'homePhone' | null;
   folderId: string;
   notes?: string;
   userId: string;
@@ -20,13 +20,14 @@ export interface FolderData {
   name: string;
   parentId?: string | null;
   userId: string;
+  createdAt: Date;
 }
 
 // NOTE: Mock data below is for demonstration in other components
 // and is NOT used by the main Contacts Manager view.
 // A 'userId' of 'mock-user' is used as a placeholder.
 
-export const mockFolders: Readonly<Omit<FolderData, 'userId'>[]> = [
+export const mockFolders: Readonly<Omit<FolderData, 'userId' | 'createdAt'>[]> = [
   { id: '1', name: 'Personal', parentId: null },
   { id: '2', name: 'Work', parentId: null },
   { id: '3', name: 'Leads', parentId: '2' },

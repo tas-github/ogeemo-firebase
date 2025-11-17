@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useDrag, useDrop } from 'react-dnd';
 import {
@@ -59,11 +59,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { type Contact } from '@/data/contacts';
+import { type Contact, type FolderData } from '@/data/contacts';
 import { useToast } from '@/hooks/use-toast';
 import { getContacts, deleteContacts, updateContact } from '@/services/contact-service';
 import { getCompanies, type Company } from '@/services/accounting-service';
-import { getFolders, addFolder, updateFolder, deleteFolders, type FolderItem } from '@/services/file-manager-folders';
+import { getFolders, addFolder, updateFolder, deleteFolders } from '@/services/contact-folder-service';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import {
@@ -92,25 +92,25 @@ const ItemTypes = {
   FOLDER: 'folder',
 };
 
-type DroppableItem = (Contact & { type?: 'contact' }) | (FolderItem & { type: 'folder' });
+type DroppableItem = (Contact & { type?: 'contact' }) | (FolderData & { type: 'folder' });
 
 
 export function ContactsView() {
-  const [folders, setFolders] = useState<FolderItem[]>([]);
+  const [folders, setFolders] = useState<FolderData[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFolderId, setSelectedFolderId] = useState<string>('all');
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   
-  const [renamingFolder, setRenamingFolder] = useState<FolderItem | null>(null);
+  const [renamingFolder, setRenamingFolder] = useState<FolderData | null>(null);
   const [renameInputValue, setRenameInputValue] = useState("");
   
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [contactToEdit, setContactToEdit] = useState<Contact | null>(null);
   const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
   
-  const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
+  const [folderToDelete, setFolderToDelete] = useState<FolderData | null>(null);
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
@@ -227,19 +227,19 @@ export function ContactsView() {
 
   const handleDeleteSelected = async () => {
     if (!user || selectedContactIds.length === 0) return;
-    if (!window.confirm(`Are you sure you want to delete ${'${selectedContactIds.length}'} contact(s)? This action cannot be undone.`)) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedContactIds.length} contact(s)? This action cannot be undone.`)) return;
 
     try {
       await deleteContacts(selectedContactIds);
       setContacts(contacts.filter(c => !selectedContactIds.includes(c.id)));
-      toast({ title: `${'${selectedContactIds.length}'} Contacts Deleted` });
+      toast({ title: `${selectedContactIds.length} Contacts Deleted` });
       setSelectedContactIds([]);
     } catch (error: any) {
       toast({ variant: "destructive", title: "Delete Failed", description: error.message });
     }
   };
   
-  const handleDeleteFolder = (folder: FolderItem) => {
+  const handleDeleteFolder = (folder: FolderData) => {
       setFolderToDelete(folder);
   };
   
@@ -247,7 +247,7 @@ export function ContactsView() {
   const handleConfirmDeleteFolder = async () => {
     if (!user || !folderToDelete) return;
     
-    const allFoldersIncludingChildren = (function getDescendants(parentId: string, all: FolderItem[]): string[] {
+    const allFoldersIncludingChildren = (function getDescendants(parentId: string, all: FolderData[]): string[] {
         const children = all.filter(f => f.parentId === parentId).map(f => f.id);
         return [parentId, ...children.flatMap(childId => getDescendants(childId, all))];
     })(folderToDelete.id, folders);
@@ -274,7 +274,7 @@ export function ContactsView() {
   };
 
 
-  const handleStartRename = (folder: FolderItem) => {
+  const handleStartRename = (folder: FolderData) => {
     setRenamingFolder(folder);
     setRenameInputValue(folder.name);
   };
@@ -315,7 +315,7 @@ export function ContactsView() {
     }
   };
 
-  const handleFolderDrop = async (folder: FolderItem, newParentId: string | null) => {
+  const handleFolderDrop = async (folder: FolderData, newParentId: string | null) => {
     if (folder.id === newParentId) return; // Can't drop on self
     if (folder.parentId === newParentId) return; // Already in the target folder
 
@@ -377,7 +377,7 @@ export function ContactsView() {
     }
   };
 
-  const FolderTree = ({ parentId = null, allFolders, level = 0 }: { parentId?: string | null; allFolders: FolderItem[]; level?: number }) => {
+  const FolderTree = ({ parentId = null, allFolders, level = 0 }: { parentId?: string | null; allFolders: FolderData[]; level?: number }) => {
     const children = allFolders.filter(f => f.parentId === parentId).sort((a,b) => a.name.localeCompare(b.name));
     
     if (children.length === 0 && level === 0 && parentId === null) {
@@ -509,7 +509,7 @@ export function ContactsView() {
                       </div>
                       <div className="flex items-center gap-2">
                         {selectedContactIds.length > 0 ? (
-                           <Button variant="destructive" onClick={() => {if(window.confirm(`Delete ${'${selectedContactIds.length}'} contact(s)?`)) handleDeleteSelected()}}>
+                           <Button variant="destructive" onClick={() => {if(window.confirm(`Delete ${selectedContactIds.length} contact(s)?`)) handleDeleteSelected()}}>
                                <Trash2 className="mr-2 h-4 w-4" /> Delete Selected
                            </Button>
                         ) : (
@@ -638,5 +638,3 @@ export function ContactsView() {
     </>
   );
 }
-
-    
