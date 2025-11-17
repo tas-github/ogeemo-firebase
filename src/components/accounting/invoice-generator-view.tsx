@@ -407,7 +407,6 @@ export function InvoiceGeneratorView() {
     if (companyMatch) {
         setSelectedCompanyId(companyMatch.id);
     } else if (savedContact.businessName) {
-        // If company doesn't exist, create it.
         addCompany({ name: savedContact.businessName, userId: user!.uid }).then(newCompany => {
             onCompaniesChange([...companies, newCompany]);
             setSelectedCompanyId(newCompany.id);
@@ -430,7 +429,6 @@ export function InvoiceGeneratorView() {
   const handleSelectCompany = (company: Company) => {
     setSelectedCompanyId(company.id);
     setIsCompanyPopoverOpen(false);
-    // Clear contact if it doesn't belong to the new company
     if (selectedContact && selectedContact.businessName !== company.name) {
       setSelectedContactId('');
     }
