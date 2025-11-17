@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useDrag, useDrop } from 'react-dnd';
 import {
@@ -62,7 +62,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { type Contact, type FolderData } from '@/data/contacts';
 import { useToast } from '@/hooks/use-toast';
 import { getContacts, deleteContacts, updateContact } from '@/services/contact-service';
-import { getCompanies, type Company } from '@/services/accounting-service';
+import { getCompanies, addCompany, type Company } from '@/services/accounting-service';
 import { getFolders, addFolder, updateFolder, deleteFolders } from '@/services/contact-folder-service';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
@@ -638,3 +638,5 @@ export function ContactsView() {
     </>
   );
 }
+
+    
