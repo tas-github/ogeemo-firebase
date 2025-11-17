@@ -114,8 +114,7 @@ export function InvoiceGeneratorView() {
   const [isNewServiceItemDialogOpen, setIsNewServiceItemDialogOpen] = useState(false);
   const [newServiceItemDesc, setNewServiceItemDesc] = useState("");
   const [newServiceItemPrice, setNewServiceItemPrice] = useState<number | ''>('');
-
-  // Correctly placed hook for printing
+  
   const { handlePrint, contentRef } = useReactToPrint();
 
   const clearInvoice = useCallback(() => {
