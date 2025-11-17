@@ -79,7 +79,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import Link from 'next/link';
 
-const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-form-dialog').then((mod) => mod.default), {
+const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-form-dialog'), {
   loading: () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <LoaderCircle className="h-10 w-10 animate-spin text-white" />
@@ -365,12 +365,21 @@ export function ContactsView() {
     }
     try {
         const newFolder = await addFolder({ name: newFolderName.trim(), userId: user.uid, parentId: newFolderParentId });
-        setFolders(prev => [...prev, newFolder]);
-        if(newFolder.parentId) {
-            setExpandedFolders(p => new Set(p).add(newFolder.parentId!))
+        const updatedFolders = [...folders, newFolder];
+        setFolders(updatedFolders);
+        
+        if (isNewFolderDialogOpen) {
+            // If creating from the main dialog
+             if (newFolder.parentId) {
+                setExpandedFolders(p => new Set(p).add(newFolder.parentId!))
+            }
+            setIsNewFolderDialogOpen(false);
+            setNewFolderName("");
+        } else if (onFoldersChange) {
+            // If creating from another dialog (e.g., ContactForm)
+            onFoldersChange(updatedFolders);
         }
-        setIsNewFolderDialogOpen(false);
-        setNewFolderName("");
+
         toast({ title: "Folder Created" });
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Failed to create folder', description: e.message });
@@ -483,7 +492,7 @@ export function ContactsView() {
               <div className="flex h-full flex-col p-2">
                   <div className="p-2">
                       <Button className="w-full" onClick={() => { setNewFolderParentId(null); setIsNewFolderDialogOpen(true); }}>
-                          <Plus className="mr-2 h-4 w-4" /> New Folder
+                          <FolderPlus className="mr-2 h-4 w-4" /> New Folder
                       </Button>
                   </div>
                   <nav className="flex flex-col gap-1 p-2">
