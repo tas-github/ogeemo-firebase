@@ -87,6 +87,7 @@ export default function ContactFormDialog({
     const [currentFolders, setCurrentFolders] = useState<FolderData[]>(folders);
     const { preferences } = useUserPreferences();
     const [isCompanyPopoverOpen, setIsCompanyPopoverOpen] = useState(false);
+    const [companySearchValue, setCompanySearchValue] = useState("");
 
     const form = useForm<ContactFormData>({
         resolver: zodResolver(contactSchema),
@@ -190,6 +191,7 @@ export default function ContactFormDialog({
             onCompaniesChange([...companies, newCompany]);
             form.setValue('businessName', newCompany.name);
             setIsCompanyPopoverOpen(false);
+            setCompanySearchValue('');
             toast({ title: 'Company Created', description: `"${companyName}" has been added.` });
         } catch (error: any) {
              toast({ variant: 'destructive', title: 'Failed to create company', description: error.message });
@@ -231,11 +233,15 @@ export default function ContactFormDialog({
                                                     </PopoverTrigger>
                                                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                                         <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
-                                                            <CommandInput placeholder="Search or create company..." />
+                                                            <CommandInput 
+                                                                placeholder="Search or create company..."
+                                                                value={companySearchValue}
+                                                                onValueChange={setCompanySearchValue}
+                                                            />
                                                             <CommandList>
                                                                 <CommandEmpty>
-                                                                    <Button variant="link" onClick={() => handleCreateCompany(form.getValues('businessName') || '')}>
-                                                                        <Plus className="mr-2 h-4 w-4"/> Create New Company
+                                                                    <Button variant="link" onClick={() => handleCreateCompany(companySearchValue)}>
+                                                                        <Plus className="mr-2 h-4 w-4"/> Create "{companySearchValue}"
                                                                     </Button>
                                                                 </CommandEmpty>
                                                                 <CommandGroup>
