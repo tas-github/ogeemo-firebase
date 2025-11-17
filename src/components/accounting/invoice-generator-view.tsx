@@ -42,6 +42,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { cn } from '@/lib/utils';
 import type { Contact } from '@/data/contacts';
+import { useReactToPrint } from '@/hooks/use-react-to-print';
 
 
 // Types
@@ -104,6 +105,7 @@ export function InvoiceGeneratorView() {
   // States for comboboxes
   const [isCompanyPopoverOpen, setIsCompanyPopoverOpen] = useState(false);
   const [isContactPopoverOpen, setIsContactPopoverOpen] = useState(false);
+  const [companySearchValue, setCompanySearchValue] = React.useState('');
 
   // States for 'Add New' dialogs
   const [isNewCompanyDialogOpen, setIsNewCompanyDialogOpen] = useState(false);
@@ -114,6 +116,9 @@ export function InvoiceGeneratorView() {
   const [newServiceItemPrice, setNewServiceItemPrice] = useState<number | ''>('');
   
   const printRef = useRef<HTMLDivElement>(null);
+  const { handlePrint } = useReactToPrint({
+    content: () => printRef.current,
+  });
 
   const clearInvoice = useCallback(() => {
     setCustomItems([]);
@@ -290,10 +295,6 @@ export function InvoiceGeneratorView() {
   const total = useMemo(() => {
     return subtotal + taxAmount;
   }, [subtotal, taxAmount]);
-
-  const handlePrint = () => {
-    window.print();
-  };
   
   const handleSaveInvoice = async () => {
     if (!user) { toast({ variant: "destructive", title: "Authentication error" }); return; }
@@ -386,6 +387,7 @@ export function InvoiceGeneratorView() {
           setCompanies(prev => [...prev, newCompany]);
           setSelectedCompanyId(newCompany.id);
           setIsCompanyPopoverOpen(false);
+          setCompanySearchValue('');
           toast({ title: "Company Created" });
       } catch (error: any) {
           toast({ variant: "destructive", title: "Failed to create company", description: error.message });
@@ -491,13 +493,17 @@ export function InvoiceGeneratorView() {
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Search company..." />
+                            <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                                <CommandInput 
+                                  placeholder="Search or create company..."
+                                  value={companySearchValue}
+                                  onValueChange={setCompanySearchValue}
+                                />
                                 <CommandList>
                                     <CommandEmpty>
-                                        <Button variant="link" onClick={() => { setIsCompanyPopoverOpen(false); setIsNewCompanyDialogOpen(true); }}>
-                                            <Plus className="mr-2 h-4 w-4"/> Create New Company
-                                        </Button>
+                                      <Button variant="link" onClick={() => handleCreateCompany(companySearchValue)}>
+                                          <Plus className="mr-2 h-4 w-4"/> Create "{companySearchValue}"
+                                      </Button>
                                     </CommandEmpty>
                                     <CommandGroup>
                                         {companies.map(c => (
@@ -513,7 +519,7 @@ export function InvoiceGeneratorView() {
                       </Popover>
                   </div>
                   <div className="space-y-2">
-                      <Label htmlFor="contact-person-select">Contact Person</Label>
+                      <Label htmlFor="contact-person-select">Contact Name</Label>
                        <Popover open={isContactPopoverOpen} onOpenChange={setIsContactPopoverOpen}>
                         <PopoverTrigger asChild>
                             <Button variant="outline" role="combobox" className="w-full justify-between">
@@ -615,7 +621,7 @@ export function InvoiceGeneratorView() {
                 </div>
             </CardHeader>
             <CardContent>
-                <div id="invoice-preview" ref={printRef} className="bg-white text-black p-8 border rounded-lg shadow-sm w-full font-sans">
+                <div id="printable-area" ref={printRef} className="bg-white text-black p-8 border rounded-lg shadow-sm w-full font-sans">
                     <header className="flex justify-between items-start pb-6 border-b"><Logo className="text-primary"/><div className="text-right"><h1 className="text-4xl font-bold uppercase text-gray-700">Invoice</h1><div className="flex items-center justify-end gap-1"><p className="text-gray-500">#</p><Input type="text" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className="w-32 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /><Pencil className="h-3 w-3 text-gray-400" /></div></div></header>
                     <section className="flex justify-between mt-6"><div><h2 className="font-bold text-gray-500 uppercase mb-2">Bill To</h2>{selectedCompany ? (<><p className="font-bold text-lg">{selectedCompany.name}</p><p>{selectedContact?.name}</p><p>{selectedContact?.email}</p></>) : (<p className="text-gray-500">Select a client</p>)}</div><div className="text-right"><p><span className="font-bold text-gray-500">Invoice Date:</span> <Input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} className="inline-block w-40 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p><p><span className="font-bold text-gray-500">Due Date:</span> <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="inline-block w-40 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p></div></section>
                     <section className="mt-8"><Table className="text-sm"><TableHeader className="bg-gray-100"><TableRow><TableHead className="w-1/2 text-gray-600">Description</TableHead><TableHead className="text-center text-gray-600">Rate / Price</TableHead><TableHead className="text-center text-gray-600">Qty</TableHead><TableHead className="text-right text-gray-600">Total</TableHead></TableRow></TableHeader><TableBody>{customItems.map((item) => (<TableRow key={item.id}><TableCell className="whitespace-pre-wrap">{item.description}</TableCell><TableCell className="text-center">{item.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell><TableCell className="text-center">{item.quantity}</TableCell><TableCell className="text-right">{(item.quantity * item.price).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell></TableRow>))}</TableBody></Table></section>
@@ -655,25 +661,6 @@ export function InvoiceGeneratorView() {
         onCompaniesChange={setCompanies}
     />
     
-    <Dialog open={isNewCompanyDialogOpen} onOpenChange={setIsNewCompanyDialogOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Create New Company</DialogTitle>
-                <DialogDescription>Add a new company to your database. This can be used across multiple invoices.</DialogDescription>
-            </DialogHeader>
-            <div className="py-4 space-y-2">
-                <Label htmlFor="new-company-name">Company Name</Label>
-                <div className='flex gap-2'>
-                    <Input id="new-company-name" value={newCompanyName} onChange={e => setNewCompanyName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateCompany(newCompanyName)} />
-                    <Button onClick={() => handleCreateCompany(newCompanyName)}>Create</Button>
-                </div>
-            </div>
-            <DialogFooter>
-                <Button variant="ghost" onClick={() => setIsNewCompanyDialogOpen(false)}>Cancel</Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
-    
     <Dialog open={isNewServiceItemDialogOpen} onOpenChange={setIsNewServiceItemDialogOpen}>
         <DialogContent>
             <DialogHeader>
@@ -695,8 +682,6 @@ export function InvoiceGeneratorView() {
                 <Button onClick={handleSaveServiceItem}>Save Item</Button>
             </DialogFooter>
         </DialogContent>
-    </Dialog>
-
     </>
   );
 }

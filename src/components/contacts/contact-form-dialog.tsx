@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -187,12 +186,12 @@ export default function ContactFormDialog({
     const handleCreateCompany = async (companyName: string) => {
         if (!user || !companyName.trim()) return;
         try {
-            const newCompany = await addCompany({ name: companyName, userId: user.uid });
+            const newCompany = await addCompany({ name: companyName.trim(), userId: user.uid });
             onCompaniesChange([...companies, newCompany]);
             form.setValue('businessName', newCompany.name);
             setIsCompanyPopoverOpen(false);
             setCompanySearchValue('');
-            toast({ title: 'Company Created', description: `"${companyName}" has been added.` });
+            toast({ title: 'Company Created', description: `"${companyName.trim()}" has been added.` });
         } catch (error: any) {
              toast({ variant: 'destructive', title: 'Failed to create company', description: error.message });
         }
@@ -215,13 +214,13 @@ export default function ContactFormDialog({
                         <ScrollArea className="flex-1">
                             <div className="px-6 pb-4 space-y-4 bg-card">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name <span className="text-destructive">*</span></FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                    <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Contact Name <span className="text-destructive">*</span></FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                     <FormField
                                         control={form.control}
                                         name="businessName"
                                         render={({ field }) => (
                                             <FormItem className="flex flex-col">
-                                                <FormLabel>Business Name</FormLabel>
+                                                <FormLabel>Company Name</FormLabel>
                                                 <Popover open={isCompanyPopoverOpen} onOpenChange={setIsCompanyPopoverOpen}>
                                                     <PopoverTrigger asChild>
                                                         <FormControl>
