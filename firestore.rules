@@ -20,6 +20,10 @@ service cloud.firestore {
       allow read, write: if isOwner(get(/databases/$(database)/documents/invoices/$(request.resource.data.invoiceId)).data.userId);
     }
     
+    match /serviceItems/{itemId} {
+      allow read, write: if isOwner(resource.data.userId);
+    }
+    
     match /incomeTransactions/{transactionId} {
       allow read, write: if isOwner(resource.data.userId);
     }

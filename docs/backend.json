@@ -16,7 +16,7 @@
         "type": "object",
         "properties": {
             "invoiceNumber": { "type": "string" },
-            "clientName": { "type": "string" },
+            "companyName": { "type": "string" },
             "contactId": { "type": "string" },
             "originalAmount": { "type": "number" },
             "amountPaid": { "type": "number" },
@@ -28,7 +28,7 @@
             "taxType": { "type": "string" },
             "userId": { "type": "string" }
         },
-        "required": ["invoiceNumber", "clientName", "contactId", "originalAmount", "amountPaid", "dueDate", "invoiceDate", "status", "userId"]
+        "required": ["invoiceNumber", "companyName", "contactId", "originalAmount", "amountPaid", "dueDate", "invoiceDate", "status", "userId"]
     },
     "InvoiceLineItem": {
         "title": "Invoice Line Item",
@@ -41,6 +41,17 @@
             "price": { "type": "number" }
         },
         "required": ["invoiceId", "description", "quantity", "price"]
+    },
+    "ServiceItem": {
+        "title": "Service Item",
+        "description": "A reusable item for invoices, such as a service or product with a predefined price.",
+        "type": "object",
+        "properties": {
+            "description": { "type": "string" },
+            "price": { "type": "number" },
+            "userId": { "type": "string" }
+        },
+        "required": ["description", "price", "userId"]
     },
     "IncomeTransaction": {
         "title": "Income Transaction",
@@ -93,13 +104,16 @@
             "vendor": { "type": "string" },
             "invoiceNumber": { "type": "string" },
             "dueDate": { "type": "string", "format": "date" },
-            "amount": { "type": "number" },
+            "totalAmount": { "type": "number" },
+            "preTaxAmount": { "type": "number" },
+            "taxAmount": { "type": "number" },
+            "taxRate": { "type": "number" },
             "category": { "type": "string" },
             "description": { "type": "string" },
             "documentUrl": { "type": "string", "format": "uri" },
             "userId": { "type": "string" }
         },
-        "required": ["vendor", "dueDate", "amount", "category", "userId"]
+        "required": ["vendor", "dueDate", "totalAmount", "category", "userId"]
     },
     "Asset": {
         "title": "Capital Asset",
@@ -176,6 +190,10 @@
     "/invoiceLineItems/{itemId}": {
         "schema": { "$ref": "#/entities/InvoiceLineItem" },
         "description": "Collection of all invoice line items."
+    },
+    "/serviceItems/{itemId}": {
+        "schema": { "$ref": "#/entities/ServiceItem" },
+        "description": "Collection of reusable invoice items."
     },
     "/incomeTransactions/{transactionId}": {
         "schema": { "$ref": "#/entities/IncomeTransaction" },

@@ -25,7 +25,8 @@ import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { useToast } from '@/hooks/use-toast';
 import { type Contact, type FolderData } from '@/data/contacts';
 import { ScrollArea } from '../ui/scroll-area';
-import { addContact, updateContact, addFolder } from '@/services/contact-service';
+import { addContact, updateContact } from '@/services/contact-service';
+import { addFolder } from '@/services/file-manager-folders';
 import { useAuth } from '@/context/auth-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useUserPreferences } from '@/hooks/use-user-preferences';
@@ -34,6 +35,7 @@ import { cn } from '@/lib/utils';
 const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }).optional().or(z.literal('')),
+  businessName: z.string().optional(),
   businessPhone: z.string().optional(),
   cellPhone: z.string().optional(),
   homePhone: z.string().optional(),
@@ -79,7 +81,7 @@ export default function ContactFormDialog({
 
     const form = useForm<ContactFormData>({
         resolver: zodResolver(contactSchema),
-        defaultValues: { name: "", email: initialEmail, businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: "" },
+        defaultValues: { name: "", email: initialEmail, businessName: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: "" },
     });
     
     // Watch phone number fields to dynamically enable/disable radio buttons
@@ -96,14 +98,14 @@ export default function ContactFormDialog({
             const defaultFolderId = forceFolderId || selectedFolderId !== 'all' ? selectedFolderId : (currentFolders.find(f => f.name === 'Clients')?.id || currentFolders[0]?.id || '');
             const initialValues = contactToEdit 
                 ? { ...contactToEdit, folderId: forceFolderId || contactToEdit.folderId || defaultFolderId, primaryPhoneType: contactToEdit.primaryPhoneType || null } 
-                : { name: "", email: initialEmail, businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: defaultFolderId };
+                : { name: "", email: initialEmail, businessName: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: defaultFolderId };
             form.reset(initialValues);
         }
     }, [isOpen, contactToEdit, currentFolders, selectedFolderId, form, initialEmail, forceFolderId]);
 
     const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
         onTranscript: (transcript) => {
-            const newText = notesBeforeSpeech ? `${notesBeforeSpeech} ${transcript}`.trim() : transcript;
+            const newText = notesBeforeSpeech ? `$\{notesBeforeSpeech} $\{transcript}`.trim() : transcript;
             form.setValue('notes', newText, { shouldValidate: true });
         },
     });
@@ -135,7 +137,7 @@ export default function ContactFormDialog({
                 const updatedContactData = { ...contactToEdit, ...dataToSave };
                 await updateContact(contactToEdit.id, updatedContactData);
                 onSave(updatedContactData, true);
-                toast({ title: "Contact Updated", description: `Details for ${values.name} have been saved.` });
+                toast({ title: "Contact Updated", description: `Details for $\{values.name} have been saved.` });
             } else {
                 const newContactData: Omit<Contact, 'id'> = {
                     ...dataToSave,
@@ -144,7 +146,7 @@ export default function ContactFormDialog({
                 };
                 const newContact = await addContact(newContactData);
                 onSave(newContact, false);
-                toast({ title: "Contact Created", description: `${newContact.name} has been added.` });
+                toast({ title: "Contact Created", description: `$\{newContact.name} has been added.` });
             }
             onOpenChange(false);
         } catch (error: any) {
@@ -181,14 +183,17 @@ export default function ContactFormDialog({
                         {contactToEdit ? "Edit Contact" : "New Contact"}
                     </DialogTitle>
                     <DialogDescription>
-                        {contactToEdit ? `Editing details for ${contactToEdit.name}.` : `Create a new contact.`}
+                        {contactToEdit ? `Editing details for $\{contactToEdit.name}.` : `Create a new contact.`}
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
                         <ScrollArea className="flex-1">
                             <div className="px-6 pb-4 space-y-4 bg-card">
-                                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name <span className="text-destructive">*</span></FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name <span className="text-destructive">*</span></FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                    <FormField control={form.control} name="businessName" render={({ field }) => ( <FormItem> <FormLabel>Business Name</FormLabel> <FormControl><Input placeholder="Acme Inc." {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                </div>
                                 
                                 <FormField
                                     control={form.control}
@@ -222,7 +227,7 @@ export default function ContactFormDialog({
                                             <FormLabel>Business #</FormLabel>
                                             <div className="relative">
                                                 <FormControl><Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} /></FormControl>
-                                                {field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:${field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Business</span></a></Button>}
+                                                {field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:$\{field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Business</span></a></Button>}
                                             </div>
                                             <FormMessage />
                                         </FormItem>
@@ -232,7 +237,7 @@ export default function ContactFormDialog({
                                             <FormLabel>Cell #</FormLabel>
                                             <div className="relative">
                                                 <FormControl><Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} /></FormControl>
-                                                {field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:${field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Cell</span></a></Button>}
+                                                {field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:$\{field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Cell</span></a></Button>}
                                             </div>
                                             <FormMessage />
                                         </FormItem>
@@ -242,7 +247,7 @@ export default function ContactFormDialog({
                                             <FormLabel>Home #</FormLabel>
                                             <div className="relative">
                                                 <FormControl><Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} /></FormControl>
-                                                {field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:${field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Home</span></a></Button>}
+                                                {field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:$\{field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Home</span></a></Button>}
                                             </div>
                                             <FormMessage />
                                         </FormItem>

@@ -19,7 +19,7 @@ const RECEIPT_DATA_KEY = 'ogeemo-receipt-data';
 interface DeserializedInvoice {
   id: string;
   invoiceNumber: string;
-  clientName: string;
+  companyName: string;
   originalAmount: number;
   amountPaid: number;
   dueDate: string; // ISO string
@@ -66,7 +66,7 @@ export default function ReceiptPage() {
         if (!receiptData) return;
         toast({
             title: "Email Sent (Simulation)",
-            description: `The receipt for invoice ${receiptData.invoice.invoiceNumber} has been sent to ${receiptData.invoice.clientName}.`,
+            description: `The receipt for invoice ${receiptData.invoice.invoiceNumber} has been sent to ${receiptData.invoice.companyName}.`,
         });
     };
     
@@ -135,7 +135,7 @@ export default function ReceiptPage() {
                     <section className="flex justify-between mt-6">
                         <div>
                             <h2 className="font-bold text-gray-500 uppercase mb-2">Bill To</h2>
-                            <p className="font-bold text-lg">{invoice.clientName}</p>
+                            <p className="font-bold text-lg">{invoice.companyName}</p>
                         </div>
                         <div className="text-right">
                             <p><span className="font-bold text-gray-500">Date Issued:</span> {format(new Date(), 'PP')}</p>

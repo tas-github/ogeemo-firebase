@@ -55,7 +55,7 @@ export interface InvoiceLineItem {
 export interface Invoice {
   id: string;
   invoiceNumber: string;
-  clientName: string;
+  companyName: string;
   contactId: string;
   originalAmount: number;
   amountPaid: number;
@@ -78,7 +78,7 @@ const docToInvoice = (doc: any): Invoice => {
     return {
         id: doc.id,
         invoiceNumber: data.invoiceNumber,
-        clientName: data.clientName,
+        companyName: data.companyName,
         contactId: data.contactId,
         originalAmount: data.originalAmount,
         amountPaid: data.amountPaid,
@@ -136,6 +136,14 @@ export async function addInvoiceWithLineItems(
 ): Promise<Invoice> {
     const db = await getDb();
     const batch = writeBatch(db);
+
+    // Sync company name
+    const companiesRef = collection(db, 'companies');
+    const companyQuery = query(companiesRef, where("userId", "==", invoiceData.userId), where("name", "==", invoiceData.companyName));
+    const companySnapshot = await getDocs(companyQuery);
+    if (companySnapshot.empty) {
+        addDoc(companiesRef, { name: invoiceData.companyName, userId: invoiceData.userId });
+    }
 
     const invoiceRef = doc(collection(db, INVOICES_COLLECTION));
     batch.set(invoiceRef, { ...invoiceData, createdAt: new Date() });
@@ -304,8 +312,7 @@ export interface PayableBill {
 const PAYABLES_COLLECTION = 'payableBills';
 const docToPayableBill = (doc: any): PayableBill => {
     const data = doc.data();
-    // Ensure backward compatibility for items that still have 'amount' instead of 'totalAmount'
-    const totalAmount = data.totalAmount ?? data.amount ?? 0;
+    const totalAmount = data.totalAmount ?? 0;
     return { id: doc.id, ...data, totalAmount } as PayableBill;
 };
 
@@ -491,4 +498,38 @@ export async function addIncomeCategory(data: Omit<IncomeCategory, 'id'>): Promi
   const db = await getDb();
   const docRef = await addDoc(collection(db, INCOME_CATEGORIES_COLLECTION), data);
   return { id: docRef.id, ...data };
+}
+
+// --- Service Item Interfaces & Functions ---
+export interface ServiceItem {
+  id: string;
+  description: string;
+  price: number;
+  userId: string;
+}
+
+const SERVICE_ITEMS_COLLECTION = 'serviceItems';
+const docToServiceItem = (doc: any): ServiceItem => ({ id: doc.id, ...doc.data() } as ServiceItem);
+
+export async function getServiceItems(userId: string): Promise<ServiceItem[]> {
+  const db = await getDb();
+  const q = query(collection(db, SERVICE_ITEMS_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docToServiceItem);
+}
+
+export async function addServiceItem(data: Omit<ServiceItem, 'id'>): Promise<ServiceItem> {
+  const db = await getDb();
+  const docRef = await addDoc(collection(db, SERVICE_ITEMS_COLLECTION), data);
+  return { id: docRef.id, ...data };
+}
+
+export async function updateServiceItem(id: string, data: Partial<Omit<ServiceItem, 'id' | 'userId'>>): Promise<void> {
+  const db = await getDb();
+  await updateDoc(doc(db, SERVICE_ITEMS_COLLECTION, id), data);
+}
+
+export async function deleteServiceItem(id: string): Promise<void> {
+  const db = await getDb();
+  await deleteDoc(doc(db, SERVICE_ITEMS_COLLECTION, id));
 }

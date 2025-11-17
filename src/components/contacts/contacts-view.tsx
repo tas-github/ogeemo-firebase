@@ -15,6 +15,7 @@ import {
   ChevronRight,
   FolderPlus,
   BookOpen,
+  Link as LinkIcon,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -52,7 +53,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { type Contact } from '@/data/contacts';
 import { useToast } from '@/hooks/use-toast';
-import { getContacts, addContact, updateContact, deleteContacts } from '@/services/contact-service';
+import { getContacts, deleteContacts, updateContact } from '@/services/contact-service';
 import { getFolders, addFolder, updateFolder, deleteFolders, type FolderItem } from '@/services/file-manager-folders';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
@@ -67,10 +68,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import Link from 'next/link';
 
 const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-form-dialog').then((mod) => mod.default), {
   loading: () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <LoaderCircle className="h-10 w-10 animate-spin text-white" />
     </div>
   ),
@@ -92,8 +94,6 @@ export function ContactsView() {
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
   
-  const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
-  const [newFolderInitialParentId, setNewFolderInitialParentId] = useState<string | null>(null);
   const [renamingFolder, setRenamingFolder] = useState<FolderItem | null>(null);
   const [renameInputValue, setRenameInputValue] = useState("");
   
@@ -105,6 +105,10 @@ export function ContactsView() {
   const [foldersToDelete, setFoldersToDelete] = useState<string[] | null>(null);
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+
+  const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -183,7 +187,7 @@ export function ContactsView() {
   }));
 
   const allVisibleSelected = displayedContacts.length > 0 && selectedContactIds.length === displayedContacts.length;
-  const someVisibleSelected = selectedContactIds.length > 0 && selectedContactIds.length < displayedContacts.length;
+  const someSelected = selectedContactIds.length > 0 && !allVisibleSelected;
 
   const handleToggleSelect = (contactId: string) => {
     setSelectedContactIds((prev) =>
@@ -205,11 +209,11 @@ export function ContactsView() {
     );
   };
 
-  const handleSaveContact = async (data: Contact, isEditing: boolean) => {
+  const handleSaveContact = (savedContact: Contact, isEditing: boolean) => {
       if (isEditing) {
-          setContacts(prev => prev.map(c => c.id === data.id ? data : c));
+          setContacts(prev => prev.map(c => c.id === savedContact.id ? savedContact : c));
       } else {
-          setContacts(prev => [...prev, data]);
+          setContacts(prev => [...prev, savedContact]);
       }
   };
   
@@ -238,11 +242,6 @@ export function ContactsView() {
     } catch (error: any) {
       toast({ variant: "destructive", title: "Delete Failed", description: error.message });
     }
-  };
-  
-  const handleOpenNewFolderDialog = (options: { parentId?: string | null } = {}) => {
-    setNewFolderInitialParentId(options.parentId || null);
-    setIsNewFolderDialogOpen(true);
   };
   
   const handleDeleteFolder = async (folder: FolderItem) => {
@@ -304,14 +303,14 @@ export function ContactsView() {
       handleCancelRename();
     }
   };
-
+  
   const handleContactDrop = async (contact: Contact, newFolderId: string) => {
     if (contact.folderId === newFolderId) return;
 
     try {
-        const updatedContact = { ...contact, folderId: newFolderId };
+        const updatedContactData = { ...contact, folderId: newFolderId };
         await updateContact(contact.id, { folderId: newFolderId });
-        setContacts(prev => prev.map(c => c.id === contact.id ? updatedContact : c));
+        setContacts(prev => prev.map(c => c.id === contact.id ? updatedContactData : c));
         const folder = folders.find(f => f.id === newFolderId);
         toast({ title: "Contact Moved", description: `"${contact.name}" moved to "${folder?.name}".` });
     } catch (error: any) {
@@ -355,6 +354,30 @@ export function ContactsView() {
         {children}
       </TableRow>
     );
+  };
+
+  const handleSelectFolder = (folderId: string) => {
+    setSelectedFolderId(folderId);
+    setSelectedContactIds([]);
+  };
+
+  const handleCreateFolder = async () => {
+    if (!user || !newFolderName.trim()) {
+        toast({ variant: "destructive", title: "Folder name is required." });
+        return;
+    }
+    try {
+        const newFolder = await addFolder({ name: newFolderName.trim(), userId: user.uid, parentId: newFolderParentId });
+        setFolders(prev => [...prev, newFolder]);
+        if(newFolder.parentId) {
+            setExpandedFolders(p => new Set(p).add(newFolder.parentId!))
+        }
+        setIsNewFolderDialogOpen(false);
+        setNewFolderName("");
+        toast({ title: "Folder Created" });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Failed to create folder', description: e.message });
+    }
   };
 
   const FolderTree = ({ parentId = null, allFolders, level = 0 }: { parentId?: string | null; allFolders: FolderItem[]; level?: number }) => {
@@ -414,7 +437,7 @@ export function ContactsView() {
                 <Button
                   variant="ghost"
                   className="flex-1 justify-start gap-2 h-9 p-2 text-left"
-                  onClick={() => { if (!isRenaming) setSelectedFolderId(folder.id) }}
+                  onClick={() => { if (!isRenaming) handleSelectFolder(folder.id) }}
                 >
                   {hasChildren ? (
                     <ChevronRight className={cn('h-4 w-4 shrink-0 transition-transform', isExpanded && 'rotate-90')} onClick={(e) => { e.stopPropagation(); setExpandedFolders(p => { const n = new Set(p); n.has(folder.id) ? n.delete(folder.id) : n.add(folder.id); return n; }); }} />
@@ -432,7 +455,7 @@ export function ContactsView() {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}><Button variant="ghost" size="icon" className="h-8 w-8 shrink-0"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenuItem onSelect={() => handleOpenNewFolderDialog({ parentId: folder.id })}><FolderPlus className="mr-2 h-4 w-4" />Create subfolder</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => { setNewFolderParentId(folder.id); setIsNewFolderDialogOpen(true); }}><FolderPlus className="mr-2 h-4 w-4" />Create subfolder</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleStartRename(folder)}><Pencil className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteFolder(folder)}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
@@ -466,69 +489,70 @@ export function ContactsView() {
         <div className="flex-1 min-h-0 pb-4 sm:pb-6">
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
             <ResizablePanel defaultSize={25} minSize={20}>
-              <div className="flex h-full flex-col">
-                  <div className="flex items-center justify-between p-2 border-b h-[57px]">
-                      {selectedFolderIds.length > 0 ? (
-                        <>
-                          <h3 className="text-sm font-semibold px-2">{selectedFolderIds.length} folder(s) selected</h3>
-                          <Button variant="destructive" size="sm" onClick={handleDeleteSelectedFolders}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                          </Button>
-                        </>
-                      ) : (
-                         <>
-                            <h3 className="text-lg font-semibold px-2">Folders</h3>
-                            <Button variant="ghost" size="icon" onClick={() => handleOpenNewFolderDialog({ parentId: null })} title="New Root Folder">
-                                <FolderPlus className="h-5 w-5" />
-                                <span className="sr-only">New Root Folder</span>
-                            </Button>
-                         </>
-                      )}
+              <div className="flex h-full flex-col p-2">
+                  <div className="p-2">
+                      <Button className="w-full" onClick={() => { setNewFolderParentId(null); setIsNewFolderDialogOpen(true); }}>
+                          <Plus className="mr-2 h-4 w-4" /> New Folder
+                      </Button>
                   </div>
-                  <ScrollArea ref={dropToRoot} className={cn("flex-1 rounded-md p-2", isOverRoot && canDropToRoot && 'bg-primary/10 ring-1 ring-primary-foreground')}>
-                      <Button variant={selectedFolderId === 'all' ? "secondary" : "ghost"} className="w-full justify-start gap-3 my-1" onClick={() => setSelectedFolderId('all')}>
-                          <Users className="h-4 w-4" /> <span>All Folders</span>
+                  <nav className="flex flex-col gap-1 p-2">
+                      <Button
+                          variant={selectedFolderId === 'all' ? "secondary" : "ghost"}
+                          className="w-full justify-start gap-3"
+                          onClick={() => handleSelectFolder('all')}
+                      >
+                          <Users className="h-4 w-4" />
+                          <span>All Contacts</span>
                       </Button>
                       <FolderTree parentId={null} allFolders={folders} />
-                  </ScrollArea>
+                  </nav>
               </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={75}>
               <div className="flex flex-col h-full">
                   <div className="flex items-center justify-between p-4 border-b h-20">
-                      {selectedContactIds.length > 0 ? (
-                          <>
-                              <h2 className="text-xl font-bold">{selectedContactIds.length} selected</h2>
-                              <Button variant="destructive" onClick={handleDeleteSelected}><Trash2 className="mr-2 h-4 w-4" /> Delete Selected</Button>
-                          </>
-                      ) : (
-                          <>
-                              <div className="flex items-center gap-4">
-                                <div>
-                                    <h2 className="text-xl font-bold">{selectedFolderId === 'all' ? 'All Contacts' : selectedFolder?.name}</h2>
-                                    <p className="text-sm text-muted-foreground">{displayedContacts.length} contact(s)</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {selectedFolderId === 'all' ? (
-                                    <Button disabled className="cursor-not-allowed bg-orange-500 hover:bg-orange-500 text-white">Select a folder to add contact</Button>
-                                ) : (
-                                    <Button onClick={handleNewContactClick} className="bg-orange-500 hover:bg-orange-600 text-white">
-                                        <Plus className="mr-2 h-4 w-4" /> Add Contact
-                                    </Button>
-                                )}
-                              </div>
-                          </>
-                      )}
+                      <div>
+                          <h2 className="text-xl font-bold">{selectedFolderId === 'all' ? 'All Contacts' : selectedFolder?.name}</h2>
+                          <p className="text-sm text-muted-foreground">{displayedContacts.length} contact(s)</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {selectedContactIds.length > 0 ? (
+                           <Button variant="destructive" onClick={() => {if(window.confirm(`Delete ${selectedContactIds.length} contact(s)?`)) handleDeleteSelected()}}>
+                               <Trash2 className="mr-2 h-4 w-4" /> Delete Selected
+                           </Button>
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button onClick={handleNewContactClick} disabled={selectedFolderId === 'all'}>
+                                  <Plus className="mr-2 h-4 w-4" /> Add Contact
+                                </Button>
+                              </TooltipTrigger>
+                              {selectedFolderId === 'all' && (
+                                <TooltipContent>
+                                  <p>Please select a specific folder to add a contact.</p>
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
                   </div>
                    <div className="flex-1 overflow-y-auto">
                       <Table>
                           <TableHeader>
                               <TableRow>
-                                  <TableHead className="w-[50px]"><Checkbox checked={allVisibleSelected ? true : someVisibleSelected ? 'indeterminate' : false} onCheckedChange={handleToggleSelectAll} /></TableHead>
+                                  <TableHead className="w-[50px]">
+                                    <Checkbox
+                                      checked={allVisibleSelected ? true : someSelected ? 'indeterminate' : false}
+                                      onCheckedChange={handleToggleSelectAll}
+                                      aria-label="Select all contacts"
+                                    />
+                                  </TableHead>
                                   <TableHead>Name</TableHead>
                                   <TableHead>Email</TableHead>
+                                  <TableHead>Company</TableHead>
                                   <TableHead>Phone</TableHead>
                                   {selectedFolderId === 'all' && <TableHead>Folder</TableHead>}
                                   <TableHead className="w-[50px]"><span className="sr-only">Actions</span></TableHead>
@@ -550,6 +574,7 @@ export function ContactsView() {
                                         </button>
                                       </TableCell>
                                       <TableCell>{contact.email}</TableCell>
+                                      <TableCell>{contact.businessName}</TableCell>
                                       <TableCell>{primaryPhoneNumber}</TableCell>
                                       {selectedFolderId === 'all' && <TableCell>{folderName}</TableCell>}
                                       <TableCell onClick={(e) => e.stopPropagation()}>
@@ -582,11 +607,11 @@ export function ContactsView() {
             <DialogHeader><DialogTitle>Create New Folder</DialogTitle></DialogHeader>
             <div className="py-4">
               <Label htmlFor="folder-name-new">Name</Label>
-              <Input id="folder-name-new" value={renameInputValue} onChange={(e) => setRenameInputValue(e.target.value)} onKeyDown={async (e) => { if (e.key === 'Enter') { if (!user || !renameInputValue.trim()) return; const newFolder = await addFolder({ name: renameInputValue, userId: user.uid, parentId: newFolderInitialParentId }); setFolders(prev => [...prev, newFolder]); if(newFolder.parentId) { setExpandedFolders(p => new Set(p).add(newFolder.parentId!)) }; setIsNewFolderDialogOpen(false); setRenameInputValue(''); } }} />
+              <Input id="folder-name-new" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={async (e) => { if (e.key === 'Enter') handleCreateFolder() }} />
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button>
-              <Button onClick={async () => { if (!user || !renameInputValue.trim()) return; const newFolder = await addFolder({ name: renameInputValue, userId: user.uid, parentId: newFolderInitialParentId }); setFolders(prev => [...prev, newFolder]); if(newFolder.parentId) { setExpandedFolders(p => new Set(p).add(newFolder.parentId!)) }; setIsNewFolderDialogOpen(false); setRenameInputValue(''); }}>Create</Button>
+              <Button onClick={handleCreateFolder}>Create</Button>
             </DialogFooter>
           </DialogContent>
       </Dialog>

@@ -148,7 +148,7 @@ export function InvoicePaymentsView() {
     };
 
     const handleCreateReceipt = (invoice: Invoice) => {
-        const otherInvoices = invoices.filter(i => i.clientName === invoice.clientName && i.id !== invoice.id);
+        const otherInvoices = invoices.filter(i => i.companyName === invoice.companyName && i.id !== invoice.id);
         const carryForwardAmount = otherInvoices.reduce((acc, curr) => {
             return acc + (curr.originalAmount - curr.amountPaid);
         }, 0);
@@ -206,7 +206,7 @@ export function InvoicePaymentsView() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Invoice #</TableHead>
-                                        <TableHead>Client</TableHead>
+                                        <TableHead>Company</TableHead>
                                         <TableHead>Due Date</TableHead>
                                         <TableHead className="text-right">Original Amount</TableHead>
                                         <TableHead className="text-right">Amount Paid</TableHead>
@@ -224,7 +224,7 @@ export function InvoicePaymentsView() {
                                         return (
                                             <TableRow key={invoice.id}>
                                                 <TableCell>{invoice.invoiceNumber}</TableCell>
-                                                <TableCell>{invoice.clientName}</TableCell>
+                                                <TableCell>{invoice.companyName}</TableCell>
                                                 <TableCell>{formatDate(new Date(invoice.dueDate), 'PP')}</TableCell>
                                                 <TableCell className="text-right font-mono">{invoice.originalAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell>
                                                 <TableCell className="text-right font-mono text-green-600">{invoice.amountPaid.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</TableCell>
