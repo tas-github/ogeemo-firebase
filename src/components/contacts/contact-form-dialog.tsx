@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
 import { useEffect, useState, useRef } from 'react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Phone, Mic, Square, FolderPlus } from 'lucide-react';
+import { Phone, Mic, Square, FolderPlus, ChevronsUpDown, Check, Plus } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +24,7 @@ import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { useToast } from '@/hooks/use-toast';
 import { type Contact, type FolderData } from '@/data/contacts';
 import { type Company } from '@/services/accounting-service';
+import { addCompany } from '@/services/accounting-service';
 import { ScrollArea } from '../ui/scroll-area';
 import { addContact, updateContact } from '@/services/contact-service';
 import { addFolder } from '@/services/file-manager-folders';
@@ -31,6 +32,8 @@ import { useAuth } from '@/context/auth-context';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useUserPreferences } from '@/hooks/use-user-preferences';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 
 const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -82,6 +85,7 @@ export default function ContactFormDialog({
     const [newFolderName, setNewFolderName] = useState("");
     const [currentFolders, setCurrentFolders] = useState<FolderData[]>(folders);
     const { preferences } = useUserPreferences();
+    const [isCompanyPopoverOpen, setIsCompanyPopoverOpen] = useState(false);
 
     const form = useForm<ContactFormData>({
         resolver: zodResolver(contactSchema),
@@ -177,6 +181,19 @@ export default function ContactFormDialog({
         } catch(e: any) { toast({ variant: "destructive", title: "Failed", description: (e as Error).message }); }
         finally { setIsNewFolderDialogOpen(false); setNewFolderName(""); }
     };
+    
+    const handleCreateCompany = async (companyName: string) => {
+        if (!user || !companyName.trim()) return;
+        try {
+            const newCompany = await addCompany({ name: companyName, userId: user.uid });
+            onCompaniesChange([...companies, newCompany]);
+            form.setValue('businessName', newCompany.name);
+            setIsCompanyPopoverOpen(false);
+            toast({ title: 'Company Created', description: `"${companyName}" has been added.` });
+        } catch (error: any) {
+             toast({ variant: 'destructive', title: 'Failed to create company', description: error.message });
+        }
+    };
 
     return (
         <>
@@ -196,7 +213,46 @@ export default function ContactFormDialog({
                             <div className="px-6 pb-4 space-y-4 bg-card">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Name <span className="text-destructive">*</span></FormLabel> <FormControl><Input placeholder="John Doe" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                    <FormField control={form.control} name="businessName" render={({ field }) => ( <FormItem> <FormLabel>Business Name</FormLabel> <FormControl><Input placeholder="Acme Inc." {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                    <FormField
+                                        control={form.control}
+                                        name="businessName"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-col">
+                                                <FormLabel>Business Name</FormLabel>
+                                                <Popover open={isCompanyPopoverOpen} onOpenChange={setIsCompanyPopoverOpen}>
+                                                    <PopoverTrigger asChild>
+                                                        <FormControl>
+                                                            <Button variant="outline" role="combobox" className="w-full justify-between">
+                                                                {field.value || "Select a company..."}
+                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
+                                                            </Button>
+                                                        </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                        <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
+                                                            <CommandInput placeholder="Search or create company..." />
+                                                            <CommandList>
+                                                                <CommandEmpty>
+                                                                    <Button variant="link" onClick={() => handleCreateCompany(form.getValues('businessName') || '')}>
+                                                                        <Plus className="mr-2 h-4 w-4"/> Create New Company
+                                                                    </Button>
+                                                                </CommandEmpty>
+                                                                <CommandGroup>
+                                                                    {companies.map(c => (
+                                                                        <CommandItem key={c.id} value={c.name} onSelect={() => { form.setValue('businessName', c.name); setIsCompanyPopoverOpen(false); }}>
+                                                                            <Check className={cn("mr-2 h-4 w-4", field.value === c.name ? 'opacity-100' : 'opacity-0')} />
+                                                                            {c.name}
+                                                                        </CommandItem>
+                                                                    ))}
+                                                                </CommandGroup>
+                                                            </CommandList>
+                                                        </Command>
+                                                    </PopoverContent>
+                                                </Popover>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 </div>
                                 
                                 <FormField
