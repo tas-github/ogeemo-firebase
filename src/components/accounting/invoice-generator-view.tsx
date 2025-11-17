@@ -379,15 +379,14 @@ export function InvoiceGeneratorView() {
     }
   };
 
-  const handleCreateCompany = async () => {
-      if (!user || !newCompanyName.trim()) return;
+  const handleCreateCompany = async (companyName: string) => {
+      if (!user || !companyName.trim()) return;
       try {
-          const newCompany = await addCompany({ name: newCompanyName.trim(), userId: user.uid });
+          const newCompany = await addCompany({ name: companyName.trim(), userId: user.uid });
           setCompanies(prev => [...prev, newCompany]);
           setSelectedCompanyId(newCompany.id);
+          setIsCompanyPopoverOpen(false);
           toast({ title: "Company Created" });
-          setIsNewCompanyDialogOpen(false);
-          setNewCompanyName("");
       } catch (error: any) {
           toast({ variant: "destructive", title: "Failed to create company", description: error.message });
       }
@@ -652,6 +651,8 @@ export function InvoiceGeneratorView() {
         contactToEdit={null}
         folders={contactFolders}
         onSave={handleContactSave}
+        companies={companies}
+        onCompaniesChange={setCompanies}
     />
     
     <Dialog open={isNewCompanyDialogOpen} onOpenChange={setIsNewCompanyDialogOpen}>
@@ -662,11 +663,13 @@ export function InvoiceGeneratorView() {
             </DialogHeader>
             <div className="py-4 space-y-2">
                 <Label htmlFor="new-company-name">Company Name</Label>
-                <Input id="new-company-name" value={newCompanyName} onChange={e => setNewCompanyName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateCompany()} />
+                <div className='flex gap-2'>
+                    <Input id="new-company-name" value={newCompanyName} onChange={e => setNewCompanyName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateCompany(newCompanyName)} />
+                    <Button onClick={() => handleCreateCompany(newCompanyName)}>Create</Button>
+                </div>
             </div>
             <DialogFooter>
                 <Button variant="ghost" onClick={() => setIsNewCompanyDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleCreateCompany}>Create</Button>
             </DialogFooter>
         </DialogContent>
     </Dialog>
