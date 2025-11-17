@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -22,6 +23,7 @@ import {
   Sheet,
   Presentation,
   Users,
+  Plus,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -471,7 +473,9 @@ export function ContactsView() {
       <div className="flex flex-col h-full">
         <header className="text-center py-4 sm:py-6 px-4 sm:px-6">
           <h1 className="text-3xl font-bold font-headline text-primary">Ogeemo Contact Manager</h1>
-          <p className="text-muted-foreground">Manage your contacts and client relationships</p>
+          <p className="text-muted-foreground">
+            Manage your contacts and client relationships
+          </p>
         </header>
         <div className="flex-1 min-h-0 pb-4 sm:pb-6">
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border">
@@ -505,7 +509,7 @@ export function ContactsView() {
                       </div>
                       <div className="flex items-center gap-2">
                         {selectedContactIds.length > 0 ? (
-                           <Button variant="destructive" onClick={() => {if(window.confirm(`Delete ${selectedContactIds.length} contact(s)?`)) handleDeleteSelected()}}>
+                           <Button variant="destructive" onClick={() => {if(window.confirm(`Delete ${'${selectedContactIds.length}'} contact(s)?`)) handleDeleteSelected()}}>
                                <Trash2 className="mr-2 h-4 w-4" /> Delete Selected
                            </Button>
                         ) : (
@@ -532,9 +536,8 @@ export function ContactsView() {
                               <TableRow>
                                   <TableHead className="w-[50px]">
                                     <Checkbox
-                                      checked={allVisibleSelected ? true : someSelected ? 'indeterminate' : false}
+                                      checked={allVisibleSelected ? true : (someSelected ? 'indeterminate' : false)}
                                       onCheckedChange={handleToggleSelectAll}
-                                      aria-label="Select all contacts"
                                     />
                                   </TableHead>
                                   <TableHead>Name</TableHead>
@@ -635,3 +638,5 @@ export function ContactsView() {
     </>
   );
 }
+
+    
