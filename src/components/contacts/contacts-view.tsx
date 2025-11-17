@@ -347,7 +347,7 @@ export function ContactsView() {
         collect: (monitor) => ({ isDragging: monitor.isDragging() }),
     }));
     return (
-      <TableRow ref={drag} className={cn(isDragging && "opacity-50")}>
+      <TableRow ref={drag} className={cn(isDragging && "opacity-50", "cursor-grab")}>
         {children}
       </TableRow>
     );
@@ -419,9 +419,9 @@ export function ContactsView() {
                   "flex items-center gap-1 rounded-md pr-1 group",
                   isRenaming ? 'bg-background' : 'hover:bg-accent',
                   (isOver && canDrop) && 'bg-primary/20 ring-1 ring-primary',
-                  isDragging && 'opacity-50'
+                  isDragging && 'opacity-50',
+                  selectedFolderId === folder.id && !isRenaming && 'bg-accent'
                 )}
-                style={{ backgroundColor: selectedFolderId === folder.id && !isRenaming ? 'hsl(var(--accent))' : 'transparent' }}
               >
                 <Button
                   variant="ghost"
