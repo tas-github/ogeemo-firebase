@@ -118,6 +118,7 @@ export function ContactsView() {
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderParentId, setNewFolderParentId] = useState<string | null>(null);
+  const [isBulkDeleteAlertOpen, setIsBulkDeleteAlertOpen] = useState(false);
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -228,8 +229,7 @@ export function ContactsView() {
 
   const handleDeleteSelected = async () => {
     if (!user || selectedContactIds.length === 0) return;
-    if (!window.confirm(`Are you sure you want to delete ${selectedContactIds.length} contact(s)? This action cannot be undone.`)) return;
-
+    
     try {
       await deleteContacts(selectedContactIds);
       setContacts(contacts.filter(c => !selectedContactIds.includes(c.id)));
@@ -237,6 +237,8 @@ export function ContactsView() {
       setSelectedContactIds([]);
     } catch (error: any) {
       toast({ variant: "destructive", title: "Delete Failed", description: error.message });
+    } finally {
+        setIsBulkDeleteAlertOpen(false);
     }
   };
   
@@ -369,19 +371,11 @@ export function ContactsView() {
         const updatedFolders = [...folders, newFolder];
         setFolders(updatedFolders);
         
-        if (isNewFolderDialogOpen) {
-            // If creating from the main dialog
-             if (newFolder.parentId) {
-                setExpandedFolders(p => new Set(p).add(newFolder.parentId!))
-            }
-            setIsNewFolderDialogOpen(false);
-            setNewFolderName("");
-        } else if (onFoldersChange) {
-            // If creating from another dialog (e.g., ContactForm)
-            onFoldersChange(updatedFolders);
+        if (newFolder.parentId) {
+            setExpandedFolders(p => new Set(p).add(newFolder.parentId!))
         }
-
-        toast({ title: "Folder Created" });
+        setIsNewFolderDialogOpen(false);
+        setNewFolderName("");
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Failed to create folder', description: e.message });
     }
@@ -519,8 +513,8 @@ export function ContactsView() {
                       </div>
                       <div className="flex items-center gap-2">
                         {selectedContactIds.length > 0 ? (
-                           <Button variant="destructive" onClick={handleDeleteSelected}>
-                               <Trash2 className="mr-2 h-4 w-4" /> Delete Selected
+                           <Button variant="destructive" onClick={() => setIsBulkDeleteAlertOpen(true)}>
+                               <Trash2 className="mr-2 h-4 w-4" /> Delete Selected ({selectedContactIds.length})
                            </Button>
                         ) : (
                           <TooltipProvider>
@@ -644,6 +638,21 @@ export function ContactsView() {
                   <AlertDialogAction onClick={handleConfirmDeleteContact} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
               </AlertDialogFooter>
           </AlertDialogContent>
+      </AlertDialog>
+      
+      <AlertDialog open={isBulkDeleteAlertOpen} onOpenChange={setIsBulkDeleteAlertOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will permanently delete {selectedContactIds.length} contact(s). This action cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
     </>
   );
