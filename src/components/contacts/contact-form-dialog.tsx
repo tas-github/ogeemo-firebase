@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
@@ -24,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { useToast } from '@/hooks/use-toast';
 import { type Contact, type FolderData } from '@/data/contacts';
+import { type Company } from '@/services/accounting-service';
 import { ScrollArea } from '../ui/scroll-area';
 import { addContact, updateContact } from '@/services/contact-service';
 import { addFolder } from '@/services/file-manager-folders';
@@ -53,6 +53,8 @@ interface ContactFormDialogProps {
     contactToEdit: Contact | null;
     folders: FolderData[];
     onSave: (contact: Contact, isEditing: boolean) => void;
+    companies: Company[];
+    onCompaniesChange: (companies: Company[]) => void;
     selectedFolderId?: string;
     initialEmail?: string;
     forceFolderId?: string;
@@ -65,6 +67,8 @@ export default function ContactFormDialog({
     contactToEdit,
     folders,
     onSave,
+    companies,
+    onCompaniesChange,
     selectedFolderId,
     initialEmail = '',
     forceFolderId,

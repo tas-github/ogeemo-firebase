@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -6,16 +5,23 @@ import dynamic from 'next/dynamic';
 import { useDrag, useDrop } from 'react-dnd';
 import {
   Folder,
-  Plus,
-  MoreVertical,
-  Trash2,
-  Pencil,
-  Users,
+  File as FileIconLucide,
   LoaderCircle,
-  ChevronRight,
   FolderPlus,
+  ChevronRight,
+  ExternalLink,
+  MoreVertical,
+  Pencil,
+  Trash2,
   BookOpen,
   Link as LinkIcon,
+  Info,
+  Files,
+  FilePlus,
+  FileText,
+  Sheet,
+  Presentation,
+  Users,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -54,6 +60,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { type Contact } from '@/data/contacts';
 import { useToast } from '@/hooks/use-toast';
 import { getContacts, deleteContacts, updateContact } from '@/services/contact-service';
+import { getCompanies, type Company } from '@/services/accounting-service';
 import { getFolders, addFolder, updateFolder, deleteFolders, type FolderItem } from '@/services/file-manager-folders';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
@@ -89,10 +96,10 @@ type DroppableItem = (Contact & { type?: 'contact' }) | (FolderItem & { type: 'f
 export function ContactsView() {
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFolderId, setSelectedFolderId] = useState<string>('all');
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
-  const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([]);
   
   const [renamingFolder, setRenamingFolder] = useState<FolderItem | null>(null);
   const [renameInputValue, setRenameInputValue] = useState("");
@@ -102,7 +109,6 @@ export function ContactsView() {
   const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
   
   const [folderToDelete, setFolderToDelete] = useState<FolderItem | null>(null);
-  const [foldersToDelete, setFoldersToDelete] = useState<string[] | null>(null);
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
@@ -121,12 +127,15 @@ export function ContactsView() {
         }
         setIsLoading(true);
         try {
-            const [fetchedFolders, fetchedContacts] = await Promise.all([
+            const [fetchedFolders, fetchedContacts, fetchedCompanies] = await Promise.all([
                 getFolders(user.uid),
                 getContacts(user.uid),
+                getCompanies(user.uid),
             ]);
             setFolders(fetchedFolders);
             setContacts(fetchedContacts);
+            setCompanies(fetchedCompanies);
+
             const rootFolder = fetchedFolders.find(f => !f.parentId);
             if(rootFolder) {
               setExpandedFolders(new Set([rootFolder.id]));
@@ -177,14 +186,6 @@ export function ContactsView() {
     setIsContactFormOpen(true);
   }, [selectedFolderId, folders.length, toast]);
   
-  const [{ canDropToRoot, isOverRoot }, dropToRoot] = useDrop(() => ({
-      accept: ItemTypes.FOLDER,
-      drop: (item: FolderItem) => handleFolderDrop(item, null),
-      collect: (monitor) => ({
-          isOverRoot: monitor.isOver(),
-          canDropToRoot: monitor.canDrop(),
-      }),
-  }));
 
   const allVisibleSelected = displayedContacts.length > 0 && selectedContactIds.length === displayedContacts.length;
   const someSelected = selectedContactIds.length > 0 && !allVisibleSelected;
@@ -201,14 +202,6 @@ export function ContactsView() {
     setSelectedContactIds(allVisibleSelected ? [] : displayedContacts.map(c => c.id));
   };
   
-  const handleToggleFolderSelection = (folderId: string) => {
-    setSelectedFolderIds(prev =>
-      prev.includes(folderId)
-        ? prev.filter(id => id !== folderId)
-        : [...prev, folderId]
-    );
-  };
-
   const handleSaveContact = (savedContact: Contact, isEditing: boolean) => {
       if (isEditing) {
           setContacts(prev => prev.map(c => c.id === savedContact.id ? savedContact : c));
@@ -244,35 +237,37 @@ export function ContactsView() {
     }
   };
   
-  const handleDeleteFolder = async (folder: FolderItem) => {
+  const handleDeleteFolder = (folder: FolderItem) => {
       setFolderToDelete(folder);
   };
   
-  const handleDeleteSelectedFolders = () => {
-    if (selectedFolderIds.length === 0) return;
-    setFoldersToDelete(selectedFolderIds);
-  };
 
-  const handleConfirmDelete = async () => {
-    if (!user) return;
-    const idsToDelete = foldersToDelete || (folderToDelete ? [folderToDelete.id] : []);
-    if (idsToDelete.length === 0) return;
+  const handleConfirmDeleteFolder = async () => {
+    if (!user || !folderToDelete) return;
+    
+    const allFoldersIncludingChildren = (function getDescendants(parentId: string, all: FolderItem[]): string[] {
+        const children = all.filter(f => f.parentId === parentId).map(f => f.id);
+        return [parentId, ...children.flatMap(childId => getDescendants(childId, all))];
+    })(folderToDelete.id, folders);
 
     try {
-        await deleteFolders(idsToDelete);
+        const filesToDelete = contacts.filter(f => allFoldersIncludingChildren.includes(f.folderId));
+        if (filesToDelete.length > 0) {
+            await deleteContacts(filesToDelete.map(f => f.id));
+        }
+
+        await deleteFolders(allFoldersIncludingChildren);
         
-        setFolders(prev => prev.filter(f => !idsToDelete.includes(f.id)));
-        setContacts(prev => prev.filter(c => !idsToDelete.includes(c.folderId)));
+        setFolders(prev => prev.filter(f => !allFoldersIncludingChildren.includes(f.id)));
+        setContacts(prev => prev.filter(c => !allFoldersIncludingChildren.includes(c.folderId)));
         
-        if (idsToDelete.includes(selectedFolderId)) setSelectedFolderId('all');
-        setSelectedFolderIds([]);
+        if (allFoldersIncludingChildren.includes(selectedFolderId)) setSelectedFolderId('all');
         
-        toast({ title: `${'${idsToDelete.length}'} Folder(s) Deleted` });
+        toast({ title: "Folder and its contents deleted" });
     } catch (error: any) {
         toast({ variant: "destructive", title: "Delete Failed", description: error.message });
     } finally {
         setFolderToDelete(null);
-        setFoldersToDelete(null);
     }
   };
 
@@ -426,14 +421,6 @@ export function ContactsView() {
                 )}
                 style={{ backgroundColor: selectedFolderId === folder.id && !isRenaming ? 'hsl(var(--accent))' : 'transparent' }}
               >
-                <div className="flex items-center pl-2">
-                  <Checkbox
-                    checked={selectedFolderIds.includes(folder.id)}
-                    onCheckedChange={() => handleToggleFolderSelection(folder.id)}
-                    onClick={(e) => e.stopPropagation()}
-                    aria-label={`Select folder ${folder.name}`}
-                  />
-                </div>
                 <Button
                   variant="ghost"
                   className="flex-1 justify-start gap-2 h-9 p-2 text-left"
@@ -444,7 +431,7 @@ export function ContactsView() {
                   ) : (
                     <div className="w-4 h-4" />
                   )}
-                  <Folder className={cn('h-4 w-4', folder.parentId ? 'text-green-500' : 'text-blue-500')} />
+                  <Folder className="h-4 w-4" />
                   {isRenaming ? (
                     <Input autoFocus value={renameInputValue} onChange={e => setRenameInputValue(e.target.value)} onBlur={handleConfirmRename} onKeyDown={e => { if (e.key === 'Enter') handleConfirmRename(); if (e.key === 'Escape') handleCancelRename(); }} className="h-7" onClick={e => e.stopPropagation()} />
                   ) : (
@@ -600,7 +587,7 @@ export function ContactsView() {
         </div>
       </div>
       
-      {isContactFormOpen && <ContactFormDialog isOpen={isContactFormOpen} onOpenChange={setIsContactFormOpen} contactToEdit={contactToEdit} selectedFolderId={selectedFolderId} folders={folders} onFoldersChange={setFolders} onSave={handleSaveContact} />}
+      {isContactFormOpen && <ContactFormDialog isOpen={isContactFormOpen} onOpenChange={setIsContactFormOpen} contactToEdit={contactToEdit} selectedFolderId={selectedFolderId} folders={folders} onFoldersChange={setFolders} onSave={handleSaveContact} companies={companies} onCompaniesChange={setCompanies}/>}
 
       <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
           <DialogContent className="sm:max-w-md">
@@ -616,18 +603,18 @@ export function ContactsView() {
           </DialogContent>
       </Dialog>
       
-      <AlertDialog open={folderToDelete !== null || foldersToDelete !== null} onOpenChange={() => { setFolderToDelete(null); setFoldersToDelete(null); }}>
+      <AlertDialog open={!!folderToDelete} onOpenChange={() => setFolderToDelete(null)}>
         <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    {foldersToDelete ? `This will permanently delete ${'${foldersToDelete.length}'} folder(s), including all their subfolders and contacts.` : `This will permanently delete the "${folderToDelete?.name}" folder, including all its subfolders and contacts.`} This action cannot be undone.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-            </AlertDialogFooter>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+                This will permanently delete the folder "{folderToDelete?.name}" and all of its subfolders and contacts. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDeleteFolder} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
       
