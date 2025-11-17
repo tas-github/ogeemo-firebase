@@ -299,7 +299,7 @@ export function InvoiceGeneratorView() {
   const handleSaveInvoice = async () => {
     if (!user) { toast({ variant: "destructive", title: "Authentication error" }); return; }
     if (!selectedCompany) { toast({ variant: 'destructive', title: 'Company Name Required', description: 'Please select or create a company.' }); return; }
-    if (!selectedContact) { toast({ variant: 'destructive', title: 'Contact Person Required', description: 'Please select a contact.' }); return; }
+    if (!selectedContact) { toast({ variant: 'destructive', title: 'Contact Name Required', description: 'Please select a contact.' }); return; }
     if (customItems.length === 0) { toast({ variant: 'destructive', title: 'Empty Invoice', description: 'Please add at least one line item.' }); return; }
     
     const lineItemsToSave: Omit<InvoiceLineItem, 'id' | 'invoiceId'>[] = customItems.map(({ id, ...item }) => item);
@@ -384,7 +384,7 @@ export function InvoiceGeneratorView() {
       if (!user || !companyName.trim()) return;
       try {
           const newCompany = await addCompany({ name: companyName.trim(), userId: user.uid });
-          setCompanies(prev => [...prev, newCompany]);
+          onCompaniesChange([...companies, newCompany]);
           setSelectedCompanyId(newCompany.id);
           setIsCompanyPopoverOpen(false);
           setCompanySearchValue('');
@@ -393,6 +393,8 @@ export function InvoiceGeneratorView() {
           toast({ variant: "destructive", title: "Failed to create company", description: error.message });
       }
   };
+  
+  const onCompaniesChange = setCompanies;
   
   const handleContactSave = (savedContact: Contact, isEditing: boolean) => {
     if (isEditing) {
@@ -407,7 +409,7 @@ export function InvoiceGeneratorView() {
     } else if (savedContact.businessName) {
         // If company doesn't exist, create it.
         addCompany({ name: savedContact.businessName, userId: user!.uid }).then(newCompany => {
-            setCompanies(prev => [...prev, newCompany]);
+            onCompaniesChange([...companies, newCompany]);
             setSelectedCompanyId(newCompany.id);
         });
     }
