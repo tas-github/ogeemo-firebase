@@ -59,7 +59,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { type Contact, type FolderData } from '@/data/contacts';
+import { type Contact } from '@/data/contacts';
+import { type FolderData } from '@/services/contact-folder-service';
 import { useToast } from '@/hooks/use-toast';
 import { getContacts, deleteContacts, updateContact } from '@/services/contact-service';
 import { getCompanies, addCompany, type Company } from '@/services/accounting-service';
@@ -518,7 +519,7 @@ export function ContactsView() {
                       </div>
                       <div className="flex items-center gap-2">
                         {selectedContactIds.length > 0 ? (
-                           <Button variant="destructive" onClick={() => {if(window.confirm(`Delete ${selectedContactIds.length} contact(s)?`)) handleDeleteSelected()}}>
+                           <Button variant="destructive" onClick={handleDeleteSelected}>
                                <Trash2 className="mr-2 h-4 w-4" /> Delete Selected
                            </Button>
                         ) : (
