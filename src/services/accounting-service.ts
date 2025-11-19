@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import {
@@ -50,6 +48,7 @@ export interface InvoiceLineItem {
   description: string;
   quantity: number;
   price: number;
+  taxRate?: number;
 }
 
 export interface Invoice {
@@ -63,7 +62,6 @@ export interface Invoice {
   invoiceDate: Date;
   status: 'outstanding' | 'paid' | 'partially_paid' | 'overdue';
   notes: string;
-  taxRate: number;
   taxType: string;
   userId: string;
   createdAt: Date;
@@ -86,7 +84,6 @@ const docToInvoice = (doc: any): Invoice => {
         invoiceDate: (data.invoiceDate as Timestamp)?.toDate ? (data.invoiceDate as Timestamp).toDate() : new Date(),
         status: data.status,
         notes: data.notes,
-        taxRate: data.taxRate,
         taxType: data.taxType,
         userId: data.userId,
         createdAt: (data.createdAt as Timestamp)?.toDate ? (data.createdAt as Timestamp).toDate() : new Date(),
@@ -101,6 +98,7 @@ const docToLineItem = (doc: any): InvoiceLineItem => {
         description: data.description,
         quantity: data.quantity,
         price: data.price,
+        taxRate: data.taxRate || 0,
     } as InvoiceLineItem;
 };
 
@@ -505,6 +503,8 @@ export interface ServiceItem {
   id: string;
   description: string;
   price: number;
+  taxType?: string;
+  taxRate?: number;
   userId: string;
 }
 

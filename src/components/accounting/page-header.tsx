@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ArrowLeft, ChevronDown, FileOutput, FileDigit, TrendingUp, TrendingDown, BookText, FileInput, WalletCards, BarChart3, Activity, UserPlus, Info, Banknote, ShieldCheck, FileText } from 'lucide-react';
+import { ArrowLeft, ChevronDown, FileOutput, FileDigit, TrendingUp, TrendingDown, BookText, FileInput, WalletCards, BarChart3, Activity, UserPlus, Info, Banknote, ShieldCheck, FileText, ListPlus } from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -23,6 +23,7 @@ interface AccountingPageHeaderProps {
 const accountingLinks = [
     { href: "/accounting/accounts-receivable", icon: FileOutput, label: "Accounts Receivable" },
     { href: "/accounting/invoices/create", icon: FileDigit, label: "Invoice Generator" },
+    { href: "/accounting/invoice-items", icon: ListPlus, label: "Manage Invoice Items" },
     { href: "/accounting/ledgers?tab=income", icon: TrendingUp, label: "Manage Income" },
     { href: "/accounting/ledgers?tab=expenses", icon: TrendingDown, label: "Manage Expenses" },
     { href: "/accounting/ledgers", icon: BookText, label: "General Ledger" },

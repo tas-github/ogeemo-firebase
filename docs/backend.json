@@ -49,6 +49,8 @@
         "properties": {
             "description": { "type": "string" },
             "price": { "type": "number" },
+            "taxType": { "type": "string" },
+            "taxRate": { "type": "number" },
             "userId": { "type": "string" }
         },
         "required": ["description", "price", "userId"]

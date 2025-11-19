@@ -31,6 +31,7 @@ import {
   Info,
   BarChart3,
   FileInput,
+  ListPlus,
 } from 'lucide-react';
 import { AccountingPageHeader } from './page-header';
 
@@ -71,6 +72,7 @@ export function AccountingToolsView() {
   const features = [
     { icon: FileOutput, title: "Receivables & Payables", description: "Manage all outstanding invoices, client payments, and outgoing vendor bills.", href: "/accounting/ledgers?tab=receivables", cta: "Manage Transactions" },
     { icon: FileDigit, title: "Invoicing", description: "Create, send, and manage professional invoices for your clients.", href: "/accounting/invoices/create", cta: "Create Invoice" },
+    { icon: ListPlus, title: "Invoice Items", description: "Manage reusable line items for services or products to speed up invoicing.", href: "/accounting/invoice-items", cta: "Manage Items" },
     { icon: Banknote, title: "Manage Payroll", description: "Handle employee compensation, deductions, and CRA remittances.", href: "/accounting/payroll", cta: "Go to payroll hub." },
     { icon: BarChart3, title: "Accounting Reports", description: "Generate reports for owners, bankers, and tax auditors.", href: "/accounting/reports", cta: "Go to Reports" },
     { icon: BookText, title: "Ledgers", description: "The BKS has two ways to manage your income and expenses; One way is to just record in the GL and the other way is to enter your income and expenses in separate ledgers.", href: "/accounting/ledgers", cta: "Go to Ledgers" },

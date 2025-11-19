@@ -1,4 +1,3 @@
-
 import {
   LayoutDashboard,
   Users,
@@ -74,6 +73,7 @@ export const allMenuItems: MenuItem[] = [
   { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/my-worker", label: "My Worker", icon: HardHat },
   { href: "/debug", label: "Debug", icon: Bug },
+  { href: "/bug-repair", label: "Bug Repair", icon: Bug },
   { href: "/data", label: "Data", icon: Database },
   { href: "/dev-notes", label: "Dev Notes", icon: BookText },
   { href: "/forms", label: "Forms", icon: FilePlus2 },

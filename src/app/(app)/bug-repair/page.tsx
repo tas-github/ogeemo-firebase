@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef } from 'react';
@@ -103,7 +102,7 @@ export default function BugRepairPage() {
         <div className="p-4 border-t flex justify-end gap-2">
             <Button variant="outline" onClick={handleClear} disabled={isSaving}><Eraser className="mr-2 h-4 w-4" /> Clear</Button>
             <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Save
             </Button>
         </div>
