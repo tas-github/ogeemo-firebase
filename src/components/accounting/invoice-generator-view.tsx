@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -8,26 +7,26 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { format, addDays } from 'date-fns';
-import { Plus, Trash2, Printer, Save, Mail, Info, ChevronsUpDown, Check, LoaderCircle, X, FileText } from 'lucide-react';
+import { Plus, Trash2, Printer, Save, Mail, Info, ChevronsUpDown, Check, LoaderCircle, X, FileText, Eye } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { AccountingPageHeader } from './page-header';
 import { Logo } from '../logo';
 import { ScrollArea } from '../ui/scroll-area';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAuth } from '@/context/auth-context';
-import { getCompanies, addCompany, type Company, addInvoiceWithLineItems, updateInvoiceWithLineItems, getInvoiceById, getLineItemsForInvoice, getServiceItems, type ServiceItem } from '@/services/accounting-service';
+import { getInvoiceById, getLineItemsForInvoice, getServiceItems, type ServiceItem, addInvoiceWithLineItems, updateInvoiceWithLineItems } from '@/services/accounting-service';
 import { getContacts, type Contact } from '@/services/contact-service';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { getFolders as getContactFolders, type FolderData } from '@/services/contact-folder-service';
 import { cn } from '@/lib/utils';
 import { useReactToPrint } from '@/hooks/use-react-to-print';
+import ContactFormDialog from '../contacts/contact-form-dialog';
 import AddLineItemDialog from './AddLineItemDialog';
+import { getCompanies, addCompany, type Company } from '@/services/accounting-service';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 
 
 interface LineItem {
@@ -46,6 +45,8 @@ const formatCurrency = (amount: number) => {
 };
 
 const EDIT_INVOICE_ID_KEY = 'editInvoiceId';
+const INVOICE_FROM_REPORT_KEY = 'invoiceFromReportData';
+const INDIVIDUAL_CONTACTS_ID = 'individual-contacts';
 
 
 export function InvoiceGeneratorView() {
@@ -57,6 +58,7 @@ export function InvoiceGeneratorView() {
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [contactFolders, setContactFolders] = useState<FolderData[]>([]);
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -67,13 +69,33 @@ export function InvoiceGeneratorView() {
   const [dueDate, setDueDate] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
   const [notes, setNotes] = useState("Thank you for your business! Payment is due within 14 days.");
 
-  const [selectedCompanyId, setSelectedCompanyId] = useState('');
-  const [selectedContactId, setSelectedContactId] = useState('');
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   
-  const [isCompanyPopoverOpen, setIsCompanyPopoverOpen] = useState(false);
-  const [companySearchValue, setCompanySearchValue] = useState('');
-  const [isAddLineItemOpen, setIsAddLineItemOpen] = useState(false);
+  const [isContactFormOpen, setIsContactFormOpen] = useState(false);
+  const [isAddLineItemDialogOpen, setIsAddLineItemDialogOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  const [contactFormInitialData, setContactFormInitialData] = useState<Partial<Contact>>({});
+
+  const contactsForSelectedCompany = useMemo(() => {
+    if (!selectedCompanyId) return [];
+    
+    if (selectedCompanyId === INDIVIDUAL_CONTACTS_ID) {
+      return contacts.filter(c => !c.businessName);
+    }
+    
+    const company = companies.find(c => c.id === selectedCompanyId);
+    if (!company) return [];
+
+    return contacts.filter(c => c.businessName === company.name);
+  }, [selectedCompanyId, companies, contacts]);
+  
+  const handleCompanyChange = (companyId: string) => {
+    setSelectedCompanyId(companyId);
+    setSelectedContactId(null);
+  };
   
   const loadInvoiceForEditing = useCallback(async (invoiceId: string) => {
       setIsLoading(true);
@@ -93,8 +115,21 @@ export function InvoiceGeneratorView() {
           setInvoiceDate(format(new Date(invoiceData.invoiceDate), 'yyyy-MM-dd'));
           setDueDate(format(new Date(invoiceData.dueDate), 'yyyy-MM-dd'));
           setNotes(invoiceData.notes);
-          setSelectedCompanyId(invoiceData.companyName); // Assuming companyName is used as ID for now
+          
+          const company = companies.find(c => c.name === invoiceData.companyName);
+          if (company) {
+            setSelectedCompanyId(company.id);
+          } else {
+            // Check if it's an individual contact
+            const contact = contacts.find(c => c.id === invoiceData.contactId && !c.businessName);
+            if (contact) {
+                setSelectedCompanyId(INDIVIDUAL_CONTACTS_ID);
+            }
+          }
+
+          // This will trigger the contact dropdown to populate, so we can set the contact.
           setSelectedContactId(invoiceData.contactId);
+
           setLineItems(lineItemsData.map(item => ({ ...item, id: item.id || `item_${Math.random()}` })));
           
       } catch (error: any) {
@@ -102,7 +137,7 @@ export function InvoiceGeneratorView() {
       } finally {
           setIsLoading(false);
       }
-  }, [toast]);
+  }, [toast, companies, contacts]);
 
 
   useEffect(() => {
@@ -113,62 +148,56 @@ export function InvoiceGeneratorView() {
         }
         setIsLoading(true);
         try {
-            const [fetchedCompanies, fetchedContacts, fetchedServiceItems] = await Promise.all([
+            const [fetchedCompanies, fetchedContacts, fetchedServiceItems, fetchedFolders] = await Promise.all([
                 getCompanies(user.uid),
                 getContacts(user.uid),
                 getServiceItems(user.uid),
+                getContactFolders(user.uid),
             ]);
             setCompanies(fetchedCompanies);
             setContacts(fetchedContacts);
             setServiceItems(fetchedServiceItems);
+            setContactFolders(fetchedFolders);
 
             const invoiceId = localStorage.getItem(EDIT_INVOICE_ID_KEY);
             if (invoiceId) {
                 setInvoiceToEditId(invoiceId);
-                await loadInvoiceForEditing(invoiceId);
+            } else {
+                setIsLoading(false);
+            }
+            
+            const invoiceReportDataRaw = sessionStorage.getItem(INVOICE_FROM_REPORT_KEY);
+            if (invoiceReportDataRaw) {
+                const { contactId, lineItems: reportLineItems } = JSON.parse(invoiceReportDataRaw);
+                const contact = fetchedContacts.find(c => c.id === contactId);
+                const company = contact ? fetchedCompanies.find(comp => comp.name === contact.businessName) : null;
+                if (company) {
+                    setSelectedCompanyId(company.id);
+                }
+                setSelectedContactId(contactId);
+                setLineItems(reportLineItems.map((item: any, index: number) => ({ ...item, id: `report_${index}` })));
+                sessionStorage.removeItem(INVOICE_FROM_REPORT_KEY);
             }
 
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
-        } finally {
             setIsLoading(false);
         }
     }
     loadData();
-  }, [user, toast, loadInvoiceForEditing]);
+  }, [user, toast]);
 
-  const handleCreateCompany = async (companyName: string) => {
-    if (!user || !companyName.trim()) return;
-    try {
-        const newCompany = await addCompany({ name: companyName.trim(), userId: user.uid });
-        setCompanies(prev => [...prev, newCompany]);
-        setSelectedCompanyId(newCompany.id);
-        setIsCompanyPopoverOpen(false);
-        setCompanySearchValue('');
-        toast({ title: 'Company Created', description: `"${companyName.trim()}" has been added.` });
-    } catch (error: any) {
-         toast({ variant: 'destructive', title: 'Failed to create company', description: error.message });
+  useEffect(() => {
+    if (invoiceToEditId && companies.length > 0 && contacts.length > 0) {
+        loadInvoiceForEditing(invoiceToEditId);
     }
-  };
-
-  const handleAddItem = useCallback((item: Omit<LineItem, 'id'>) => {
-    setLineItems(prev => [...prev, { ...item, id: `item_${Date.now()}` }]);
-    toast({ title: "Item Added", description: `"${item.description}" was added to the invoice.` });
-  }, [toast]);
+  }, [invoiceToEditId, loadInvoiceForEditing, companies, contacts]);
 
 
-  const handleItemChange = (id: string, field: keyof Omit<LineItem, 'id'>, value: string) => {
-    setLineItems(prev => prev.map(item => {
-      if (item.id === id) {
-        if (field === 'quantity' || field === 'price' || field === 'taxRate') {
-          return { ...item, [field]: parseFloat(value) || 0 };
-        }
-        return { ...item, [field]: value };
-      }
-      return item;
-    }));
-  };
-
+  const handleAddItem = useCallback((newItem: Omit<LineItem, 'id'>) => {
+    setLineItems(prev => [...prev, { id: `new_${Date.now()}`, ...newItem }]);
+  }, []);
+  
   const handleDeleteItem = (id: string) => {
     setLineItems(prev => prev.filter(item => item.id !== id));
   };
@@ -189,26 +218,27 @@ export function InvoiceGeneratorView() {
         toast({ variant: 'destructive', title: 'Not Authenticated', description: 'You must be logged in to save.'});
         return;
     }
-    const selectedCompany = companies.find(c => c.id === selectedCompanyId);
-    if (!selectedCompanyId || !selectedContactId || !selectedCompany) {
-        toast({ variant: 'destructive', title: 'Missing Information', description: 'Please select a company and contact.'});
+    const selectedContact = contacts.find(c => c.id === selectedContactId);
+    if (!selectedContact) {
+        toast({ variant: 'destructive', title: 'Missing Information', description: 'Please select a client contact.'});
         return;
     }
+    const companyName = companies.find(c => c.id === selectedCompanyId)?.name || selectedContact.name;
+
 
     setIsSaving(true);
     
     const invoiceData = {
         invoiceNumber,
-        companyName: selectedCompany.name,
-        contactId: selectedContactId,
+        companyName,
+        contactId: selectedContactId!,
         originalAmount: total,
-        amountPaid: 0,
+        amountPaid: invoiceToEditId ? (await getInvoiceById(invoiceToEditId))?.amountPaid || 0 : 0,
         dueDate: new Date(dueDate),
         invoiceDate: new Date(invoiceDate),
         status: 'outstanding' as const,
         notes,
-        taxRate: 0, // No longer global
-        taxType: 'line-item', // Indicate per-line tax
+        taxType: 'line-item',
         userId: user.uid,
     };
     
@@ -242,18 +272,124 @@ export function InvoiceGeneratorView() {
     setInvoiceDate(format(new Date(), 'yyyy-MM-dd'));
     setDueDate(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
     setNotes("Thank you for your business! Payment is due within 14 days.");
-    setSelectedCompanyId('');
-    setSelectedContactId('');
+    setSelectedCompanyId(null);
+    setSelectedContactId(null);
     setLineItems([]);
     toast({ title: "Form Cleared" });
   };
   
-  const companyExists = useMemo(() => companies.some(c => c.name.toLowerCase() === companySearchValue.toLowerCase()), [companies, companySearchValue]);
-  
-  const selectedCompany = companies.find(c => c.id === selectedCompanyId);
-  const selectedContact = contacts.find(c => c.id === selectedContactId);
-  
+  const handleContactSave = (savedContact: Contact, isEditing: boolean) => {
+    if (isEditing) {
+        setContacts(prev => prev.map(c => c.id === savedContact.id ? savedContact : c));
+    } else {
+        setContacts(prev => [savedContact, ...prev]);
+    }
+    // Logic to update companies if a new one was added via contact form
+    const contactCompany = companies.find(c => c.name === savedContact.businessName);
+    if (!contactCompany && savedContact.businessName && user) {
+        const newCompany = { id: `comp_${Date.now()}`, name: savedContact.businessName, userId: user.uid };
+        setCompanies(prev => [...prev, newCompany]);
+        setSelectedCompanyId(newCompany.id);
+    } else if (contactCompany) {
+        setSelectedCompanyId(contactCompany.id);
+    } else {
+        setSelectedCompanyId(INDIVIDUAL_CONTACTS_ID);
+    }
 
+    setSelectedContactId(savedContact.id);
+    setIsContactFormOpen(false);
+  };
+  
+  const handleOpenNewContactDialog = () => {
+    const company = companies.find(c => c.id === selectedCompanyId);
+    setContactFormInitialData({
+      businessName: company ? company.name : ''
+    });
+    setIsContactFormOpen(true);
+  };
+  
+  const selectedContact = contacts.find(c => c.id === selectedContactId);
+  const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+  const isPaid = total <= 0 && lineItems.length > 0;
+
+  const InvoicePreviewContent = React.forwardRef<HTMLDivElement>((props, ref) => (
+     <div {...props} ref={ref} className="p-8">
+        <div className="relative">
+            {isPaid && (
+                <div style={{
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-15deg)',
+                    fontSize: 'clamp(4rem, 15vw, 8rem)', fontWeight: 'bold', color: 'rgba(0, 128, 0, 0.10)',
+                    border: 'clamp(0.5rem, 2vw, 1rem) solid rgba(0, 128, 0, 0.10)', padding: '1rem 2rem', borderRadius: '10px',
+                    zIndex: 1, pointerEvents: 'none', lineHeight: '1'
+                }}>
+                    PAID
+                </div>
+            )}
+            <header className="flex justify-between items-start pb-6 border-b">
+                <Logo className="text-primary"/>
+                <div className="text-right">
+                    <h1 className="text-4xl font-bold uppercase text-gray-700">Invoice</h1>
+                    <p className="text-gray-500">#{invoiceNumber}</p>
+                </div>
+            </header>
+            <section className="flex justify-between mt-6">
+                <div>
+                    <h2 className="font-bold text-gray-500 uppercase mb-2">Bill To</h2>
+                    <p className="font-bold text-lg">{selectedCompany?.name || selectedContact?.name || '[Client Name]'}</p>
+                    {selectedCompany && selectedContact && <p>{selectedContact.name}</p>}
+                </div>
+                <div className="text-right">
+                    <p><span className="font-bold text-gray-500">Invoice Date:</span> {format(new Date(invoiceDate), 'PP')}</p>
+                    <p><span className="font-bold text-gray-500">Due Date:</span> {format(new Date(dueDate), 'PP')}</p>
+                </div>
+            </section>
+            <section className="mt-8">
+                <Table>
+                    <TableHeader className="bg-gray-100">
+                        <TableRow>
+                            <TableHead className="w-1/2 text-gray-600">Description</TableHead>
+                            <TableHead className="text-center text-gray-600">Qty</TableHead>
+                            <TableHead className="text-right text-gray-600">Price</TableHead>
+                            <TableHead className="text-right text-gray-600">Total</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {lineItems.map(item => (
+                            <TableRow key={item.id}>
+                                <TableCell className="font-medium">{item.description}</TableCell>
+                                <TableCell className="text-center">{item.quantity}</TableCell>
+                                <TableCell className="text-right font-mono">{formatCurrency(item.price)}</TableCell>
+                                <TableCell className="text-right font-mono">{formatCurrency(item.quantity * item.price)}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </section>
+            <section className="flex justify-end mt-6">
+                <div className="w-full max-w-sm space-y-2">
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Subtotal:</span>
+                        <span className="font-mono">{formatCurrency(subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Total Tax:</span>
+                        <span className="font-mono">{formatCurrency(taxAmount)}</span>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-between font-bold text-lg">
+                        <span className="text-gray-600">Total Due:</span>
+                        <span className="font-mono">{formatCurrency(total)}</span>
+                    </div>
+                </div>
+            </section>
+            <footer className="mt-12 pt-6 border-t text-center text-xs text-gray-400">
+                <p>{notes}</p>
+            </footer>
+        </div>
+      </div>
+  ));
+  InvoicePreviewContent.displayName = 'InvoicePreviewContent';
+  
   return (
     <>
     <ScrollArea className="h-full">
@@ -262,190 +398,119 @@ export function InvoiceGeneratorView() {
         <header className="text-center">
           <h1 className="text-3xl font-bold font-headline text-primary">Create an Invoice</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Generate professional invoices by fetching logged activities or adding items manually.
+            Generate professional invoices by selecting a client and adding line items.
           </p>
         </header>
 
         <Card>
-          <CardHeader className="text-center">
-              <CardTitle className="flex items-center justify-center gap-2">
-                  Invoice Setup
-                  <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6"><Info className="h-4 w-4 text-muted-foreground" /></Button></TooltipTrigger><TooltipContent><p className="max-w-xs">Use this section to build your invoice. Fetch logged time for a client, add custom items, and set taxes before printing or finalizing.</p></TooltipContent></Tooltip></TooltipProvider>
-              </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                      <Label htmlFor="company-name">Company Name</Label>
-                      <Popover open={isCompanyPopoverOpen} onOpenChange={setIsCompanyPopoverOpen}>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" role="combobox" className="w-full justify-between" disabled={isLoading}>
-                                {isLoading ? <LoaderCircle className="h-4 w-4 animate-spin"/> : selectedCompany?.name || "Select or create company..."}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                             <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
-                                <CommandInput 
-                                    placeholder="Search company..."
-                                    value={companySearchValue}
-                                    onValueChange={setCompanySearchValue}
-                                />
-                                <CommandList>
-                                     <CommandEmpty>
-                                        {companySearchValue.trim() && !companyExists ? (
-                                            <Button variant="link" className="p-1 h-auto w-full justify-start text-sm" onClick={() => handleCreateCompany(companySearchValue)}>
-                                                <Plus className="mr-2 h-4 w-4"/> Create "{companySearchValue}"
-                                            </Button>
-                                        ) : <div className="py-6 text-center text-sm">No company found.</div>}
-                                    </CommandEmpty>
-                                    <CommandGroup>
-                                        {companies.map(c => (
-                                            <CommandItem key={c.id} value={c.name} onSelect={() => { setSelectedCompanyId(c.id); setCompanySearchValue(''); setIsCompanyPopoverOpen(false); }}>
-                                                <Check className={cn("mr-2 h-4 w-4", selectedCompanyId === c.id ? "opacity-100" : "opacity-0")} />
-                                                {c.name}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                      </Popover>
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="contact-person-select">Contact Name</Label>
-                      <Select value={selectedContactId} onValueChange={setSelectedContactId} disabled={isLoading}>
-                          <SelectTrigger id="contact-person-select">
-                              <SelectValue placeholder={isLoading ? 'Loading...' : 'Select a contact...'} />
-                          </SelectTrigger>
-                          <SelectContent>
-                              {contacts.map(contact => (
-                                  <SelectItem key={contact.id} value={contact.id}>
-                                      {contact.name}
-                                  </SelectItem>
-                              ))}
-                          </SelectContent>
-                      </Select>
-                  </div>
-              </div>
-              <Separator />
-              <div>
-                  <h4 className="font-semibold text-base mb-2">Invoice Items</h4>
-                  <Button onClick={() => setIsAddLineItemOpen(true)}><Plus className="mr-2 h-4 w-4" /> Add Line Item</Button>
-              </div>
-          </CardContent>
-        </Card>
-
-        <Card>
             <CardHeader className="flex-row justify-between items-center">
-                <CardTitle>Invoice Preview</CardTitle>
+                <CardTitle>Invoice Details</CardTitle>
                 <div className="flex items-center gap-2">
                     <Button onClick={handleSaveInvoice} disabled={isSaving}>
                         {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         Save Invoice
                     </Button>
+                    <Button variant="outline" onClick={() => setIsPreviewOpen(true)}><Eye className="mr-2 h-4 w-4" /> Preview</Button>
                     <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Invoice</Button>
                 </div>
             </CardHeader>
             <CardContent>
-                <div id="printable-area" ref={contentRef} className="bg-white text-black p-8 border rounded-lg shadow-sm w-full font-sans">
-                    <header className="flex justify-between items-start pb-6 border-b"><Logo className="text-primary"/><div className="text-right"><h1 className="text-4xl font-bold uppercase text-gray-700">Invoice</h1><div className="flex items-center justify-end gap-1"><p className="text-gray-500">#</p><Input type="text" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} className="w-32 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></div></div></header>
-                    <section className="flex justify-between mt-6">
-                        <div>
-                            <h2 className="font-bold text-gray-500 uppercase mb-2">Bill To</h2>
-                            <p className="font-bold text-lg">{selectedCompany?.name || 'Select a company'}</p>
-                            <p className="text-gray-500">{selectedContact?.name || 'Select a contact'}</p>
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="space-y-2 lg:col-span-2">
+                             <Label>Client</Label>
+                             <div className="flex gap-2">
+                                <Select value={selectedCompanyId || ''} onValueChange={handleCompanyChange}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Company..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={INDIVIDUAL_CONTACTS_ID}>-- Individual Contacts --</SelectItem>
+                                        <Separator />
+                                        {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <Select value={selectedContactId || ''} onValueChange={setSelectedContactId} disabled={!selectedCompanyId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Contact..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {contactsForSelectedCompany.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                             </div>
+                             <Button variant="link" className="p-0 h-auto text-xs" onClick={handleOpenNewContactDialog}>+ Add New Contact</Button>
                         </div>
-                        <div className="text-right">
-                            <p><span className="font-bold text-gray-500">Invoice Date:</span> <Input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} className="inline-block w-40 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p>
-                            <p><span className="font-bold text-gray-500">Due Date:</span> <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="inline-block w-40 p-0 h-auto border-0 border-b-2 border-transparent focus:border-gray-300 focus:ring-0" /></p>
+                        <div className="space-y-2">
+                            <Label htmlFor="invoiceNumber">Invoice #</Label>
+                            <Input id="invoiceNumber" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} />
                         </div>
-                    </section>
-                    <section className="mt-8">
-                      <Table className="text-sm">
-                        <TableHeader className="bg-gray-100">
-                            <TableRow>
-                                <TableHead className="w-[40%] text-gray-600">Description</TableHead>
-                                <TableHead className="w-[15%] text-center text-gray-600">Price</TableHead>
-                                <TableHead className="w-[10%] text-center text-gray-600">Qty</TableHead>
-                                <TableHead className="w-[15%] text-center text-gray-600">Tax (%)</TableHead>
-                                <TableHead className="w-[15%] text-right text-gray-600">Total</TableHead>
-                                <TableHead className="w-12"><span className="sr-only">Actions</span></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {lineItems.length > 0 ? (
-                                lineItems.map(item => (
-                                    <TableRow key={item.id}>
-                                        <TableCell>
-                                            <Input 
-                                                value={item.description} 
-                                                onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
-                                                className="border-0 focus-visible:ring-0"
-                                                placeholder="Service or product"
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Input 
-                                                type="number"
-                                                value={item.price} 
-                                                onChange={(e) => handleItemChange(item.id, 'price', e.target.value)}
-                                                className="border-0 focus-visible:ring-0 text-center"
-                                                placeholder="0.00"
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Input 
-                                                type="number"
-                                                value={item.quantity} 
-                                                onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)}
-                                                className="border-0 focus-visible:ring-0 text-center"
-                                                placeholder="1"
-                                            />
-                                        </TableCell>
-                                         <TableCell>
-                                            <Input 
-                                                type="number"
-                                                value={item.taxRate || ''} 
-                                                onChange={(e) => handleItemChange(item.id, 'taxRate', e.target.value)}
-                                                className="border-0 focus-visible:ring-0 text-center"
-                                                placeholder="0"
-                                            />
-                                        </TableCell>
-                                        <TableCell className="text-right font-mono">
-                                            {formatCurrency(item.quantity * item.price * (1 + (item.taxRate || 0)/100))}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteItem(item.id)}>
-                                                <Trash2 className="h-4 w-4 text-destructive"/>
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow><TableCell colSpan={6} className="text-center text-gray-400 py-8">No items added yet.</TableCell></TableRow>
-                            )}
-                        </TableBody>
-                      </Table>
-                    </section>
-                    <section className="flex justify-end mt-6">
-                        <div className="w-full max-w-sm space-y-2">
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Subtotal:</span>
-                                <span>{formatCurrency(subtotal)}</span>
+                         <div className="grid grid-cols-2 gap-2">
+                             <div className="space-y-2">
+                                <Label htmlFor="invoiceDate">Invoice Date</Label>
+                                <Input id="invoiceDate" type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} />
                             </div>
-                             <div className="flex justify-between">
-                                <span className="text-gray-500">Total Tax:</span>
-                                <span>{formatCurrency(taxAmount)}</span>
+                            <div className="space-y-2">
+                                <Label htmlFor="dueDate">Due Date</Label>
+                                <Input id="dueDate" type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                            </div>
+                         </div>
+                    </div>
+                     <div>
+                        <Label>Line Items</Label>
+                        <div className="border rounded-md mt-2">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-1/2">Description</TableHead>
+                                        <TableHead className="w-24 text-center">Qty</TableHead>
+                                        <TableHead className="w-32 text-right">Price</TableHead>
+                                        <TableHead className="w-32 text-right">Total</TableHead>
+                                        <TableHead className="w-12"><span className="sr-only">Actions</span></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {lineItems.map(item => (
+                                        <TableRow key={item.id}>
+                                            <TableCell className="font-medium">{item.description}</TableCell>
+                                            <TableCell className="text-center">{item.quantity}</TableCell>
+                                            <TableCell className="text-right font-mono">{formatCurrency(item.price)}</TableCell>
+                                            <TableCell className="text-right font-mono">{formatCurrency(item.quantity * item.price)}</TableCell>
+                                            <TableCell>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDeleteItem(item.id)}>
+                                                    <Trash2 className="h-4 w-4 text-destructive"/>
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                         <Button variant="outline" size="sm" onClick={() => setIsAddLineItemDialogOpen(true)} className="mt-2">
+                            <Plus className="mr-2 h-4 w-4" /> Add Item
+                        </Button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                         <div className="space-y-2">
+                            <Label htmlFor="notes">Notes / Terms</Label>
+                            <Textarea id="notes" value={notes} onChange={e => setNotes(e.target.value)} rows={4}/>
+                         </div>
+                         <div className="space-y-2 border rounded-lg p-4 bg-muted/50">
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Subtotal:</span>
+                                <span className="font-mono">{formatCurrency(subtotal)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Total Tax:</span>
+                                <span className="font-mono">{formatCurrency(taxAmount)}</span>
                             </div>
                             <Separator />
                             <div className="flex justify-between font-bold text-lg">
-                                <span className="text-gray-600">Total Due:</span>
-                                <span>{formatCurrency(total)}</span>
+                                <span>Total Due:</span>
+                                <span className="font-mono">{formatCurrency(total)}</span>
                             </div>
                         </div>
-                    </section>
-                    <footer className="mt-12 pt-6 border-t"><Textarea className="w-full border-0 focus-visible:ring-0 text-xs text-gray-600 text-center" value={notes} onChange={e => setNotes(e.target.value)}/></footer>
+                    </div>
                 </div>
             </CardContent>
             <CardFooter className="justify-between">
@@ -453,22 +518,45 @@ export function InvoiceGeneratorView() {
                     <Button onClick={handleSendEmail}><Mail className="mr-2 h-4 w-4" /> Email Invoice</Button>
                     <Button variant="ghost" size="sm" onClick={handleClearInvoice}><X className="mr-2 h-4 w-4" /> Clear</Button>
                  </div>
-                 <div>
-                    <Dialog>
-                        <DialogTrigger asChild><Button variant="outline"><FileText className="mr-2 h-4 w-4" /> Use Template</Button></DialogTrigger>
-                        <DialogContent><DialogHeader><DialogTitle>Save Invoice as Template</DialogTitle><DialogDescription>Enter a name for this template. It will save the custom line items.</DialogDescription></DialogHeader><div className="py-4"><Label htmlFor="template-name">Template Name</Label><Input id="template-name" placeholder="e.g., 'Standard Consulting Invoice'" /></div><DialogFooter><Button variant="ghost">Cancel</Button><Button>Save</Button></DialogFooter></DialogContent>
-                    </Dialog>
-                </div>
             </CardFooter>
         </Card>
       </div>
     </ScrollArea>
+
+    <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="max-w-4xl p-0">
+            <ScrollArea className="max-h-[90vh]">
+                <InvoicePreviewContent />
+            </ScrollArea>
+        </DialogContent>
+    </Dialog>
+
+    <div className="hidden">
+      <div id="printable-area">
+        <InvoicePreviewContent ref={contentRef} />
+      </div>
+    </div>
+
+    {isContactFormOpen && 
+        <ContactFormDialog
+            isOpen={isContactFormOpen}
+            onOpenChange={setIsContactFormOpen}
+            contactToEdit={null}
+            folders={contactFolders}
+            onSave={handleContactSave}
+            companies={companies}
+            onCompaniesChange={setCompanies}
+            initialData={contactFormInitialData}
+        />
+    }
     <AddLineItemDialog
-      isOpen={isAddLineItemOpen}
-      onOpenChange={setIsAddLineItemOpen}
-      serviceItems={serviceItems}
-      onAddItem={handleAddItem}
+        isOpen={isAddLineItemDialogOpen}
+        onOpenChange={setIsAddLineItemDialogOpen}
+        serviceItems={serviceItems}
+        onAddItem={handleAddItem}
     />
   </>
   );
 }
+
+    

@@ -22,7 +22,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from '@/components/ui/textarea';
 import { useSpeechToText } from '@/hooks/use-speech-to-text';
 import { useToast } from '@/hooks/use-toast';
-import { type Contact, type FolderData } from '@/data/contacts';
+import { type Contact } from '@/services/contact-service';
+import { type FolderData } from '@/services/contact-folder-service';
 import { type Company } from '@/services/accounting-service';
 import { addCompany } from '@/services/accounting-service';
 import { ScrollArea } from '../ui/scroll-area';
@@ -60,6 +61,7 @@ interface ContactFormDialogProps {
     onCompaniesChange: (companies: Company[]) => void;
     selectedFolderId?: string;
     initialEmail?: string;
+    initialData?: Partial<Contact>;
     forceFolderId?: string;
     onFoldersChange?: (folders: FolderData[]) => void;
 }
@@ -74,6 +76,7 @@ export default function ContactFormDialog({
     onCompaniesChange,
     selectedFolderId,
     initialEmail = '',
+    initialData = {},
     forceFolderId,
     onFoldersChange,
 }: ContactFormDialogProps) {
@@ -107,10 +110,10 @@ export default function ContactFormDialog({
             const defaultFolderId = forceFolderId || selectedFolderId !== 'all' ? selectedFolderId : (currentFolders.find(f => f.name === 'Clients')?.id || currentFolders[0]?.id || '');
             const initialValues = contactToEdit 
                 ? { ...contactToEdit, folderId: forceFolderId || contactToEdit.folderId || defaultFolderId, primaryPhoneType: contactToEdit.primaryPhoneType || null } 
-                : { name: "", email: initialEmail, businessName: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: defaultFolderId };
+                : { name: "", email: initialEmail, businessName: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: defaultFolderId, ...initialData };
             form.reset(initialValues);
         }
-    }, [isOpen, contactToEdit, currentFolders, selectedFolderId, form, initialEmail, forceFolderId]);
+    }, [isOpen, contactToEdit, currentFolders, selectedFolderId, form, initialEmail, forceFolderId, initialData]);
 
     const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
         onTranscript: (transcript) => {
