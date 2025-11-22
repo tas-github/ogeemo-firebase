@@ -94,6 +94,7 @@ export const allMenuItems: MenuItem[] = [
   { href: "/research", label: "Research", icon: Beaker },
   { href: "/sandbox", label: "Sandbox", icon: Beaker },
   { href: "/accounting", label: "Accounting", icon: Calculator },
+  { href: "/accounting/tax", label: "Tax Center", icon: ShieldCheck },
   { href: "/testing", label: "Testing", icon: Beaker },
   { href: "/notes", label: "Note Manager", icon: FilePenLine },
   { href: "/link", label: "link", icon: LinkIcon },

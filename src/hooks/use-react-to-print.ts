@@ -1,55 +1,54 @@
+'use client';
 
-"use client";
+import { useRef } from 'react';
 
-import { useCallback, useRef } from 'react';
-
-// This is a custom hook inspired by the 'react-to-print' library.
-// It simplifies the process of printing a specific component from a React application.
 export const useReactToPrint = () => {
-  // This ref will be attached to the component we want to print.
-  const contentRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
 
-  const handlePrint = useCallback(() => {
-    // Check if the ref is attached to a component.
-    if (!contentRef.current) {
-      console.error("Print Error: contentRef is not attached to a component.");
-      return;
-    }
+    const handlePrint = () => {
+        const node = contentRef.current;
+        if (!node) {
+            console.error("Print Error: `contentRef` is not pointing to a valid element.");
+            return;
+        }
 
-    // Create a new window to host the print content. This avoids disrupting the main app.
-    const printWindow = window.open('', '', 'height=800,width=1000');
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'absolute';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
 
-    if (printWindow) {
-        // Write the basic HTML structure.
-        printWindow.document.write('<html><head><title>Print</title>');
+        const printDocument = iframe.contentWindow?.document;
+        if (!printDocument) {
+            console.error("Could not access iframe document.");
+            document.body.removeChild(iframe);
+            return;
+        }
 
-        // Find all <style> and <link rel="stylesheet"> tags from the main document and copy them.
-        // This ensures the printed content has the same styling as the on-screen component.
+        printDocument.write('<html><head><title>Print</title>');
+
+        // Copy all stylesheets from the main document to the iframe
         const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'));
         styles.forEach(style => {
-            printWindow.document.write(style.outerHTML);
+            printDocument.write(style.outerHTML);
         });
 
-        printWindow.document.write('</head><body>');
-        // Write the HTML content of our target component into the new window.
-        printWindow.document.write(contentRef.current.innerHTML);
-        printWindow.document.write('</body></html>');
+        printDocument.write('</head><body></body></html>');
+        printDocument.close();
         
-        printWindow.document.close();
-        printWindow.focus();
+        // Clone the node to print and append it to the iframe's body
+        printDocument.body.appendChild(node.cloneNode(true));
         
-        // Use a timeout to ensure all content and styles are loaded before triggering the print dialog.
+        // Use a small timeout to ensure content is fully rendered in the iframe before printing
         setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
+            if (iframe.contentWindow) {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            }
+            document.body.removeChild(iframe);
         }, 500);
-    }
-  }, []);
+    };
 
-  return {
-    contentRef,
-    handlePrint,
-  };
+    return { handlePrint, contentRef };
 };
-
-    

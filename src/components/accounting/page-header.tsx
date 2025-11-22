@@ -23,7 +23,6 @@ interface AccountingPageHeaderProps {
 const accountingLinks = [
     { href: "/accounting/invoices/create", icon: FileDigit, label: "Create Invoice" },
     { href: "/accounting/accounts-receivable", icon: FileOutput, label: "Accounts Receivable" },
-    { href: "/accounting/invoice-items", icon: ListPlus, label: "Manage Invoice Items" },
     { href: "/accounting/ledgers?tab=income", icon: TrendingUp, label: "Manage Income" },
     { href: "/accounting/ledgers?tab=expenses", icon: TrendingDown, label: "Manage Expenses" },
     { href: "/accounting/ledgers", icon: BookText, label: "General Ledger" },

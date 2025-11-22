@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -107,13 +108,13 @@ export default function ContactFormDialog({
 
     useEffect(() => {
         if (isOpen) {
-            const defaultFolderId = forceFolderId || selectedFolderId !== 'all' ? selectedFolderId : (currentFolders.find(f => f.name === 'Clients')?.id || currentFolders[0]?.id || '');
+            const defaultFolderId = forceFolderId || selectedFolderId !== 'all' ? selectedFolderId : (folders.find(f => f.name === 'Clients')?.id || folders[0]?.id || '');
             const initialValues = contactToEdit 
                 ? { ...contactToEdit, folderId: forceFolderId || contactToEdit.folderId || defaultFolderId, primaryPhoneType: contactToEdit.primaryPhoneType || null } 
                 : { name: "", email: initialEmail, businessName: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: defaultFolderId, ...initialData };
             form.reset(initialValues);
         }
-    }, [isOpen, contactToEdit, currentFolders, selectedFolderId, form, initialEmail, forceFolderId, initialData]);
+    }, [isOpen, contactToEdit]);
 
     const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
         onTranscript: (transcript) => {
@@ -401,3 +402,5 @@ export default function ContactFormDialog({
       </>
     );
 }
+
+    
