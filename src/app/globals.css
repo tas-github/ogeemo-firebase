@@ -82,15 +82,16 @@
 }
 
 @media print {
-  body.print-container > *:not(#invoice-preview) {
-    display: none;
+  body * {
+    visibility: hidden;
   }
-
+  #invoice-preview, #invoice-preview * {
+    visibility: visible;
+  }
   #invoice-preview {
-    display: block;
     position: absolute;
-    top: 0;
     left: 0;
+    top: 0;
     width: 100%;
     border: none;
     box-shadow: none;
