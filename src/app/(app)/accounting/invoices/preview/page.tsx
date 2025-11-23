@@ -84,6 +84,10 @@ export default function InvoicePreviewPage() {
     
     const fullAddress = formatAddress(invoiceData?.contactAddress);
 
+    const handlePrint = () => {
+        window.print();
+    };
+
     if (isLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center p-4">
@@ -118,7 +122,7 @@ export default function InvoicePreviewPage() {
                     Back to Generator
                 </Button>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4"/> Print</Button>
+                    <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4"/> Print</Button>
                     <Button><Mail className="mr-2 h-4 w-4"/> Email Invoice</Button>
                 </div>
             </div>
