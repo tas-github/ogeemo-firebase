@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -41,6 +41,11 @@ const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }).optional().or(z.literal('')),
   businessName: z.string().optional(),
+  streetAddress: z.string().optional(),
+  city: z.string().optional(),
+  provinceState: z.string().optional(),
+  postalCode: z.string().optional(),
+  country: z.string().optional(),
   businessPhone: z.string().optional(),
   cellPhone: z.string().optional(),
   homePhone: z.string().optional(),
@@ -58,8 +63,8 @@ interface ContactFormDialogProps {
     contactToEdit: Contact | null;
     folders: FolderData[];
     onSave: (contact: Contact, isEditing: boolean) => void;
-    companies: Company[];
-    onCompaniesChange: (companies: Company[]) => void;
+    companies?: Company[];
+    onCompaniesChange?: (companies: Company[]) => void;
     selectedFolderId?: string;
     initialEmail?: string;
     initialData?: Partial<Contact>;
@@ -67,14 +72,32 @@ interface ContactFormDialogProps {
     onFoldersChange?: (folders: FolderData[]) => void;
 }
 
+const defaultFormValues: ContactFormData = {
+  name: "",
+  email: "",
+  businessName: "",
+  streetAddress: "",
+  city: "",
+  provinceState: "",
+  postalCode: "",
+  country: "",
+  businessPhone: "",
+  cellPhone: "",
+  homePhone: "",
+  faxNumber: "",
+  primaryPhoneType: null,
+  notes: "",
+  folderId: "",
+};
+
 export default function ContactFormDialog({
     isOpen,
     onOpenChange,
     contactToEdit,
     folders,
     onSave,
-    companies,
-    onCompaniesChange,
+    companies = [],
+    onCompaniesChange = () => {},
     selectedFolderId,
     initialEmail = '',
     initialData = {},
@@ -94,7 +117,7 @@ export default function ContactFormDialog({
 
     const form = useForm<ContactFormData>({
         resolver: zodResolver(contactSchema),
-        defaultValues: { name: "", email: initialEmail, businessName: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: "" },
+        defaultValues: defaultFormValues,
     });
     
     // Watch phone number fields to dynamically enable/disable radio buttons
@@ -106,15 +129,32 @@ export default function ContactFormDialog({
         setCurrentFolders(folders);
     }, [folders]);
 
+    const contactToEditString = JSON.stringify(contactToEdit);
+    const initialDataString = JSON.stringify(initialData);
+
     useEffect(() => {
+        const defaultFolderId = forceFolderId || (selectedFolderId && selectedFolderId !== 'all') ? selectedFolderId : (currentFolders.find(f => f.name === 'Clients')?.id || currentFolders[0]?.id || '');
         if (isOpen) {
-            const defaultFolderId = forceFolderId || selectedFolderId !== 'all' ? selectedFolderId : (folders.find(f => f.name === 'Clients')?.id || folders[0]?.id || '');
-            const initialValues = contactToEdit 
-                ? { ...contactToEdit, folderId: forceFolderId || contactToEdit.folderId || defaultFolderId, primaryPhoneType: contactToEdit.primaryPhoneType || null } 
-                : { name: "", email: initialEmail, businessName: "", businessPhone: "", cellPhone: "", homePhone: "", faxNumber: "", primaryPhoneType: null, notes: "", folderId: defaultFolderId, ...initialData };
-            form.reset(initialValues);
+            const parsedContact = contactToEditString ? JSON.parse(contactToEditString) : null;
+            const parsedInitialData = initialDataString ? JSON.parse(initialDataString) : {};
+
+            if (parsedContact) {
+                form.reset({
+                    ...defaultFormValues,
+                    ...parsedContact,
+                    folderId: forceFolderId || parsedContact.folderId || defaultFolderId,
+                    primaryPhoneType: parsedContact.primaryPhoneType || null,
+                });
+            } else {
+                form.reset({
+                    ...defaultFormValues,
+                    email: initialEmail,
+                    folderId: defaultFolderId,
+                    ...parsedInitialData,
+                });
+            }
         }
-    }, [isOpen, contactToEdit]);
+    }, [isOpen, contactToEditString, forceFolderId, selectedFolderId, initialEmail, initialDataString, form, currentFolders]);
 
     const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
         onTranscript: (transcript) => {
@@ -288,6 +328,14 @@ export default function ContactFormDialog({
                                     </FormItem>
                                     )}
                                 />
+                                
+                                 <FormField control={form.control} name="streetAddress" render={({ field }) => ( <FormItem> <FormLabel>Street Address</FormLabel> <FormControl><Input placeholder="123 Main St" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                     <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>City/Town</FormLabel> <FormControl><Input placeholder="Anytown" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                     <FormField control={form.control} name="provinceState" render={({ field }) => ( <FormItem> <FormLabel>Prov/State</FormLabel> <FormControl><Input placeholder="CA" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                     <FormField control={form.control} name="postalCode" render={({ field }) => ( <FormItem> <FormLabel>Postal/Zip</FormLabel> <FormControl><Input placeholder="12345" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                     <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>Country</FormLabel> <FormControl><Input placeholder="USA" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                 </div>
 
                                 <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
 
@@ -391,7 +439,7 @@ export default function ContactFormDialog({
             <DialogHeader><DialogTitle>Create New Folder</DialogTitle></DialogHeader>
             <div className="py-4">
               <Label htmlFor="folder-name-new">Name</Label>
-              <Input id="folder-name-new" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={async (e) => { if (e.key === 'Enter') handleCreateFolder() }} />
+              <Input id="folder-name-new" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={async (e) => { if (e.key === 'Enter') await handleCreateFolder() }} />
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button>

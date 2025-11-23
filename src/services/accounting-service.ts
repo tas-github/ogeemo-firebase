@@ -50,6 +50,7 @@ export interface InvoiceLineItem {
   description: string;
   quantity: number;
   price: number;
+  taxType?: string;
   taxRate?: number;
 }
 
@@ -100,6 +101,7 @@ const docToLineItem = (doc: any): InvoiceLineItem => {
         description: data.description,
         quantity: data.quantity,
         price: data.price,
+        taxType: data.taxType || '',
         taxRate: data.taxRate || 0,
     } as InvoiceLineItem;
 };
@@ -534,38 +536,4 @@ export async function updateServiceItem(id: string, data: Partial<Omit<ServiceIt
 export async function deleteServiceItem(id: string): Promise<void> {
   const db = await getDb();
   await deleteDoc(doc(db, SERVICE_ITEMS_COLLECTION, id));
-}
-
-// --- Tax Type Interfaces & Functions ---
-export interface TaxType {
-  id: string;
-  name: string;
-  rate: number;
-  userId: string;
-}
-
-const TAX_TYPES_COLLECTION = 'taxTypes';
-const docToTaxType = (doc: any): TaxType => ({ id: doc.id, ...doc.data() } as TaxType);
-
-export async function getTaxTypes(userId: string): Promise<TaxType[]> {
-  const db = await getDb();
-  const q = query(collection(db, TAX_TYPES_COLLECTION), where("userId", "==", userId));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(docToTaxType);
-}
-
-export async function addTaxType(data: Omit<TaxType, 'id'>): Promise<TaxType> {
-  const db = await getDb();
-  const docRef = await addDoc(collection(db, TAX_TYPES_COLLECTION), data);
-  return { id: docRef.id, ...data };
-}
-
-export async function updateTaxType(id: string, data: Partial<Omit<TaxType, 'id' | 'userId'>>): Promise<void> {
-  const db = await getDb();
-  await updateDoc(doc(db, TAX_TYPES_COLLECTION, id), data);
-}
-
-export async function deleteTaxType(id: string): Promise<void> {
-  const db = await getDb();
-  await deleteDoc(doc(db, TAX_TYPES_COLLECTION, id));
 }

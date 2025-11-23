@@ -175,17 +175,6 @@
         "userId": { "type": "string" }
       },
       "required": ["name", "userId"]
-    },
-    "TaxType": {
-        "title": "Tax Type",
-        "description": "Defines a type of tax with a name and a default rate.",
-        "type": "object",
-        "properties": {
-            "name": { "type": "string" },
-            "rate": { "type": "number", "description": "The tax rate as a percentage, e.g., 5 for 5%." },
-            "userId": { "type": "string" }
-        },
-        "required": ["name", "rate", "userId"]
     }
   },
   "auth": {
@@ -239,10 +228,6 @@
     "/incomeCategories/{categoryId}": {
       "schema": { "$ref": "#/entities/IncomeCategory" },
       "description": "Stores user-defined income categories."
-    },
-    "/taxTypes/{taxTypeId}": {
-        "schema": { "$ref": "#/entities/TaxType" },
-        "description": "Collection of user-defined tax types and rates."
     }
   }
 }

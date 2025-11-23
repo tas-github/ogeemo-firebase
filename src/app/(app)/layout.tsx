@@ -1,4 +1,6 @@
 
+'use client';
+
 import Link from 'next/link';
 import { DndProviderWrapper } from '@/components/layout/dnd-provider-wrapper';
 import { MainMenu } from '@/components/layout/main-menu';

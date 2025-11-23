@@ -361,6 +361,12 @@ export function ContactsView() {
     setSelectedContactIds([]);
   };
 
+  const handleOpenNewFolderDialog = (parentId: string | null) => {
+    setNewFolderParentId(parentId);
+    setNewFolderName('');
+    setIsNewFolderDialogOpen(true);
+  };
+  
   const handleCreateFolder = async () => {
     if (!user || !newFolderName.trim()) {
         toast({ variant: "destructive", title: "Folder name is required." });
@@ -371,95 +377,92 @@ export function ContactsView() {
         const updatedFolders = [...folders, newFolder];
         setFolders(updatedFolders);
         
+        if (isNewFolderDialogOpen) {
+            setIsNewFolderDialogOpen(false);
+        }
+
         if (newFolder.parentId) {
             setExpandedFolders(p => new Set(p).add(newFolder.parentId!))
         }
-        setIsNewFolderDialogOpen(false);
+        
         setNewFolderName("");
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Failed to create folder', description: e.message });
     }
   };
 
-  const FolderTree = ({ parentId = null, allFolders, level = 0 }: { parentId?: string | null; allFolders: FolderData[]; level?: number }) => {
-    const children = allFolders.filter(f => f.parentId === parentId).sort((a,b) => a.name.localeCompare(b.name));
-    
-    if (children.length === 0 && level === 0 && parentId === null) {
-      return <p className="p-4 text-center text-sm text-muted-foreground">No folders yet. Create one to get started.</p>;
-    }
-    
-    if (children.length === 0) return null;
+  const FolderTreeItem = ({ folder, allFolders, level = 0 }: { folder: FolderData, allFolders: FolderData[], level?: number }) => {
+    const hasChildren = allFolders.some(f => f.parentId === folder.id);
+    const isExpanded = expandedFolders.has(folder.id);
+    const isRenaming = renamingFolder?.id === folder.id;
+
+    const [{ isDragging }, drag, dragPreview] = useDrag(() => ({
+      type: ItemTypes.FOLDER,
+      item: { ...folder, type: ItemTypes.FOLDER },
+      collect: (monitor) => ({ isDragging: monitor.isDragging() }),
+    }));
+
+    const [{ canDrop, isOver }, drop] = useDrop(() => ({
+      accept: [ItemTypes.CONTACT, ItemTypes.FOLDER],
+      drop: (item: DroppableItem) => {
+        if (item.type === ItemTypes.FOLDER) {
+          handleFolderDrop(item, folder.id);
+        } else {
+          handleContactDrop(item, folder.id);
+        }
+      },
+      collect: (monitor) => ({ isOver: monitor.isOver(), canDrop: monitor.canDrop() }),
+    }));
 
     return (
-      <div style={{ marginLeft: level > 0 ? '1rem' : '0' }}>
-        {children.map(folder => {
-          const hasChildren = allFolders.some(f => f.parentId === folder.id);
-          const isExpanded = expandedFolders.has(folder.id);
-          const isRenaming = renamingFolder?.id === folder.id;
-
-          const [{ isDragging }, drag, dragPreview] = useDrag(() => ({
-            type: ItemTypes.FOLDER,
-            item: { ...folder, type: ItemTypes.FOLDER },
-            collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-          }));
-
-          const [{ canDrop, isOver }, drop] = useDrop(() => ({
-            accept: [ItemTypes.CONTACT, ItemTypes.FOLDER],
-            drop: (item: DroppableItem) => {
-              if (item.type === ItemTypes.FOLDER) {
-                handleFolderDrop(item, folder.id);
-              } else {
-                handleContactDrop(item, folder.id);
-              }
-            },
-            collect: (monitor) => ({ isOver: monitor.isOver(), canDrop: monitor.canDrop() }),
-          }));
-
-          return (
-            <div key={folder.id} className="my-1 rounded-md" ref={dragPreview}>
-              <div
-                ref={node => drag(drop(node))}
-                className={cn(
-                  "flex items-center gap-1 rounded-md pr-1 group",
-                  isRenaming ? 'bg-background' : 'hover:bg-accent',
-                  (isOver && canDrop) && 'bg-primary/20 ring-1 ring-primary',
-                  isDragging && 'opacity-50',
-                  selectedFolderId === folder.id && !isRenaming && 'bg-accent'
+      <div style={{ marginLeft: level > 0 ? `${level * 1}rem` : '0' }} className="my-1 rounded-md" ref={dragPreview}>
+        <div
+          ref={node => drag(drop(node))}
+          className={cn(
+            "flex items-center justify-between rounded-md h-9",
+            isRenaming ? 'bg-background' : 'hover:bg-accent',
+            (isOver && canDrop) && 'bg-primary/20 ring-1 ring-primary',
+            isDragging && 'opacity-50',
+            selectedFolderId === folder.id && !isRenaming && 'bg-accent'
+          )}
+        >
+            <div className="flex-1 flex items-center min-w-0 h-full pl-1 cursor-pointer" onClick={() => !isRenaming && handleSelectFolder(folder.id)}>
+                {hasChildren ? (
+                  <ChevronRight className={cn('h-4 w-4 shrink-0 transition-transform', isExpanded && 'rotate-90')} onClick={(e) => { e.stopPropagation(); setExpandedFolders(p => { const n = new Set(p); n.has(folder.id) ? n.delete(folder.id) : n.add(folder.id); return n; }); }} />
+                ) : (
+                  <div className="w-4 h-4 shrink-0" />
                 )}
-              >
-                <Button
-                  variant="ghost"
-                  className="flex-1 justify-start gap-2 h-9 p-2 text-left"
-                  onClick={() => { if (!isRenaming) handleSelectFolder(folder.id) }}
-                >
-                  {hasChildren ? (
-                    <ChevronRight className={cn('h-4 w-4 shrink-0 transition-transform', isExpanded && 'rotate-90')} onClick={(e) => { e.stopPropagation(); setExpandedFolders(p => { const n = new Set(p); n.has(folder.id) ? n.delete(folder.id) : n.add(folder.id); return n; }); }} />
-                  ) : (
-                    <div className="w-4 h-4" />
-                  )}
-                  <Folder className="h-4 w-4" />
-                  {isRenaming ? (
-                    <Input autoFocus value={renameInputValue} onChange={e => setRenameInputValue(e.target.value)} onBlur={handleConfirmRename} onKeyDown={e => { if (e.key === 'Enter') handleConfirmRename(); if (e.key === 'Escape') handleCancelRename(); }} className="h-7" onClick={e => e.stopPropagation()} />
-                  ) : (
-                    <span className="truncate flex-1">{folder.name}</span>
-                  )}
-                </Button>
-                {!isRenaming && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}><Button variant="ghost" size="icon" className="h-8 w-8 shrink-0"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                <Folder className="h-4 w-4 text-primary ml-1 shrink-0" />
+                {isRenaming ? (
+                  <Input autoFocus value={renameInputValue} onChange={e => setRenameInputValue(e.target.value)} onBlur={handleConfirmRename} onKeyDown={e => { if (e.key === 'Enter') handleConfirmRename(); if (e.key === 'Escape') handleCancelRename(); }} className="h-7" onClick={e => e.stopPropagation()} />
+                ) : (
+                  <span className="truncate ml-2 text-sm">{folder.name}</span>
+                )}
+            </div>
+            <div className="flex items-center">
+                {folder.driveLink && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={(e) => { e.stopPropagation(); window.open(folder.driveLink!, '_blank', 'noopener,noreferrer'); }}>
+                    <ExternalLink className="h-4 w-4 text-blue-500" />
+                  </Button>
+                )}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 px-1.5">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenuItem onSelect={() => { setNewFolderParentId(folder.id); setIsNewFolderDialogOpen(true); }}><FolderPlus className="mr-2 h-4 w-4" />Create subfolder</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleStartRename(folder)}><Pencil className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive" onSelect={() => handleDeleteFolder(folder)}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onSelect={(e) => { e.stopPropagation(); handleDeleteFolder(folder); }}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                )}
-              </div>
-              {isExpanded && <FolderTree parentId={folder.id} allFolders={folders} level={level + 1} />}
             </div>
-          );
-        })}
+        </div>
+        {isExpanded && allFolders.filter(f => f.parentId === folder.id).sort((a,b) => a.name.localeCompare(b.name)).map(child => (
+          <FolderTreeItem key={child.id} folder={child} allFolders={allFolders} level={level + 1} />
+        ))}
       </div>
     );
   };
@@ -486,11 +489,11 @@ export function ContactsView() {
             <ResizablePanel defaultSize={25} minSize={20}>
               <div className="flex h-full flex-col p-2">
                   <div className="p-2">
-                      <Button className="w-full" onClick={() => { setNewFolderParentId(null); setIsNewFolderDialogOpen(true); }}>
+                      <Button className="w-full" onClick={() => handleOpenNewFolderDialog(null)}>
                           <FolderPlus className="mr-2 h-4 w-4" /> New Folder
                       </Button>
                   </div>
-                  <nav className="flex flex-col gap-1 p-2">
+                  <nav className="flex flex-col gap-1 py-2 px-1">
                       <Button
                           variant={selectedFolderId === 'all' ? "secondary" : "ghost"}
                           className="w-full justify-start gap-3"
@@ -499,7 +502,9 @@ export function ContactsView() {
                           <Users className="h-4 w-4" />
                           <span>All Contacts</span>
                       </Button>
-                      <FolderTree parentId={null} allFolders={folders} />
+                      {folders.filter(f => !f.parentId).sort((a,b) => a.name.localeCompare(b.name)).map(folder => (
+                        <FolderTreeItem key={folder.id} folder={folder} allFolders={folders} />
+                      ))}
                   </nav>
               </div>
             </ResizablePanel>
@@ -541,7 +546,7 @@ export function ContactsView() {
                                   <TableHead className="w-[50px]">
                                     <Checkbox
                                       checked={allVisibleSelected ? true : (someSelected ? 'indeterminate' : false)}
-                                      onCheckedChange={handleToggleSelectAll}
+                                      onCheckedChange={() => handleToggleSelectAll()}
                                     />
                                   </TableHead>
                                   <TableHead>Name</TableHead>
@@ -601,7 +606,7 @@ export function ContactsView() {
             <DialogHeader><DialogTitle>Create New Folder</DialogTitle></DialogHeader>
             <div className="py-4">
               <Label htmlFor="folder-name-new">Name</Label>
-              <Input id="folder-name-new" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={async (e) => { if (e.key === 'Enter') handleCreateFolder() }} />
+              <Input id="folder-name-new" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} onKeyDown={async (e) => { if (e.key === 'Enter') await handleCreateFolder() }} />
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setIsNewFolderDialogOpen(false)}>Cancel</Button>
@@ -643,14 +648,16 @@ export function ContactsView() {
       <AlertDialog open={isBulkDeleteAlertOpen} onOpenChange={setIsBulkDeleteAlertOpen}>
         <AlertDialogContent>
             <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
                     This will permanently delete {selectedContactIds.length} contact(s). This action cannot be undone.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive hover:bg-destructive/90">
+                    Delete
+                </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
