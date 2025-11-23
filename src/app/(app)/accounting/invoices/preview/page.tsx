@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -10,6 +9,7 @@ import { Logo } from '@/components/logo';
 import { Separator } from '@/components/ui/separator';
 import { Printer, Mail, ArrowLeft, LoaderCircle, AlertTriangle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { useReactToPrint } from '@/hooks/use-react-to-print';
 
 const INVOICE_PREVIEW_KEY = 'invoicePreviewData';
 
@@ -59,6 +59,7 @@ export default function InvoicePreviewPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
+    const { handlePrint, contentRef } = useReactToPrint();
 
     useEffect(() => {
         try {
@@ -113,17 +114,17 @@ export default function InvoicePreviewPage() {
     
     return (
         <div className="p-4 sm:p-6 space-y-4 bg-muted/30">
-            <div className="flex justify-between items-center max-w-4xl mx-auto">
+            <div className="flex justify-between items-center max-w-4xl mx-auto print:hidden">
                  <Button variant="outline" onClick={() => router.back()}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back to Generator
                 </Button>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline"><Printer className="mr-2 h-4 w-4"/> Print</Button>
+                    <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4"/> Print</Button>
                     <Button><Mail className="mr-2 h-4 w-4"/> Email Invoice</Button>
                 </div>
             </div>
-             <Card id="invoice-preview" className="max-w-4xl mx-auto">
+             <Card id="invoice-preview" ref={contentRef} className="max-w-4xl mx-auto">
                 <CardContent className="p-8">
                     <header className="flex justify-between items-start pb-6 border-b">
                         <Logo className="text-primary"/>
