@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -302,9 +303,11 @@ export default function ContactFormDialog({
                                                             />
                                                             <CommandList>
                                                                 <CommandEmpty>
-                                                                    <Button variant="link" onClick={() => handleCreateCompany(companySearchValue)}>
-                                                                        <Plus className="mr-2 h-4 w-4"/> Create "{companySearchValue}"
-                                                                    </Button>
+                                                                    {companySearchValue.trim() ? (
+                                                                        <Button variant="link" onClick={() => handleCreateCompany(companySearchValue)}>
+                                                                            <Plus className="mr-2 h-4 w-4"/> Create "{companySearchValue}"
+                                                                        </Button>
+                                                                    ) : "No company found."}
                                                                 </CommandEmpty>
                                                                 <CommandGroup>
                                                                     {companies.map(c => (

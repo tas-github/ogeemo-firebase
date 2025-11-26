@@ -3,7 +3,7 @@
 'use client';
 
 import * as React from "react";
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -47,7 +47,7 @@ import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, MoreVertical, BookOpen, Pencil, Trash2, LoaderCircle, Check, ChevronsUpDown } from "lucide-react";
+import { PlusCircle, MoreVertical, BookOpen, Pencil, Trash2, LoaderCircle, Check, ChevronsUpDown, FilterX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -82,7 +82,7 @@ const tabTitles: Record<string, string> = {
     income: 'Income Ledger',
     expenses: 'Expense Ledger',
     receivables: 'Accounts Receivable',
-    payables: 'Accounts Payable',
+    payables: 'Payables',
 };
 
 
@@ -115,7 +115,9 @@ export function LedgersView() {
   const [showTotals, setShowTotals] = React.useState(false);
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get('tab') || 'bks';
+  const router = useRouter();
+  const filterCategory = searchParams.get('category');
+  const initialTab = searchParams.get('tab') || (filterCategory ? 'bks' : 'bks');
   const [activeTab, setActiveTab] = React.useState(initialTab);
 
   React.useEffect(() => {
@@ -155,8 +157,24 @@ export function LedgersView() {
       ...incomeLedger.map(item => ({ ...item, transactionType: 'income' as const })),
       ...expenseLedger.map(item => ({ ...item, transactionType: 'expense' as const })),
     ];
+    
+    if (filterCategory) {
+        return combined.filter(item => {
+            const itemCategory = item.transactionType === 'income' ? item.incomeCategory : item.category;
+            // Also need to handle cases where the filter might be for "Sales, commissions, or fees"
+            const standardIncomeCategory = "Sales, commissions, or fees";
+            const isPrimaryIncome = item.transactionType === 'income' && item.incomeCategory !== 'Other income';
+            
+            if (filterCategory === standardIncomeCategory && isPrimaryIncome) {
+                return true;
+            }
+
+            return itemCategory === filterCategory;
+        }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+
     return combined.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [incomeLedger, expenseLedger]);
+  }, [incomeLedger, expenseLedger, filterCategory]);
 
   const incomeTotal = React.useMemo(() => incomeLedger.reduce((sum, item) => sum + item.totalAmount, 0), [incomeLedger]);
   const expenseTotal = React.useMemo(() => expenseLedger.reduce((sum, item) => sum + item.totalAmount, 0), [expenseLedger]);
@@ -403,6 +421,14 @@ export function LedgersView() {
                       <CardTitle>BKS General Ledger</CardTitle>
                       <CardDescription>A combined view of all income and expense transactions.</CardDescription>
                     </div>
+                     {filterCategory && (
+                        <div className="mt-4 flex items-center gap-2 rounded-md border border-blue-300 bg-blue-50 p-2 text-sm text-blue-800 dark:border-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+                            <span>Filtering by category: <strong>{filterCategory}</strong></span>
+                            <Button variant="ghost" size="sm" onClick={() => router.push('/accounting/ledgers')} className="h-auto p-1 text-blue-800 hover:bg-blue-100 dark:text-blue-300 dark:hover:bg-blue-900/30">
+                                <FilterX className="mr-1 h-4 w-4" /> Clear Filter
+                            </Button>
+                        </div>
+                    )}
                     <div className="flex items-center justify-center gap-2 pt-4">
                         <Button variant="outline" onClick={() => handleOpenTransactionDialog('income')}>
                             <PlusCircle className="mr-2 h-4 w-4" /> Post Transaction
@@ -448,8 +474,8 @@ export function LedgersView() {
 
                <TabsContent value="income">
                  <Card>
-                    <CardHeader className="flex flex-col items-center justify-between">
-                        <div className="text-center"><CardTitle>Income Transactions</CardTitle><CardDescription>A list of all recorded income.</CardDescription></div>
+                    <CardHeader className="flex flex-col items-center justify-between sm:flex-row">
+                        <div className="text-center sm:text-left"><CardTitle>Income Transactions</CardTitle><CardDescription>A list of all recorded income.</CardDescription></div>
                         <Button variant="outline" onClick={() => handleOpenTransactionDialog('income')}><PlusCircle className="mr-2 h-4 w-4" /> Add Income</Button>
                     </CardHeader>
                     <CardContent>
@@ -465,8 +491,8 @@ export function LedgersView() {
 
                <TabsContent value="expenses">
                 <Card>
-                    <CardHeader className="flex flex-col items-center justify-between">
-                        <div className="text-center"><CardTitle>Expense Transactions</CardTitle><CardDescription>A list of all recorded expenses.</CardDescription></div>
+                    <CardHeader className="flex flex-col items-center justify-between sm:flex-row">
+                        <div className="text-center sm:text-left"><CardTitle>Expense Transactions</CardTitle><CardDescription>A list of all recorded expenses.</CardDescription></div>
                         <Button variant="outline" onClick={() => handleOpenTransactionDialog('expense')}><PlusCircle className="mr-2 h-4 w-4" /> Add Expense</Button>
                     </CardHeader>
                     <CardContent>
@@ -528,13 +554,13 @@ export function LedgersView() {
                                     onValueChange={setCompanySearchValue}
                                 />
                                 <CommandList>
-                                    <CommandEmpty>
+                                     <CommandEmpty>
                                         {companySearchValue.trim() && (
                                             <CommandItem onSelect={() => handleCreateCompany(companySearchValue)} className="cursor-pointer">
                                                 <PlusCircle className="mr-2 h-4 w-4" /> Create "{companySearchValue}"
                                             </CommandItem>
                                         )}
-                                        {companies.length === 0 && 'No companies found.'}
+                                        {!companySearchValue.trim() && 'No company found.'}
                                     </CommandEmpty>
                                     <CommandGroup>
                                         {companies.map((c) => (
@@ -587,12 +613,13 @@ export function LedgersView() {
                                 <Command>
                                     <CommandInput placeholder="Search category..." value={incomeCategorySearchValue} onValueChange={setIncomeCategorySearchValue} />
                                     <CommandList>
-                                        <CommandEmpty>
+                                         <CommandEmpty>
                                             {incomeCategorySearchValue.trim() && (
                                                 <CommandItem onSelect={() => handleCreateIncomeCategory(incomeCategorySearchValue)} className="cursor-pointer">
                                                     <PlusCircle className="mr-2 h-4 w-4" /> Create "{incomeCategorySearchValue}"
                                                 </CommandItem>
                                             )}
+                                            {!incomeCategorySearchValue.trim() && 'No category found.'}
                                         </CommandEmpty>
                                         <CommandGroup>
                                             {incomeCategories.map((c) => (
@@ -636,6 +663,7 @@ export function LedgersView() {
                                                     <PlusCircle className="mr-2 h-4 w-4" /> Create "{categorySearchValue}"
                                                 </CommandItem>
                                             )}
+                                            {!categorySearchValue.trim() && 'No category found.'}
                                         </CommandEmpty>
                                         <CommandGroup>
                                             {expenseCategories.map((c) => (
@@ -675,9 +703,3 @@ export function LedgersView() {
     </>
   );
 }
-
-    
-
-    
-
-    

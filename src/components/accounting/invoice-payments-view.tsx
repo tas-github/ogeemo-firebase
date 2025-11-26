@@ -44,7 +44,7 @@ import { MoreVertical, Edit, Trash2, HandCoins, FileText, LoaderCircle } from 'l
 import { useToast } from '@/hooks/use-toast';
 import { format as formatDate } from "date-fns";
 import { useAuth } from '@/context/auth-context';
-import { getInvoices, updateInvoiceWithLineItems, deleteInvoice, type Invoice } from '@/services/accounting-service';
+import { getInvoices, updateInvoiceWithLineItems, deleteInvoice, type Invoice, addIncomeTransaction } from '@/services/accounting-service';
 
 const EDIT_INVOICE_ID_KEY = 'editInvoiceId';
 const RECEIPT_DATA_KEY = 'ogeemo-receipt-data';
@@ -95,14 +95,26 @@ export function InvoicePaymentsView() {
     };
 
     const handleConfirmPayment = async () => {
-        if (!invoiceToPay || paymentAmount === '' || Number(paymentAmount) <= 0) {
+        if (!invoiceToPay || !user || paymentAmount === '' || Number(paymentAmount) <= 0) {
             toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Please enter a valid payment amount.' });
             return;
         }
 
         try {
             const newAmountPaid = invoiceToPay.amountPaid + Number(paymentAmount);
-            await updateInvoiceWithLineItems(invoiceToPay.id, { amountPaid: newAmountPaid }, []); // Pass empty array as we're not changing line items
+            await updateInvoiceWithLineItems(invoiceToPay.id, { amountPaid: newAmountPaid }, []);
+
+            // Create a corresponding income transaction
+            await addIncomeTransaction({
+                userId: user.uid,
+                date: formatDate(new Date(), 'yyyy-MM-dd'),
+                company: invoiceToPay.companyName,
+                description: `Payment for Invoice #${invoiceToPay.invoiceNumber}`,
+                totalAmount: Number(paymentAmount),
+                incomeCategory: 'Service Revenue', // Default category, could be made dynamic
+                depositedTo: 'Bank Account #1', // Default account, could be made dynamic
+                type: 'business',
+            });
 
             setInvoices(prev => 
                 prev.map(inv => 
@@ -110,10 +122,7 @@ export function InvoicePaymentsView() {
                 )
             );
             
-            // TODO: Add to income ledger via accounting service
-            // await addIncomeTransaction(...)
-
-            toast({ title: 'Payment Recorded', description: `Payment of ${Number(paymentAmount).toLocaleString('en-US', { style: 'currency', currency: 'USD' })} recorded.` });
+            toast({ title: 'Payment Recorded', description: `Payment of ${Number(paymentAmount).toLocaleString('en-US', { style: 'currency', currency: 'USD' })} recorded and added to income ledger.` });
             
             setIsPaymentDialogOpen(false);
             setInvoiceToPay(null);
@@ -282,5 +291,3 @@ export function InvoicePaymentsView() {
         </>
     );
 }
-
-    

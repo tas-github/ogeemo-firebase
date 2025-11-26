@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -369,7 +370,7 @@ export function InvoiceGeneratorView() {
         dueDate: dueDate.toISOString(),
         companyName: companyName || 'Client Name',
         contactAddress: {
-            streetAddress: selectedContact?.streetAddress,
+            street: selectedContact?.streetAddress,
             city: selectedContact?.city,
             provinceState: selectedContact?.provinceState,
             postalCode: selectedContact?.postalCode,

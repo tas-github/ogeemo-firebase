@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -19,6 +18,7 @@ import {
 import { initializeFirebase } from '@/lib/firebase';
 import { mockIncome, mockExpenses } from '@/data/accounting';
 import { format } from 'date-fns';
+import { standardExpenseCategories } from '@/data/standard-expense-categories';
 
 
 async function getDb() {
@@ -469,7 +469,21 @@ export async function getExpenseCategories(userId: string): Promise<ExpenseCateg
   const db = await getDb();
   const q = query(collection(db, EXPENSE_CATEGORIES_COLLECTION), where("userId", "==", userId));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(docToExpenseCategory);
+
+  if (snapshot.empty) {
+    const batch = writeBatch(db);
+    const newCategories: ExpenseCategory[] = [];
+    standardExpenseCategories.forEach(categoryName => {
+        const docRef = doc(collection(db, EXPENSE_CATEGORIES_COLLECTION));
+        const categoryData = { name: categoryName, userId };
+        batch.set(docRef, categoryData);
+        newCategories.push({ ...categoryData, id: docRef.id });
+    });
+    await batch.commit();
+    return newCategories.sort((a,b) => a.name.localeCompare(b.name));
+  }
+
+  return snapshot.docs.map(docToExpenseCategory).sort((a,b) => a.name.localeCompare(b.name));
 }
 
 export async function addExpenseCategory(data: Omit<ExpenseCategory, 'id'>): Promise<ExpenseCategory> {
