@@ -555,12 +555,11 @@ export function LedgersView() {
                                 />
                                 <CommandList>
                                      <CommandEmpty>
-                                        {companySearchValue.trim() && (
+                                        {companySearchValue && !companies.some(c => c.name.toLowerCase() === companySearchValue.toLowerCase()) ? (
                                             <CommandItem onSelect={() => handleCreateCompany(companySearchValue)} className="cursor-pointer">
                                                 <PlusCircle className="mr-2 h-4 w-4" /> Create "{companySearchValue}"
                                             </CommandItem>
-                                        )}
-                                        {!companySearchValue.trim() && 'No company found.'}
+                                        ) : 'No company found.'}
                                     </CommandEmpty>
                                     <CommandGroup>
                                         {companies.map((c) => (
@@ -597,7 +596,7 @@ export function LedgersView() {
             </div>
 
 
-            {newTransactionType === 'income' && (
+            {newTransactionType === 'income' ? (
                 <>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="tx-income-category-gl" className="text-right">Income Category <span className="text-destructive">*</span></Label>
@@ -614,7 +613,7 @@ export function LedgersView() {
                                     <CommandInput placeholder="Search category..." value={incomeCategorySearchValue} onValueChange={setIncomeCategorySearchValue} />
                                     <CommandList>
                                          <CommandEmpty>
-                                            {incomeCategorySearchValue.trim() ? (
+                                            {incomeCategorySearchValue.trim() && !incomeCategories.some(c => c.name.toLowerCase() === incomeCategorySearchValue.toLowerCase()) ? (
                                                 <CommandItem onSelect={() => handleCreateIncomeCategory(incomeCategorySearchValue)} className="cursor-pointer">
                                                     <PlusCircle className="mr-2 h-4 w-4" /> Create "{incomeCategorySearchValue}"
                                                 </CommandItem>
@@ -636,8 +635,7 @@ export function LedgersView() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-deposit-account-gl" className="text-right">Deposited To</Label><div className="col-span-3"><Select value={newTransaction.depositedTo} onValueChange={(value) => setNewTransaction(prev => ({...prev, depositedTo: value}))}><SelectTrigger id="tx-deposit-account-gl" className="w-full"><SelectValue placeholder="Select an account" /></SelectTrigger><SelectContent>{defaultDepositAccounts.map(acc => <SelectItem key={acc} value={acc}>{acc}</SelectItem>)}</SelectContent></Select></div></div>
                 </>
-            )}
-            {newTransactionType === 'expense' && (
+            ) : (
                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="tx-category-gl" className="text-right">Category <span className="text-destructive">*</span></Label>
                     <div className="col-span-3">
@@ -657,7 +655,7 @@ export function LedgersView() {
                                     />
                                     <CommandList>
                                         <CommandEmpty>
-                                            {categorySearchValue.trim() ? (
+                                            {categorySearchValue.trim() && !expenseCategories.some(c => c.name.toLowerCase() === categorySearchValue.toLowerCase()) ? (
                                                 <CommandItem onSelect={() => handleCreateExpenseCategory(categorySearchValue)} className="cursor-pointer">
                                                     <PlusCircle className="mr-2 h-4 w-4" /> Create "{categorySearchValue}"
                                                 </CommandItem>
@@ -701,3 +699,4 @@ export function LedgersView() {
     </>
   );
 }
+
