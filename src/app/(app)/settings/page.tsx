@@ -1,101 +1,122 @@
+'use client';
 
-"use client";
-
-import { ProfileCard } from "@/components/settings/profile-card";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { useUserPreferences } from "@/hooks/use-user-preferences";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { Save, LoaderCircle } from "lucide-react";
+import { PlanningRitualsCard } from "@/components/settings/planning-rituals-card";
+import { ProfileCard } from "@/components/settings/profile-card";
+import { Form } from '@/components/ui/form';
+import { useAuth } from '@/context/auth-context';
+import { getUserProfile, updateUserProfile, type UserProfile } from '@/services/user-profile-service';
+import { useToast } from '@/hooks/use-toast';
 
-function PreferencesCard() {
-  const { preferences, updatePreferences, isLoading } = useUserPreferences();
+const profileSchema = z.object({
+    displayName: z.string().min(2, { message: "Name must be at least 2 characters." }).optional(),
+    companyName: z.string().optional(),
+    website: z.string().optional(),
+    businessPhone: z.string().optional(),
+    cellPhone: z.string().optional(),
+    bestPhone: z.enum(['business', 'cell']).optional(),
+});
 
-  const handleTogglePreference = (key: keyof typeof preferences, checked: boolean) => {
-    updatePreferences({ [key]: checked });
-  };
+type ProfileFormData = z.infer<typeof profileSchema>;
 
-  if (isLoading) {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Preferences</CardTitle>
-                <CardDescription>Manage your application preferences.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <Skeleton className="h-8 w-full" />
-            </CardContent>
-        </Card>
-    )
+export default function SettingsPage() {
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+
+  const form = useForm<ProfileFormData>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {},
+  });
+
+  useEffect(() => {
+    async function loadProfile() {
+      if (user) {
+        setIsLoading(true);
+        try {
+          const userProfile = await getUserProfile(user.uid);
+          setProfile(userProfile);
+          if (userProfile) {
+            form.reset({
+              displayName: userProfile.displayName || user.displayName || '',
+              companyName: userProfile.companyName || '',
+              website: userProfile.website || '',
+              businessPhone: userProfile.businessPhone || '',
+              cellPhone: userProfile.cellPhone || '',
+              bestPhone: userProfile.bestPhone || undefined,
+            });
+          }
+        } catch (error) {
+          console.error("Failed to load user profile:", error);
+          toast({
+            variant: "destructive",
+            title: "Failed to load profile",
+            description: "Could not retrieve your profile data.",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      } else if (!isAuthLoading) {
+        setIsLoading(false);
+      }
+    }
+    loadProfile();
+  }, [user, isAuthLoading, form, toast]);
+
+  async function onSubmit(values: ProfileFormData) {
+    if (!user) {
+      toast({ variant: "destructive", title: "Not Authenticated", description: "You must be logged in to save settings." });
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+        await updateUserProfile(user.uid, user.email || '', values);
+        toast({
+            title: "Settings Saved",
+            description: "Your profile information has been updated successfully.",
+        });
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Save Failed",
+            description: error.message || "An unknown error occurred while saving your profile.",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Preferences</CardTitle>
-        <CardDescription>Manage your application preferences.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between space-x-2 rounded-lg border p-4">
-            <div className="space-y-0.5">
-                <Label htmlFor="dictation-switch" className="text-base">Show Voice Dictation Buttons</Label>
-                <p className="text-sm text-muted-foreground">
-                    Display the microphone icon for voice-to-text input in forms and chat.
-                </p>
-            </div>
-            <Switch
-                id="dictation-switch"
-                checked={preferences?.showDictationButton}
-                onCheckedChange={(checked) => handleTogglePreference('showDictationButton', checked)}
-            />
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="p-4 sm:p-6 space-y-6">
+        <header className="flex justify-between items-center w-full max-w-4xl mx-auto mb-6">
+          <div className="text-center flex-1">
+            <h1 className="text-2xl font-bold font-headline text-primary">Settings</h1>
+            <p className="text-muted-foreground">Manage your account and preferences.</p>
+          </div>
+          <div>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </header>
+        <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div className="space-y-6">
+            <ProfileCard form={form} isLoading={isLoading} />
+          </div>
+          <div className="space-y-6">
+             <PlanningRitualsCard />
+          </div>
         </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function PlanningRitualsCard() {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Planning Rituals</CardTitle>
-                <CardDescription>Configure your automated daily and weekly planning sessions to build a routine of focus and clarity.</CardDescription>
-            </CardHeader>
-            <CardFooter>
-                <Button asChild>
-                    <Link href="/settings/rituals">
-                        Configure Rituals <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                </Button>
-            </CardFooter>
-        </Card>
-    )
-}
-
-
-export default function SettingsPage() {
-  return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <header className="text-center">
-        <h1 className="text-2xl font-bold font-headline text-primary">Settings</h1>
-        <p className="text-muted-foreground">Manage your account and preferences.</p>
-      </header>
-      <div className="max-w-md mx-auto space-y-6">
-        <Card>
-            <CardHeader>
-                <CardTitle>My Profile</CardTitle>
-                <CardDescription>Your user profile information.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <ProfileCard />
-            </CardContent>
-        </Card>
-        <PreferencesCard />
-        <PlanningRitualsCard />
-      </div>
-    </div>
+      </form>
+    </Form>
   );
 }

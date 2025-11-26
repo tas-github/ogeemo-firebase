@@ -1,12 +1,14 @@
+
 'use client';
 
 import { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { Save, Eraser, LoaderCircle } from 'lucide-react';
+import { Save, Eraser, LoaderCircle, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { findOrCreateFileFolder, updateFile, addTextFileClient } from '@/services/file-service';
+import { useReactToPrint } from '@/hooks/use-react-to-print';
 
 const TEST_FOLDER_NAME = "Bug Repair Tests";
 
@@ -15,6 +17,7 @@ export default function BugRepairPage() {
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { handlePrint, contentRef } = useReactToPrint();
   
   const [currentFileId, setCurrentFileId] = useState<string | null>(null);
 
@@ -84,7 +87,7 @@ export default function BugRepairPage() {
           </p>
       </header>
       
-      <Card className="w-full max-w-4xl flex-1 flex flex-col">
+      <Card className="w-full max-w-4xl flex-1 flex flex-col" ref={contentRef}>
         <CardHeader>
           <CardTitle>Sandbox Editor</CardTitle>
           <CardDescription>
@@ -100,6 +103,8 @@ export default function BugRepairPage() {
           />
         </CardContent>
         <div className="p-4 border-t flex justify-end gap-2">
+            <Button onClick={handleSave}>Test</Button>
+            <Button variant="outline" onClick={handlePrint} disabled={isSaving}><Printer className="mr-2 h-4 w-4" /> Print</Button>
             <Button variant="outline" onClick={handleClear} disabled={isSaving}><Eraser className="mr-2 h-4 w-4" /> Clear</Button>
             <Button onClick={handleSave} disabled={isSaving}>
                 {isSaving ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { Printer, Mail, ArrowLeft, LoaderCircle, AlertTriangle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useReactToPrint } from '@/hooks/use-react-to-print';
+import type { UserProfile } from '@/services/user-profile-service';
 
 const INVOICE_PREVIEW_KEY = 'invoicePreviewData';
 
@@ -23,7 +25,7 @@ interface LineItem {
 }
 
 interface Address {
-  streetAddress?: string;
+  street?: string;
   city?: string;
   provinceState?: string;
   postalCode?: string;
@@ -38,16 +40,20 @@ interface InvoiceData {
   dueDate: string; // ISO string
   lineItems: LineItem[];
   notes: string;
+  userProfile?: UserProfile;
 }
 
 const formatCurrency = (amount: number) => {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 };
 
-const formatAddress = (address: Address | undefined) => {
+const formatAddress = (address: Address | string | undefined) => {
     if (!address) return '';
+    if (typeof address === 'string') return address; // For backward compatibility
+    if (typeof address !== 'object') return '';
+
     const parts = [
-        address.streetAddress,
+        address.street,
         [address.city, address.provinceState, address.postalCode].filter(Boolean).join(', '),
         address.country,
     ];
@@ -85,7 +91,24 @@ export default function InvoicePreviewPage() {
     }, 0) || 0;
     const total = subtotal + taxAmount;
     
-    const fullAddress = formatAddress(invoiceData?.contactAddress);
+    const fullContactAddress = formatAddress(invoiceData?.contactAddress);
+    const user = invoiceData?.userProfile;
+    const userBusinessAddress = formatAddress(user?.businessAddress);
+    const userPhone = user?.bestPhone === 'business' ? user.businessPhone : user?.cellPhone;
+    
+    const userWebsite = React.useMemo(() => {
+        if (!user?.website) return '';
+        try {
+            let urlString = user.website;
+            if (!urlString.startsWith('http://') && !urlString.startsWith('https://')) {
+                urlString = `https://${urlString}`;
+            }
+            return new URL(urlString).hostname.replace('www.','');
+        } catch (e) {
+            console.error("Invalid user website URL:", user.website, e);
+            return user.website;
+        }
+    }, [user?.website]);
 
     if (isLoading) {
         return (
@@ -138,8 +161,8 @@ export default function InvoicePreviewPage() {
                         <div>
                             <h2 className="font-bold text-gray-500 uppercase mb-2">Bill To</h2>
                             <p className="font-bold text-lg">{invoiceData.companyName}</p>
-                            {fullAddress && (
-                                <p className="text-sm text-gray-600 whitespace-pre-wrap">{fullAddress}</p>
+                            {fullContactAddress && (
+                                <p className="text-sm text-gray-600 whitespace-pre-wrap">{fullContactAddress}</p>
                             )}
                         </div>
                         <div className="text-right">
@@ -190,12 +213,18 @@ export default function InvoicePreviewPage() {
                         <h4 className="font-bold text-gray-500 uppercase mb-2">Notes</h4>
                         <p className="text-sm text-gray-600 whitespace-pre-wrap">{invoiceData.notes}</p>
                     </section>
-                    <footer className="mt-12 pt-6 border-t text-center text-xs text-gray-400">
-                        <p>Thank you for your business!</p>
-                        <p>123 Ogeemo St, Suite 100, Business City, 12345</p>
+                    <footer className="mt-12 pt-6 border-t text-center text-xs text-gray-400 space-y-1">
+                        <p className="font-bold text-base text-gray-600">{user?.companyName || user?.displayName}</p>
+                        <p className="whitespace-pre-wrap">{userBusinessAddress}</p>
+                        <div className="flex justify-center items-center gap-4">
+                           {userPhone && <p>{userPhone}</p>}
+                           {user?.website && userPhone && <p>|</p>}
+                           {user?.website && <a href={user.website} className="text-primary hover:underline">{userWebsite}</a>}
+                        </div>
                     </footer>
                 </CardContent>
              </Card>
         </div>
     );
 }
+    

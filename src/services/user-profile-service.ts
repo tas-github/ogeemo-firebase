@@ -18,11 +18,25 @@ export interface PlanningRitual {
 export interface UserProfile {
     id: string; // This will be the user's UID
     email: string;
+    companyName?: string;
+    website?: string;
     businessPhone?: string;
     cellPhone?: string;
     bestPhone?: 'business' | 'cell';
-    businessAddress?: string;
-    homeAddress?: string;
+    businessAddress?: {
+        street?: string;
+        city?: string;
+        provinceState?: string;
+        country?: string;
+        postalCode?: string;
+    };
+    homeAddress?: {
+        street?: string;
+        city?: string;
+        provinceState?: string;
+        country?: string;
+        postalCode?: string;
+    };
     alternateContact?: string;
     alternateContactPhone?: string;
     createdAt?: any;
@@ -116,20 +130,36 @@ export async function updateUserProfile(
 
     if (docSnap.exists()) {
         const existingData = docSnap.data();
-        const existingPrefs = existingData.preferences || {};
         
-        // Deep merge for planningRituals
-        if (data.preferences?.planningRituals) {
-            dataWithTimestamp.preferences = { 
-                ...existingPrefs, 
+        // Correctly merge nested preference objects
+        if (data.preferences) {
+            const existingPrefs = existingData.preferences || {};
+            dataWithTimestamp.preferences = {
+                ...existingPrefs,
                 ...data.preferences,
                 planningRituals: {
                     ...existingPrefs.planningRituals,
-                    ...data.preferences.planningRituals,
-                }
+                    ...(data.preferences.planningRituals || {}),
+                },
             };
-        } else if (data.preferences) {
-             dataWithTimestamp.preferences = { ...existingPrefs, ...data.preferences };
+        }
+
+        // Correctly merge nested businessAddress object
+        if (data.businessAddress) {
+            const existingAddress = existingData.businessAddress || {};
+            dataWithTimestamp.businessAddress = {
+                ...existingAddress,
+                ...data.businessAddress,
+            };
+        }
+        
+        // Correctly merge nested homeAddress object
+        if (data.homeAddress) {
+            const existingAddress = existingData.homeAddress || {};
+            dataWithTimestamp.homeAddress = {
+                ...existingAddress,
+                ...data.homeAddress,
+            };
         }
 
         await updateDoc(docRef, dataWithTimestamp);
@@ -141,5 +171,3 @@ export async function updateUserProfile(
         await setDoc(docRef, dataWithTimestamp);
     }
 }
-
-    

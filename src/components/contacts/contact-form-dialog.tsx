@@ -40,12 +40,21 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 const contactSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: "Please enter a valid email." }).optional().or(z.literal('')),
+  website: z.string().optional(),
   businessName: z.string().optional(),
+  businessType: z.string().optional(),
   streetAddress: z.string().optional(),
   city: z.string().optional(),
   provinceState: z.string().optional(),
   postalCode: z.string().optional(),
   country: z.string().optional(),
+  homeAddress: z.object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+    provinceState: z.string().optional(),
+    country: z.string().optional(),
+    postalCode: z.string().optional(),
+  }).optional(),
   businessPhone: z.string().optional(),
   cellPhone: z.string().optional(),
   homePhone: z.string().optional(),
@@ -75,12 +84,21 @@ interface ContactFormDialogProps {
 const defaultFormValues: ContactFormData = {
   name: "",
   email: "",
+  website: "",
   businessName: "",
+  businessType: "",
   streetAddress: "",
   city: "",
   provinceState: "",
   postalCode: "",
   country: "",
+  homeAddress: {
+    street: "",
+    city: "",
+    provinceState: "",
+    country: "",
+    postalCode: "",
+  },
   businessPhone: "",
   cellPhone: "",
   homePhone: "",
@@ -158,7 +176,7 @@ export default function ContactFormDialog({
 
     const { isListening, startListening, stopListening, isSupported } = useSpeechToText({
         onTranscript: (transcript) => {
-            const newText = notesBeforeSpeech ? `$\{notesBeforeSpeech} $\{transcript}`.trim() : transcript;
+            const newText = notesBeforeSpeech ? `${notesBeforeSpeech} ${transcript}`.trim() : transcript;
             form.setValue('notes', newText, { shouldValidate: true });
         },
     });
@@ -187,10 +205,11 @@ export default function ContactFormDialog({
 
         try {
             if (contactToEdit) {
+                // Correctly merge: start with old data, overwrite with new form values
                 const updatedContactData = { ...contactToEdit, ...dataToSave };
                 await updateContact(contactToEdit.id, updatedContactData);
                 onSave(updatedContactData, true);
-                toast({ title: "Contact Updated", description: `Details for $\{values.name} have been saved.` });
+                toast({ title: "Contact Updated", description: `Details for ${values.name} have been saved.` });
             } else {
                 const newContactData: Omit<Contact, 'id'> = {
                     ...dataToSave,
@@ -199,7 +218,7 @@ export default function ContactFormDialog({
                 };
                 const newContact = await addContact(newContactData);
                 onSave(newContact, false);
-                toast({ title: "Contact Created", description: `$\{newContact.name} has been added.` });
+                toast({ title: "Contact Created", description: `${newContact.name} has been added.` });
             }
             onOpenChange(false);
         } catch (error: any) {
@@ -250,7 +269,7 @@ export default function ContactFormDialog({
                         {contactToEdit ? "Edit Contact" : "New Contact"}
                     </DialogTitle>
                     <DialogDescription>
-                        {contactToEdit ? `Editing details for $\{contactToEdit.name}.` : `Create a new contact.`}
+                        {contactToEdit ? `Editing details for ${contactToEdit.name}.` : `Create a new contact.`}
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -305,29 +324,32 @@ export default function ContactFormDialog({
                                     />
                                 </div>
                                 
-                                <FormField
-                                    control={form.control}
-                                    name="folderId"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Folder <span className="text-destructive">*</span></FormLabel>
-                                        <div className="flex gap-2">
-                                            <Select onValueChange={field.onChange} value={field.value} disabled={!!forceFolderId}>
-                                                <FormControl>
-                                                    <SelectTrigger><SelectValue placeholder="Select a folder" /></SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {currentFolders.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                            <Button type="button" variant="outline" size="icon" onClick={() => setIsNewFolderDialogOpen(true)} disabled={!!forceFolderId}>
-                                                <FolderPlus className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                     <FormField
+                                        control={form.control}
+                                        name="folderId"
+                                        render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Folder <span className="text-destructive">*</span></FormLabel>
+                                            <div className="flex gap-2">
+                                                <Select onValueChange={field.onChange} value={field.value} disabled={!!forceFolderId}>
+                                                    <FormControl>
+                                                        <SelectTrigger><SelectValue placeholder="Select a folder" /></SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {currentFolders.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                                <Button type="button" variant="outline" size="icon" onClick={() => setIsNewFolderDialogOpen(true)} disabled={!!forceFolderId}>
+                                                    <FolderPlus className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                    <FormField control={form.control} name="businessType" render={({ field }) => ( <FormItem> <FormLabel>Industry</FormLabel> <FormControl><Input placeholder="e.g., Construction, Finance" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                </div>
                                 
                                  <FormField control={form.control} name="streetAddress" render={({ field }) => ( <FormItem> <FormLabel>Street Address</FormLabel> <FormControl><Input placeholder="123 Main St" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -336,8 +358,26 @@ export default function ContactFormDialog({
                                      <FormField control={form.control} name="postalCode" render={({ field }) => ( <FormItem> <FormLabel>Postal/Zip</FormLabel> <FormControl><Input placeholder="12345" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                      <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>Country</FormLabel> <FormControl><Input placeholder="USA" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                  </div>
+                                
+                                 <div className="space-y-2">
+                                    <Label>Home Address</Label>
+                                    <div className="space-y-2 p-4 border rounded-md">
+                                        <FormField control={form.control} name="homeAddress.street" render={({ field }) => ( <FormItem><FormLabel>Street</FormLabel><FormControl><Input placeholder="456 Home Ave" {...field} /></FormControl></FormItem> )} />
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                                            <FormField control={form.control} name="homeAddress.city" render={({ field }) => ( <FormItem><FormLabel>City/Town</FormLabel><FormControl><Input placeholder="Hometown" {...field} /></FormControl></FormItem> )} />
+                                            <FormField control={form.control} name="homeAddress.provinceState" render={({ field }) => ( <FormItem><FormLabel>Prov./State</FormLabel><FormControl><Input placeholder="CA" {...field} /></FormControl></FormItem> )} />
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                                            <FormField control={form.control} name="homeAddress.country" render={({ field }) => ( <FormItem><FormLabel>Country</FormLabel><FormControl><Input placeholder="USA" {...field} /></FormControl></FormItem> )} />
+                                            <FormField control={form.control} name="homeAddress.postalCode" render={({ field }) => ( <FormItem><FormLabel>Postal/Zip</FormLabel><FormControl><Input placeholder="67890" {...field} /></FormControl></FormItem> )} />
+                                        </div>
+                                    </div>
+                                </div>
 
-                                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                    <FormField control={form.control} name="website" render={({ field }) => ( <FormItem> <FormLabel>Website</FormLabel> <FormControl><Input placeholder="https://example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField control={form.control} name="businessPhone" render={({ field }) => (
@@ -345,7 +385,7 @@ export default function ContactFormDialog({
                                             <FormLabel>Business #</FormLabel>
                                             <div className="relative">
                                                 <FormControl><Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} /></FormControl>
-                                                {field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:$\{field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Business</span></a></Button>}
+                                                {field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:${field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Business</span></a></Button>}
                                             </div>
                                             <FormMessage />
                                         </FormItem>
@@ -355,7 +395,7 @@ export default function ContactFormDialog({
                                             <FormLabel>Cell #</FormLabel>
                                             <div className="relative">
                                                 <FormControl><Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} /></FormControl>
-                                                {field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:$\{field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Cell</span></a></Button>}
+                                                {field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:${field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Cell</span></a></Button>}
                                             </div>
                                             <FormMessage />
                                         </FormItem>
@@ -365,7 +405,7 @@ export default function ContactFormDialog({
                                             <FormLabel>Home #</FormLabel>
                                             <div className="relative">
                                                 <FormControl><Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} /></FormControl>
-                                                {field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:$\{field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Home</span></a></Button>}
+                                                {field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:${field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Home</span></a></Button>}
                                             </div>
                                             <FormMessage />
                                         </FormItem>
@@ -381,15 +421,15 @@ export default function ContactFormDialog({
                                             <FormDescription>Select the best number to use for this contact.</FormDescription>
                                             <FormControl>
                                                 <RadioGroup onValueChange={field.onChange} value={field.value || ""} className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                                    <FormItem className={cn("flex items-center space-x-3 space-y-0 rounded-md border p-2 transition-colors border-black", field.value === 'businessPhone' ? "bg-[#C3FFF9]" : "text-foreground")}>
+                                                    <FormItem className={cn("flex items-center space-x-3 space-y-0 rounded-md border p-2 transition-colors", field.value === 'businessPhone' ? "bg-primary/10 border-primary" : "")}>
                                                         <FormControl><RadioGroupItem value="businessPhone" disabled={!businessPhoneValue} /></FormControl>
                                                         <FormLabel className="font-normal w-full cursor-pointer">Business</FormLabel>
                                                     </FormItem>
-                                                    <FormItem className={cn("flex items-center space-x-3 space-y-0 rounded-md border p-2 transition-colors border-black", field.value === 'cellPhone' ? "bg-[#C3FFF9]" : "text-foreground")}>
+                                                    <FormItem className={cn("flex items-center space-x-3 space-y-0 rounded-md border p-2 transition-colors", field.value === 'cellPhone' ? "bg-primary/10 border-primary" : "")}>
                                                         <FormControl><RadioGroupItem value="cellPhone" disabled={!cellPhoneValue} /></FormControl>
                                                         <FormLabel className="font-normal w-full cursor-pointer">Cell</FormLabel>
                                                     </FormItem>
-                                                    <FormItem className={cn("flex items-center space-x-3 space-y-0 rounded-md border p-2 transition-colors border-black", field.value === 'homePhone' ? "bg-[#C3FFF9]" : "text-foreground")}>
+                                                    <FormItem className={cn("flex items-center space-x-3 space-y-0 rounded-md border p-2 transition-colors", field.value === 'homePhone' ? "bg-primary/10 border-primary" : "")}>
                                                         <FormControl><RadioGroupItem value="homePhone" disabled={!homePhoneValue} /></FormControl>
                                                         <FormLabel className="font-normal w-full cursor-pointer">Home</FormLabel>
                                                     </FormItem>
@@ -405,6 +445,7 @@ export default function ContactFormDialog({
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Notes</FormLabel>
+                                            <FormDescription>Add any important notes about this contact, such as credit history or communication preferences.</FormDescription>
                                             <div className="relative">
                                                 <FormControl><Textarea
                                                     placeholder="Reference to information regarding the client.."
@@ -450,5 +491,3 @@ export default function ContactFormDialog({
       </>
     );
 }
-
-    

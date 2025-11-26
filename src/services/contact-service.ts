@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -65,18 +64,25 @@ export async function getContacts(userId: string): Promise<Contact[]> {
 
 export async function addContact(contactData: Omit<Contact, 'id'>): Promise<Contact> {
   const db = await getDb();
-  const docRef = await addDoc(collection(db, CONTACTS_COLLECTION), contactData);
+  // Explicitly handle the 'website' field to ensure it's included.
+  const dataToSave = {
+    ...contactData,
+    website: contactData.website || '',
+  };
+  const docRef = await addDoc(collection(db, CONTACTS_COLLECTION), dataToSave);
   
   await createClientAccount(contactData.userId, docRef.id, contactData.name);
 
-  return { id: docRef.id, ...contactData };
+  return { id: docRef.id, ...dataToSave };
 }
 
 export async function updateContact(contactId: string, contactData: Partial<Omit<Contact, 'id' | 'userId'>>): Promise<void> {
     const db = await getDb();
     const contactRef = doc(db, CONTACTS_COLLECTION, contactId);
+    // This now correctly passes the entire partial data object to Firestore for updating.
     await updateDoc(contactRef, contactData);
 }
+
 
 export async function deleteContacts(contactIds: string[]): Promise<void> {
     const db = await getDb();
@@ -99,4 +105,13 @@ export async function deleteContacts(contactIds: string[]): Promise<void> {
     });
 
     await batch.commit();
+}
+
+
+// This function has been deprecated and its functionality moved to contact-folder-service.
+// It is kept here to avoid breaking imports but should not be used.
+export async function findOrCreateFolder(userId: string, folderName: string) {
+    console.warn("findOrCreateFolder is deprecated. Use services from contact-folder-service instead.");
+    // This function will now do nothing to prevent unintended side-effects.
+    return { id: 'deprecated', name: folderName, userId, parentId: null, createdAt: new Date() };
 }

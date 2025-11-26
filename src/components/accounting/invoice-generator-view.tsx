@@ -17,6 +17,7 @@ import { AccountingPageHeader } from './page-header';
 import { useAuth } from '@/context/auth-context';
 import { getInvoiceById, getLineItemsForInvoice, getServiceItems, type ServiceItem, addInvoiceWithLineItems, updateInvoiceWithLineItems, addServiceItem, deleteInvoice } from '@/services/accounting-service';
 import { getContacts, type Contact } from '@/services/contact-service';
+import { getUserProfile, type UserProfile } from '@/services/user-profile-service';
 import { getFolders as getContactFolders, type FolderData } from '@/services/contact-folder-service';
 import { cn } from '@/lib/utils';
 import ContactFormDialog from '../contacts/contact-form-dialog';
@@ -63,6 +64,7 @@ export function InvoiceGeneratorView() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactFolders, setContactFolders] = useState<FolderData[]>([]);
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -159,17 +161,20 @@ export function InvoiceGeneratorView() {
                 fetchedCompanies, 
                 fetchedContacts, 
                 fetchedServiceItems, 
-                fetchedFolders
+                fetchedFolders,
+                fetchedProfile,
             ] = await Promise.all([
                 getCompanies(user.uid),
                 getContacts(user.uid),
                 getServiceItems(user.uid),
                 getContactFolders(user.uid),
+                getUserProfile(user.uid),
             ]);
             setCompanies(fetchedCompanies);
             setContacts(fetchedContacts);
             setServiceItems(fetchedServiceItems);
             setContactFolders(fetchedFolders);
+            setUserProfile(fetchedProfile);
 
             const invoiceId = localStorage.getItem(EDIT_INVOICE_ID_KEY);
             if (invoiceId) {
@@ -370,6 +375,7 @@ export function InvoiceGeneratorView() {
             postalCode: selectedContact?.postalCode,
             country: selectedContact?.country,
         },
+        userProfile: userProfile,
         lineItems,
         notes,
     };

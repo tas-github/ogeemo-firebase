@@ -374,17 +374,11 @@ export function ContactsView() {
     }
     try {
         const newFolder = await addFolder({ name: newFolderName.trim(), userId: user.uid, parentId: newFolderParentId });
-        const updatedFolders = [...folders, newFolder];
-        setFolders(updatedFolders);
-        
-        if (isNewFolderDialogOpen) {
-            setIsNewFolderDialogOpen(false);
-        }
-
+        setFolders(prev => [...prev, newFolder]);
         if (newFolder.parentId) {
             setExpandedFolders(p => new Set(p).add(newFolder.parentId!))
         }
-        
+        setIsNewFolderDialogOpen(false);
         setNewFolderName("");
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Failed to create folder', description: e.message });
