@@ -555,7 +555,7 @@ export function LedgersView() {
                                 />
                                 <CommandList>
                                      <CommandEmpty>
-                                        {companySearchValue && !companies.some(c => c.name.toLowerCase() === companySearchValue.toLowerCase()) ? (
+                                        {companySearchValue.trim() && !companies.some(c => c.name.toLowerCase() === companySearchValue.toLowerCase()) ? (
                                             <CommandItem onSelect={() => handleCreateCompany(companySearchValue)} className="cursor-pointer">
                                                 <PlusCircle className="mr-2 h-4 w-4" /> Create "{companySearchValue}"
                                             </CommandItem>
@@ -612,7 +612,7 @@ export function LedgersView() {
                                 <Command>
                                     <CommandInput placeholder="Search category..." value={incomeCategorySearchValue} onValueChange={setIncomeCategorySearchValue} />
                                     <CommandList>
-                                         <CommandEmpty>
+                                        <CommandEmpty>
                                             {incomeCategorySearchValue.trim() && !incomeCategories.some(c => c.name.toLowerCase() === incomeCategorySearchValue.toLowerCase()) ? (
                                                 <CommandItem onSelect={() => handleCreateIncomeCategory(incomeCategorySearchValue)} className="cursor-pointer">
                                                     <PlusCircle className="mr-2 h-4 w-4" /> Create "{incomeCategorySearchValue}"
@@ -699,4 +699,3 @@ export function LedgersView() {
     </>
   );
 }
-
