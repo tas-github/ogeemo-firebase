@@ -614,12 +614,11 @@ export function LedgersView() {
                                     <CommandInput placeholder="Search category..." value={incomeCategorySearchValue} onValueChange={setIncomeCategorySearchValue} />
                                     <CommandList>
                                          <CommandEmpty>
-                                            {incomeCategorySearchValue.trim() && (
+                                            {incomeCategorySearchValue.trim() ? (
                                                 <CommandItem onSelect={() => handleCreateIncomeCategory(incomeCategorySearchValue)} className="cursor-pointer">
                                                     <PlusCircle className="mr-2 h-4 w-4" /> Create "{incomeCategorySearchValue}"
                                                 </CommandItem>
-                                            )}
-                                            {!incomeCategorySearchValue.trim() && 'No category found.'}
+                                            ) : 'No category found.'}
                                         </CommandEmpty>
                                         <CommandGroup>
                                             {incomeCategories.map((c) => (
@@ -658,12 +657,11 @@ export function LedgersView() {
                                     />
                                     <CommandList>
                                         <CommandEmpty>
-                                            {categorySearchValue.trim() && (
+                                            {categorySearchValue.trim() ? (
                                                 <CommandItem onSelect={() => handleCreateExpenseCategory(categorySearchValue)} className="cursor-pointer">
                                                     <PlusCircle className="mr-2 h-4 w-4" /> Create "{categorySearchValue}"
                                                 </CommandItem>
-                                            )}
-                                            {!categorySearchValue.trim() && 'No category found.'}
+                                            ) : 'No category found.'}
                                         </CommandEmpty>
                                         <CommandGroup>
                                             {expenseCategories.map((c) => (
