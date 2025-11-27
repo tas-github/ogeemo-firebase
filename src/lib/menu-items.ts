@@ -98,4 +98,5 @@ export const allMenuItems: MenuItem[] = [
   { href: "/testing", label: "Testing", icon: Beaker },
   { href: "/notes", label: "Note Manager", icon: FilePenLine },
   { href: "/link", label: "link", icon: LinkIcon },
+  { href: "/accounting/reports/income-statement", label: "Income Statement", icon: FileText },
 ];

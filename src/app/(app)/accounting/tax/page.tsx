@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -16,7 +17,8 @@ import {
   FileText,
   Percent,
   Users,
-  ShieldCheck
+  ShieldCheck,
+  FileSignature
 } from 'lucide-react';
 import { AccountingPageHeader } from '@/components/accounting/page-header';
 
@@ -58,10 +60,18 @@ export default function TaxCenterPage() {
   const features = [
     { 
       icon: FileText, 
-      title: "Business Activity Statement (T2125)", 
+      title: "Income Statement", 
       description: "Generate a statement of your business income and expenses for tax purposes.", 
-      href: "/accounting/reports/t2125", 
-      cta: "Generate T2125",
+      href: "/accounting/reports/income-statement", 
+      cta: "Generate Statement",
+      disabled: false,
+    },
+    {
+      icon: FileSignature,
+      title: "Manage Tax Categories",
+      description: "Customize and manage your income and expense categories to align with tax forms.",
+      href: "/accounting/tax/categories",
+      cta: "Manage Categories",
       disabled: false,
     },
     { 

@@ -19,7 +19,7 @@ import {
 import { initializeFirebase } from '@/lib/firebase';
 import { mockIncome, mockExpenses } from '@/data/accounting';
 import { format } from 'date-fns';
-import { standardExpenseCategories, t2125IncomeCategories } from '@/data/standard-expense-categories';
+import { t2125ExpenseCategories, t2125IncomeCategories } from '@/data/standard-expense-categories';
 
 
 async function getDb() {
@@ -461,6 +461,7 @@ export interface ExpenseCategory {
   id: string;
   name: string;
   userId: string;
+  explanation?: string;
 }
 
 const EXPENSE_CATEGORIES_COLLECTION = 'expenseCategories';
@@ -471,17 +472,19 @@ export async function getExpenseCategories(userId: string): Promise<ExpenseCateg
   const q = query(collection(db, EXPENSE_CATEGORIES_COLLECTION), where("userId", "==", userId));
   const snapshot = await getDocs(q);
   const existingCategories = snapshot.docs.map(docToExpenseCategory);
-
-  const existingCategoryNames = new Set(existingCategories.map(c => c.name.toLowerCase()));
-  const missingCategories = standardExpenseCategories.filter(
-    sc => !existingCategoryNames.has(sc.toLowerCase())
+  
+  const standardCategories = t2125ExpenseCategories;
+  const existingCategoryNames = new Set(existingCategories.map(c => c.name.toLowerCase().trim()));
+  
+  const missingCategories = standardCategories.filter(
+      sc => !existingCategoryNames.has(sc.description.toLowerCase().trim())
   );
 
   if (missingCategories.length > 0) {
     const batch = writeBatch(db);
-    missingCategories.forEach(categoryName => {
+    missingCategories.forEach(category => {
       const docRef = doc(collection(db, EXPENSE_CATEGORIES_COLLECTION));
-      batch.set(docRef, { name: categoryName, userId });
+      batch.set(docRef, { name: category.description, userId, explanation: category.explanation });
     });
     await batch.commit();
     // Re-fetch all categories to return a complete, sorted list
@@ -498,12 +501,33 @@ export async function addExpenseCategory(data: Omit<ExpenseCategory, 'id'>): Pro
   return { id: docRef.id, ...data };
 }
 
+export async function updateExpenseCategory(id: string, data: Partial<Omit<ExpenseCategory, 'id' | 'userId'>>): Promise<void> {
+    const db = await getDb();
+    await updateDoc(doc(db, EXPENSE_CATEGORIES_COLLECTION, id), data);
+}
+
+export async function deleteExpenseCategory(id: string): Promise<void> {
+    const db = await getDb();
+    await deleteDoc(doc(db, EXPENSE_CATEGORIES_COLLECTION, id));
+}
+
+export async function deleteExpenseCategories(ids: string[]): Promise<void> {
+    const db = await getDb();
+    if (ids.length === 0) return;
+    const batch = writeBatch(db);
+    ids.forEach(id => {
+        batch.delete(doc(db, EXPENSE_CATEGORIES_COLLECTION, id));
+    });
+    await batch.commit();
+}
+
 
 // --- Income Category Interfaces & Functions ---
 export interface IncomeCategory {
   id: string;
   name: string;
   userId: string;
+  explanation?: string;
 }
 
 const INCOME_CATEGORIES_COLLECTION = 'incomeCategories';
@@ -515,18 +539,18 @@ export async function getIncomeCategories(userId: string): Promise<IncomeCategor
   const snapshot = await getDocs(q);
   const existingCategories = snapshot.docs.map(docToIncomeCategory);
   
-  const existingCategoryNames = new Set(existingCategories.map(c => c.name.toLowerCase()));
-  const standardIncomeCategoryNames = t2125IncomeCategories.map(c => c.description);
+  const standardCategories = t2125IncomeCategories;
+  const existingCategoryNames = new Set(existingCategories.map(c => c.name.toLowerCase().trim()));
   
-  const missingCategories = standardIncomeCategoryNames.filter(
-      sc => !existingCategoryNames.has(sc.toLowerCase())
+  const missingCategories = standardCategories.filter(
+      sc => !existingCategoryNames.has(sc.description.toLowerCase().trim())
   );
 
   if (missingCategories.length > 0) {
     const batch = writeBatch(db);
-    missingCategories.forEach(categoryName => {
+    missingCategories.forEach(category => {
       const docRef = doc(collection(db, INCOME_CATEGORIES_COLLECTION));
-      batch.set(docRef, { name: categoryName, userId });
+      batch.set(docRef, { name: category.description, userId, explanation: category.explanation });
     });
     await batch.commit();
     const finalSnapshot = await getDocs(q);
@@ -540,6 +564,26 @@ export async function addIncomeCategory(data: Omit<IncomeCategory, 'id'>): Promi
   const db = await getDb();
   const docRef = await addDoc(collection(db, INCOME_CATEGORIES_COLLECTION), data);
   return { id: docRef.id, ...data };
+}
+
+export async function updateIncomeCategory(id: string, data: Partial<Omit<IncomeCategory, 'id' | 'userId'>>): Promise<void> {
+    const db = await getDb();
+    await updateDoc(doc(db, INCOME_CATEGORIES_COLLECTION, id), data);
+}
+
+export async function deleteIncomeCategory(id: string): Promise<void> {
+    const db = await getDb();
+    await deleteDoc(doc(db, INCOME_CATEGORIES_COLLECTION, id));
+}
+
+export async function deleteIncomeCategories(ids: string[]): Promise<void> {
+    const db = await getDb();
+    if (ids.length === 0) return;
+    const batch = writeBatch(db);
+    ids.forEach(id => {
+        batch.delete(doc(db, INCOME_CATEGORIES_COLLECTION, id));
+    });
+    await batch.commit();
 }
 
 // --- Service Item Interfaces & Functions ---

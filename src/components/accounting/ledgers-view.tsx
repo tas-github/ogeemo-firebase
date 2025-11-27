@@ -46,7 +46,7 @@ import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, MoreVertical, BookOpen, Pencil, Trash2, LoaderCircle, Check, ChevronsUpDown, FilterX } from "lucide-react";
+import { PlusCircle, MoreVertical, BookOpen, Pencil, Trash2, LoaderCircle, Check, ChevronsUpDown, FilterX, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -103,13 +103,16 @@ export function LedgersView() {
   const [newTransaction, setNewTransaction] = React.useState(emptyTransactionForm);
   
   const [isCompanyPopoverOpen, setIsCompanyPopoverOpen] = React.useState(false);
-  const [companySearchValue, setCompanySearchValue] = React.useState('');
+  const [showAddCompany, setShowAddCompany] = React.useState(false);
+  const [newCompanyName, setNewCompanyName] = React.useState('');
 
   const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = React.useState(false);
-  const [categorySearchValue, setCategorySearchValue] = React.useState('');
+  const [showAddExpenseCategory, setShowAddExpenseCategory] = React.useState(false);
+  const [newExpenseCategoryName, setNewExpenseCategoryName] = React.useState('');
   
   const [isIncomeCategoryPopoverOpen, setIsIncomeCategoryPopoverOpen] = React.useState(false);
-  const [incomeCategorySearchValue, setIncomeCategorySearchValue] = React.useState('');
+  const [showAddIncomeCategory, setShowAddIncomeCategory] = React.useState(false);
+  const [newIncomeCategoryName, setNewIncomeCategoryName] = React.useState('');
 
   const [showTotals, setShowTotals] = React.useState(false);
   const { toast } = useToast();
@@ -225,6 +228,9 @@ export function LedgersView() {
             setTransactionToEdit(null);
             setNewTransaction(emptyTransactionForm);
         }
+        setShowAddCompany(false);
+        setShowAddExpenseCategory(false);
+        setShowAddIncomeCategory(false);
         setIsTransactionDialogOpen(true);
     };
 
@@ -305,44 +311,44 @@ export function LedgersView() {
         }
     };
     
-    const handleCreateCompany = async (companyName: string) => {
-        if (!user || !companyName.trim()) return;
+    const handleCreateCompany = async () => {
+        if (!user || !newCompanyName.trim()) return;
         
         try {
-            const newCompany = await addCompany({ name: companyName.trim(), userId: user.uid });
+            const newCompany = await addCompany({ name: newCompanyName.trim(), userId: user.uid });
             setCompanies(prev => [...prev, newCompany]);
-            setNewTransaction(prev => ({ ...prev, company: companyName.trim() }));
-            setIsCompanyPopoverOpen(false);
-            setCompanySearchValue('');
-            toast({ title: 'Company Created', description: `"${companyName.trim()}" has been added.` });
+            setNewTransaction(prev => ({ ...prev, company: newCompanyName.trim() }));
+            setShowAddCompany(false);
+            setNewCompanyName('');
+            toast({ title: 'Company Created', description: `"${newCompanyName.trim()}" has been added.` });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Failed to create company', description: error.message });
         }
     };
 
-    const handleCreateExpenseCategory = async (categoryName: string) => {
-        if (!user || !categoryName.trim()) return;
+    const handleCreateExpenseCategory = async () => {
+        if (!user || !newExpenseCategoryName.trim()) return;
         try {
-            const newCategory = await addExpenseCategory({ name: categoryName.trim(), userId: user.uid });
+            const newCategory = await addExpenseCategory({ name: newExpenseCategoryName.trim(), userId: user.uid });
             setExpenseCategories(prev => [...prev, newCategory]);
-            setNewTransaction(prev => ({ ...prev, category: categoryName.trim() }));
-            setIsCategoryPopoverOpen(false);
-            setCategorySearchValue('');
-            toast({ title: 'Category Created', description: `"${categoryName.trim()}" has been added.` });
+            setNewTransaction(prev => ({ ...prev, category: newExpenseCategoryName.trim() }));
+            setShowAddExpenseCategory(false);
+            setNewExpenseCategoryName('');
+            toast({ title: 'Category Created', description: `"${newExpenseCategoryName.trim()}" has been added.` });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Failed to create category', description: error.message });
         }
     };
 
-    const handleCreateIncomeCategory = async (categoryName: string) => {
-        if (!user || !categoryName.trim()) return;
+    const handleCreateIncomeCategory = async () => {
+        if (!user || !newIncomeCategoryName.trim()) return;
         try {
-            const newCategory = await addIncomeCategory({ name: categoryName.trim(), userId: user.uid });
+            const newCategory = await addIncomeCategory({ name: newIncomeCategoryName.trim(), userId: user.uid });
             setIncomeCategories(prev => [...prev, newCategory]);
-            setNewTransaction(prev => ({ ...prev, incomeCategory: categoryName.trim() }));
-            setIsIncomeCategoryPopoverOpen(false);
-            setIncomeCategorySearchValue('');
-            toast({ title: 'Category Created', description: `"${categoryName.trim()}" has been added.` });
+            setNewTransaction(prev => ({ ...prev, incomeCategory: newIncomeCategoryName.trim() }));
+            setShowAddIncomeCategory(false);
+            setNewIncomeCategoryName('');
+            toast({ title: 'Category Created', description: `"${newIncomeCategoryName.trim()}" has been added.` });
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Failed to create category', description: error.message });
         }
@@ -537,41 +543,22 @@ export function LedgersView() {
             <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-date-gl" className="text-right">Date <span className="text-destructive">*</span></Label><Input id="tx-date-gl" type="date" value={newTransaction.date} onChange={(e) => setNewTransaction(prev => ({...prev, date: e.target.value}))} className="col-span-3" /></div>
             <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="tx-company-gl" className="text-right">Company <span className="text-destructive">*</span></Label>
-                <div className="col-span-3">
-                    <Popover open={isCompanyPopoverOpen} onOpenChange={setIsCompanyPopoverOpen}>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" role="combobox" className="w-full justify-between">
-                                {newTransaction.company || "Select or create company..."}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput 
-                                    placeholder="Search company..." 
-                                    value={companySearchValue}
-                                    onValueChange={setCompanySearchValue}
-                                />
-                                <CommandList>
-                                     <CommandEmpty>
-                                        {companySearchValue.trim() && !companies.some(c => c.name.toLowerCase() === companySearchValue.toLowerCase()) ? (
-                                            <CommandItem onSelect={() => handleCreateCompany(companySearchValue)} className="cursor-pointer">
-                                                <PlusCircle className="mr-2 h-4 w-4" /> Create "{companySearchValue}"
-                                            </CommandItem>
-                                        ) : 'No company found.'}
-                                    </CommandEmpty>
-                                    <CommandGroup>
-                                        {companies.map((c) => (
-                                            <CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, company: c.name })); setIsCompanyPopoverOpen(false); }}>
-                                                <Check className={cn("mr-2 h-4 w-4", newTransaction.company.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
-                                                {c.name}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
+                <div className="col-span-3 space-y-2">
+                    <div className="flex gap-2">
+                        <Popover open={isCompanyPopoverOpen} onOpenChange={setIsCompanyPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className="w-full justify-between">
+                                    {newTransaction.company || "Select company..."}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command><CommandInput placeholder="Search company..." /><CommandList><CommandEmpty>No company found.</CommandEmpty><CommandGroup>{companies.map((c) => (<CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, company: c.name })); setIsCompanyPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", newTransaction.company.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")} />{c.name}</CommandItem>))}</CommandGroup></CommandList></Command>
+                            </PopoverContent>
+                        </Popover>
+                        <Button variant="outline" onClick={() => setShowAddCompany(p => !p)}>{showAddCompany ? 'Cancel' : 'Add New'}</Button>
+                    </div>
+                    {showAddCompany && <div className="flex gap-2 animate-in fade-in-50"><Input placeholder="New company name..." value={newCompanyName} onChange={e => setNewCompanyName(e.target.value)} /><Button onClick={handleCreateCompany}><Plus className="mr-2 h-4 w-4"/>Add</Button></div>}
                 </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-description-gl" className="text-right">Description</Label><Input id="tx-description-gl" value={newTransaction.description} onChange={(e) => setNewTransaction(prev => ({...prev, description: e.target.value}))} className="col-span-3" /></div>
@@ -598,36 +585,15 @@ export function LedgersView() {
                 <>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="tx-income-category-gl" className="text-right">Income Category <span className="text-destructive">*</span></Label>
-                    <div className="col-span-3">
-                        <Popover open={isIncomeCategoryPopoverOpen} onOpenChange={setIsIncomeCategoryPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" role="combobox" className="w-full justify-between">
-                                    {newTransaction.incomeCategory || "Select or create category..."}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                <Command>
-                                    <CommandInput placeholder="Search category..." value={incomeCategorySearchValue} onValueChange={setIncomeCategorySearchValue} />
-                                    <CommandList>
-                                        <CommandEmpty>
-                                            {incomeCategorySearchValue.trim() && !incomeCategories.some(c => c.name.toLowerCase() === incomeCategorySearchValue.toLowerCase())
-                                                ? <CommandItem onSelect={() => handleCreateIncomeCategory(incomeCategorySearchValue)} className="cursor-pointer"><PlusCircle className="mr-2 h-4 w-4" /> Create "{incomeCategorySearchValue}"</CommandItem>
-                                                : "No category found."
-                                            }
-                                        </CommandEmpty>
-                                        <CommandGroup>
-                                            {incomeCategories.map((c) => (
-                                                <CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, incomeCategory: c.name })); setIsIncomeCategoryPopoverOpen(false); }}>
-                                                    <Check className={cn("mr-2 h-4 w-4", newTransaction.incomeCategory.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
-                                                    {c.name}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
+                    <div className="col-span-3 space-y-2">
+                        <div className="flex gap-2">
+                            <Popover open={isIncomeCategoryPopoverOpen} onOpenChange={setIsIncomeCategoryPopoverOpen}>
+                                <PopoverTrigger asChild><Button variant="outline" role="combobox" className="w-full justify-between">{newTransaction.incomeCategory || "Select category..."}<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Search category..." /><CommandList><CommandEmpty>No category found.</CommandEmpty><CommandGroup>{incomeCategories.map((c) => (<CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, incomeCategory: c.name })); setIsIncomeCategoryPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", newTransaction.incomeCategory.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent>
+                            </Popover>
+                            <Button variant="outline" onClick={() => setShowAddIncomeCategory(p => !p)}>{showAddIncomeCategory ? 'Cancel' : 'Add New'}</Button>
+                        </div>
+                        {showAddIncomeCategory && <div className="flex gap-2 animate-in fade-in-50"><Input placeholder="New income category..." value={newIncomeCategoryName} onChange={e => setNewIncomeCategoryName(e.target.value)} /><Button onClick={handleCreateIncomeCategory}><Plus className="mr-2 h-4 w-4"/>Add</Button></div>}
                     </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-deposit-account-gl" className="text-right">Deposited To</Label><div className="col-span-3"><Select value={newTransaction.depositedTo} onValueChange={(value) => setNewTransaction(prev => ({...prev, depositedTo: value}))}><SelectTrigger id="tx-deposit-account-gl" className="w-full"><SelectValue placeholder="Select an account" /></SelectTrigger><SelectContent>{defaultDepositAccounts.map(acc => <SelectItem key={acc} value={acc}>{acc}</SelectItem>)}</SelectContent></Select></div></div>
@@ -635,36 +601,15 @@ export function LedgersView() {
             ) : (
                  <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="tx-category-gl" className="text-right">Category <span className="text-destructive">*</span></Label>
-                    <div className="col-span-3">
-                         <Popover open={isCategoryPopoverOpen} onOpenChange={setIsCategoryPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" role="combobox" className="w-full justify-between">
-                                    {newTransaction.category || "Select or create category..."}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                <Command>
-                                    <CommandInput placeholder="Search category..." value={categorySearchValue} onValueChange={setCategorySearchValue} />
-                                    <CommandList>
-                                        <CommandEmpty>
-                                            {categorySearchValue.trim() && !expenseCategories.some(c => c.name.toLowerCase() === categorySearchValue.toLowerCase())
-                                                ? <CommandItem onSelect={() => handleCreateExpenseCategory(categorySearchValue)} className="cursor-pointer"><PlusCircle className="mr-2 h-4 w-4" /> Create "{categorySearchValue}"</CommandItem>
-                                                : "No category found."
-                                            }
-                                        </CommandEmpty>
-                                        <CommandGroup>
-                                            {expenseCategories.map((c) => (
-                                                <CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, category: c.name })); setIsCategoryPopoverOpen(false); }}>
-                                                    <Check className={cn("mr-2 h-4 w-4", newTransaction.category.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
-                                                    {c.name}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
+                    <div className="col-span-3 space-y-2">
+                        <div className="flex gap-2">
+                            <Popover open={isCategoryPopoverOpen} onOpenChange={setIsCategoryPopoverOpen}>
+                                <PopoverTrigger asChild><Button variant="outline" role="combobox" className="w-full justify-between">{newTransaction.category || "Select category..."}<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Search category..." /><CommandList><CommandEmpty>No category found.</CommandEmpty><CommandGroup>{expenseCategories.map((c) => (<CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, category: c.name })); setIsCategoryPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", newTransaction.category.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent>
+                            </Popover>
+                            <Button variant="outline" onClick={() => setShowAddExpenseCategory(p => !p)}>{showAddExpenseCategory ? 'Cancel' : 'Add New'}</Button>
+                        </div>
+                        {showAddExpenseCategory && <div className="flex gap-2 animate-in fade-in-50"><Input placeholder="New expense category..." value={newExpenseCategoryName} onChange={e => setNewExpenseCategoryName(e.target.value)} /><Button onClick={handleCreateExpenseCategory}><Plus className="mr-2 h-4 w-4"/>Add</Button></div>}
                     </div>
                 </div>
             )}

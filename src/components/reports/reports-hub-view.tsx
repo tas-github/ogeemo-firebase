@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -70,10 +69,10 @@ export function ReportsHubView() {
     },
      {
       icon: FileText,
-      title: "Business Activity Statement",
+      title: "Income Statement",
       description: "Generate a statement of business activities based on your income and expense ledger data.",
       cta: "View Statement",
-      href: "/accounting/reports/t2125",
+      href: "/accounting/reports/income-statement",
     },
   ];
 
