@@ -30,6 +30,7 @@ const accountingLinks = [
     { href: "/accounting/reports/income-statement", icon: FileText, label: "Income Statement"},
     { href: "/accounting/accounts-payable", icon: FileInput, label: "Accounts Payable" },
     { href: "/accounting/bank-statements", icon: WalletCards, label: "Bank Statements" },
+    { href: "/accounting/asset-management", icon: WalletCards, label: "Capital Assets" },
     { href: "/accounting/payroll", icon: Banknote, label: "Payroll" },
     { href: "/accounting/reports", icon: BarChart3, label: "Reporting Hub" },
     { href: "/accounting/tax", icon: ShieldCheck, label: "Tax Center" },
