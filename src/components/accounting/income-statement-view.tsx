@@ -10,6 +10,21 @@ import { AccountingPageHeader } from './page-header';
 import { IncomeStatementFormDisplay } from './income-statement-form-display';
 import { t2125ExpenseCategories, t2125IncomeCategories } from '@/data/standard-expense-categories';
 
+// --- CRA Capital Cost Allowance (CCA) Rates ---
+const ccaRateMap: Record<string, number> = {
+    "1": 0.04,
+    "8": 0.20,
+    "10": 0.30,
+    "10.1": 0.30,
+    "12": 1.00,
+    "16": 0.40,
+    "43": 0.30,
+    "45": 0.45,
+    "50": 0.55,
+    "53": 0.50,
+};
+
+
 // --- Data Calculation Logic ---
 function useIncomeStatementData(income: IncomeTransaction[], expenses: ExpenseTransaction[], assets: Asset[]) {
     
@@ -34,13 +49,11 @@ function useIncomeStatementData(income: IncomeTransaction[], expenses: ExpenseTr
         income.forEach(tx => {
             const amount = Number(tx.totalAmount) || 0;
             const categoryNumber = tx.incomeCategory;
-            // Use the map to find the human-readable description from the stored number
             const categoryDescription = standardIncomeCategoryMap.get(categoryNumber);
 
             if (categoryDescription) {
                 result[categoryDescription] = (result[categoryDescription] || 0) + amount;
             } else {
-                // If it's a custom category (e.g., 'C-1'), it falls into "Other income"
                 result['Other income'] = (result['Other income'] || 0) + amount;
             }
         });
@@ -52,9 +65,22 @@ function useIncomeStatementData(income: IncomeTransaction[], expenses: ExpenseTr
     const grossIncome = useMemo(() => Object.values(categorizedIncome).reduce((sum, amount) => sum + amount, 0), [categorizedIncome]);
 
     const cca = useMemo(() => {
-        // This is a placeholder calculation. Real CCA is much more complex.
         return assets.reduce((sum, asset) => {
-            const assetDepreciation = (Number(asset.undepreciatedCapitalCost) || 0) * 0.10; 
+            const ucc = Number(asset.undepreciatedCapitalCost) || 0;
+            const rate = ccaRateMap[asset.assetClass || ''] || 0;
+            
+            if (ucc <= 0 || rate === 0) {
+                return sum;
+            }
+
+            let assetDepreciation = ucc * rate;
+
+            // Simplified half-year rule: if the flag is set, halve the depreciation.
+            // A real implementation would need to track the acquisition year.
+            if (asset.applyHalfYearRule) {
+                assetDepreciation /= 2;
+            }
+
             return sum + assetDepreciation;
         }, 0);
     }, [assets]);
@@ -69,18 +95,15 @@ function useIncomeStatementData(income: IncomeTransaction[], expenses: ExpenseTr
         expenses.forEach(tx => {
             const amount = Number(tx.totalAmount) || 0;
             const categoryNumber = tx.category;
-            // Use the map to find the human-readable description from the stored number
             const categoryDescription = standardExpenseCategoryMap.get(categoryNumber);
             
             if (categoryDescription) {
                  result[categoryDescription] = (result[categoryDescription] || 0) + amount;
             } else {
-                 // If it's a custom category (e.g., 'C-1'), it falls into "Other expenses"
                  result['Other expenses'] = (result['Other expenses'] || 0) + amount;
             }
         });
         
-        // Assign the calculated CCA value to its specific category
         result['Capital cost allowance (CCA)'] = cca;
         
         return result;
