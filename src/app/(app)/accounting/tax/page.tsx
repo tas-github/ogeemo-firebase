@@ -18,7 +18,8 @@ import {
   Percent,
   Users,
   ShieldCheck,
-  FileSignature
+  FileSignature,
+  WalletCards,
 } from 'lucide-react';
 import { AccountingPageHeader } from '@/components/accounting/page-header';
 
@@ -72,6 +73,14 @@ export default function TaxCenterPage() {
       description: "Customize and manage your income and expense categories to align with tax forms.",
       href: "/accounting/tax/categories",
       cta: "Manage Categories",
+      disabled: false,
+    },
+    { 
+      icon: WalletCards, 
+      title: "Capital Assets (CCA)", 
+      description: "Manage capital assets and depreciation to calculate your Capital Cost Allowance.", 
+      href: "/accounting/asset-management", 
+      cta: "Manage Assets",
       disabled: false,
     },
     { 
