@@ -67,7 +67,7 @@
             "preTaxAmount": { "type": "number", "description": "The amount of the transaction before tax." },
             "taxAmount": { "type": "number", "description": "The amount of tax collected." },
             "taxRate": { "type": "number", "description": "The tax rate applied." },
-            "incomeCategory": { "type": "string" },
+            "incomeCategory": { "type": "string", "description": "Stores the unique category number (e.g., CRA line number or custom ID) for this transaction." },
             "depositedTo": { "type": "string" },
             "explanation": { "type": "string" },
             "documentNumber": { "type": "string" },
@@ -89,7 +89,7 @@
             "preTaxAmount": { "type": "number", "description": "The amount of the transaction before tax." },
             "taxAmount": { "type": "number", "description": "The amount of tax paid." },
             "taxRate": { "type": "number", "description": "The tax rate applied." },
-            "category": { "type": "string" },
+            "category": { "type": "string", "description": "Stores the unique category number (e.g., CRA line number or custom ID) for this transaction." },
             "explanation": { "type": "string" },
             "documentNumber": { "type": "string" },
             "documentUrl": { "type": "string", "format": "uri" },
@@ -162,6 +162,7 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
+        "categoryNumber": { "type": "string", "description": "The unique ID for the category, like a CRA line number." },
         "userId": { "type": "string" }
       },
       "required": ["name", "userId"]
@@ -172,6 +173,7 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
+        "categoryNumber": { "type": "string", "description": "The unique ID for the category, like a CRA line number." },
         "userId": { "type": "string" }
       },
       "required": ["name", "userId"]

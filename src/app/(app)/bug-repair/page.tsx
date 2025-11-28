@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Save, Eraser, LoaderCircle, Printer } from 'lucide-react';
@@ -9,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { findOrCreateFileFolder, updateFile, addTextFileClient } from '@/services/file-service';
 import { useReactToPrint } from '@/hooks/use-react-to-print';
+import { getIncomeTransactions, type IncomeTransaction } from '@/services/accounting-service';
 
 const TEST_FOLDER_NAME = "Bug Repair Tests";
 
@@ -18,8 +18,39 @@ export default function BugRepairPage() {
   const { toast } = useToast();
   const { user } = useAuth();
   const { handlePrint, contentRef } = useReactToPrint();
+  const [showTestCard, setShowTestCard] = useState(false);
   
   const [currentFileId, setCurrentFileId] = useState<string | null>(null);
+  const [consultingTotal, setConsultingTotal] = useState<number>(0);
+  const [isCalculating, setIsCalculating] = useState(false);
+
+  const calculateConsultingTotal = useCallback(async () => {
+    if (!user) return;
+    setIsCalculating(true);
+    try {
+        const incomeTransactions = await getIncomeTransactions(user.uid);
+        const total = incomeTransactions
+            .filter(tx => tx.incomeCategory === 'Consulting')
+            .reduce((acc, tx) => acc + (Number(tx.totalAmount) || 0), 0); // Guard against non-numeric values
+        setConsultingTotal(total);
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: "Calculation Failed",
+            description: error.message || 'Could not fetch and calculate income data.',
+        });
+    } finally {
+        setIsCalculating(false);
+    }
+  }, [user, toast]);
+
+  const handleShowTestCard = () => {
+    setShowTestCard(prev => !prev);
+    if (!showTestCard) { // Only calculate when opening the card
+        calculateConsultingTotal();
+    }
+  };
+
 
   const handleSave = async () => {
     if (!user) {
@@ -103,6 +134,7 @@ export default function BugRepairPage() {
           />
         </CardContent>
         <div className="p-4 border-t flex justify-end gap-2">
+            <Button onClick={handleShowTestCard}>Other</Button>
             <Button onClick={handleSave}>Test</Button>
             <Button variant="outline" onClick={handlePrint} disabled={isSaving}><Printer className="mr-2 h-4 w-4" /> Print</Button>
             <Button variant="outline" onClick={handleClear} disabled={isSaving}><Eraser className="mr-2 h-4 w-4" /> Clear</Button>
@@ -112,6 +144,28 @@ export default function BugRepairPage() {
             </Button>
         </div>
       </Card>
+      
+      {showTestCard && (
+        <Card className="w-full max-w-4xl mt-6">
+            <CardHeader>
+                <CardTitle>Test Card</CardTitle>
+                <CardDescription>This card displays the total from the "Consulting" income category.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isCalculating ? (
+                    <div className="flex items-center gap-2">
+                        <LoaderCircle className="h-5 w-5 animate-spin" />
+                        <p>Calculating...</p>
+                    </div>
+                ) : (
+                    <div>
+                        <p className="text-sm text-muted-foreground">Total Consulting Income:</p>
+                        <p className="text-3xl font-bold">{consultingTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</p>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

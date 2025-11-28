@@ -122,6 +122,8 @@ export function LedgersView() {
   const initialTab = searchParams.get('tab') || (filterCategory ? 'bks' : 'bks');
   const [activeTab, setActiveTab] = React.useState(initialTab);
 
+  console.log('Filtering by category:', filterCategory);
+
   React.useEffect(() => {
     if (!user) {
         setIsLoading(false);
@@ -208,6 +210,10 @@ export function LedgersView() {
         setNewTransactionType(type);
         if (transaction) {
             setTransactionToEdit(transaction);
+            const categoryName = type === 'income'
+                ? incomeCategories.find(c => c.categoryNumber === transaction.incomeCategory)?.name || transaction.incomeCategory
+                : expenseCategories.find(c => c.categoryNumber === transaction.category)?.name || transaction.category;
+                
             setNewTransaction({
                 date: transaction.date,
                 company: transaction.company,
@@ -216,8 +222,8 @@ export function LedgersView() {
                 taxRate: String(transaction.taxRate || ''),
                 preTaxAmount: String(transaction.preTaxAmount || ''),
                 taxAmount: String(transaction.taxAmount || ''),
-                category: (transaction as ExpenseTransaction).category || '',
-                incomeCategory: (transaction as IncomeTransaction).incomeCategory || '',
+                category: type === 'expense' ? categoryName : '',
+                incomeCategory: type === 'income' ? categoryName : '',
                 explanation: transaction.explanation || '',
                 documentNumber: transaction.documentNumber || '',
                 documentUrl: transaction.documentUrl || '',
@@ -238,8 +244,15 @@ export function LedgersView() {
         if (!user) return;
         const totalAmountNum = parseFloat(newTransaction.totalAmount);
         const taxRateNum = parseFloat(newTransaction.taxRate) || 0;
+        
+        let categoryNumber: string | undefined;
+        if (newTransactionType === 'income') {
+            categoryNumber = incomeCategories.find(c => c.name === newTransaction.incomeCategory)?.categoryNumber;
+        } else {
+            categoryNumber = expenseCategories.find(c => c.name === newTransaction.category)?.categoryNumber;
+        }
 
-        if (!newTransaction.date || !newTransaction.company || (newTransactionType === 'income' ? !newTransaction.incomeCategory : !newTransaction.category) || !newTransaction.totalAmount || isNaN(totalAmountNum) || totalAmountNum <= 0) {
+        if (!newTransaction.date || !newTransaction.company || !categoryNumber || !newTransaction.totalAmount || isNaN(totalAmountNum) || totalAmountNum <= 0) {
             toast({ variant: 'destructive', title: 'Invalid Input', description: 'Please fill all required fields correctly.' });
             return;
         }
@@ -264,24 +277,24 @@ export function LedgersView() {
         try {
             if (transactionToEdit) {
                  if (transactionToEdit.transactionType === 'income') {
-                    const updatedData = { ...baseData, incomeCategory: newTransaction.incomeCategory, depositedTo: newTransaction.depositedTo };
+                    const updatedData = { ...baseData, incomeCategory: categoryNumber, depositedTo: newTransaction.depositedTo };
                     await updateIncomeTransaction(transactionToEdit.id, updatedData);
                     setIncomeLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, ...updatedData } : item));
                     toast({ title: "Income Transaction Updated" });
                 } else {
-                    const updatedData = { ...baseData, category: newTransaction.category };
+                    const updatedData = { ...baseData, category: categoryNumber };
                     await updateExpenseTransaction(transactionToEdit.id, updatedData);
                     setExpenseLedger(prev => prev.map(item => item.id === transactionToEdit.id ? { ...item, ...updatedData } : item));
                     toast({ title: "Expense Transaction Updated" });
                 }
             } else {
                  if (newTransactionType === 'income') {
-                    const newEntryData: Omit<IncomeTransaction, 'id'> = { ...baseData, incomeCategory: newTransaction.incomeCategory, depositedTo: newTransaction.depositedTo, userId: user.uid };
+                    const newEntryData: Omit<IncomeTransaction, 'id'> = { ...baseData, incomeCategory: categoryNumber, depositedTo: newTransaction.depositedTo, userId: user.uid };
                     const newEntry = await addIncomeTransaction(newEntryData);
                     setIncomeLedger(prev => [newEntry, ...prev]);
                     toast({ title: "Income Transaction Added" });
                 } else {
-                    const newEntryData: Omit<ExpenseTransaction, 'id'> = { ...baseData, category: newTransaction.category, userId: user.uid };
+                    const newEntryData: Omit<ExpenseTransaction, 'id'> = { ...baseData, category: categoryNumber, userId: user.uid };
                     const newEntry = await addExpenseTransaction(newEntryData);
                     setExpenseLedger(prev => [newEntry, ...prev]);
                     toast({ title: "Expense Transaction Added" });
@@ -357,6 +370,7 @@ export function LedgersView() {
     const handleRecordPayment = async (bill: PayableBill) => {
         if (!user) return;
         try {
+            const expenseCategory = expenseCategories.find(c => c.name === bill.category);
             const newExpense: Omit<ExpenseTransaction, 'id'> = {
                 date: format(new Date(), 'yyyy-MM-dd'),
                 company: bill.vendor,
@@ -365,7 +379,7 @@ export function LedgersView() {
                 preTaxAmount: bill.preTaxAmount,
                 taxAmount: bill.taxAmount,
                 taxRate: bill.taxRate,
-                category: bill.category,
+                category: expenseCategory?.categoryNumber || bill.category,
                 explanation: `Paid bill from A/P on ${format(new Date(), 'PP')}`,
                 documentNumber: bill.invoiceNumber,
                 documentUrl: bill.documentUrl,
@@ -456,20 +470,25 @@ export function LedgersView() {
                         <Table>
                         <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Company</TableHead><TableHead>Description</TableHead><TableHead>Category</TableHead><TableHead>Type</TableHead><TableHead>Doc #</TableHead><TableHead className="text-right">Pre-Tax</TableHead><TableHead className="text-right">Tax</TableHead><TableHead className="text-right">Total</TableHead><TableHead><span className="sr-only">Actions</span></TableHead></TableRow></TableHeader>
                         <TableBody>
-                            {generalLedger.map((item) => (
-                            <TableRow key={item.id}>
-                                <TableCell>{item.date}</TableCell>
-                                <TableCell>{item.company}</TableCell>
-                                <TableCell>{item.description}</TableCell>
-                                <TableCell>{(item as IncomeTransaction).incomeCategory || (item as ExpenseTransaction).category}</TableCell>
-                                <TableCell><Badge variant={item.transactionType === 'income' ? 'secondary' : 'destructive'} className={cn(item.transactionType === 'income' && 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200')}>{item.transactionType}</Badge></TableCell>
-                                <TableCell>{renderDocumentNumber(item)}</TableCell>
-                                <TableCell className="text-right font-mono">{(item.preTaxAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell>
-                                <TableCell className="text-right font-mono text-muted-foreground">{(item.taxAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell>
-                                <TableCell className={cn("text-right font-mono font-semibold", item.transactionType === 'income' ? 'text-green-600' : 'text-red-600')}>{(item.totalAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell>
-                                <TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => handleOpenTransactionDialog(item.transactionType, item)}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem><DropdownMenuItem onSelect={() => handleOpenTransactionDialog(item.transactionType, item)}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem><DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete(item)}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell>
-                            </TableRow>
-                            ))}
+                            {generalLedger.map((item) => {
+                                const categoryName = item.transactionType === 'income' 
+                                    ? incomeCategories.find(c => c.categoryNumber === item.incomeCategory)?.name 
+                                    : expenseCategories.find(c => c.categoryNumber === item.category)?.name;
+                                return (
+                                <TableRow key={item.id}>
+                                    <TableCell>{item.date}</TableCell>
+                                    <TableCell>{item.company}</TableCell>
+                                    <TableCell>{item.description}</TableCell>
+                                    <TableCell>{categoryName || (item.transactionType === 'income' ? item.incomeCategory : item.category)}</TableCell>
+                                    <TableCell><Badge variant={item.transactionType === 'income' ? 'secondary' : 'destructive'} className={cn(item.transactionType === 'income' && 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200')}>{item.transactionType}</Badge></TableCell>
+                                    <TableCell>{renderDocumentNumber(item as GeneralTransaction)}</TableCell>
+                                    <TableCell className="text-right font-mono">{(item.preTaxAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell>
+                                    <TableCell className="text-right font-mono text-muted-foreground">{(item.taxAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell>
+                                    <TableCell className={cn("text-right font-mono font-semibold", item.transactionType === 'income' ? 'text-green-600' : 'text-red-600')}>{(item.totalAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell>
+                                    <TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => handleOpenTransactionDialog(item.transactionType, item)}><BookOpen className="mr-2 h-4 w-4"/>Open</DropdownMenuItem><DropdownMenuItem onSelect={() => handleOpenTransactionDialog(item.transactionType, item)}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem><DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete(item)}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell>
+                                </TableRow>
+                                );
+                            })}
                         </TableBody>
                         </Table>
                     )}
@@ -486,8 +505,8 @@ export function LedgersView() {
                     <CardContent>
                         {isLoading ? <div className="flex justify-center items-center h-48"><LoaderCircle className="h-8 w-8 animate-spin" /></div> : (
                             <Table>
-                                <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Company</TableHead><TableHead>Doc #</TableHead><TableHead>Description</TableHead><TableHead className="text-right">Pre-Tax</TableHead><TableHead className="text-right">Tax</TableHead><TableHead className="text-right">Total</TableHead><TableHead><span className="sr-only">Actions</span></TableHead></TableRow></TableHeader>
-                                <TableBody>{incomeLedger.map(item => ( <TableRow key={item.id}><TableCell>{item.date}</TableCell><TableCell>{item.company}</TableCell><TableCell>{renderDocumentNumber(item)}</TableCell><TableCell>{item.description}</TableCell><TableCell className="text-right font-mono">{(item.preTaxAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell><TableCell className="text-right font-mono text-muted-foreground">{(item.taxAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell><TableCell className="text-right font-mono font-semibold text-green-600">{(item.totalAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell><TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', {...item, transactionType: 'income'})}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem><DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({...item, transactionType: 'income'})}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell></TableRow>))}</TableBody>
+                                <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Company</TableHead><TableHead>Doc #</TableHead><TableHead>Description</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Pre-Tax</TableHead><TableHead className="text-right">Tax</TableHead><TableHead className="text-right">Total</TableHead><TableHead><span className="sr-only">Actions</span></TableHead></TableRow></TableHeader>
+                                <TableBody>{incomeLedger.map(item => ( <TableRow key={item.id}><TableCell>{item.date}</TableCell><TableCell>{item.company}</TableCell><TableCell>{renderDocumentNumber(item as GeneralTransaction)}</TableCell><TableCell>{item.description}</TableCell><TableCell>{incomeCategories.find(c => c.categoryNumber === item.incomeCategory)?.name || item.incomeCategory}</TableCell><TableCell className="text-right font-mono">{(item.preTaxAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell><TableCell className="text-right font-mono text-muted-foreground">{(item.taxAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell><TableCell className="text-right font-mono font-semibold text-green-600">{(item.totalAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell><TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => handleOpenTransactionDialog('income', {...item, transactionType: 'income'})}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem><DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({...item, transactionType: 'income'})}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell></TableRow>))}</TableBody>
                             </Table>
                         )}
                     </CardContent>
@@ -503,8 +522,8 @@ export function LedgersView() {
                     <CardContent>
                         {isLoading ? <div className="flex justify-center items-center h-48"><LoaderCircle className="h-8 w-8 animate-spin" /></div> : (
                             <Table>
-                                <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Company</TableHead><TableHead>Doc #</TableHead><TableHead>Description</TableHead><TableHead className="text-right">Pre-Tax</TableHead><TableHead className="text-right">Tax</TableHead><TableHead className="text-right">Total</TableHead><TableHead><span className="sr-only">Actions</span></TableHead></TableRow></TableHeader>
-                                <TableBody>{expenseLedger.map(item => (<TableRow key={item.id}><TableCell>{item.date}</TableCell><TableCell>{item.company}</TableCell><TableCell>{renderDocumentNumber(item)}</TableCell><TableCell>{item.description}</TableCell><TableCell className="text-right font-mono">{(item.preTaxAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell><TableCell className="text-right font-mono text-muted-foreground">{(item.taxAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell><TableCell className="text-right font-mono font-semibold text-red-600">{(item.totalAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell><TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => handleOpenTransactionDialog('expense', {...item, transactionType: 'expense'})}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem><DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({...item, transactionType: 'expense'})}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell></TableRow>))}</TableBody>
+                                <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Company</TableHead><TableHead>Doc #</TableHead><TableHead>Description</TableHead><TableHead>Category</TableHead><TableHead className="text-right">Pre-Tax</TableHead><TableHead className="text-right">Tax</TableHead><TableHead className="text-right">Total</TableHead><TableHead><span className="sr-only">Actions</span></TableHead></TableRow></TableHeader>
+                                <TableBody>{expenseLedger.map(item => (<TableRow key={item.id}><TableCell>{item.date}</TableCell><TableCell>{item.company}</TableCell><TableCell>{renderDocumentNumber(item as GeneralTransaction)}</TableCell><TableCell>{item.description}</TableCell><TableCell>{expenseCategories.find(c => c.categoryNumber === item.category)?.name || item.category}</TableCell><TableCell className="text-right font-mono">{(item.preTaxAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell><TableCell className="text-right font-mono text-muted-foreground">{(item.taxAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell><TableCell className="text-right font-mono font-semibold text-red-600">{(item.totalAmount ?? 0).toLocaleString("en-US", { style: "currency", currency: "USD" })}</TableCell><TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><span className="sr-only">Open menu</span><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => handleOpenTransactionDialog('expense', {...item, transactionType: 'expense'})}><Pencil className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem><DropdownMenuItem className="text-destructive" onSelect={() => setTransactionToDelete({...item, transactionType: 'expense'})}><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell></TableRow>))}</TableBody>
                             </Table>
                         )}
                     </CardContent>
@@ -613,6 +632,19 @@ export function LedgersView() {
                     </div>
                 </div>
             )}
+             <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="tx-category-num-gl" className="text-right">Category #</Label>
+                <Input 
+                    id="tx-category-num-gl" 
+                    readOnly 
+                    disabled 
+                    value={(newTransactionType === 'income'
+                        ? incomeCategories.find(c => c.name === newTransaction.incomeCategory)?.categoryNumber
+                        : expenseCategories.find(c => c.name === newTransaction.category)?.categoryNumber) || ''
+                    } 
+                    className="col-span-3 bg-muted/50" 
+                />
+            </div>
             
             <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-explanation-gl" className="text-right">Explanation</Label><Input id="tx-explanation-gl" value={newTransaction.explanation} onChange={(e) => setNewTransaction(prev => ({...prev, explanation: e.target.value}))} className="col-span-3" /></div>
             <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-doc-number-gl" className="text-right">Doc #</Label><Input id="tx-doc-number-gl" value={newTransaction.documentNumber} onChange={(e) => setNewTransaction(prev => ({...prev, documentNumber: e.target.value}))} className="col-span-3" /></div>
@@ -629,5 +661,3 @@ export function LedgersView() {
     </>
   );
 }
-
-    

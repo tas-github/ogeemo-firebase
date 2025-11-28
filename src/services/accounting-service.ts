@@ -205,7 +205,7 @@ export async function deleteInvoice(invoiceId: string): Promise<void> {
 
 // --- Income Interfaces & Functions ---
 export interface IncomeTransaction extends BaseTransaction {
-  incomeCategory: string;
+  incomeCategory: string; // This will store the category NUMBER
   depositedTo: string;
 }
 
@@ -222,7 +222,9 @@ export async function getIncomeTransactions(userId: string): Promise<IncomeTrans
         const newEntries: IncomeTransaction[] = [];
         mockIncome.forEach(item => {
             const docRef = doc(collection(db, INCOME_COLLECTION));
-            const transactionData = { ...item, userId };
+            // Find the category number for the mock item
+            const categoryObject = t2125IncomeCategories.find(c => c.description === item.incomeCategory);
+            const transactionData = { ...item, userId, incomeCategory: categoryObject?.line || 'C-1' }; // Fallback to a custom ID
             batch.set(docRef, transactionData);
             newEntries.push({ ...transactionData, id: docRef.id });
         });
@@ -252,7 +254,7 @@ export async function deleteIncomeTransaction(id: string): Promise<void> {
 
 // --- Expense Interfaces & Functions ---
 export interface ExpenseTransaction extends BaseTransaction {
-  category: string;
+  category: string; // This will store the category NUMBER
 }
 
 const EXPENSE_COLLECTION = 'expenseTransactions';
@@ -268,7 +270,8 @@ export async function getExpenseTransactions(userId: string): Promise<ExpenseTra
         const newEntries: ExpenseTransaction[] = [];
         mockExpenses.forEach(item => {
             const docRef = doc(collection(db, EXPENSE_COLLECTION));
-            const transactionData = { ...item, userId };
+            const categoryObject = t2125ExpenseCategories.find(c => c.description === item.category);
+            const transactionData = { ...item, userId, category: categoryObject?.line || 'C-1' };
             batch.set(docRef, transactionData);
             newEntries.push({ ...transactionData, id: docRef.id });
         });
@@ -461,6 +464,7 @@ export interface ExpenseCategory {
   id: string;
   name: string;
   userId: string;
+  categoryNumber?: string;
   explanation?: string;
 }
 
@@ -472,33 +476,49 @@ export async function getExpenseCategories(userId: string): Promise<ExpenseCateg
   const q = query(collection(db, EXPENSE_CATEGORIES_COLLECTION), where("userId", "==", userId));
   const snapshot = await getDocs(q);
   const existingCategories = snapshot.docs.map(docToExpenseCategory);
-  
-  const standardCategories = t2125ExpenseCategories;
   const existingCategoryNames = new Set(existingCategories.map(c => c.name.toLowerCase().trim()));
-  
-  const missingCategories = standardCategories.filter(
-      sc => !existingCategoryNames.has(sc.description.toLowerCase().trim())
-  );
+  const batch = writeBatch(db);
+  let hasWrites = false;
 
-  if (missingCategories.length > 0) {
-    const batch = writeBatch(db);
-    missingCategories.forEach(category => {
+  for (const stdCat of t2125ExpenseCategories) {
+    const stdNameLower = stdCat.description.toLowerCase().trim();
+    if (!existingCategoryNames.has(stdNameLower)) {
       const docRef = doc(collection(db, EXPENSE_CATEGORIES_COLLECTION));
-      batch.set(docRef, { name: category.description, userId, explanation: category.explanation });
-    });
+      batch.set(docRef, { name: stdCat.description, userId, categoryNumber: stdCat.line, explanation: stdCat.explanation });
+      hasWrites = true;
+    } else {
+      const existingCat = existingCategories.find(c => c.name.toLowerCase().trim() === stdNameLower);
+      if (existingCat && (existingCat.categoryNumber !== stdCat.line || existingCat.explanation !== stdCat.explanation)) {
+        const docRef = doc(db, EXPENSE_CATEGORIES_COLLECTION, existingCat.id);
+        batch.update(docRef, { categoryNumber: stdCat.line, explanation: stdCat.explanation });
+        hasWrites = true;
+      }
+    }
+  }
+
+  if (hasWrites) {
     await batch.commit();
-    // Re-fetch all categories to return a complete, sorted list
-    const finalSnapshot = await getDocs(q);
+    const finalSnapshot = await getDocs(q); // Re-fetch to get updated data
     return finalSnapshot.docs.map(docToExpenseCategory).sort((a,b) => a.name.localeCompare(b.name));
   }
 
   return existingCategories.sort((a,b) => a.name.localeCompare(b.name));
 }
 
-export async function addExpenseCategory(data: Omit<ExpenseCategory, 'id'>): Promise<ExpenseCategory> {
+export async function addExpenseCategory(data: Omit<ExpenseCategory, 'id'| 'categoryNumber'>): Promise<ExpenseCategory> {
   const db = await getDb();
-  const docRef = await addDoc(collection(db, EXPENSE_CATEGORIES_COLLECTION), data);
-  return { id: docRef.id, ...data };
+  const allCategories = await getExpenseCategories(data.userId);
+  const customCategories = allCategories.filter(c => c.categoryNumber && c.categoryNumber.startsWith('C-'));
+  const highestCustomNum = customCategories.reduce((max, cat) => {
+    const num = parseInt(cat.categoryNumber!.substring(2));
+    return num > max ? num : max;
+  }, 0);
+
+  const newCategoryNumber = `C-${highestCustomNum + 1}`;
+  const dataToSave = { ...data, categoryNumber: newCategoryNumber };
+  
+  const docRef = await addDoc(collection(db, EXPENSE_CATEGORIES_COLLECTION), dataToSave);
+  return { id: docRef.id, ...dataToSave };
 }
 
 export async function updateExpenseCategory(id: string, data: Partial<Omit<ExpenseCategory, 'id' | 'userId'>>): Promise<void> {
@@ -527,6 +547,7 @@ export interface IncomeCategory {
   id: string;
   name: string;
   userId: string;
+  categoryNumber?: string;
   explanation?: string;
 }
 
@@ -538,20 +559,27 @@ export async function getIncomeCategories(userId: string): Promise<IncomeCategor
   const q = query(collection(db, INCOME_CATEGORIES_COLLECTION), where("userId", "==", userId));
   const snapshot = await getDocs(q);
   const existingCategories = snapshot.docs.map(docToIncomeCategory);
-  
-  const standardCategories = t2125IncomeCategories;
   const existingCategoryNames = new Set(existingCategories.map(c => c.name.toLowerCase().trim()));
-  
-  const missingCategories = standardCategories.filter(
-      sc => !existingCategoryNames.has(sc.description.toLowerCase().trim())
-  );
+  const batch = writeBatch(db);
+  let hasWrites = false;
 
-  if (missingCategories.length > 0) {
-    const batch = writeBatch(db);
-    missingCategories.forEach(category => {
-      const docRef = doc(collection(db, INCOME_CATEGORIES_COLLECTION));
-      batch.set(docRef, { name: category.description, userId, explanation: category.explanation });
-    });
+  for (const stdCat of t2125IncomeCategories) {
+      const stdNameLower = stdCat.description.toLowerCase().trim();
+      if (!existingCategoryNames.has(stdNameLower)) {
+          const docRef = doc(collection(db, INCOME_CATEGORIES_COLLECTION));
+          batch.set(docRef, { name: stdCat.description, userId, categoryNumber: stdCat.line, explanation: stdCat.explanation });
+          hasWrites = true;
+      } else {
+          const existingCat = existingCategories.find(c => c.name.toLowerCase().trim() === stdNameLower);
+          if (existingCat && (existingCat.categoryNumber !== stdCat.line || existingCat.explanation !== stdCat.explanation)) {
+              const docRef = doc(db, INCOME_CATEGORIES_COLLECTION, existingCat.id);
+              batch.update(docRef, { categoryNumber: stdCat.line, explanation: stdCat.explanation });
+              hasWrites = true;
+          }
+      }
+  }
+
+  if (hasWrites) {
     await batch.commit();
     const finalSnapshot = await getDocs(q);
     return finalSnapshot.docs.map(docToIncomeCategory).sort((a,b) => a.name.localeCompare(b.name));
@@ -560,10 +588,20 @@ export async function getIncomeCategories(userId: string): Promise<IncomeCategor
   return existingCategories.sort((a,b) => a.name.localeCompare(b.name));
 }
 
-export async function addIncomeCategory(data: Omit<IncomeCategory, 'id'>): Promise<IncomeCategory> {
+export async function addIncomeCategory(data: Omit<IncomeCategory, 'id' | 'categoryNumber'>): Promise<IncomeCategory> {
   const db = await getDb();
-  const docRef = await addDoc(collection(db, INCOME_CATEGORIES_COLLECTION), data);
-  return { id: docRef.id, ...data };
+  const allCategories = await getIncomeCategories(data.userId);
+  const customCategories = allCategories.filter(c => c.categoryNumber && c.categoryNumber.startsWith('C-'));
+  const highestCustomNum = customCategories.reduce((max, cat) => {
+    const num = parseInt(cat.categoryNumber!.substring(2));
+    return num > max ? num : max;
+  }, 0);
+
+  const newCategoryNumber = `C-${highestCustomNum + 1}`;
+  const dataToSave = { ...data, categoryNumber: newCategoryNumber };
+
+  const docRef = await addDoc(collection(db, INCOME_CATEGORIES_COLLECTION), dataToSave);
+  return { id: docRef.id, ...dataToSave };
 }
 
 export async function updateIncomeCategory(id: string, data: Partial<Omit<IncomeCategory, 'id' | 'userId'>>): Promise<void> {

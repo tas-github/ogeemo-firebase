@@ -11,6 +11,7 @@ import { AlertCircle, FileDown, Printer, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { t2125ExpenseCategories, t2125IncomeCategories } from '@/data/standard-expense-categories';
 import { cn } from '@/lib/utils';
+import { useReactToPrint } from '@/hooks/use-react-to-print';
 
 interface IncomeStatementFormDisplayProps {
   categorizedIncome: Record<string, number>;
@@ -25,10 +26,10 @@ const formatCurrencyForInput = (amount: number) => {
 };
 
 const FormRow = ({ label, value, line }: { label: string; value: number; line: string; }) => {
-    const isClickable = value !== 0;
+    const isClickable = value !== 0 && line !== '9936'; // Make CCA line not clickable for now
 
     const content = (
-         <div className={cn("grid grid-cols-10 items-center gap-4 rounded-md", isClickable && "p-2 -m-2")}>
+         <div className={cn("grid grid-cols-10 items-center gap-4 rounded-md", isClickable && "p-2 -m-2 group-hover:bg-accent")}>
             <div className="col-span-6 flex items-center gap-2">
                 <span className="text-xs text-muted-foreground w-12 text-right">{line}</span>
                 <Label htmlFor={`line-${line}`}>{label}</Label>
@@ -42,7 +43,7 @@ const FormRow = ({ label, value, line }: { label: string; value: number; line: s
                     value={formatCurrencyForInput(value)}
                     className={cn(
                         "pl-7 font-mono text-right bg-muted/20",
-                        isClickable && "cursor-pointer hover:ring-2 hover:ring-primary"
+                        isClickable && "cursor-pointer group-hover:ring-2 group-hover:ring-primary"
                     )}
                 />
             </div>
@@ -61,6 +62,7 @@ const FormRow = ({ label, value, line }: { label: string; value: number; line: s
 };
 
 export const IncomeStatementFormDisplay = ({ categorizedIncome, grossIncome, categorizedExpenses, totalExpenses, netIncome }: IncomeStatementFormDisplayProps) => {
+    const { handlePrint, contentRef } = useReactToPrint();
     
     // Split the categories for a two-column layout
     const midPoint = Math.ceil(t2125ExpenseCategories.length / 2);
@@ -68,7 +70,7 @@ export const IncomeStatementFormDisplay = ({ categorizedIncome, grossIncome, cat
     const column2Categories = t2125ExpenseCategories.slice(midPoint);
 
     return (
-        <Card>
+        <Card ref={contentRef}>
             <CardHeader>
                 <CardTitle>Income Statement</CardTitle>
                 <CardDescription>Based on CRA Form T2125. For review purposes only. Click on a line item to see its transactions.</CardDescription>
@@ -127,9 +129,9 @@ export const IncomeStatementFormDisplay = ({ categorizedIncome, grossIncome, cat
                     </div>
                 </div>
             </CardContent>
-            <CardFooter className="flex-col items-start gap-4">
+            <CardFooter className="flex-col items-start gap-4 print:hidden">
                  <div className="flex w-full justify-end gap-2">
-                    <Button variant="outline"><Printer className="mr-2 h-4 w-4"/> Print</Button>
+                    <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4"/> Print</Button>
                     <Button variant="outline"><FileDown className="mr-2 h-4 w-4"/> Download PDF</Button>
                 </div>
                  <div className="flex items-center gap-1 text-xs text-muted-foreground">

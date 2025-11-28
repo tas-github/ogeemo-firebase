@@ -12,6 +12,19 @@ import { t2125ExpenseCategories, t2125IncomeCategories } from '@/data/standard-e
 
 // --- Data Calculation Logic ---
 function useIncomeStatementData(income: IncomeTransaction[], expenses: ExpenseTransaction[], assets: Asset[]) {
+    
+    const standardIncomeCategoryMap = useMemo(() => {
+        const map = new Map<string, string>();
+        t2125IncomeCategories.forEach(cat => map.set(cat.line, cat.description));
+        return map;
+    }, []);
+
+    const standardExpenseCategoryMap = useMemo(() => {
+        const map = new Map<string, string>();
+        t2125ExpenseCategories.forEach(cat => map.set(cat.line, cat.description));
+        return map;
+    }, []);
+
     const categorizedIncome = useMemo(() => {
         const result: Record<string, number> = {};
         t2125IncomeCategories.forEach(cat => {
@@ -19,20 +32,29 @@ function useIncomeStatementData(income: IncomeTransaction[], expenses: ExpenseTr
         });
 
         income.forEach(tx => {
-            if (tx.incomeCategory === 'Other Income') {
-                result['Other income'] += tx.totalAmount;
+            const amount = Number(tx.totalAmount) || 0;
+            const categoryNumber = tx.incomeCategory;
+            // Use the map to find the human-readable description from the stored number
+            const categoryDescription = standardIncomeCategoryMap.get(categoryNumber);
+
+            if (categoryDescription) {
+                result[categoryDescription] = (result[categoryDescription] || 0) + amount;
             } else {
-                result['Sales, commissions, or fees'] += tx.totalAmount;
+                // If it's a custom category (e.g., 'C-1'), it falls into "Other income"
+                result['Other income'] = (result['Other income'] || 0) + amount;
             }
         });
+        
         return result;
-    }, [income]);
+    }, [income, standardIncomeCategoryMap]);
+
 
     const grossIncome = useMemo(() => Object.values(categorizedIncome).reduce((sum, amount) => sum + amount, 0), [categorizedIncome]);
 
     const cca = useMemo(() => {
+        // This is a placeholder calculation. Real CCA is much more complex.
         return assets.reduce((sum, asset) => {
-            const assetDepreciation = (asset.undepreciatedCapitalCost || 0) * 0.10; // Simplified CCA for demo
+            const assetDepreciation = (Number(asset.undepreciatedCapitalCost) || 0) * 0.10; 
             return sum + assetDepreciation;
         }, 0);
     }, [assets]);
@@ -43,24 +65,26 @@ function useIncomeStatementData(income: IncomeTransaction[], expenses: ExpenseTr
         t2125ExpenseCategories.forEach(cat => {
             result[cat.description] = 0;
         });
-
+        
         expenses.forEach(tx => {
-            const txCategoryLower = tx.category.toLowerCase();
-            const categoryMatch = t2125ExpenseCategories.find(standardCat => 
-                txCategoryLower.includes(standardCat.description.toLowerCase())
-            );
-
-            if (categoryMatch) {
-                result[categoryMatch.description] += tx.totalAmount;
+            const amount = Number(tx.totalAmount) || 0;
+            const categoryNumber = tx.category;
+            // Use the map to find the human-readable description from the stored number
+            const categoryDescription = standardExpenseCategoryMap.get(categoryNumber);
+            
+            if (categoryDescription) {
+                 result[categoryDescription] = (result[categoryDescription] || 0) + amount;
             } else {
-                result['Other expenses'] = (result['Other expenses'] || 0) + tx.totalAmount;
+                 // If it's a custom category (e.g., 'C-1'), it falls into "Other expenses"
+                 result['Other expenses'] = (result['Other expenses'] || 0) + amount;
             }
         });
         
+        // Assign the calculated CCA value to its specific category
         result['Capital cost allowance (CCA)'] = cca;
-
+        
         return result;
-    }, [expenses, cca]);
+    }, [expenses, cca, standardExpenseCategoryMap]);
     
     const totalExpenses = useMemo(() => Object.values(categorizedExpenses).reduce((sum, amount) => sum + amount, 0), [categorizedExpenses]);
     const netIncome = grossIncome - totalExpenses;
@@ -108,7 +132,10 @@ export function IncomeStatementView() {
     if (isLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center p-4">
-                <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+                <div className="flex flex-col items-center gap-4">
+                    <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+                    <p className="text-muted-foreground">Loading Ledger Data...</p>
+                </div>
             </div>
         );
     }
@@ -121,7 +148,7 @@ export function IncomeStatementView() {
           Income Statement
         </h1>
         <p className="text-muted-foreground max-w-3xl mx-auto">
-          This is a simplified statement populated with data from your ledgers. This is not official tax advice.
+          This is a simplified statement populated with data from your ledgers, structured like CRA Form T2125 for review purposes. This is not official tax advice.
         </p>
       </header>
 
