@@ -17,12 +17,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO, isValid } from "date-fns";
 import type { Asset, DepreciationEntry } from "@/services/accounting-service";
-import { PlusCircle, Trash2 } from "lucide-react";
+import { PlusCircle, Trash2, Info } from "lucide-react";
 import { Separator } from "../ui/separator";
 import { ScrollArea } from "../ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import Link from "next/link";
 
 interface AssetFormDialogProps {
   isOpen: boolean;
@@ -206,15 +208,29 @@ export function AssetFormDialog({ isOpen, onOpenChange, onSave, assetToEdit }: A
                     <Input id="name" value={formData.name} onChange={(e) => handleValueChange('name', e.target.value)} />
                     </div>
                     <div className="space-y-2">
-                    <Label htmlFor="assetClass">Asset Class # (for CRA)</Label>
-                     <Select value={formData.assetClass} onValueChange={(value) => handleValueChange('assetClass', value)}>
-                        <SelectTrigger id="assetClass">
-                            <SelectValue placeholder="Select a class..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {CRA_ASSET_CLASSES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+                        <div className="flex items-center gap-2">
+                            <Label htmlFor="assetClass">Asset Class # (for CRA)</Label>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <a href="https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/sole-proprietorships-partnerships/report-business-income-expenses/claiming-capital-cost-allowance/classes-depreciable-property.html" target="_blank" rel="noopener noreferrer" aria-label="Learn more about CRA asset classes">
+                                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                                        </a>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Click to open the official CRA guide on CCA classes.</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                        <Select value={formData.assetClass} onValueChange={(value) => handleValueChange('assetClass', value)}>
+                            <SelectTrigger id="assetClass">
+                                <SelectValue placeholder="Select a class..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {CRA_ASSET_CLASSES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
                 <div className="space-y-2">
