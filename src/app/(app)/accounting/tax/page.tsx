@@ -85,11 +85,11 @@ export default function TaxCenterPage() {
     },
     { 
       icon: Percent, 
-      title: "Sales Tax (GST/HST)", 
-      description: "Review sales tax collected and paid, and prepare your remittance information. (Coming Soon)", 
-      href: "#", 
+      title: "Sales Tax Calculator", 
+      description: "Review sales tax collected and paid, and prepare your remittance information.", 
+      href: "/accounting/tax/sales-tax", 
       cta: "Manage Sales Tax",
-      disabled: true,
+      disabled: false,
     },
     { 
       icon: Users, 

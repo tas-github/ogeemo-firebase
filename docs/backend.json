@@ -163,6 +163,7 @@
       "properties": {
         "name": { "type": "string" },
         "categoryNumber": { "type": "string", "description": "The unique ID for the category, like a CRA line number." },
+        "isArchived": { "type": "boolean", "description": "Whether the category is archived and hidden from view." },
         "userId": { "type": "string" }
       },
       "required": ["name", "userId"]
@@ -174,6 +175,7 @@
       "properties": {
         "name": { "type": "string" },
         "categoryNumber": { "type": "string", "description": "The unique ID for the category, like a CRA line number." },
+        "isArchived": { "type": "boolean", "description": "Whether the category is archived and hidden from view." },
         "userId": { "type": "string" }
       },
       "required": ["name", "userId"]

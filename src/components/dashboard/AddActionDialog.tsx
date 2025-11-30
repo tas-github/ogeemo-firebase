@@ -34,7 +34,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { addActionChip, updateActionChip } from '@/services/project-service';
-import { allMenuItems } from '@/lib/menu-items';
+import { allMenuItems, accountingMenuItems } from '@/lib/menu-items';
 import type { ActionChipData } from '@/types/calendar';
 import { Wand2 } from 'lucide-react';
 
@@ -65,9 +65,10 @@ interface AddActionDialogProps {
   onActionEdited: (action: ActionChipData) => void;
   chipToEdit: ActionChipData | null;
   existingChips: ActionChipData[];
+  menuType?: 'dashboard' | 'accounting';
 }
 
-export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, onActionEdited, chipToEdit, existingChips }: AddActionDialogProps) {
+export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, onActionEdited, chipToEdit, existingChips, menuType = 'dashboard' }: AddActionDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -84,13 +85,14 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
   const linkType = form.watch("linkType");
 
   const availableMenuItems = useMemo(() => {
-    return allMenuItems.sort((a, b) => a.label.localeCompare(b.label));
-  }, []);
+    const sourceList = menuType === 'accounting' ? accountingMenuItems : allMenuItems;
+    return sourceList.sort((a, b) => a.label.localeCompare(b.label));
+  }, [menuType]);
 
   useEffect(() => {
     if (isOpen) {
       if (chipToEdit) {
-        const isInternal = allMenuItems.some(item => item.href === chipToEdit.href);
+        const isInternal = availableMenuItems.some(item => item.href === chipToEdit.href);
         const linkType = isInternal ? 'internal' : 'custom';
         
         form.reset({
@@ -108,7 +110,7 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
         });
       }
     }
-  }, [chipToEdit, isOpen, form, allMenuItems]);
+  }, [chipToEdit, isOpen, form, availableMenuItems]);
 
 
   async function onSubmit(values: AddActionFormData) {
@@ -121,7 +123,7 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
     let icon: ActionChipData['icon'];
 
     if (values.linkType === 'internal') {
-        const selectedManager = allMenuItems.find(m => m.href === values.targetPage);
+        const selectedManager = availableMenuItems.find(m => m.href === values.targetPage);
         if (!selectedManager) {
             toast({ variant: "destructive", title: "Invalid page selected." });
             return;
@@ -142,7 +144,7 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
             href: href,
             icon: icon,
         };
-        await updateActionChip(user.uid, updatedActionData);
+        await updateActionChip(user.uid, updatedActionData, menuType === 'accounting' ? 'accounting' : 'dashboard');
         onActionEdited(updatedActionData);
         toast({ title: "Action Updated" });
       } else {
@@ -152,7 +154,7 @@ export default function AddActionDialog({ isOpen, onOpenChange, onActionAdded, o
             href: href,
             userId: user.uid,
          };
-         const newAction = await addActionChip(newActionData);
+         const newAction = await addActionChip(newActionData, menuType === 'accounting' ? 'accounting' : 'dashboard');
          onActionAdded(newAction);
          toast({ title: "Action Added" });
       }

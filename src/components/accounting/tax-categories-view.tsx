@@ -11,6 +11,8 @@ import {
   GitMerge,
   FileSignature,
   ShieldAlert,
+  Archive,
+  Undo,
 } from 'lucide-react';
 import { AccountingPageHeader } from '@/components/accounting/page-header';
 import { useToast } from '@/hooks/use-toast';
@@ -18,24 +20,24 @@ import { useAuth } from '@/context/auth-context';
 import {
   getIncomeCategories, addIncomeCategory, updateIncomeCategory, deleteIncomeCategory, deleteIncomeCategories,
   getExpenseCategories, addExpenseCategory, updateExpenseCategory, deleteExpenseCategory, deleteExpenseCategories,
+  archiveIncomeCategory, restoreIncomeCategory,
+  archiveExpenseCategory, restoreExpenseCategory,
   type IncomeCategory,
   type ExpenseCategory,
 } from '@/services/accounting-service';
 import { t2125ExpenseCategories, t2125IncomeCategories } from '@/data/standard-expense-categories';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Button } from '../ui/button';
 import { CategoryTable } from './category-table';
+import { ScrollArea } from '../ui/scroll-area';
 
 type Category = IncomeCategory | ExpenseCategory;
 type CategoryType = 'income' | 'expense';
-
-const standardIncomeCategoryNames = new Set(t2125IncomeCategories.map(c => c.description.toLowerCase().trim()));
-const standardExpenseCategoryNames = new Set(t2125ExpenseCategories.map(c => c.description.toLowerCase().trim()));
 
 export function TaxCategoriesView() {
   const [incomeCategories, setIncomeCategories] = useState<IncomeCategory[]>([]);
@@ -46,6 +48,10 @@ export function TaxCategoriesView() {
 
   const [selectedIncomeIds, setSelectedIncomeIds] = useState<string[]>([]);
   const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
+  
+  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
+  const [archivedIncome, setArchivedIncome] = useState<IncomeCategory[]>([]);
+  const [archivedExpenses, setArchivedExpenses] = useState<ExpenseCategory[]>([]);
 
   const [dialogState, setDialogState] = useState<{
       isOpen: boolean;
@@ -64,6 +70,8 @@ export function TaxCategoriesView() {
   const [mergeDialogState, setMergeDialogState] = useState<{ isOpen: boolean; category: Category | null, type: CategoryType | null }>({ isOpen: false, category: null, type: null });
   const [mergeTarget, setMergeTarget] = useState('');
   
+  const [categoryToArchive, setCategoryToArchive] = useState<{ category: Category; type: CategoryType } | null>(null);
+  
 
   const loadData = useCallback(async () => {
     if (!user) {
@@ -76,8 +84,10 @@ export function TaxCategoriesView() {
             getIncomeCategories(user.uid),
             getExpenseCategories(user.uid),
         ]);
-        setIncomeCategories(inc);
-        setExpenseCategories(exp);
+        setIncomeCategories(inc.filter(c => !c.isArchived));
+        setArchivedIncome(inc.filter(c => c.isArchived));
+        setExpenseCategories(exp.filter(c => !c.isArchived));
+        setArchivedExpenses(exp.filter(c => c.isArchived));
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Failed to load categories', description: error.message });
     } finally {
@@ -88,7 +98,7 @@ export function TaxCategoriesView() {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
+  
   const openDialog = (type: CategoryType, mode: 'add' | 'edit', category: Category | null = null) => {
     setDialogState({ isOpen: true, type, mode, category });
     setCategoryName(mode === 'edit' && category ? category.name : '');
@@ -128,7 +138,11 @@ export function TaxCategoriesView() {
   };
 
   const handleDelete = (category: Category, type: CategoryType) => {
-      setCategoryToDelete({ category, type });
+    if (category.categoryNumber && !category.categoryNumber.startsWith('C-')) {
+        toast({ variant: 'destructive', title: 'Cannot Delete', description: 'Standard CRA categories cannot be deleted, only archived.' });
+        return;
+    }
+    setCategoryToDelete({ category, type });
   };
   
   const handleConfirmDelete = async () => {
@@ -167,6 +181,37 @@ export function TaxCategoriesView() {
         toast({ variant: 'destructive', title: 'Bulk delete failed', description: error.message });
     } finally {
         setBulkDeleteType(null);
+    }
+  };
+
+  const handleConfirmArchive = async () => {
+    if (!categoryToArchive || !user) return;
+    try {
+      if (categoryToArchive.type === 'income') {
+        await archiveIncomeCategory(user.uid, categoryToArchive.category.id);
+      } else {
+        await archiveExpenseCategory(user.uid, categoryToArchive.category.id);
+      }
+      toast({ title: 'Category Archived', description: 'Transactions have been moved to "Other".' });
+      await loadData();
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Archive failed', description: error.message });
+    } finally {
+      setCategoryToArchive(null);
+    }
+  };
+
+  const handleRestore = async (category: Category, type: CategoryType) => {
+    try {
+      if (type === 'income') {
+        await restoreIncomeCategory(category.id);
+      } else {
+        await restoreExpenseCategory(category.id);
+      }
+      toast({ title: 'Category Restored' });
+      await loadData(); // Reload all data to reflect the change
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Restore failed', description: error.message });
     }
   };
 
@@ -222,8 +267,13 @@ export function TaxCategoriesView() {
         <header className="text-center">
           <h1 className="text-3xl font-bold font-headline text-primary">Tax Category Manager</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Manage your income and expense categories to ensure they align with tax forms. Standard CRA categories cannot be edited or deleted.
+            Manage your income and expense categories to ensure they align with tax forms. Standard CRA categories can be archived to hide them from view.
           </p>
+           <div className="mt-4">
+                <Button variant="secondary" onClick={() => setIsArchiveDialogOpen(true)}>
+                    <Archive className="mr-2 h-4 w-4" /> View Archived Categories
+                </Button>
+            </div>
         </header>
         {isLoading ? (
             <div className="flex h-64 items-center justify-center">
@@ -235,10 +285,10 @@ export function TaxCategoriesView() {
                     title="Income Categories"
                     description="Categories for all business income."
                     categories={incomeCategories}
-                    standardCategories={standardIncomeCategoryNames}
                     onAdd={() => openDialog('income', 'add')}
                     onEdit={(cat) => openDialog('income', 'edit', cat)}
                     onDelete={(cat) => handleDelete(cat, 'income')}
+                    onArchive={(cat) => setCategoryToArchive({ category: cat, type: 'income' })}
                     onMerge={(cat) => handleMerge(cat, 'income')}
                     onViewInfo={handleViewInfo}
                     selectedIds={selectedIncomeIds}
@@ -249,10 +299,10 @@ export function TaxCategoriesView() {
                     title="Expense Categories"
                     description="Categories for all business expenses."
                     categories={expenseCategories}
-                    standardCategories={standardExpenseCategoryNames}
                     onAdd={() => openDialog('expense', 'add')}
                     onEdit={(cat) => openDialog('expense', 'edit', cat)}
                     onDelete={(cat) => handleDelete(cat, 'expense')}
+                    onArchive={(cat) => setCategoryToArchive({ category: cat, type: 'expense' })}
                     onMerge={(cat) => handleMerge(cat, 'expense')}
                     onViewInfo={handleViewInfo}
                     selectedIds={selectedExpenseIds}
@@ -292,6 +342,63 @@ export function TaxCategoriesView() {
         </AlertDialogContent>
       </AlertDialog>
 
+       <AlertDialog open={!!categoryToArchive} onOpenChange={() => setCategoryToArchive(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Archive Category?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Archiving "{categoryToArchive?.category.name}" will hide it from the list. Any transactions currently in this category will be moved to "Other expenses" or "Other income". Are you sure?
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmArchive}>Archive</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+       </AlertDialog>
+
+       <Dialog open={isArchiveDialogOpen} onOpenChange={setIsArchiveDialogOpen}>
+        <DialogContent className="max-w-3xl">
+            <DialogHeader>
+                <DialogTitle>Archived Categories</DialogTitle>
+                <DialogDescription>
+                    These categories are hidden from the main view. You can restore them at any time.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-6 py-4">
+                <div>
+                    <h3 className="font-semibold mb-2">Income</h3>
+                    <ScrollArea className="h-64 border rounded-md">
+                        <div className="p-2 space-y-1">
+                            {archivedIncome.length > 0 ? archivedIncome.map(cat => (
+                                <div key={cat.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                                    <span className="text-sm">{cat.name}</span>
+                                    <Button size="sm" variant="ghost" onClick={() => handleRestore(cat, 'income')}><Undo className="mr-2 h-4 w-4" /> Restore</Button>
+                                </div>
+                            )) : <p className="text-sm text-center p-4 text-muted-foreground">No archived income categories.</p>}
+                        </div>
+                    </ScrollArea>
+                </div>
+                 <div>
+                    <h3 className="font-semibold mb-2">Expenses</h3>
+                     <ScrollArea className="h-64 border rounded-md">
+                        <div className="p-2 space-y-1">
+                            {archivedExpenses.length > 0 ? archivedExpenses.map(cat => (
+                                <div key={cat.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                                    <span className="text-sm">{cat.name}</span>
+                                    <Button size="sm" variant="ghost" onClick={() => handleRestore(cat, 'expense')}><Undo className="mr-2 h-4 w-4" /> Restore</Button>
+                                </div>
+                            )) : <p className="text-sm text-center p-4 text-muted-foreground">No archived expense categories.</p>}
+                        </div>
+                    </ScrollArea>
+                </div>
+            </div>
+            <DialogFooter>
+                <Button onClick={() => setIsArchiveDialogOpen(false)}>Close</Button>
+            </DialogFooter>
+        </DialogContent>
+       </Dialog>
+
       <AlertDialog open={!!bulkDeleteType} onOpenChange={() => setBulkDeleteType(null)}>
         <AlertDialogContent>
             <AlertDialogHeader>
@@ -302,7 +409,9 @@ export function TaxCategoriesView() {
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirmBulkDelete} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                <AlertDialogAction onClick={handleConfirmBulkDelete} className="bg-destructive hover:bg-destructive/90">
+                    Delete
+                </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

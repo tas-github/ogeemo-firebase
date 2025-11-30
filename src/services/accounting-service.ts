@@ -459,169 +459,178 @@ export async function addCompany(data: Omit<Company, 'id'>): Promise<Company> {
   return { id: docRef.id, ...data };
 }
 
-// --- Expense Category Interfaces & Functions ---
-export interface ExpenseCategory {
-  id: string;
-  name: string;
-  userId: string;
-  categoryNumber?: string;
-  explanation?: string;
+// --- Category Base Interfaces & Functions ---
+export interface BaseCategory {
+    id: string;
+    name: string;
+    userId: string;
+    isArchived?: boolean;
+    categoryNumber?: string;
+    explanation?: string;
 }
-
-const EXPENSE_CATEGORIES_COLLECTION = 'expenseCategories';
-const docToExpenseCategory = (doc: any): ExpenseCategory => ({ id: doc.id, ...doc.data() } as ExpenseCategory);
-
-export async function getExpenseCategories(userId: string): Promise<ExpenseCategory[]> {
-  const db = await getDb();
-  const q = query(collection(db, EXPENSE_CATEGORIES_COLLECTION), where("userId", "==", userId));
-  const snapshot = await getDocs(q);
-  const existingCategories = snapshot.docs.map(docToExpenseCategory);
-  const existingCategoryNames = new Set(existingCategories.map(c => c.name.toLowerCase().trim()));
-  const batch = writeBatch(db);
-  let hasWrites = false;
-
-  for (const stdCat of t2125ExpenseCategories) {
-    const stdNameLower = stdCat.description.toLowerCase().trim();
-    if (!existingCategoryNames.has(stdNameLower)) {
-      const docRef = doc(collection(db, EXPENSE_CATEGORIES_COLLECTION));
-      batch.set(docRef, { name: stdCat.description, userId, categoryNumber: stdCat.line, explanation: stdCat.explanation });
-      hasWrites = true;
-    } else {
-      const existingCat = existingCategories.find(c => c.name.toLowerCase().trim() === stdNameLower);
-      if (existingCat && (existingCat.categoryNumber !== stdCat.line || existingCat.explanation !== stdCat.explanation)) {
-        const docRef = doc(db, EXPENSE_CATEGORIES_COLLECTION, existingCat.id);
-        batch.update(docRef, { categoryNumber: stdCat.line, explanation: stdCat.explanation });
-        hasWrites = true;
-      }
-    }
-  }
-
-  if (hasWrites) {
-    await batch.commit();
-    const finalSnapshot = await getDocs(q); // Re-fetch to get updated data
-    return finalSnapshot.docs.map(docToExpenseCategory).sort((a,b) => a.name.localeCompare(b.name));
-  }
-
-  return existingCategories.sort((a,b) => a.name.localeCompare(b.name));
-}
-
-export async function addExpenseCategory(data: Omit<ExpenseCategory, 'id'| 'categoryNumber'>): Promise<ExpenseCategory> {
-  const db = await getDb();
-  const allCategories = await getExpenseCategories(data.userId);
-  const customCategories = allCategories.filter(c => c.categoryNumber && c.categoryNumber.startsWith('C-'));
-  const highestCustomNum = customCategories.reduce((max, cat) => {
-    const num = parseInt(cat.categoryNumber!.substring(2));
-    return num > max ? num : max;
-  }, 0);
-
-  const newCategoryNumber = `C-${highestCustomNum + 1}`;
-  const dataToSave = { ...data, categoryNumber: newCategoryNumber };
-  
-  const docRef = await addDoc(collection(db, EXPENSE_CATEGORIES_COLLECTION), dataToSave);
-  return { id: docRef.id, ...dataToSave };
-}
-
-export async function updateExpenseCategory(id: string, data: Partial<Omit<ExpenseCategory, 'id' | 'userId'>>): Promise<void> {
-    const db = await getDb();
-    await updateDoc(doc(db, EXPENSE_CATEGORIES_COLLECTION, id), data);
-}
-
-export async function deleteExpenseCategory(id: string): Promise<void> {
-    const db = await getDb();
-    await deleteDoc(doc(db, EXPENSE_CATEGORIES_COLLECTION, id));
-}
-
-export async function deleteExpenseCategories(ids: string[]): Promise<void> {
-    const db = await getDb();
-    if (ids.length === 0) return;
-    const batch = writeBatch(db);
-    ids.forEach(id => {
-        batch.delete(doc(db, EXPENSE_CATEGORIES_COLLECTION, id));
-    });
-    await batch.commit();
-}
-
-
-// --- Income Category Interfaces & Functions ---
-export interface IncomeCategory {
-  id: string;
-  name: string;
-  userId: string;
-  categoryNumber?: string;
-  explanation?: string;
-}
+export interface IncomeCategory extends BaseCategory {}
+export interface ExpenseCategory extends BaseCategory {}
 
 const INCOME_CATEGORIES_COLLECTION = 'incomeCategories';
+const EXPENSE_CATEGORIES_COLLECTION = 'expenseCategories';
 const docToIncomeCategory = (doc: any): IncomeCategory => ({ id: doc.id, ...doc.data() } as IncomeCategory);
+const docToExpenseCategory = (doc: any): ExpenseCategory => ({ id: doc.id, ...doc.data() } as ExpenseCategory);
 
-export async function getIncomeCategories(userId: string): Promise<IncomeCategory[]> {
+
+async function getCategories<T extends BaseCategory>(userId: string, collectionName: string, standardCategories: any[], docConverter: (doc: any) => T): Promise<T[]> {
   const db = await getDb();
-  const q = query(collection(db, INCOME_CATEGORIES_COLLECTION), where("userId", "==", userId));
+  const q = query(collection(db, collectionName), where("userId", "==", userId));
   const snapshot = await getDocs(q);
-  const existingCategories = snapshot.docs.map(docToIncomeCategory);
+  const existingCategories = snapshot.docs.map(docConverter);
   const existingCategoryNames = new Set(existingCategories.map(c => c.name.toLowerCase().trim()));
   const batch = writeBatch(db);
   let hasWrites = false;
 
-  for (const stdCat of t2125IncomeCategories) {
+  for (const stdCat of standardCategories) {
       const stdNameLower = stdCat.description.toLowerCase().trim();
       if (!existingCategoryNames.has(stdNameLower)) {
-          const docRef = doc(collection(db, INCOME_CATEGORIES_COLLECTION));
-          batch.set(docRef, { name: stdCat.description, userId, categoryNumber: stdCat.line, explanation: stdCat.explanation });
+          const docRef = doc(collection(db, collectionName));
+          batch.set(docRef, { name: stdCat.description, userId, categoryNumber: stdCat.line, explanation: stdCat.explanation, isArchived: false });
           hasWrites = true;
       } else {
           const existingCat = existingCategories.find(c => c.name.toLowerCase().trim() === stdNameLower);
           if (existingCat && (existingCat.categoryNumber !== stdCat.line || existingCat.explanation !== stdCat.explanation)) {
-              const docRef = doc(db, INCOME_CATEGORIES_COLLECTION, existingCat.id);
+              const docRef = doc(db, collectionName, existingCat.id);
               batch.update(docRef, { categoryNumber: stdCat.line, explanation: stdCat.explanation });
               hasWrites = true;
           }
       }
   }
-
   if (hasWrites) {
     await batch.commit();
     const finalSnapshot = await getDocs(q);
-    return finalSnapshot.docs.map(docToIncomeCategory).sort((a,b) => a.name.localeCompare(b.name));
+    return finalSnapshot.docs.map(docConverter).sort((a,b) => a.name.localeCompare(b.name));
   }
-  
   return existingCategories.sort((a,b) => a.name.localeCompare(b.name));
 }
 
-export async function addIncomeCategory(data: Omit<IncomeCategory, 'id' | 'categoryNumber'>): Promise<IncomeCategory> {
+// --- Income Category Functions ---
+export async function getIncomeCategories(userId: string): Promise<IncomeCategory[]> {
+  return getCategories<IncomeCategory>(userId, INCOME_CATEGORIES_COLLECTION, t2125IncomeCategories, docToIncomeCategory);
+}
+export async function addIncomeCategory(data: Omit<IncomeCategory, 'id' | 'categoryNumber' | 'isArchived'>): Promise<IncomeCategory> {
   const db = await getDb();
   const allCategories = await getIncomeCategories(data.userId);
+  
+  const existingCategory = allCategories.find(c => c.name.toLowerCase() === data.name.trim().toLowerCase());
+  if (existingCategory) {
+      throw new Error(`An income category named "${data.name.trim()}" already exists.`);
+  }
+
   const customCategories = allCategories.filter(c => c.categoryNumber && c.categoryNumber.startsWith('C-'));
   const highestCustomNum = customCategories.reduce((max, cat) => {
     const num = parseInt(cat.categoryNumber!.substring(2));
     return num > max ? num : max;
   }, 0);
-
   const newCategoryNumber = `C-${highestCustomNum + 1}`;
-  const dataToSave = { ...data, categoryNumber: newCategoryNumber };
-
+  const dataToSave = { ...data, categoryNumber: newCategoryNumber, isArchived: false };
   const docRef = await addDoc(collection(db, INCOME_CATEGORIES_COLLECTION), dataToSave);
   return { id: docRef.id, ...dataToSave };
 }
-
 export async function updateIncomeCategory(id: string, data: Partial<Omit<IncomeCategory, 'id' | 'userId'>>): Promise<void> {
     const db = await getDb();
     await updateDoc(doc(db, INCOME_CATEGORIES_COLLECTION, id), data);
 }
-
-export async function deleteIncomeCategory(id: string): Promise<void> {
-    const db = await getDb();
-    await deleteDoc(doc(db, INCOME_CATEGORIES_COLLECTION, id));
+export async function deleteIncomeCategory(id: string): Promise<void> { await deleteDoc(doc(await getDb(), INCOME_CATEGORIES_COLLECTION, id)); }
+export async function deleteIncomeCategories(ids: string[]): Promise<void> {
+    const db = await getDb(); if (ids.length === 0) return; const batch = writeBatch(db); ids.forEach(id => batch.delete(doc(db, INCOME_CATEGORIES_COLLECTION, id))); await batch.commit();
 }
 
-export async function deleteIncomeCategories(ids: string[]): Promise<void> {
+// --- Expense Category Functions ---
+export async function getExpenseCategories(userId: string): Promise<ExpenseCategory[]> {
+  return getCategories<ExpenseCategory>(userId, EXPENSE_CATEGORIES_COLLECTION, t2125ExpenseCategories, docToExpenseCategory);
+}
+export async function addExpenseCategory(data: Omit<ExpenseCategory, 'id' | 'categoryNumber' | 'isArchived'>): Promise<ExpenseCategory> {
+  const db = await getDb();
+  const allCategories = await getExpenseCategories(data.userId);
+
+  const existingCategory = allCategories.find(c => c.name.toLowerCase() === data.name.trim().toLowerCase());
+  if (existingCategory) {
+      throw new Error(`An expense category named "${data.name.trim()}" already exists.`);
+  }
+
+  const customCategories = allCategories.filter(c => c.categoryNumber && c.categoryNumber.startsWith('C-'));
+  const highestCustomNum = customCategories.reduce((max, cat) => {
+    const num = parseInt(cat.categoryNumber!.substring(2));
+    return num > max ? num : max;
+  }, 0);
+  const newCategoryNumber = `C-${highestCustomNum + 1}`;
+  const dataToSave = { ...data, categoryNumber: newCategoryNumber, isArchived: false };
+  const docRef = await addDoc(collection(db, EXPENSE_CATEGORIES_COLLECTION), dataToSave);
+  return { id: docRef.id, ...dataToSave };
+}
+export async function updateExpenseCategory(id: string, data: Partial<Omit<ExpenseCategory, 'id' | 'userId'>>): Promise<void> {
+    await updateDoc(doc(await getDb(), EXPENSE_CATEGORIES_COLLECTION, id), data);
+}
+export async function deleteExpenseCategory(id: string): Promise<void> { await deleteDoc(doc(await getDb(), EXPENSE_CATEGORIES_COLLECTION, id)); }
+export async function deleteExpenseCategories(ids: string[]): Promise<void> {
+    const db = await getDb(); if (ids.length === 0) return; const batch = writeBatch(db); ids.forEach(id => batch.delete(doc(db, EXPENSE_CATEGORIES_COLLECTION, id))); await batch.commit();
+}
+
+
+// --- Archive/Restore Functions ---
+async function archiveCategory(
+    userId: string,
+    categoryId: string,
+    categoryCollection: string,
+    transactionCollection: string,
+    categoryField: 'incomeCategory' | 'category',
+    docToCategoryConverter: (doc: any) => BaseCategory
+) {
     const db = await getDb();
-    if (ids.length === 0) return;
+    const categoryRef = doc(db, categoryCollection, categoryId);
+    const categorySnap = await getDoc(categoryRef);
+    if (!categorySnap.exists()) throw new Error("Category to archive not found.");
+    
+    const categoryToArchive = docToCategoryConverter(categorySnap);
+    if (!categoryToArchive.categoryNumber) {
+        throw new Error(`Category "${categoryToArchive.name}" does not have a category number and cannot be used in queries.`);
+    }
+    
+    const otherCategoryName = categoryField === 'incomeCategory' ? 'Other income' : 'Other expenses';
+    const allCategories = await (categoryField === 'incomeCategory' ? getIncomeCategories(userId) : getExpenseCategories(userId));
+    const otherCategory = allCategories.find(c => c.name === otherCategoryName);
+
+    if (!otherCategory || !otherCategory.categoryNumber) {
+        throw new Error(`Could not find a valid "${otherCategoryName}" category to reassign transactions to.`);
+    }
+
     const batch = writeBatch(db);
-    ids.forEach(id => {
-        batch.delete(doc(db, INCOME_CATEGORIES_COLLECTION, id));
+    const transactionsQuery = query(
+        collection(db, transactionCollection), 
+        where("userId", "==", userId), 
+        where(categoryField, "==", categoryToArchive.categoryNumber)
+    );
+    const transactionsSnapshot = await getDocs(transactionsQuery);
+
+    transactionsSnapshot.forEach(txDoc => {
+        const txRef = doc(db, transactionCollection, txDoc.id);
+        batch.update(txRef, { [categoryField]: otherCategory.categoryNumber });
     });
+
+    batch.update(categoryRef, { isArchived: true });
     await batch.commit();
+}
+
+export function archiveIncomeCategory(userId: string, categoryId: string): Promise<void> {
+    return archiveCategory(userId, categoryId, INCOME_CATEGORIES_COLLECTION, INCOME_COLLECTION, 'incomeCategory', docToIncomeCategory);
+}
+
+export function archiveExpenseCategory(userId: string, categoryId: string): Promise<void> {
+    return archiveCategory(userId, categoryId, EXPENSE_CATEGORIES_COLLECTION, EXPENSE_COLLECTION, 'category', docToExpenseCategory);
+}
+
+export async function restoreIncomeCategory(categoryId: string): Promise<void> {
+    await updateIncomeCategory(categoryId, { isArchived: false });
+}
+
+export async function restoreExpenseCategory(categoryId: string): Promise<void> {
+    await updateExpenseCategory(categoryId, { isArchived: false });
 }
 
 // --- Service Item Interfaces & Functions ---
@@ -659,3 +668,6 @@ export async function deleteServiceItem(id: string): Promise<void> {
   const db = await getDb();
   await deleteDoc(doc(db, SERVICE_ITEMS_COLLECTION, id));
 }
+
+
+    

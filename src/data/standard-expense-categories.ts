@@ -31,12 +31,6 @@ export const t2125ExpenseCategories: T2125Category[] = [
     explanation: "Expenses for promoting your business. This includes online ads, social media campaigns, print ads, flyers, and business cards. Do not include meals and entertainment."
   },
   { 
-    line: "8590", 
-    description: "Bad debts", 
-    key: "badDebts",
-    explanation: "Amounts owed to you that you cannot collect. You can only claim this if the amount was previously included in your income."
-  },
-  { 
     line: "8690", 
     description: "Insurance", 
     key: "insurance",
@@ -125,12 +119,6 @@ export const t2125ExpenseCategories: T2125Category[] = [
     description: "Delivery, freight, and express", 
     key: "shipping",
     explanation: "Costs for couriers, shipping, and postage for sending business-related items."
-  },
-  { 
-    line: "9281", 
-    description: "Motor vehicle expenses (not including CCA)", 
-    key: "motorVehicle",
-    explanation: "All costs associated with your business vehicle, such as fuel, insurance, repairs, and lease payments. Keep detailed logs."
   },
   { 
     line: "9936", 

@@ -1,3 +1,5 @@
+
+
 import {
   LayoutDashboard,
   Users,
@@ -44,6 +46,18 @@ import {
   FilePenLine,
   Route,
   Link as LinkIcon,
+  FileOutput,
+  FileDigit,
+  TrendingUp,
+  TrendingDown,
+  WalletCards,
+  UserPlus,
+  Banknote,
+  Percent,
+  FileSignature,
+  ListPlus,
+  FileInput,
+  Activity,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -52,6 +66,28 @@ export interface MenuItem {
   label: string;
   icon: LucideIcon;
 }
+
+export const accountingMenuItems: MenuItem[] = [
+    { href: "/accounting/invoices/create", icon: FileDigit, label: "Create Invoice" },
+    { href: "/accounting/accounts-receivable", icon: FileOutput, label: "Accounts Receivable" },
+    { href: "/accounting/service-items", icon: ListPlus, label: "Service Items" },
+    { href: "/accounting/ledgers?tab=income", icon: TrendingUp, label: "Manage Income" },
+    { href: "/accounting/ledgers?tab=expenses", icon: TrendingDown, label: "Manage Expenses" },
+    { href: "/accounting/ledgers", icon: BookText, label: "General Ledger" },
+    { href: "/accounting/reports/income-statement", icon: FileText, label: "Income Statement"},
+    { href: "/accounting/tax/sales-tax", icon: Percent, label: "Sales Tax Calculator" },
+    { href: "/accounting/accounts-payable", icon: FileInput, label: "Accounts Payable" },
+    { href: "/accounting/bank-statements", icon: WalletCards, label: "Bank Statements" },
+    { href: "/accounting/asset-management", icon: WalletCards, label: "Capital Assets" },
+    { href: "/accounting/payroll", icon: Banknote, label: "Payroll" },
+    { href: "/accounting/reports", icon: BarChart3, label: "Reporting Hub" },
+    { href: "/accounting/tax", icon: ShieldCheck, label: "Tax Center" },
+    { href: "/accounting/tax/categories", icon: FileSignature, label: "Tax Categories" },
+    { href: "/accounting/vitals", icon: Activity, label: "Financial Vitals" },
+    { href: "/accounting/onboarding", icon: UserPlus, label: "Client Onboarding" },
+    { href: "/accounting/bks", icon: Info, label: "BKS Welcome" },
+];
+
 
 export const allMenuItems: MenuItem[] = [
   { href: "/action-manager", label: "Action Manager", icon: LayoutDashboard },
@@ -94,9 +130,7 @@ export const allMenuItems: MenuItem[] = [
   { href: "/research", label: "Research", icon: Beaker },
   { href: "/sandbox", label: "Sandbox", icon: Beaker },
   { href: "/accounting", label: "Accounting", icon: Calculator },
-  { href: "/accounting/tax", label: "Tax Center", icon: ShieldCheck },
-  { href: "/testing", label: "Testing", icon: Beaker },
-  { href: "/notes", label: "Note Manager", icon: FilePenLine },
-  { href: "/link", label: "link", icon: LinkIcon },
-  { href: "/accounting/reports/income-statement", label: "Income Statement", icon: FileText },
+  ...accountingMenuItems,
 ];
+
+    

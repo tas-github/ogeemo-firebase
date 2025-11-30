@@ -119,10 +119,24 @@ export function LedgersView() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const filterCategory = searchParams.get('category');
+  const highlightedId = searchParams.get('highlight');
   const initialTab = searchParams.get('tab') || (filterCategory ? 'bks' : 'bks');
   const [activeTab, setActiveTab] = React.useState(initialTab);
+  const rowRefs = React.useRef<Map<string, HTMLTableRowElement | null>>(new Map());
 
-  console.log('Filtering by category:', filterCategory);
+
+  React.useEffect(() => {
+    if (highlightedId && !isLoading) {
+        const element = rowRefs.current.get(highlightedId);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.classList.add('bg-primary/20', 'transition-all', 'duration-1000');
+            setTimeout(() => {
+                element.classList.remove('bg-primary/20');
+            }, 2500);
+        }
+    }
+  }, [highlightedId, isLoading]);
 
   React.useEffect(() => {
     if (!user) {
@@ -475,7 +489,7 @@ export function LedgersView() {
                                     ? incomeCategories.find(c => c.categoryNumber === item.incomeCategory)?.name 
                                     : expenseCategories.find(c => c.categoryNumber === item.category)?.name;
                                 return (
-                                <TableRow key={item.id}>
+                                <TableRow key={item.id} ref={el => rowRefs.current.set(item.id, el)}>
                                     <TableCell>{item.date}</TableCell>
                                     <TableCell>{item.company}</TableCell>
                                     <TableCell>{item.description}</TableCell>
@@ -661,3 +675,4 @@ export function LedgersView() {
     </>
   );
 }
+

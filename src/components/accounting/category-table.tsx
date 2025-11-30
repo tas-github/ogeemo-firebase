@@ -35,6 +35,7 @@ import {
   GitMerge,
   FileSignature,
   ShieldAlert,
+  Archive,
 } from 'lucide-react';
 import type { IncomeCategory, ExpenseCategory } from '@/services/accounting-service';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -45,10 +46,10 @@ interface CategoryTableProps {
     title: string;
     description: string;
     categories: Category[];
-    standardCategories: Set<string>;
     onAdd: () => void;
     onEdit: (category: Category) => void;
     onDelete: (category: Category) => void;
+    onArchive: (category: Category) => void;
     onMerge: (category: Category) => void;
     onViewInfo: (category: Category) => void;
     selectedIds: string[];
@@ -60,10 +61,10 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
     title, 
     description, 
     categories, 
-    standardCategories, 
     onAdd, 
     onEdit, 
-    onDelete, 
+    onDelete,
+    onArchive,
     onMerge, 
     onViewInfo,
     selectedIds,
@@ -71,8 +72,8 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
     onBulkDelete,
 }) => {
     
-    const isStandardCategory = (name: string) => {
-        return standardCategories.has(name.toLowerCase().trim());
+    const isStandardCategory = (category: Category) => {
+        return category.categoryNumber ? !category.categoryNumber.startsWith('C-') : false;
     };
     
     const handleToggleSelect = (id: string, isStandard: boolean) => {
@@ -86,13 +87,13 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
 
     const handleToggleSelectAll = (checked: boolean | 'indeterminate') => {
         if (checked) {
-            onSelectedIdsChange(categories.filter(c => !isStandardCategory(c.name)).map(c => c.id));
+            onSelectedIdsChange(categories.filter(c => !isStandardCategory(c)).map(c => c.id));
         } else {
             onSelectedIdsChange([]);
         }
     };
     
-    const customCategories = categories.filter(c => !isStandardCategory(c.name));
+    const customCategories = categories.filter(c => !isStandardCategory(c));
     const allCustomSelected = customCategories.length > 0 && selectedIds.length === customCategories.length;
     const someCustomSelected = selectedIds.length > 0 && !allCustomSelected;
 
@@ -124,12 +125,13 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
                                   />
                                 </TableHead>
                                 <TableHead>Category Name</TableHead>
+                                <TableHead className="w-24">Line #</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {categories.map(category => {
-                                const isStandard = isStandardCategory(category.name);
+                                const isStandard = isStandardCategory(category);
                                 return (
                                     <TableRow key={category.id}>
                                         <TableCell>
@@ -156,6 +158,7 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
                                                 )}
                                             </div>
                                         </TableCell>
+                                        <TableCell className="text-muted-foreground">{category.categoryNumber}</TableCell>
                                         <TableCell className="text-right">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
@@ -166,9 +169,12 @@ export const CategoryTable: React.FC<CategoryTableProps> = ({
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem onSelect={() => onEdit(category)} disabled={isStandard}><Pencil className="mr-2 h-4 w-4"/>Edit Name</DropdownMenuItem>
                                                     <DropdownMenuItem onSelect={() => onMerge(category)} disabled={isStandard}><GitMerge className="mr-2 h-4 w-4"/>Merge Category</DropdownMenuItem>
-                                                    <DropdownMenuItem onSelect={() => {}} disabled={isStandard}><FileSignature className="mr-2 h-4 w-4"/>Add to Income Statement</DropdownMenuItem>
                                                     <DropdownMenuSeparator />
-                                                    <DropdownMenuItem onSelect={() => onDelete(category)} disabled={isStandard} className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
+                                                    {isStandard ? (
+                                                        <DropdownMenuItem onSelect={() => onArchive(category)}><Archive className="mr-2 h-4 w-4"/>Archive</DropdownMenuItem>
+                                                    ) : (
+                                                        <DropdownMenuItem onSelect={() => onDelete(category)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
+                                                    )}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         </TableCell>

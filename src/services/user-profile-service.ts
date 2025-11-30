@@ -48,6 +48,7 @@ export interface UserProfile {
         showActionManagerAboutPanel?: boolean; // Added this line
         defaultSidebarView?: SidebarViewType;
         menuOrder?: string[];
+        accountingQuickNavOrder?: string[];
         googleAppsOrder?: string[];
         fileFolderOrder?: string[];
         planningRituals?: {
@@ -71,6 +72,7 @@ const defaultPreferences: UserProfile['preferences'] = {
     showActionManagerAboutPanel: true,
     defaultSidebarView: 'grouped',
     menuOrder: [],
+    accountingQuickNavOrder: [],
     googleAppsOrder: [],
     fileFolderOrder: [],
     planningRituals: {
