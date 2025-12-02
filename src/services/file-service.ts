@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -38,6 +39,16 @@ const docToFile = (doc: any): FileItem => ({
     ...doc.data(),
     modifiedAt: (doc.data().modifiedAt as Timestamp)?.toDate() || new Date(),
 } as FileItem);
+
+const generateKeywords = (name: string): string[] => {
+    const keywords = new Set<string>();
+    const lowerCaseName = name.toLowerCase();
+    keywords.add(lowerCaseName);
+    lowerCaseName.split(/[\s-._]+/).forEach(part => {
+        if (part) keywords.add(part);
+    });
+    return Array.from(keywords);
+};
 
 
 // --- File functions ---
@@ -117,8 +128,9 @@ export async function getFilesForFolder(userId: string, folderId: string): Promi
 
 export async function addFileRecord(fileData: Omit<FileItem, 'id'>): Promise<FileItem> {
     const db = await getDb();
-    const docRef = await addDoc(collection(db, FILES_COLLECTION), fileData);
-    return { id: docRef.id, ...fileData };
+    const dataWithKeywords = { ...fileData, keywords: generateKeywords(fileData.name) };
+    const docRef = await addDoc(collection(db, FILES_COLLECTION), dataWithKeywords);
+    return { id: docRef.id, ...dataWithKeywords };
 }
 
 export async function addFile(formData: FormData): Promise<FileItem> {
@@ -153,7 +165,7 @@ export async function addFile(formData: FormData): Promise<FileItem> {
     return addFileRecord(newFileRecord);
 }
 
-export async function updateFile(fileId: string, data: Partial<Omit<FileItem, 'id' | 'userId' | 'content'>> & { content?: string }): Promise<void> {
+export async function updateFile(fileId: string, data: Partial<Omit<FileItem, 'id' | 'userId' | 'content'>> & { content?: string, keywords?: string[] }): Promise<void> {
     const db = await getDb();
     const fileRef = doc(db, FILES_COLLECTION, fileId);
 
@@ -162,6 +174,10 @@ export async function updateFile(fileId: string, data: Partial<Omit<FileItem, 'i
     const existingFileData = docToFile(fileSnap);
 
     const metadataToUpdate: {[key: string]: any} = { ...data };
+
+    if (data.name && !data.keywords) {
+        metadataToUpdate.keywords = generateKeywords(data.name);
+    }
 
     // If content is being updated, upload it to storage first.
     if (typeof data.content === 'string') {
@@ -211,6 +227,7 @@ export async function addTextFileClient(userId: string, folderId: string, fileNa
         folderId: folderId,
         userId,
         storagePath,
+        keywords: generateKeywords(fileName),
     };
     
     await setDoc(doc(db, FILES_COLLECTION, fileId), newFileRecord);
@@ -265,6 +282,7 @@ ${description || 'No description provided.'}
         folderId: folder.id,
         userId,
         storagePath,
+        keywords: generateKeywords(`Archived Idea - ${title}`),
     };
     
     await setDoc(doc(db, FILES_COLLECTION, fileId), newFileRecord);
@@ -342,5 +360,4 @@ export async function findOrCreateFileFolder(userId: string, folderName: string)
 }
     
 
-
-
+    

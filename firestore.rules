@@ -36,6 +36,18 @@ service cloud.firestore {
       allow read, write: if isOwner(resource.data.userId);
     }
     
+    match /payrollRuns/{runId} {
+      allow read, write: if isOwner(resource.data.userId);
+    }
+
+    match /payrollRuns/{runId}/details/{detailId} {
+      allow read, write: if isOwner(get(/databases/$(database)/documents/payrollRuns/$(runId)).data.userId);
+    }
+
+    match /payrollRemittances/{remittanceId} {
+      allow read, write: if isOwner(resource.data.userId);
+    }
+
     match /assets/{assetId} {
       allow read, write: if isOwner(resource.data.userId);
     }

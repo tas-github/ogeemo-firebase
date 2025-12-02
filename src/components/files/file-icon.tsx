@@ -1,7 +1,7 @@
 
 "use client";
 
-import { FileText, FileImage, FileAudio, FileVideo, FileArchive, Table2, FileCode2, FileQuestion, Presentation, Sheet } from "lucide-react";
+import { FileText, FileImage, FileAudio, FileVideo, FileArchive, Table2, FileCode2, FileQuestion, Presentation, Sheet, Link as LinkIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 interface FileIconProps {

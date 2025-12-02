@@ -18,9 +18,12 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useSpeechToText, type SpeechRecognitionStatus } from "@/hooks/use-speech-to-text";
 import { useToast } from "@/hooks/use-toast";
-import { ogeemoChatFlow } from "@/ai/flows/ogeemo-chat";
-import { MessageData } from "genkit";
 
+// This is now a client-safe type definition.
+interface ClientMessage {
+    role: 'user' | 'model';
+    content: { text: string }[];
+}
 
 type Message = {
   id: string;
@@ -90,22 +93,34 @@ export function TestChatView() {
     setIsLoading(true);
 
     try {
-        const history = newMessages.slice(0, -1).map(msg => new MessageData({
+        const history: ClientMessage[] = newMessages.slice(0, -1).map(msg => ({
             role: msg.sender === 'user' ? 'user' : 'model',
             content: [{ text: msg.text }]
         }));
-
-        const result = await ogeemoChatFlow({
-            message: currentInput,
-            history: history
+        
+        // **THE FIX:** Use fetch to call the API endpoint instead of a direct import.
+        const response = await fetch('/api/genkit/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: currentInput,
+                history: history
+            })
         });
 
-      const botMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: result.reply,
-        sender: "bot",
-      };
-      setMessages((prev) => [...prev, botMessage]);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'The API returned an error.');
+        }
+
+        const responseData = await response.json();
+        const botMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            text: responseData.reply,
+            sender: "bot",
+        };
+        setMessages((prev) => [...prev, botMessage]);
+
     } catch (error: any) {
       console.error("Error with Test Chat:", error);
       const errorMessage: Message = {
@@ -161,7 +176,7 @@ export function TestChatView() {
   return (
     <div className="p-4 sm:p-6 flex flex-col items-center h-full">
       <header className="text-center mb-6">
-        <h1 className="text-3xl font-bold font-headline text-primary">
+        <h1 className="text-2xl font-bold font-headline text-primary">
           AI Chat Test Page
         </h1>
         <p className="text-muted-foreground">

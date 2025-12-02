@@ -9,8 +9,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -18,7 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,10 +33,11 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { MoreVertical, FileText, Download, Eye, User } from 'lucide-react';
+import { MoreVertical, FileText, Download, Eye, User, ArrowLeft } from 'lucide-react';
 import { AccountingPageHeader } from '@/components/accounting/page-header';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 type PayrollRun = {
   id: string;
@@ -136,10 +137,17 @@ export function PayrollHistoryView() {
   return (
     <>
       <div className="p-4 sm:p-6 space-y-6">
-        <AccountingPageHeader pageTitle="Payroll History & Reports" />
+        <AccountingPageHeader pageTitle="Payroll History & Reports" hubPath="/accounting" hubLabel="Accounting Hub" />
         <header className="text-center">
           <h1 className="text-3xl font-bold font-headline text-primary">Payroll History</h1>
           <p className="text-muted-foreground">Review past payroll runs and access detailed reports.</p>
+           <div className="mt-4">
+                <Button asChild variant="outline">
+                    <Link href="/accounting/payroll">
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Payroll Hub
+                    </Link>
+                </Button>
+            </div>
         </header>
 
         <Card>

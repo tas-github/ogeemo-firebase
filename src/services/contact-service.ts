@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -35,6 +36,25 @@ async function getDb() {
 
 const docToContact = (doc: any): Contact => ({ id: doc.id, ...doc.data() } as Contact);
 
+const generateKeywords = (name: string, email: string, businessName?: string): string[] => {
+    const keywords = new Set<string>();
+    
+    const addValue = (value: string | undefined) => {
+        if (!value) return;
+        const lowerCaseValue = value.toLowerCase();
+        keywords.add(lowerCaseValue);
+        lowerCaseValue.split(/[\s@.-]+/).forEach(part => {
+            if (part) keywords.add(part);
+        });
+    };
+
+    addValue(name);
+    addValue(email);
+    addValue(businessName);
+    
+    return Array.from(keywords);
+};
+
 
 // --- Client Account Function (New) ---
 async function createClientAccount(userId: string, contactId: string, contactName: string): Promise<void> {
@@ -64,10 +84,12 @@ export async function getContacts(userId: string): Promise<Contact[]> {
 
 export async function addContact(contactData: Omit<Contact, 'id'>): Promise<Contact> {
   const db = await getDb();
-  // Explicitly handle the 'website' field to ensure it's included.
   const dataToSave = {
     ...contactData,
     website: contactData.website || '',
+    businessName: contactData.businessName || '',
+    email: contactData.email || '',
+    keywords: generateKeywords(contactData.name, contactData.email || '', contactData.businessName),
   };
   const docRef = await addDoc(collection(db, CONTACTS_COLLECTION), dataToSave);
   
@@ -79,8 +101,23 @@ export async function addContact(contactData: Omit<Contact, 'id'>): Promise<Cont
 export async function updateContact(contactId: string, contactData: Partial<Omit<Contact, 'id' | 'userId'>>): Promise<void> {
     const db = await getDb();
     const contactRef = doc(db, CONTACTS_COLLECTION, contactId);
-    // This now correctly passes the entire partial data object to Firestore for updating.
-    await updateDoc(contactRef, contactData);
+
+    const dataToUpdate: {[key: string]: any} = { ...contactData };
+    
+    // If name, email, or businessName is being updated, regenerate keywords
+    if (contactData.name || contactData.email || contactData.businessName) {
+        // We need the existing data to generate the full keyword set
+        const currentDoc = await getDoc(contactRef);
+        if (currentDoc.exists()) {
+            const currentData = currentDoc.data();
+            const newName = contactData.name ?? currentData.name;
+            const newEmail = contactData.email ?? currentData.email;
+            const newBusinessName = contactData.businessName ?? currentData.businessName;
+            dataToUpdate.keywords = generateKeywords(newName, newEmail, newBusinessName);
+        }
+    }
+
+    await updateDoc(contactRef, dataToUpdate);
 }
 
 
@@ -89,7 +126,6 @@ export async function deleteContacts(contactIds: string[]): Promise<void> {
     if (contactIds.length === 0) return;
     const batch = writeBatch(db);
     
-    // Firestore 'in' query supports up to 30 elements. For more, chunking is needed.
     for (let i = 0; i < contactIds.length; i += 30) {
       const chunk = contactIds.slice(i, i + 30);
       const accountsQuery = query(collection(db, CLIENT_ACCOUNTS_COLLECTION), where('contactId', 'in', chunk));

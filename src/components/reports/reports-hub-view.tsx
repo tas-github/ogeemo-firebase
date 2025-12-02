@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -20,6 +21,7 @@ import {
   Activity,
   Briefcase,
   ListTodo,
+  ShieldCheck,
 } from "lucide-react";
 import { AccountingPageHeader } from "../accounting/page-header";
 
@@ -73,6 +75,13 @@ export function ReportsHubView() {
       description: "Generate a statement of business activities based on your income and expense ledger data.",
       cta: "View Statement",
       href: "/accounting/reports/income-statement",
+    },
+     {
+      icon: ShieldCheck,
+      title: "Tax Center",
+      description: "Your hub for generating tax forms and reviewing sales tax and payroll remittance information.",
+      cta: "Go to Tax Center",
+      href: "/accounting/tax",
     },
   ];
 

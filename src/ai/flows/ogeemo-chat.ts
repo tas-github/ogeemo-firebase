@@ -9,21 +9,17 @@
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { MessageData } from 'genkit';
+import { MessageData } from 'genkit'; // Import MessageData here, on the server
 import { addContact } from '@/services/contact-service';
 import fs from 'fs';
 import path from 'path';
 
 // Schemas
 
-const messageContentSchema = z.object({
-  text: z.string(),
-  // Assuming content can only be text for now. Add other types if needed.
-});
-
+// This schema defines the structure of the history objects the client will send.
 const clientMessageSchema = z.object({
     role: z.enum(['user', 'model']),
-    content: z.array(messageContentSchema),
+    content: z.array(z.object({ text: z.string() })),
 });
 
 
@@ -35,9 +31,9 @@ const OgeemoAgentInputSchema = z.object({
 export type OgeemoAgentInput = z.infer<typeof OgeemoAgentInputSchema>;
 
 const ContactInputSchema = z.object({
-  firstName: z.string().describe('The first name of the contact'),
-  lastName: z.string().describe('The last name of the contact'),
-  email: z.string().email().describe('The email address of the contact'),
+  firstName: z.string().optional().describe('The first name of the contact'),
+  lastName: z.string().optional().describe('The last name of the contact'),
+  email: z.string().email().optional().describe('The email address of the contact'),
   phone: z.string().optional().describe('The primary phone number for the contact. This will be stored as a cell phone.'),
   company: z.string().optional().describe('The company the contact works for'),
   notes: z.string().optional().describe('Any additional notes about the contact'),
@@ -60,25 +56,31 @@ const addContactTool = ai.defineTool(
     }),
   },
   async (input) => {
-    const { userId, ...contactDetails } = input;
+    const { userId, firstName, lastName, email, ...otherDetails } = input;
+    
     if (!userId) {
       return { success: false, message: "Error: User is not authenticated." };
     }
+    
+    if (!firstName || !lastName || !email) {
+        return { success: false, message: "I can help with that, but I need a first name, last name, and email address to create a new contact." };
+    }
+
     try {
       const newContact = await addContact({
-        name: `${contactDetails.firstName} ${contactDetails.lastName}`,
-        email: contactDetails.email,
-        businessName: contactDetails.company || '',
-        cellPhone: contactDetails.phone || '',
+        name: `${firstName} ${lastName}`,
+        email: email,
+        businessName: otherDetails.company || '',
+        cellPhone: otherDetails.phone || '',
         primaryPhoneType: 'cellPhone',
-        notes: contactDetails.notes || '',
+        notes: otherDetails.notes || '',
         userId: userId,
         folderId: '', // Defaulting to root
       });
       return {
         success: true,
         contactId: newContact.id,
-        message: `Successfully added contact ${contactDetails.firstName} ${contactDetails.lastName}.`,
+        message: `Successfully added contact ${firstName} ${lastName}.`,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
@@ -130,7 +132,12 @@ const ogeemoAgentFlow = ai.defineFlow(
   async (input) => {
     const { userId, message, history } = input;
 
-    const conversationHistory: MessageData[] = (history as MessageData[]) || [];
+    // Convert the client-safe history objects to Genkit's MessageData objects
+    const conversationHistory: MessageData[] = history?.map(msg => new MessageData({
+        role: msg.role,
+        content: msg.content.map(c => ({ text: c.text }))
+    })) || [];
+
     const messages: MessageData[] = [
       ...conversationHistory,
       { role: 'user', content: [{ text: message }] }
@@ -139,23 +146,30 @@ const ogeemoAgentFlow = ai.defineFlow(
     const knowledgeBase = getKnowledgeBase();
     const finalSystemPrompt = systemPromptTemplate.replace('{{knowledgeBase}}', knowledgeBase);
 
-    const result = await ai.generate({
-      model: 'googleai/gemini-1.5-flash',
-      messages: messages,
-      tools: [addContactTool],
-      toolConfig: {
-        commonData: {
-            userId,
-        },
-      },
-      system: finalSystemPrompt,
-      config: {
-        temperature: 0.1,
-      },
-    });
+    try {
+        const result = await ai.generate({
+          model: 'googleai/gemini-1.5-flash',
+          messages: messages,
+          tools: [addContactTool],
+          toolConfig: {
+            commonData: {
+                userId,
+            },
+          },
+          system: finalSystemPrompt,
+          config: {
+            temperature: 0.1,
+          },
+        });
 
-    return {
-      reply: result.text,
-    };
+        return {
+          reply: result.text,
+        };
+    } catch (error: any) {
+        console.error("[ogeemoAgentFlow] Error during AI generation:", error);
+        return {
+            reply: "Sorry, I encountered an internal error. Could you try rephrasing your request or check the server logs for more details?"
+        }
+    }
   }
 );

@@ -94,10 +94,10 @@ export default function TaxCenterPage() {
     { 
       icon: Users, 
       title: "Payroll Remittances", 
-      description: "View and manage your payroll tax and source deduction remittances. (Coming Soon)", 
-      href: "#", 
+      description: "View and manage your payroll tax and source deduction remittances.", 
+      href: "/accounting/tax/payroll-remittances", 
       cta: "Manage Payroll Tax",
-      disabled: true,
+      disabled: false,
     },
   ];
 

@@ -117,6 +117,51 @@
         },
         "required": ["vendor", "dueDate", "totalAmount", "category", "userId"]
     },
+    "PayrollRun": {
+      "title": "Payroll Run",
+      "description": "Represents a single, processed payroll run.",
+      "type": "object",
+      "properties": {
+        "payPeriodStart": { "type": "string", "format": "date" },
+        "payPeriodEnd": { "type": "string", "format": "date" },
+        "payDate": { "type": "string", "format": "date" },
+        "totalGrossPay": { "type": "number" },
+        "totalDeductions": { "type": "number" },
+        "totalNetPay": { "type": "number" },
+        "employeeCount": { "type": "integer" },
+        "userId": { "type": "string" }
+      },
+      "required": ["payPeriodStart", "payPeriodEnd", "payDate", "totalGrossPay", "totalDeductions", "totalNetPay", "employeeCount", "userId"]
+    },
+    "PayrollRunDetail": {
+      "title": "Payroll Run Detail",
+      "description": "Represents the payroll details for a single employee within a payroll run.",
+      "type": "object",
+      "properties": {
+        "runId": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "grossPay": { "type": "number" },
+        "deductions": { "type": "number" },
+        "netPay": { "type": "number" }
+      },
+      "required": ["runId", "employeeId", "employeeName", "grossPay", "deductions", "netPay"]
+    },
+    "PayrollRemittance": {
+        "title": "Payroll Remittance",
+        "description": "Represents a payroll source deduction remittance to be paid to a government agency.",
+        "type": "object",
+        "properties": {
+            "payPeriodStart": { "type": "string", "format": "date" },
+            "payPeriodEnd": { "type": "string", "format": "date" },
+            "dueDate": { "type": "string", "format": "date" },
+            "amount": { "type": "number" },
+            "status": { "type": "string", "enum": ["Due", "Paid"] },
+            "paidDate": { "type": "string", "format": "date" },
+            "userId": { "type": "string" }
+        },
+        "required": ["payPeriodStart", "payPeriodEnd", "dueDate", "amount", "status", "userId"]
+    },
     "Asset": {
         "title": "Capital Asset",
         "description": "Represents a capital asset owned by the business.",
@@ -212,6 +257,18 @@
     "/payableBills/{billId}": {
         "schema": { "$ref": "#/entities/PayableBill" },
         "description": "Collection of all payable bills."
+    },
+    "/payrollRuns/{runId}": {
+      "schema": { "$ref": "#/entities/PayrollRun" },
+      "description": "Stores historical payroll run summaries."
+    },
+    "/payrollRuns/{runId}/details/{detailId}": {
+        "schema": { "$ref": "#/entities/PayrollRunDetail" },
+        "description": "Stores individual employee details for a specific payroll run."
+    },
+    "/payrollRemittances/{remittanceId}": {
+        "schema": { "$ref": "#/entities/PayrollRemittance" },
+        "description": "Collection of all payroll remittances."
     },
     "/assets/{assetId}": {
         "schema": { "$ref": "#/entities/Asset" },
