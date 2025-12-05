@@ -65,6 +65,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getContacts, deleteContacts, updateContact } from '@/services/contact-service';
 import { getCompanies, addCompany, type Company } from '@/services/accounting-service';
 import { getFolders, addFolder, updateFolder, deleteFolders } from '@/services/contact-folder-service';
+import { getIndustries, type Industry } from '@/services/industry-service';
 import { useAuth } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import {
@@ -100,6 +101,7 @@ export function ContactsView() {
   const [folders, setFolders] = useState<FolderData[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [customIndustries, setCustomIndustries] = useState<Industry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFolderId, setSelectedFolderId] = useState<string>('all');
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
@@ -131,14 +133,16 @@ export function ContactsView() {
         }
         setIsLoading(true);
         try {
-            const [fetchedFolders, fetchedContacts, fetchedCompanies] = await Promise.all([
+            const [fetchedFolders, fetchedContacts, fetchedCompanies, fetchedIndustries] = await Promise.all([
                 getFolders(user.uid),
                 getContacts(user.uid),
                 getCompanies(user.uid),
+                getIndustries(user.uid),
             ]);
             setFolders(fetchedFolders);
             setContacts(fetchedContacts);
             setCompanies(fetchedCompanies);
+            setCustomIndustries(fetchedIndustries);
 
             const rootFolder = fetchedFolders.find(f => !f.parentId);
             if(rootFolder) {
@@ -446,7 +450,7 @@ export function ContactsView() {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenuItem onSelect={() => { setNewFolderParentId(folder.id); setIsNewFolderDialogOpen(true); }}><FolderPlus className="mr-2 h-4 w-4" />Create subfolder</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => handleOpenNewFolderDialog(folder.id)}><FolderPlus className="mr-2 h-4 w-4" />Create subfolder</DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => handleStartRename(folder)}><Pencil className="mr-2 h-4 w-4" />Rename</DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="text-destructive" onSelect={(e) => { e.stopPropagation(); handleDeleteFolder(folder); }}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
@@ -473,7 +477,9 @@ export function ContactsView() {
     <>
       <div className="flex flex-col h-full">
         <header className="text-center py-4 sm:py-6 px-4 sm:px-6">
-          <h1 className="text-3xl font-bold font-headline text-primary">Ogeemo Contact Manager</h1>
+          <h1 className="text-3xl font-bold font-headline text-primary">
+            Ogeemo Contact Manager
+          </h1>
           <p className="text-muted-foreground">
             Manage your contacts and client relationships
           </p>
@@ -593,7 +599,7 @@ export function ContactsView() {
         </div>
       </div>
       
-      {isContactFormOpen && <ContactFormDialog isOpen={isContactFormOpen} onOpenChange={setIsContactFormOpen} contactToEdit={contactToEdit} selectedFolderId={selectedFolderId} folders={folders} onFoldersChange={setFolders} onSave={handleSaveContact} companies={companies} onCompaniesChange={setCompanies}/>}
+      {isContactFormOpen && <ContactFormDialog isOpen={isContactFormOpen} onOpenChange={setIsContactFormOpen} contactToEdit={contactToEdit} selectedFolderId={selectedFolderId} folders={folders} onFoldersChange={setFolders} onSave={handleSaveContact} companies={companies} onCompaniesChange={setCompanies} customIndustries={customIndustries} onCustomIndustriesChange={setCustomIndustries} />}
 
       <Dialog open={isNewFolderDialogOpen} onOpenChange={setIsNewFolderDialogOpen}>
           <DialogContent className="sm:max-w-md">

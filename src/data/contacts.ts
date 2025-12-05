@@ -5,7 +5,7 @@ export interface Contact {
   email: string;
   website?: string;
   businessName?: string;
-  businessType?: string;
+  industryCode?: string;
   streetAddress?: string;
   city?: string;
   provinceState?: string;
@@ -26,6 +26,7 @@ export interface Contact {
   folderId: string;
   notes?: string;
   userId: string;
+  keywords?: string[];
 }
 
 export interface FolderData {

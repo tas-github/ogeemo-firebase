@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -9,6 +10,18 @@
         "displayName": { "type": "string" },
         "photoURL": { "type": "string", "format": "uri" }
       }
+    },
+    "Contact": {
+        "title": "Contact",
+        "description": "Represents a contact, which can be a person or a business.",
+        "type": "object",
+        "properties": {
+            "name": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "businessName": { "type": "string" },
+            "userId": { "type": "string" }
+        },
+        "required": ["name", "userId"]
     },
     "Invoice": {
         "title": "Invoice",
@@ -224,6 +237,17 @@
         "userId": { "type": "string" }
       },
       "required": ["name", "userId"]
+    },
+    "Industry": {
+      "title": "Industry",
+      "description": "Represents a custom NAICS industry category.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "description": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["code", "description", "userId"]
     }
   },
   "auth": {
@@ -233,6 +257,10 @@
     "/users/{userId}": {
       "schema": { "$ref": "#/entities/UserProfile" },
       "description": "Stores user profile data."
+    },
+    "/contacts/{contactId}": {
+        "schema": { "$ref": "#/entities/Contact" },
+        "description": "Collection of all contacts."
     },
     "/invoices/{invoiceId}": {
         "schema": { "$ref": "#/entities/Invoice" },
@@ -289,6 +317,12 @@
     "/incomeCategories/{categoryId}": {
       "schema": { "$ref": "#/entities/IncomeCategory" },
       "description": "Stores user-defined income categories."
+    },
+    "/industries/{industryId}": {
+      "schema": { "$ref": "#/entities/Industry" },
+      "description": "Stores user-defined custom industries."
     }
   }
 }
+
+    

@@ -60,6 +60,7 @@ export function TaxCategoriesView() {
       category: Category | null;
   }>({ isOpen: false, type: null, mode: 'add', category: null });
   const [categoryName, setCategoryName] = useState('');
+  const [categoryNumber, setCategoryNumber] = useState('');
 
   const [categoryToDelete, setCategoryToDelete] = useState<{ category: Category; type: CategoryType } | null>(null);
   const [bulkDeleteType, setBulkDeleteType] = useState<CategoryType | null>(null);
@@ -102,6 +103,7 @@ export function TaxCategoriesView() {
   const openDialog = (type: CategoryType, mode: 'add' | 'edit', category: Category | null = null) => {
     setDialogState({ isOpen: true, type, mode, category });
     setCategoryName(mode === 'edit' && category ? category.name : '');
+    setCategoryNumber(mode === 'edit' && category ? category.categoryNumber || '' : '');
   };
   
   const handleSave = async () => {
@@ -113,20 +115,20 @@ export function TaxCategoriesView() {
     try {
         if (dialogState.mode === 'add') {
             if (dialogState.type === 'income') {
-                const newCat = await addIncomeCategory({ name: categoryName.trim(), userId: user.uid });
+                const newCat = await addIncomeCategory({ name: categoryName.trim(), userId: user.uid, categoryNumber: categoryNumber.trim() });
                 setIncomeCategories(prev => [...prev, newCat].sort((a,b) => a.name.localeCompare(b.name)));
             } else {
-                const newCat = await addExpenseCategory({ name: categoryName.trim(), userId: user.uid });
+                const newCat = await addExpenseCategory({ name: categoryName.trim(), userId: user.uid, categoryNumber: categoryNumber.trim() });
                 setExpenseCategories(prev => [...prev, newCat].sort((a,b) => a.name.localeCompare(b.name)));
             }
             toast({ title: 'Category Added' });
         } else if (dialogState.category) { // Edit mode
             if (dialogState.type === 'income') {
-                await updateIncomeCategory(dialogState.category.id, { name: categoryName.trim() });
-                setIncomeCategories(prev => prev.map(c => c.id === dialogState.category!.id ? {...c, name: categoryName.trim()} : c));
+                await updateIncomeCategory(dialogState.category.id, { name: categoryName.trim(), categoryNumber: categoryNumber.trim() });
+                setIncomeCategories(prev => prev.map(c => c.id === dialogState.category!.id ? {...c, name: categoryName.trim(), categoryNumber: categoryNumber.trim() } : c));
             } else {
-                await updateExpenseCategory(dialogState.category.id, { name: categoryName.trim() });
-                setExpenseCategories(prev => prev.map(c => c.id === dialogState.category!.id ? {...c, name: categoryName.trim()} : c));
+                await updateExpenseCategory(dialogState.category.id, { name: categoryName.trim(), categoryNumber: categoryNumber.trim() });
+                setExpenseCategories(prev => prev.map(c => c.id === dialogState.category!.id ? {...c, name: categoryName.trim(), categoryNumber: categoryNumber.trim() } : c));
             }
             toast({ title: 'Category Updated' });
         }
@@ -226,7 +228,6 @@ export function TaxCategoriesView() {
     } else if (isStandardExpense) {
         setExplanation(isStandardExpense.explanation);
     } else {
-        // In a real app, this would be part of the category object fetched from DB
         setExplanation((category as any).explanation || `This is a custom category. Add your explanation here to ensure consistent transaction logging.`);
     }
   };
@@ -318,9 +319,16 @@ export function TaxCategoriesView() {
               <DialogHeader>
                   <DialogTitle>{dialogState.mode === 'add' ? 'Add' : 'Edit'} {dialogState.type} Category</DialogTitle>
               </DialogHeader>
-              <div className="py-4">
-                <Label htmlFor="category-name">Category Name</Label>
-                <Input id="category-name" value={categoryName} onChange={(e) => setCategoryName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSave() }} />
+              <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="category-name">Category Name</Label>
+                    <Input id="category-name" value={categoryName} onChange={(e) => setCategoryName(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="category-number">Category Number (Optional)</Label>
+                    <Input id="category-number" value={categoryNumber} onChange={(e) => setCategoryNumber(e.target.value)} placeholder="e.g., C-101" />
+                    <p className="text-xs text-muted-foreground">If left blank, a custom number will be assigned automatically.</p>
+                </div>
               </div>
               <DialogFooter>
                   <Button variant="ghost" onClick={() => setDialogState({ isOpen: false, type: null, mode: 'add', category: null })}>Cancel</Button>

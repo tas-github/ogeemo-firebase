@@ -12,7 +12,8 @@ import {
     query, 
     where, 
     writeBatch,
-    Timestamp 
+    Timestamp,
+    getDoc,
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
 import type { Contact } from '@/data/contacts';
@@ -34,7 +35,14 @@ async function getDb() {
     return db;
 }
 
-const docToContact = (doc: any): Contact => ({ id: doc.id, ...doc.data() } as Contact);
+const docToContact = (doc: any): Contact => {
+    const data = doc.data();
+    return { 
+        id: doc.id, 
+        ...data,
+    } as Contact;
+};
+
 
 const generateKeywords = (name: string, email: string, businessName?: string): string[] => {
     const keywords = new Set<string>();
@@ -89,8 +97,10 @@ export async function addContact(contactData: Omit<Contact, 'id'>): Promise<Cont
     website: contactData.website || '',
     businessName: contactData.businessName || '',
     email: contactData.email || '',
+    industryCode: contactData.industryCode || '',
     keywords: generateKeywords(contactData.name, contactData.email || '', contactData.businessName),
   };
+
   const docRef = await addDoc(collection(db, CONTACTS_COLLECTION), dataToSave);
   
   await createClientAccount(contactData.userId, docRef.id, contactData.name);
@@ -104,9 +114,7 @@ export async function updateContact(contactId: string, contactData: Partial<Omit
 
     const dataToUpdate: {[key: string]: any} = { ...contactData };
     
-    // If name, email, or businessName is being updated, regenerate keywords
     if (contactData.name || contactData.email || contactData.businessName) {
-        // We need the existing data to generate the full keyword set
         const currentDoc = await getDoc(contactRef);
         if (currentDoc.exists()) {
             const currentData = currentDoc.data();

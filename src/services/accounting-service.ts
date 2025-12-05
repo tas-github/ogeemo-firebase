@@ -513,25 +513,33 @@ async function getCategories<T extends BaseCategory>(userId: string, collectionN
 export async function getIncomeCategories(userId: string): Promise<IncomeCategory[]> {
   return getCategories<IncomeCategory>(userId, INCOME_CATEGORIES_COLLECTION, t2125IncomeCategories, docToIncomeCategory);
 }
-export async function addIncomeCategory(data: Omit<IncomeCategory, 'id' | 'categoryNumber' | 'isArchived'>): Promise<IncomeCategory> {
+
+export async function addIncomeCategory(data: { name: string, userId: string, categoryNumber?: string }): Promise<IncomeCategory> {
   const db = await getDb();
-  const allCategories = await getIncomeCategories(data.userId);
+  const { name, userId, categoryNumber } = data;
   
-  const existingCategory = allCategories.find(c => c.name.toLowerCase() === data.name.trim().toLowerCase());
-  if (existingCategory) {
-      throw new Error(`An income category named "${data.name.trim()}" already exists.`);
+  if (!name.trim()) throw new Error("Category name cannot be empty.");
+
+  const allCategories = await getIncomeCategories(userId);
+  if (allCategories.some(c => c.name.toLowerCase() === name.trim().toLowerCase())) {
+    throw new Error(`An income category named "${name.trim()}" already exists.`);
   }
 
-  const customCategories = allCategories.filter(c => c.categoryNumber && c.categoryNumber.startsWith('C-'));
-  const highestCustomNum = customCategories.reduce((max, cat) => {
-    const num = parseInt(cat.categoryNumber!.substring(2));
-    return num > max ? num : max;
-  }, 0);
-  const newCategoryNumber = `C-${highestCustomNum + 1}`;
-  const dataToSave = { ...data, categoryNumber: newCategoryNumber, isArchived: false };
+  let finalCategoryNumber = categoryNumber?.trim();
+  if (!finalCategoryNumber) {
+    const customCategories = allCategories.filter(c => c.categoryNumber && c.categoryNumber.startsWith('C-'));
+    const highestCustomNum = customCategories.reduce((max, cat) => {
+      const num = parseInt(cat.categoryNumber!.substring(2));
+      return num > max ? num : max;
+    }, 0);
+    finalCategoryNumber = `C-${highestCustomNum + 1}`;
+  }
+
+  const dataToSave = { name: name.trim(), userId, categoryNumber: finalCategoryNumber, isArchived: false };
   const docRef = await addDoc(collection(db, INCOME_CATEGORIES_COLLECTION), dataToSave);
   return { id: docRef.id, ...dataToSave };
 }
+
 export async function updateIncomeCategory(id: string, data: Partial<Omit<IncomeCategory, 'id' | 'userId'>>): Promise<void> {
     const db = await getDb();
     await updateDoc(doc(db, INCOME_CATEGORIES_COLLECTION, id), data);
@@ -545,22 +553,29 @@ export async function deleteIncomeCategories(ids: string[]): Promise<void> {
 export async function getExpenseCategories(userId: string): Promise<ExpenseCategory[]> {
   return getCategories<ExpenseCategory>(userId, EXPENSE_CATEGORIES_COLLECTION, t2125ExpenseCategories, docToExpenseCategory);
 }
-export async function addExpenseCategory(data: Omit<ExpenseCategory, 'id' | 'categoryNumber' | 'isArchived'>): Promise<ExpenseCategory> {
-  const db = await getDb();
-  const allCategories = await getExpenseCategories(data.userId);
 
-  const existingCategory = allCategories.find(c => c.name.toLowerCase() === data.name.trim().toLowerCase());
-  if (existingCategory) {
-      throw new Error(`An expense category named "${data.name.trim()}" already exists.`);
+export async function addExpenseCategory(data: { name: string, userId: string, categoryNumber?: string }): Promise<ExpenseCategory> {
+  const db = await getDb();
+  const { name, userId, categoryNumber } = data;
+
+  if (!name.trim()) throw new Error("Category name cannot be empty.");
+
+  const allCategories = await getExpenseCategories(userId);
+  if (allCategories.some(c => c.name.toLowerCase() === name.trim().toLowerCase())) {
+      throw new Error(`An expense category named "${name.trim()}" already exists.`);
+  }
+  
+  let finalCategoryNumber = categoryNumber?.trim();
+  if (!finalCategoryNumber) {
+    const customCategories = allCategories.filter(c => c.categoryNumber && c.categoryNumber.startsWith('C-'));
+    const highestCustomNum = customCategories.reduce((max, cat) => {
+      const num = parseInt(cat.categoryNumber!.substring(2));
+      return num > max ? num : max;
+    }, 0);
+    finalCategoryNumber = `C-${highestCustomNum + 1}`;
   }
 
-  const customCategories = allCategories.filter(c => c.categoryNumber && c.categoryNumber.startsWith('C-'));
-  const highestCustomNum = customCategories.reduce((max, cat) => {
-    const num = parseInt(cat.categoryNumber!.substring(2));
-    return num > max ? num : max;
-  }, 0);
-  const newCategoryNumber = `C-${highestCustomNum + 1}`;
-  const dataToSave = { ...data, categoryNumber: newCategoryNumber, isArchived: false };
+  const dataToSave = { name: name.trim(), userId, categoryNumber: finalCategoryNumber, isArchived: false };
   const docRef = await addDoc(collection(db, EXPENSE_CATEGORIES_COLLECTION), dataToSave);
   return { id: docRef.id, ...dataToSave };
 }
