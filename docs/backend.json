@@ -19,6 +19,7 @@
             "name": { "type": "string" },
             "email": { "type": "string", "format": "email" },
             "businessName": { "type": "string" },
+            "craProgramAccountNumber": { "type": "string" },
             "userId": { "type": "string" }
         },
         "required": ["name", "userId"]
@@ -29,6 +30,7 @@
         "type": "object",
         "properties": {
             "invoiceNumber": { "type": "string" },
+            "businessNumber": { "type": "string" },
             "companyName": { "type": "string" },
             "contactId": { "type": "string" },
             "originalAmount": { "type": "number" },
@@ -67,6 +69,17 @@
             "userId": { "type": "string" }
         },
         "required": ["description", "price", "userId"]
+    },
+    "TaxType": {
+        "title": "Tax Type",
+        "description": "A user-defined tax type with a name and rate.",
+        "type": "object",
+        "properties": {
+            "name": { "type": "string" },
+            "rate": { "type": "number" },
+            "userId": { "type": "string" }
+        },
+        "required": ["name", "rate", "userId"]
     },
     "IncomeTransaction": {
         "title": "Income Transaction",
@@ -274,6 +287,10 @@
         "schema": { "$ref": "#/entities/ServiceItem" },
         "description": "Collection of reusable invoice items."
     },
+    "/taxTypes/{typeId}": {
+        "schema": { "$ref": "#/entities/TaxType" },
+        "description": "Collection of user-defined tax types."
+    },
     "/incomeTransactions/{transactionId}": {
         "schema": { "$ref": "#/entities/IncomeTransaction" },
         "description": "Collection of all income transactions."
@@ -324,5 +341,3 @@
     }
   }
 }
-
-    

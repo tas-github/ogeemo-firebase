@@ -6,6 +6,7 @@ export interface Contact {
   website?: string;
   businessName?: string;
   industryCode?: string;
+  craProgramAccountNumber?: string;
   streetAddress?: string;
   city?: string;
   provinceState?: string;
@@ -55,3 +56,5 @@ export const mockContacts: Readonly<Omit<Contact, 'userId'>[]> = [
   { id: 'c5', name: 'Eve Davis', email: 'eve@work.com', businessName: 'Global Tech', streetAddress: '1 Global Plaza', city: 'Tech City', provinceState: 'WA', postalCode: '44556', country: 'USA', businessPhone: '567-890-1234', faxNumber: '567-890-9999', primaryPhoneType: 'businessPhone', folderId: '2', notes: 'Prefers communication via email.' },
   { id: 'c6', name: 'Frank White', email: 'frank.lead@example.com', businessName: 'Innovate LLC', streetAddress: '2 Innovate Road', city: 'Startup Valley', provinceState: 'CA', postalCode: '77889', country: 'USA', cellPhone: '678-901-2345', primaryPhoneType: 'cellPhone', folderId: '3', notes: 'Follow up next week regarding the proposal.' },
 ];
+
+    

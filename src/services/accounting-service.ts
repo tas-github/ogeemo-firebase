@@ -58,6 +58,7 @@ export interface InvoiceLineItem {
 export interface Invoice {
   id: string;
   invoiceNumber: string;
+  businessNumber?: string;
   companyName: string;
   contactId: string;
   originalAmount: number;
@@ -80,6 +81,7 @@ const docToInvoice = (doc: any): Invoice => {
     return {
         id: doc.id,
         invoiceNumber: data.invoiceNumber,
+        businessNumber: data.businessNumber,
         companyName: data.companyName,
         contactId: data.contactId,
         originalAmount: data.originalAmount,
@@ -684,5 +686,43 @@ export async function deleteServiceItem(id: string): Promise<void> {
   await deleteDoc(doc(db, SERVICE_ITEMS_COLLECTION, id));
 }
 
+// --- Tax Type Interfaces & Functions ---
+export interface TaxType {
+  id: string;
+  name: string;
+  rate: number;
+  userId: string;
+}
 
+const TAX_TYPES_COLLECTION = 'taxTypes';
+const docToTaxType = (doc: any): TaxType => ({ id: doc.id, ...doc.data() } as TaxType);
+
+export async function getTaxTypes(userId: string): Promise<TaxType[]> {
+  const db = await getDb();
+  const q = query(collection(db, TAX_TYPES_COLLECTION), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(docToTaxType);
+}
+
+export async function addTaxType(data: Omit<TaxType, 'id'>): Promise<TaxType> {
+  const db = await getDb();
+  const docRef = await addDoc(collection(db, TAX_TYPES_COLLECTION), data);
+  return { id: docRef.id, ...data };
+}
+
+export async function updateTaxType(id: string, data: Partial<Omit<TaxType, 'id' | 'userId'>>): Promise<void> {
+  const db = await getDb();
+  const docRef = doc(db, TAX_TYPES_COLLECTION, id);
+  await updateDoc(docRef, data);
+}
+
+export async function deleteTaxType(id: string): Promise<void> {
+  const db = await getDb();
+  const docRef = doc(db, TAX_TYPES_COLLECTION, id);
+  await deleteDoc(docRef);
+}
     
+export async function addRemittance(remittance: any) {
+    const db = await getDb();
+    await addDoc(collection(db, 'payrollRemittances'), remittance);
+}

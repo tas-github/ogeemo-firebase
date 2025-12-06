@@ -82,6 +82,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import Link from 'next/link';
 
 const ContactFormDialog = dynamic(() => import('@/components/contacts/contact-form-dialog'), {
+  ssr: false,
   loading: () => (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <LoaderCircle className="h-10 w-10 animate-spin text-white" />
@@ -372,21 +373,13 @@ export function ContactsView() {
   };
   
   const handleCreateFolder = async () => {
-    if (!user || !newFolderName.trim()) {
-        toast({ variant: "destructive", title: "Folder name is required." });
-        return;
-    }
+    if (!user || !newFolderName.trim()) return;
     try {
         const newFolder = await addFolder({ name: newFolderName.trim(), userId: user.uid, parentId: newFolderParentId });
-        setFolders(prev => [...prev, newFolder]);
-        if (newFolder.parentId) {
-            setExpandedFolders(p => new Set(p).add(newFolder.parentId!))
-        }
-        setIsNewFolderDialogOpen(false);
-        setNewFolderName("");
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Failed to create folder', description: e.message });
-    }
+        onFoldersChange([...folders, newFolder]);
+        handleSelectFolder(newFolder.id);
+    } catch(e: any) { toast({ variant: "destructive", title: "Failed", description: (e as Error).message }); }
+    finally { setIsNewFolderDialogOpen(false); setNewFolderName(""); }
   };
 
   const FolderTreeItem = ({ folder, allFolders, level = 0 }: { folder: FolderData, allFolders: FolderData[], level?: number }) => {

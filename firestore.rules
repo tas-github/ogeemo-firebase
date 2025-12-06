@@ -28,6 +28,10 @@ service cloud.firestore {
     match /serviceItems/{itemId} {
       allow read, write: if isOwner(resource.data.userId);
     }
+
+    match /taxTypes/{typeId} {
+      allow read, write: if isOwner(resource.data.userId);
+    }
     
     match /incomeTransactions/{transactionId} {
       allow read, write: if isOwner(resource.data.userId);
@@ -84,4 +88,5 @@ service cloud.firestore {
   }
 }
 
+    
     

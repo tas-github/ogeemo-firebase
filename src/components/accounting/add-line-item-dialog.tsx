@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -14,12 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { type ServiceItem } from '@/services/accounting-service';
+import { type ServiceItem, type TaxType } from '@/services/accounting-service';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandInput, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
-import { ChevronsUpDown, Check } from 'lucide-react';
+import { ChevronsUpDown, Check, Settings } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { ManageTaxTypesDialog } from './manage-tax-types-dialog';
 
 interface LineItem {
   id: string;
@@ -37,6 +39,8 @@ interface AddLineItemDialogProps {
   onSave: (newItem: LineItem) => void;
   serviceItems: ServiceItem[];
   onSaveRepeatable: (item: Omit<ServiceItem, 'id' | 'userId'>) => void;
+  taxTypes: TaxType[];
+  onTaxTypesChange: (taxTypes: TaxType[]) => void;
 }
 
 export function AddLineItemDialog({
@@ -46,6 +50,8 @@ export function AddLineItemDialog({
   onSave,
   serviceItems,
   onSaveRepeatable,
+  taxTypes,
+  onTaxTypesChange,
 }: AddLineItemDialogProps) {
   const [description, setDescription] = useState('');
   const [quantity, setQuantity] = useState<number | ''>(1);
@@ -55,6 +61,9 @@ export function AddLineItemDialog({
   const [saveAsRepeatable, setSaveAsRepeatable] = useState(false);
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isTaxTypePopoverOpen, setIsTaxTypePopoverOpen] = useState(false);
+  const [isManageTaxDialogOpen, setIsManageTaxDialogOpen] = useState(false);
+
   const { toast } = useToast();
   
   useEffect(() => {
@@ -120,7 +129,14 @@ export function AddLineItemDialog({
     setIsSearchOpen(false);
   };
 
+  const handleSelectTaxType = (taxType: TaxType) => {
+    setTaxType(taxType.name);
+    setTaxRate(taxType.rate);
+    setIsTaxTypePopoverOpen(false);
+  };
+
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
@@ -200,12 +216,35 @@ export function AddLineItemDialog({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
                 <Label htmlFor="taxType">Tax Type</Label>
-                <Input
-                  id="taxType"
-                  placeholder="e.g., HST"
-                  value={taxType}
-                  onChange={(e) => setTaxType(e.target.value)}
-                />
+                 <div className="flex gap-2">
+                    <Popover open={isTaxTypePopoverOpen} onOpenChange={setIsTaxTypePopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                                {taxType || 'Select a tax type...'}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                                <CommandInput placeholder="Search tax types..." />
+                                <CommandList>
+                                    <CommandEmpty>No tax type found.</CommandEmpty>
+                                    <CommandGroup>
+                                        {taxTypes.map(type => (
+                                            <CommandItem key={type.id} value={type.name} onSelect={() => handleSelectTaxType(type)}>
+                                                <Check className={cn("mr-2 h-4 w-4", taxType === type.name ? "opacity-100" : "opacity-0")}/>
+                                                {type.name} ({type.rate}%)
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                    <Button variant="outline" size="icon" onClick={() => setIsManageTaxDialogOpen(true)}>
+                        <Settings className="h-4 w-4"/>
+                    </Button>
+                 </div>
             </div>
             <div className="space-y-2">
                 <Label htmlFor="taxRate">Tax Rate (%)</Label>
@@ -229,5 +268,13 @@ export function AddLineItemDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    
+    <ManageTaxTypesDialog
+        isOpen={isManageTaxDialogOpen}
+        onOpenChange={setIsManageTaxDialogOpen}
+        taxTypes={taxTypes}
+        onTaxTypesChange={onTaxTypesChange}
+    />
+    </>
   );
 }

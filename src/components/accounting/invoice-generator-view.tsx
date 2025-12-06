@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -11,12 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { format, addDays } from 'date-fns';
-import { Plus, Trash2, Save, Eye, ChevronsUpDown, Check, LoaderCircle, X, Calendar as CalendarIcon, MoreVertical, Edit, Info } from 'lucide-react';
+import { Plus, Trash2, Save, Eye, ChevronsUpDown, Check, LoaderCircle, X, Calendar as CalendarIcon, MoreVertical, Edit, Info, FileDown, Settings } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { AccountingPageHeader } from './page-header';
 import { useAuth } from '@/context/auth-context';
-import { getInvoiceById, getLineItemsForInvoice, getServiceItems, type ServiceItem, addInvoiceWithLineItems, updateInvoiceWithLineItems, addServiceItem, deleteInvoice } from '@/services/accounting-service';
+import { getInvoiceById, getLineItemsForInvoice, getServiceItems, type ServiceItem, addInvoiceWithLineItems, updateInvoiceWithLineItems, addServiceItem, deleteInvoice, getTaxTypes, type TaxType, addTaxType } from '@/services/accounting-service';
 import { getContacts, type Contact } from '@/services/contact-service';
 import { getUserProfile, type UserProfile } from '@/services/user-profile-service';
 import { getFolders as getContactFolders, type FolderData } from '@/services/contact-folder-service';
@@ -32,6 +30,9 @@ import { AddLineItemDialog } from './add-line-item-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { ScrollArea } from '../ui/scroll-area';
+import { getIndustries, type Industry } from '@/services/industry-service';
+import { ManageTaxTypesDialog } from './manage-tax-types-dialog';
+import Link from 'next/link';
 
 
 interface LineItem {
@@ -66,11 +67,14 @@ export function InvoiceGeneratorView() {
   const [contactFolders, setContactFolders] = useState<FolderData[]>([]);
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [customIndustries, setCustomIndustries] = useState<Industry[]>([]);
+  const [taxTypes, setTaxTypes] = useState<TaxType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
   const [invoiceToEditId, setInvoiceToEditId] = useState<string | null>(null);
   const [invoiceNumber, setInvoiceNumber] = useState(`INV-${Date.now().toString().slice(-6)}`);
+  const [businessNumber, setBusinessNumber] = useState('');
   const [invoiceDate, setInvoiceDate] = useState<Date>(new Date());
   const [dueDate, setDueDate] = useState<Date>(addDays(new Date(), 14));
   const [paymentTermsDays, setPaymentTermsDays] = useState('14');
@@ -83,6 +87,8 @@ export function InvoiceGeneratorView() {
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [isAddLineItemDialogOpen, setIsAddLineItemDialogOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<LineItem | null>(null);
+
+  const [isManageTaxDialogOpen, setIsManageTaxDialogOpen] = useState(false);
 
 
   const [contactFormInitialData, setContactFormInitialData] = useState<Partial<Contact>>({});
@@ -100,6 +106,15 @@ export function InvoiceGeneratorView() {
     return contacts.filter(c => c.businessName === company.name);
   }, [selectedCompanyId, companies, contacts]);
   
+  useEffect(() => {
+    const contact = contacts.find(c => c.id === selectedContactId);
+    if (contact) {
+      setBusinessNumber(contact.craProgramAccountNumber || userProfile?.businessNumber || '');
+    } else {
+      setBusinessNumber(userProfile?.businessNumber || '');
+    }
+  }, [selectedContactId, contacts, userProfile]);
+
   const handleCompanyChange = (companyId: string) => {
     setSelectedCompanyId(companyId);
     setSelectedContactId(null);
@@ -120,6 +135,7 @@ export function InvoiceGeneratorView() {
           }
 
           setInvoiceNumber(invoiceData.invoiceNumber);
+          setBusinessNumber(invoiceData.businessNumber || '');
           setInvoiceDate(new Date(invoiceData.invoiceDate));
           setDueDate(new Date(invoiceData.dueDate));
           
@@ -164,25 +180,31 @@ export function InvoiceGeneratorView() {
                 fetchedServiceItems, 
                 fetchedFolders,
                 fetchedProfile,
+                fetchedCustomIndustries,
+                fetchedTaxTypes,
             ] = await Promise.all([
                 getCompanies(user.uid),
                 getContacts(user.uid),
                 getServiceItems(user.uid),
                 getContactFolders(user.uid),
                 getUserProfile(user.uid),
+                getIndustries(user.uid),
+                getTaxTypes(user.uid),
             ]);
             setCompanies(fetchedCompanies);
             setContacts(fetchedContacts);
             setServiceItems(fetchedServiceItems);
             setContactFolders(fetchedFolders);
             setUserProfile(fetchedProfile);
+            setCustomIndustries(fetchedCustomIndustries);
+            setTaxTypes(fetchedTaxTypes);
+            setBusinessNumber(fetchedProfile?.businessNumber || '');
 
             const invoiceId = localStorage.getItem(EDIT_INVOICE_ID_KEY);
             if (invoiceId) {
                 setInvoiceToEditId(invoiceId);
                 await loadInvoiceForEditing(invoiceId, fetchedCompanies, fetchedContacts);
-            } else {
-                setIsLoading(false);
+                return; // Exit after loading specific invoice
             }
             
             const invoiceReportDataRaw = sessionStorage.getItem(INVOICE_FROM_REPORT_KEY);
@@ -196,11 +218,38 @@ export function InvoiceGeneratorView() {
                 setSelectedContactId(contactId);
                 setLineItems(reportLineItems.map((item: any, index: number) => ({ ...item, id: `report_${index}` })));
                 sessionStorage.removeItem(INVOICE_FROM_REPORT_KEY);
+                return; // Exit after loading from report
+            }
+            
+            // Check for preview data if no other data source was found
+            const previewDataRaw = sessionStorage.getItem(INVOICE_PREVIEW_KEY);
+            if (previewDataRaw) {
+                const data = JSON.parse(previewDataRaw);
+                setInvoiceNumber(data.invoiceNumber);
+                setBusinessNumber(data.businessNumber || '');
+                setInvoiceDate(new Date(data.invoiceDate));
+                setDueDate(new Date(data.dueDate));
+                const company = fetchedCompanies.find(c => c.name === data.companyName);
+                if (company) {
+                    const contact = fetchedContacts.find(c => c.businessName === company.name);
+                    setSelectedCompanyId(company.id);
+                    if (contact) setSelectedContactId(contact.id);
+                } else {
+                     const contact = fetchedContacts.find(c => c.name === data.companyName);
+                     if (contact) {
+                         setSelectedCompanyId(INDIVIDUAL_CONTACTS_ID);
+                         setSelectedContactId(contact.id);
+                     }
+                }
+                setLineItems(data.lineItems || []);
+                setNotes(data.notes || "Thank you for your business!");
+                sessionStorage.removeItem(INVOICE_PREVIEW_KEY); // Clear after loading
             }
 
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
-            setIsLoading(false);
+        } finally {
+             setIsLoading(false);
         }
     }
     loadData();
@@ -258,6 +307,7 @@ export function InvoiceGeneratorView() {
     
     const invoiceData = {
         invoiceNumber,
+        businessNumber,
         companyName,
         contactId: selectedContactId!,
         originalAmount: total,
@@ -302,6 +352,7 @@ export function InvoiceGeneratorView() {
     localStorage.removeItem(EDIT_INVOICE_ID_KEY);
     setInvoiceToEditId(null);
     setInvoiceNumber(`INV-${Date.now().toString().slice(-6)}`);
+    setBusinessNumber(userProfile?.businessNumber || '');
     setInvoiceDate(new Date());
     setDueDate(addDays(new Date(), 14));
     setPaymentTermsDays('14');
@@ -360,12 +411,13 @@ export function InvoiceGeneratorView() {
     setIsAddLineItemDialogOpen(true);
   };
   
-  const handlePreview = () => {
+  const preparePreviewData = () => {
     const selectedContact = contacts.find(c => c.id === selectedContactId);
     const companyName = companies.find(c => c.id === selectedCompanyId)?.name || selectedContact?.name;
 
-    const previewData = {
+    return {
         invoiceNumber,
+        businessNumber,
         invoiceDate: invoiceDate.toISOString(),
         dueDate: dueDate.toISOString(),
         companyName: companyName || 'Client Name',
@@ -380,12 +432,25 @@ export function InvoiceGeneratorView() {
         lineItems,
         notes,
     };
-    
+  }
+  
+  const handlePreview = () => {
+    const previewData = preparePreviewData();
     try {
         sessionStorage.setItem(INVOICE_PREVIEW_KEY, JSON.stringify(previewData));
         router.push('/accounting/invoices/preview');
     } catch(e) {
         toast({ variant: 'destructive', title: 'Could not generate preview', description: 'There was an error preparing the preview data.'});
+    }
+  };
+
+  const handlePrint = () => {
+    const previewData = preparePreviewData();
+    try {
+        sessionStorage.setItem(INVOICE_PREVIEW_KEY, JSON.stringify(previewData));
+        router.push('/accounting/invoices/preview?action=print');
+    } catch(e) {
+        toast({ variant: 'destructive', title: 'Could not generate print preview', description: 'There was an error preparing the data.'});
     }
   };
   
@@ -395,7 +460,14 @@ export function InvoiceGeneratorView() {
       <div className="p-4 sm:p-6 space-y-6">
         <AccountingPageHeader pageTitle="Create Invoice" />
         <header className="text-center">
-          <h1 className="text-3xl font-bold font-headline text-primary">Create an Invoice</h1>
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="text-3xl font-bold font-headline text-primary">Create an Invoice</h1>
+            <Button asChild variant="ghost" size="icon">
+                <Link href="/accounting/invoices/instructions">
+                    <Info className="h-5 w-5" />
+                </Link>
+            </Button>
+          </div>
           <p className="text-muted-foreground max-w-2xl mx-auto">
             Generate professional invoices by selecting a client and adding line items.
           </p>
@@ -410,6 +482,7 @@ export function InvoiceGeneratorView() {
                         Save Invoice
                     </Button>
                     <Button variant="outline" onClick={handlePreview}><Eye className="mr-2 h-4 w-4" /> Preview</Button>
+                    <Button variant="outline" onClick={handlePrint}><FileDown className="mr-2 h-4 w-4" /> Download PDF</Button>
                 </div>
             </CardHeader>
             <CardContent>
@@ -443,6 +516,10 @@ export function InvoiceGeneratorView() {
                             <div className="space-y-2">
                                 <Label htmlFor="invoiceNumber">Invoice #</Label>
                                 <Input id="invoiceNumber" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="businessNumber">Business Number (BN)</Label>
+                                <Input id="businessNumber" value={businessNumber} onChange={e => setBusinessNumber(e.target.value)} />
                             </div>
                         </div>
                     </div>
@@ -480,7 +557,9 @@ export function InvoiceGeneratorView() {
                         </div>
                     </div>
                      <div>
-                        <Label>Line Items</Label>
+                        <div className="flex items-center justify-between mb-2">
+                            <Label>Line Items</Label>
+                        </div>
                         <div className="border rounded-md mt-2">
                             <Table>
                                 <TableHeader>
@@ -583,6 +662,8 @@ export function InvoiceGeneratorView() {
         onSave={handleSaveLineItem}
         serviceItems={serviceItems}
         onSaveRepeatable={handleSaveRepeatableItem}
+        taxTypes={taxTypes}
+        onTaxTypesChange={setTaxTypes}
     />
 
     {isContactFormOpen && 
@@ -591,12 +672,22 @@ export function InvoiceGeneratorView() {
             onOpenChange={setIsContactFormOpen}
             contactToEdit={null}
             folders={contactFolders}
+            onFoldersChange={setContactFolders}
             onSave={handleContactSave}
             companies={companies}
             onCompaniesChange={setCompanies}
             initialData={contactFormInitialData}
+            customIndustries={customIndustries}
+            onCustomIndustriesChange={setCustomIndustries}
         />
     }
+
+    <ManageTaxTypesDialog
+        isOpen={isManageTaxDialogOpen}
+        onOpenChange={setIsManageTaxDialogOpen}
+        taxTypes={taxTypes}
+        onTaxTypesChange={setTaxTypes}
+    />
   </>
   );
 }

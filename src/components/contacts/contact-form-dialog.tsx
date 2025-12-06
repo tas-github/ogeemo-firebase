@@ -62,6 +62,7 @@ const contactSchema = z.object({
   website: z.string().optional(),
   businessName: z.string().optional(),
   industryCode: z.string().optional(),
+  craProgramAccountNumber: z.string().optional(),
   streetAddress: z.string().optional(),
   city: z.string().optional(),
   provinceState: z.string().optional(),
@@ -108,6 +109,7 @@ const defaultFormValues: ContactFormData = {
   website: "",
   businessName: "",
   industryCode: "",
+  craProgramAccountNumber: "",
   streetAddress: "",
   city: "",
   provinceState: "",
@@ -168,7 +170,7 @@ export default function ContactFormDialog({
 
     const allIndustries = useMemo(() => {
         const standard = craIndustryCodes.map(i => ({...i, id: i.code}));
-        return [...standard, ...customIndustries].sort((a, b) => a.description.localeCompare(b.description));
+        return [...standard, ...(customIndustries || [])].sort((a, b) => a.description.localeCompare(b.description));
     }, [customIndustries]);
     
     const form = useForm<ContactFormData>({
@@ -355,272 +357,20 @@ export default function ContactFormDialog({
                         <ScrollArea className="flex-1">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 px-6 pb-4 bg-card">
                                 <FormField control={form.control} name="name" render={({ field }) => ( <FormItem className="flex flex-col"> <FormLabel>Contact Name <span className="text-destructive">*</span></FormLabel><div className="h-10 flex items-center"><FormControl><Input placeholder="John Doe" {...field} /></FormControl></div><FormMessage /></FormItem> )} />
-                                <FormField
-                                    control={form.control}
-                                    name="businessName"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-col">
-                                            <FormLabel>Company Name</FormLabel>
-                                            <div className='flex items-center h-10'>
-                                            <Popover open={isCompanyPopoverOpen} onOpenChange={setIsCompanyPopoverOpen}>
-                                                <PopoverTrigger asChild>
-                                                    <FormControl>
-                                                        <Button variant="outline" role="combobox" className="w-full justify-between h-10">
-                                                            <span className="truncate">{field.value || "Select a company..."}</span>
-                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
-                                                        </Button>
-                                                    </FormControl>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                    <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
-                                                        <CommandInput 
-                                                            placeholder="Search or create company..."
-                                                            value={companySearchValue}
-                                                            onValueChange={setCompanySearchValue}
-                                                        />
-                                                        <CommandList>
-                                                            <CommandEmpty>
-                                                                <div className="p-1">
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        className="w-full"
-                                                                        onClick={() => {
-                                                                            handleCreateCompany(companySearchValue);
-                                                                            setIsCompanyPopoverOpen(false);
-                                                                        }}
-                                                                    >
-                                                                        <Plus className="mr-2 h-4 w-4"/> Create "{companySearchValue}"
-                                                                    </Button>
-                                                                </div>
-                                                            </CommandEmpty>
-                                                            <CommandGroup>
-                                                                {companies.map(c => (
-                                                                    <CommandItem key={c.id} value={c.name} onSelect={() => { form.setValue('businessName', c.name); setIsCompanyPopoverOpen(false); }}>
-                                                                        <Check className={cn("mr-2 h-4 w-4", field.value === c.name ? 'opacity-100' : 'opacity-0')} />
-                                                                        {c.name}
-                                                                    </CommandItem>
-                                                                ))}
-                                                            </CommandGroup>
-                                                        </CommandList>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
-                                            </div>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="folderId"
-                                    render={({ field }) => (
-                                    <FormItem className="flex flex-col">
-                                        <FormLabel>Folder <span className="text-destructive">*</span></FormLabel>
-                                        <div className="flex gap-2 h-10 items-center">
-                                            <Select onValueChange={field.onChange} value={field.value} disabled={!!forceFolderId}>
-                                                <FormControl>
-                                                    <SelectTrigger><SelectValue placeholder="Select a folder" /></SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {folders.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                            <Button type="button" variant="outline" size="icon" onClick={() => setIsNewFolderDialogOpen(true)} disabled={!!forceFolderId}>
-                                                <FolderPlus className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="industryCode"
-                                    render={({ field }) => (
-                                    <FormItem className="flex flex-col">
-                                        <FormLabel>Industry (NAICS)</FormLabel>
-                                        <div className="flex gap-2 h-10 items-center">
-                                            <Popover open={isIndustryPopoverOpen} onOpenChange={setIsIndustryPopoverOpen}>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                <Button variant="outline" role="combobox" className="w-full justify-between">
-                                                    <span className="truncate">
-                                                    {field.value
-                                                        ? allIndustries.find(i => i.code === field.value)?.description
-                                                        : 'Select an industry...'}
-                                                    </span>
-                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                <Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}>
-                                                <CommandInput 
-                                                    placeholder="Search industry..."
-                                                    value={industrySearchValue}
-                                                    onValueChange={setIndustrySearchValue}
-                                                />
-                                                <CommandList>
-                                                    <CommandEmpty>No industry found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                    {allIndustries.map(i => {
-                                                        const isCustom = 'userId' in i;
-                                                        return (
-                                                            <CommandItem
-                                                                key={i.code}
-                                                                value={`${i.description} ${i.code}`}
-                                                                onSelect={() => { form.setValue('industryCode', i.code); setIsIndustryPopoverOpen(false); }}
-                                                                className="flex justify-between items-center group"
-                                                            >
-                                                                <div className="flex items-center">
-                                                                    <Check className={cn("mr-2 h-4 w-4", field.value === i.code ? 'opacity-100' : 'opacity-0')} />
-                                                                    <span>({i.code}) {i.description}</span>
-                                                                </div>
-                                                                {isCustom && (
-                                                                    <DropdownMenu>
-                                                                        <DropdownMenuTrigger asChild>
-                                                                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => e.stopPropagation()}>
-                                                                                <MoreVertical className="h-4 w-4"/>
-                                                                            </Button>
-                                                                        </DropdownMenuTrigger>
-                                                                        <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-                                                                            <DropdownMenuItem onSelect={() => handleOpenCreateIndustryDialog(i as Industry)}>
-                                                                                <Edit className="mr-2 h-4 w-4"/> Edit
-                                                                            </DropdownMenuItem>
-                                                                            <DropdownMenuItem onSelect={() => setIndustryToDelete(i as Industry)} className="text-destructive">
-                                                                                <Trash2 className="mr-2 h-4 w-4"/> Delete
-                                                                            </DropdownMenuItem>
-                                                                        </DropdownMenuContent>
-                                                                    </DropdownMenu>
-                                                                )}
-                                                            </CommandItem>
-                                                        );
-                                                    })}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                                </Command>
-                                            </PopoverContent>
-                                            </Popover>
-                                            <Button type="button" variant="outline" size="icon" onClick={() => handleOpenCreateIndustryDialog(null)}>
-                                                <Plus className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                <div className="md:col-span-2 space-y-2">
-                                    <Label>Business Address</Label>
-                                    <div className="space-y-2 p-4 border rounded-md">
-                                        <FormField control={form.control} name="streetAddress" render={({ field }) => ( <FormItem> <FormLabel>Street Address</FormLabel> <FormControl><Input placeholder="123 Main St" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                            <FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>City/Town</FormLabel> <FormControl><Input placeholder="Anytown" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                            <FormField control={form.control} name="provinceState" render={({ field }) => ( <FormItem> <FormLabel>Prov/State</FormLabel> <FormControl><Input placeholder="CA" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                            <FormField control={form.control} name="postalCode" render={({ field }) => ( <FormItem> <FormLabel>Postal/Zip</FormLabel> <FormControl><Input placeholder="12345" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                        </div>
-                                        <FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>Country</FormLabel> <FormControl><Input placeholder="USA" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                    </div>
-                                </div>
-                                
-                                <div className="md:col-span-2 space-y-2">
-                                    <Label>Home Address</Label>
-                                    <div className="space-y-2 p-4 border rounded-md">
-                                        <FormField control={form.control} name="homeAddress.street" render={({ field }) => ( <FormItem><FormLabel>Street</FormLabel><FormControl><Input placeholder="456 Home Ave" {...field} /></FormControl></FormItem> )} />
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-                                            <FormField control={form.control} name="homeAddress.city" render={({ field }) => ( <FormItem><FormLabel>City/Town</FormLabel><FormControl><Input placeholder="Hometown" {...field} /></FormControl></FormItem> )} />
-                                            <FormField control={form.control} name="homeAddress.provinceState" render={({ field }) => ( <FormItem><FormLabel>Prov./State</FormLabel><FormControl><Input placeholder="CA" {...field} /></FormControl></FormItem> )} />
-                                            <FormField control={form.control} name="homeAddress.country" render={({ field }) => ( <FormItem><FormLabel>Country</FormLabel><FormControl><Input placeholder="USA" {...field} /></FormControl></FormItem> )} />
-                                            <FormField control={form.control} name="homeAddress.postalCode" render={({ field }) => ( <FormItem><FormLabel>Postal/Zip</FormLabel><FormControl><Input placeholder="67890" {...field} /></FormControl></FormItem> )} />
-                                        </div>
-                                    </div>
-                                </div>
+                                <FormField control={form.control} name="businessName" render={({ field }) => ( <FormItem className="flex flex-col"> <FormLabel>Company Name</FormLabel><div className='flex items-center h-10'><Popover open={isCompanyPopoverOpen} onOpenChange={setIsCompanyPopoverOpen}><PopoverTrigger asChild><FormControl><Button variant="outline" role="combobox" className="w-full justify-between h-10"><span className="truncate">{field.value || "Select a company..."}</span><ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50"/></Button></FormControl></PopoverTrigger><PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}><CommandInput placeholder="Search or create company..." value={companySearchValue} onValueChange={setCompanySearchValue}/><CommandList><CommandEmpty><div className="p-1"><Button variant="outline" className="w-full" onClick={() => { handleCreateCompany(companySearchValue); setIsCompanyPopoverOpen(false); }}><Plus className="mr-2 h-4 w-4"/> Create "{companySearchValue}"</Button></div></CommandEmpty><CommandGroup>{companies.map(c => ( <CommandItem key={c.id} value={c.name} onSelect={() => { form.setValue('businessName', c.name); setIsCompanyPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", field.value === c.name ? 'opacity-100' : 'opacity-0')} /> {c.name}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent></Popover></div><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="folderId" render={({ field }) => ( <FormItem className="flex flex-col"> <FormLabel>Folder <span className="text-destructive">*</span></FormLabel> <div className="flex gap-2 h-10 items-center"><Select onValueChange={field.onChange} value={field.value} disabled={!!forceFolderId}><FormControl><SelectTrigger><SelectValue placeholder="Select a folder" /></SelectTrigger></FormControl><SelectContent>{folders.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select> <Button type="button" variant="outline" size="icon" onClick={() => setIsNewFolderDialogOpen(true)} disabled={!!forceFolderId}><FolderPlus className="h-4 w-4" /></Button></div><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="industryCode" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Industry (NAICS)</FormLabel><div className="flex gap-2 h-10 items-center"><Popover open={isIndustryPopoverOpen} onOpenChange={setIsIndustryPopoverOpen}><PopoverTrigger asChild><FormControl><Button variant="outline" role="combobox" className="w-full justify-between"><span className="truncate">{field.value ? allIndustries.find(i => i.code === field.value)?.description : 'Select an industry...'}</span><ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command filter={(value, search) => value.toLowerCase().includes(search.toLowerCase()) ? 1 : 0}><CommandInput placeholder="Search industry..." value={industrySearchValue} onValueChange={setIndustrySearchValue}/><CommandList><CommandEmpty>No industry found.</CommandEmpty><CommandGroup>{allIndustries.map(i => { const isCustom = 'userId' in i; return ( <CommandItem key={i.code} value={`${i.description} ${i.code}`} onSelect={() => { form.setValue('industryCode', i.code); setIsIndustryPopoverOpen(false); }} className="flex justify-between items-center group"> <div className="flex items-center"> <Check className={cn("mr-2 h-4 w-4", field.value === i.code ? 'opacity-100' : 'opacity-0')} /> <span>({i.code}) {i.description}</span></div> {isCustom && ( <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => e.stopPropagation()}><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent onClick={(e) => e.stopPropagation()}><DropdownMenuItem onSelect={() => handleOpenCreateIndustryDialog(i as Industry)}><Edit className="mr-2 h-4 w-4"/> Edit</DropdownMenuItem><DropdownMenuItem onSelect={() => setIndustryToDelete(i as Industry)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/> Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu>)}</CommandItem>);})}</CommandGroup></CommandList></Command></PopoverContent></Popover><Button type="button" variant="outline" size="icon" onClick={() => handleOpenCreateIndustryDialog(null)}><Plus className="h-4 w-4" /></Button></div><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="craProgramAccountNumber" render={({ field }) => ( <FormItem> <FormLabel>CRA Program Account #</FormLabel> <FormControl><Input placeholder="e.g., 123456789RP0001" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                                 <FormField control={form.control} name="email" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                                <div className="md:col-span-2 space-y-2"> <Label>Business Address</Label><div className="space-y-2 p-4 border rounded-md"><FormField control={form.control} name="streetAddress" render={({ field }) => ( <FormItem> <FormLabel>Street Address</FormLabel> <FormControl><Input placeholder="123 Main St" {...field} /></FormControl> <FormMessage /> </FormItem> )} /><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"><FormField control={form.control} name="city" render={({ field }) => ( <FormItem> <FormLabel>City/Town</FormLabel> <FormControl><Input placeholder="Anytown" {...field} /></FormControl> <FormMessage /> </FormItem> )} /><FormField control={form.control} name="provinceState" render={({ field }) => ( <FormItem> <FormLabel>Prov/State</FormLabel> <FormControl><Input placeholder="CA" {...field} /></FormControl> <FormMessage /> </FormItem> )} /><FormField control={form.control} name="postalCode" render={({ field }) => ( <FormItem> <FormLabel>Postal/Zip</FormLabel> <FormControl><Input placeholder="12345" {...field} /></FormControl> <FormMessage /> </FormItem> )} /></div><FormField control={form.control} name="country" render={({ field }) => ( <FormItem> <FormLabel>Country</FormLabel> <FormControl><Input placeholder="USA" {...field} /></FormControl> <FormMessage /> </FormItem> )} /></div></div>
+                                <div className="md:col-span-2 space-y-2"> <Label>Home Address</Label><div className="space-y-2 p-4 border rounded-md"><FormField control={form.control} name="homeAddress.street" render={({ field }) => ( <FormItem><FormLabel>Street</FormLabel><FormControl><Input placeholder="456 Home Ave" {...field} /></FormControl></FormItem> )} /><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4"><FormField control={form.control} name="homeAddress.city" render={({ field }) => ( <FormItem><FormLabel>City/Town</FormLabel><FormControl><Input placeholder="Hometown" {...field} /></FormControl></FormItem> )} /><FormField control={form.control} name="homeAddress.provinceState" render={({ field }) => ( <FormItem><FormLabel>Prov./State</FormLabel><FormControl><Input placeholder="CA" {...field} /></FormControl></FormItem> )} /><FormField control={form.control} name="homeAddress.country" render={({ field }) => ( <FormItem><FormLabel>Country</FormLabel><FormControl><Input placeholder="USA" {...field} /></FormControl></FormItem> )} /><FormField control={form.control} name="homeAddress.postalCode" render={({ field }) => ( <FormItem><FormLabel>Postal/Zip</FormLabel><FormControl><Input placeholder="67890" {...field} /></FormControl></FormItem> )} /></div></div></div>
                                 <FormField control={form.control} name="website" render={({ field }) => ( <FormItem> <FormLabel>Website</FormLabel> <FormControl><Input placeholder="https://example.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                <FormField control={form.control} name="businessPhone" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Business #</FormLabel>
-                                        <div className="relative">
-                                            <FormControl><Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} /></FormControl>
-                                            {field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:${field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Business</span></a></Button>}
-                                        </div>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="cellPhone" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Cell #</FormLabel>
-                                        <div className="relative">
-                                            <FormControl><Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} /></FormControl>
-                                            {field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:${field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Cell</span></a></Button>}
-                                        </div>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                <FormField control={form.control} name="homePhone" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Home #</FormLabel>
-                                        <div className="relative">
-                                            <FormControl><Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} /></FormControl>
-                                            {field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:${field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Home</span></a></Button>}
-                                        </div>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
+                                <FormField control={form.control} name="businessPhone" render={({ field }) => ( <FormItem><FormLabel>Business #</FormLabel><div className="relative"><FormControl><Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} /></FormControl>{field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:${field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Business</span></a></Button>}</div><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="cellPhone" render={({ field }) => ( <FormItem><FormLabel>Cell #</FormLabel><div className="relative"><FormControl><Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} /></FormControl>{field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:${field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Cell</span></a></Button>}</div><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="homePhone" render={({ field }) => ( <FormItem><FormLabel>Home #</FormLabel><div className="relative"><FormControl><Input placeholder="123-456-7890" {...field} className={field.value ? "pr-10" : ""} /></FormControl>{field.value && <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2" asChild><a href={`tel:${field.value}`}><Phone className="h-4 w-4" /><span className="sr-only">Call Home</span></a></Button>}</div><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="faxNumber" render={({ field }) => ( <FormItem> <FormLabel>Fax #</FormLabel> <FormControl><Input placeholder="123-456-7890" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                                
-                                <FormField
-                                    control={form.control}
-                                    name="primaryPhoneType"
-                                    render={({ field }) => (
-                                        <FormItem className="space-y-2 md:col-span-2">
-                                            <FormLabel>Best number to use</FormLabel>
-                                            <FormDescription>Select the best number to use for this contact.</FormDescription>
-                                            <FormControl>
-                                                <RadioGroup onValueChange={field.onChange} value={field.value || ""} className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                                    <FormItem className={cn("flex items-center space-x-3 space-y-0 rounded-md border p-2 transition-colors", field.value === 'businessPhone' ? "bg-primary/10 border-primary" : "")}>
-                                                        <FormControl><RadioGroupItem value="businessPhone" disabled={!businessPhoneValue} /></FormControl>
-                                                        <FormLabel className="font-normal w-full cursor-pointer">Business</FormLabel>
-                                                    </FormItem>
-                                                    <FormItem className={cn("flex items-center space-x-3 space-y-0 rounded-md border p-2 transition-colors", field.value === 'cellPhone' ? "bg-primary/10 border-primary" : "")}>
-                                                        <FormControl><RadioGroupItem value="cellPhone" disabled={!cellPhoneValue} /></FormControl>
-                                                        <FormLabel className="font-normal w-full cursor-pointer">Cell</FormLabel>
-                                                    </FormItem>
-                                                    <FormItem className={cn("flex items-center space-x-3 space-y-0 rounded-md border p-2 transition-colors", field.value === 'homePhone' ? "bg-primary/10 border-primary" : "")}>
-                                                        <FormControl><RadioGroupItem value="homePhone" disabled={!homePhoneValue} /></FormControl>
-                                                        <FormLabel className="font-normal w-full cursor-pointer">Home</FormLabel>
-                                                    </FormItem>
-                                                </RadioGroup>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="notes"
-                                    render={({ field }) => (
-                                        <FormItem className="md:col-span-2">
-                                            <FormLabel>Notes</FormLabel>
-                                            <FormDescription>Add any important notes about this contact, such as credit history or communication preferences.</FormDescription>
-                                            <div className="relative">
-                                                <FormControl><Textarea
-                                                    placeholder="Reference to information regarding the client.."
-                                                    className="resize-none pr-10"
-                                                    rows={5}
-                                                    {...field}
-                                                    ref={notesRef}
-                                                /></FormControl>
-                                                {preferences?.showDictationButton && (
-                                                    <Button type="button" variant={isListening ? 'destructive' : 'ghost'} size="icon" className="absolute bottom-2 right-2 h-8 w-8" onClick={handleDictateNotes} disabled={isSupported === false} title={isSupported === false ? "Voice not supported" : (isListening ? "Stop dictation" : "Dictate notes")}>
-                                                        {isListening ? <Square className="h-4 w-4 animate-pulse" /> : <Mic className="h-4 w-4" />}
-                                                        <span className="sr-only">{isListening ? "Stop dictation" : "Dictate notes"}</span>
-                                                    </Button>
-                                                )}
-                                            </div>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                <FormField control={form.control} name="primaryPhoneType" render={({ field }) => ( <FormItem className="space-y-2 md:col-span-2"><FormLabel>Best number to use</FormLabel><FormDescription>Select the best number to use for this contact.</FormDescription><FormControl><RadioGroup onValueChange={field.onChange} value={field.value || ""} className="grid grid-cols-1 sm:grid-cols-3 gap-2"><FormItem className={cn("flex items-center space-x-3 space-y-0 rounded-md border p-2 transition-colors", field.value === 'businessPhone' ? "bg-primary/10 border-primary" : "")}><FormControl><RadioGroupItem value="businessPhone" disabled={!businessPhoneValue} /></FormControl><FormLabel className="font-normal w-full cursor-pointer">Business</FormLabel></FormItem><FormItem className={cn("flex items-center space-x-3 space-y-0 rounded-md border p-2 transition-colors", field.value === 'cellPhone' ? "bg-primary/10 border-primary" : "")}><FormControl><RadioGroupItem value="cellPhone" disabled={!cellPhoneValue} /></FormControl><FormLabel className="font-normal w-full cursor-pointer">Cell</FormLabel></FormItem><FormItem className={cn("flex items-center space-x-3 space-y-0 rounded-md border p-2 transition-colors", field.value === 'homePhone' ? "bg-primary/10 border-primary" : "")}><FormControl><RadioGroupItem value="homePhone" disabled={!homePhoneValue} /></FormControl><FormLabel className="font-normal w-full cursor-pointer">Home</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="notes" render={({ field }) => ( <FormItem className="md:col-span-2"><FormLabel>Notes</FormLabel><FormDescription>Add any important notes about this contact, such as credit history or communication preferences.</FormDescription><div className="relative"><FormControl><Textarea placeholder="Reference to information regarding the client.." className="resize-none pr-10" rows={5} {...field} ref={notesRef}/></FormControl>{preferences?.showDictationButton && ( <Button type="button" variant={isListening ? 'destructive' : 'ghost'} size="icon" className="absolute bottom-2 right-2 h-8 w-8" onClick={handleDictateNotes} disabled={isSupported === false} title={isSupported === false ? "Voice not supported" : (isListening ? "Stop dictation" : "Dictate notes")}>{isListening ? <Square className="h-4 w-4 animate-pulse" /> : <Mic className="h-4 w-4" />}<span className="sr-only">{isListening ? "Stop dictation" : "Dictate notes"}</span></Button>)}</div><FormMessage /></FormItem>)}/>
                             </div>
                         </ScrollArea>
                         <DialogFooter className="p-6 border-t">

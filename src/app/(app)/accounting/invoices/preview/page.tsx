@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Logo } from '@/components/logo';
 import { Separator } from '@/components/ui/separator';
-import { Printer, Mail, ArrowLeft, LoaderCircle, AlertTriangle } from 'lucide-react';
+import { Printer, Mail, ArrowLeft, LoaderCircle, AlertTriangle, Edit, FileDown } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useReactToPrint } from '@/hooks/use-react-to-print';
 import type { UserProfile } from '@/services/user-profile-service';
@@ -34,6 +34,7 @@ interface Address {
 
 interface InvoiceData {
   invoiceNumber: string;
+  businessNumber?: string;
   companyName: string;
   contactAddress: Address;
   invoiceDate: string; // ISO string
@@ -65,6 +66,7 @@ export default function InvoicePreviewPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     const { handlePrint, contentRef } = useReactToPrint();
 
@@ -72,7 +74,8 @@ export default function InvoicePreviewPage() {
         try {
             const dataRaw = sessionStorage.getItem(INVOICE_PREVIEW_KEY);
             if (dataRaw) {
-                setInvoiceData(JSON.parse(dataRaw));
+                const parsedData = JSON.parse(dataRaw);
+                setInvoiceData(parsedData);
             } else {
                 setError('No invoice data found. Please return to the generator and click "Preview" again.');
             }
@@ -82,6 +85,15 @@ export default function InvoicePreviewPage() {
             setIsLoading(false);
         }
     }, []);
+
+    // Effect to auto-trigger print
+    useEffect(() => {
+        const action = searchParams.get('action');
+        if (action === 'print' && !isLoading && invoiceData) {
+            handlePrint();
+        }
+    }, [searchParams, isLoading, invoiceData, handlePrint]);
+
 
     const subtotal = invoiceData?.lineItems.reduce((acc, item) => acc + item.quantity * item.price, 0) || 0;
     const taxAmount = invoiceData?.lineItems.reduce((acc, item) => {
@@ -144,8 +156,9 @@ export default function InvoicePreviewPage() {
                     Back to Generator
                 </Button>
                 <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => router.back()}><Edit className="mr-2 h-4 w-4"/> Edit</Button>
                     <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4"/> Print</Button>
-                    <Button><Mail className="mr-2 h-4 w-4"/> Email Invoice</Button>
+                    <Button onClick={handlePrint}><FileDown className="mr-2 h-4 w-4"/> Download PDF</Button>
                 </div>
             </div>
              <Card id="invoice-preview" ref={contentRef} className="max-w-4xl mx-auto">
@@ -155,6 +168,7 @@ export default function InvoicePreviewPage() {
                         <div className="text-right">
                             <h1 className="text-4xl font-bold uppercase text-gray-700">Invoice</h1>
                             <p className="text-gray-500">#{invoiceData.invoiceNumber}</p>
+                            {invoiceData.businessNumber && <p className="text-sm text-gray-500 mt-1">BN: {invoiceData.businessNumber}</p>}
                         </div>
                     </header>
                     <section className="flex justify-between mt-6">
@@ -227,4 +241,3 @@ export default function InvoicePreviewPage() {
         </div>
     );
 }
-    
