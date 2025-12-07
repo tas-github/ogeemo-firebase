@@ -35,6 +35,8 @@ const FOLDERS_COLLECTION = 'projectFolders';
 const ACTION_CHIPS_COLLECTION = 'userActionChips';
 const AVAILABLE_ACTION_CHIPS_COLLECTION = 'availableActionChips';
 const TRASHED_ACTION_CHIPS_COLLECTION = 'trashedActionChips';
+const ACCOUNTING_QUICK_NAV_ITEMS_COLLECTION = 'accountingQuickNavItems';
+const AVAILABLE_ACCOUNTING_NAV_ITEMS_COLLECTION = 'availableAccountingNavItems';
 
 
 async function getDb() {
@@ -475,7 +477,7 @@ async function updateChipsInCollection(userId: string, collectionName: string, c
 }
 
 export async function getActionChips(userId: string, type: 'dashboard' | 'accountingQuickNavItems' = 'dashboard'): Promise<ActionChipData[]> {
-    const collectionName = type === 'accountingQuickNavItems' ? 'accountingQuickNavItems' : ACTION_CHIPS_COLLECTION;
+    const collectionName = type === 'accountingQuickNavItems' ? ACCOUNTING_QUICK_NAV_ITEMS_COLLECTION : ACTION_CHIPS_COLLECTION;
     const defaultSource = type === 'accountingQuickNavItems' ? accountingMenuItems : defaultChips;
     
     const chips = await getChipsFromCollection(userId, collectionName);
@@ -484,7 +486,7 @@ export async function getActionChips(userId: string, type: 'dashboard' | 'accoun
         const docSnap = await getDoc(docRef);
         if (!docSnap.exists()) {
             const chipsToSave = defaultSource.map(c => ({...c, id: `default-${c.label}`, userId}));
-            await updateActionChips(userId, chipsToSave, type);
+            await updateChipsInCollection(userId, collectionName, chipsToSave);
             return chipsToSave;
         }
     }
@@ -492,10 +494,11 @@ export async function getActionChips(userId: string, type: 'dashboard' | 'accoun
 }
 
 export async function getAvailableActionChips(userId: string, type: 'dashboard' | 'availableAccountingNavItems' = 'dashboard'): Promise<ActionChipData[]> {
-    const collectionName = type === 'availableAccountingNavItems' ? 'availableAccountingNavItems' : AVAILABLE_ACTION_CHIPS_COLLECTION;
+    const collectionName = type === 'availableAccountingNavItems' ? AVAILABLE_ACCOUNTING_NAV_ITEMS_COLLECTION : AVAILABLE_ACTION_CHIPS_COLLECTION;
     const defaultSource = type === 'availableAccountingNavItems' ? accountingMenuItems : allMenuItems;
 
     const chips = await getChipsFromCollection(userId, collectionName);
+    const userActionChipsCollection = type === 'availableAccountingNavItems' ? ACCOUNTING_QUICK_NAV_ITEMS_COLLECTION : ACTION_CHIPS_COLLECTION;
     const userActionChips = await getActionChips(userId, type === 'availableAccountingNavItems' ? 'accountingQuickNavItems' : 'dashboard');
     const usedHrefs = new Set(userActionChips.map(c => typeof c.href === 'string' ? c.href : c.href.pathname));
     
@@ -517,16 +520,27 @@ export async function getAvailableActionChips(userId: string, type: 'dashboard' 
     return combined;
 }
 
+export async function updateActionChips(userId: string, chips: ActionChipData[], type: 'dashboard' | 'accounting' = 'dashboard'): Promise<void> {
+    const collectionName = type === 'accounting' ? ACCOUNTING_QUICK_NAV_ITEMS_COLLECTION : ACTION_CHIPS_COLLECTION;
+    await updateChipsInCollection(userId, collectionName, chips);
+}
+
+export async function updateAvailableActionChips(userId: string, chips: ActionChipData[], type: 'dashboard' | 'accounting' = 'dashboard'): Promise<void> {
+    const collectionName = type === 'accounting' ? AVAILABLE_ACCOUNTING_NAV_ITEMS_COLLECTION : AVAILABLE_ACTION_CHIPS_COLLECTION;
+    await updateChipsInCollection(userId, collectionName, chips);
+}
+
+
 export async function getTrashedActionChips(userId: string): Promise<ActionChipData[]> {
     return getChipsFromCollection(userId, TRASHED_ACTION_CHIPS_COLLECTION);
 }
 
 export async function trashActionChips(userId: string, chipsToTrash: ActionChipData[], type: 'dashboard' | 'accounting' = 'dashboard'): Promise<void> {
-    const userChipsCollection = type === 'accounting' ? 'accountingQuickNavItems' : ACTION_CHIPS_COLLECTION;
-    const availableChipsCollection = type === 'accounting' ? 'availableAccountingNavItems' : AVAILABLE_ACTION_CHIPS_COLLECTION;
+    const userChipsCollection = type === 'accounting' ? ACCOUNTING_QUICK_NAV_ITEMS_COLLECTION : ACTION_CHIPS_COLLECTION;
+    const availableChipsCollection = type === 'accounting' ? AVAILABLE_ACCOUNTING_NAV_ITEMS_COLLECTION : AVAILABLE_ACTION_CHIPS_COLLECTION;
 
-    const userChips = await getChipsFromCollection(userId, userChipsCollection);
-    const availableChips = await getChipsFromCollection(userId, availableChipsCollection);
+    const userChips = await getActionChips(userId, type === 'accounting' ? 'accountingQuickNavItems' : 'dashboard');
+    const availableChips = await getAvailableActionChips(userId, type === 'accounting' ? 'availableAccountingNavItems' : 'dashboard');
     const trashedChips = await getTrashedActionChips(userId);
 
     const chipIdsToTrash = new Set(chipsToTrash.map(c => c.id));
@@ -566,7 +580,7 @@ export async function deleteActionChips(userId: string, chipIdsToDelete: string[
 }
 
 export async function addActionChip(chipData: Omit<ActionChipData, 'id'>, type: 'dashboard' | 'accounting' = 'dashboard'): Promise<ActionChipData> {
-  const collection = type === 'accounting' ? 'availableAccountingNavItems' : AVAILABLE_ACTION_CHIPS_COLLECTION;
+  const collection = type === 'accounting' ? AVAILABLE_ACCOUNTING_NAV_ITEMS_COLLECTION : AVAILABLE_ACTION_CHIPS_COLLECTION;
   const docRef = doc(await getDb(), collection, chipData.userId);
   const docSnap = await getDoc(docRef);
 
