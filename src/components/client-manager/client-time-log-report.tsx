@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -90,19 +91,8 @@ export function ClientTimeLogReport({ initialContacts, initialEntries, initialPr
         }
     };
 
-    const handleCreateInvoice = () => {
-        if (!selectedContactId) {
-            toast({ variant: 'destructive', title: 'Client Not Selected', description: 'Please select a client before creating an invoice.'});
-            return;
-        }
-
-        try {
-            sessionStorage.setItem(PRESELECTED_CONTACT_ID_KEY, selectedContactId);
-            router.push('/accounting/invoices/create');
-        } catch (error) {
-            console.error('Failed to prepare for invoice creation:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not navigate to the invoice generator.' });
-        }
+    const handleGoToInvoicing = () => {
+        router.push('/accounting/invoices/create');
     };
     
     const selectedContact = contacts.find(c => c.id === selectedContactId);
@@ -201,9 +191,9 @@ export function ClientTimeLogReport({ initialContacts, initialEntries, initialPr
                         )}
                     </CardContent>
                     <CardFooter className="print:hidden justify-end space-x-2">
-                       <Button onClick={handleCreateInvoice} disabled={!selectedContactId}>
+                       <Button onClick={handleGoToInvoicing} disabled={!selectedContactId}>
                             <FileDigit className="mr-2 h-4 w-4" />
-                            Create Invoice
+                            Go to Invoicing
                         </Button>
                         <Button variant="outline" onClick={handlePrint} disabled={!selectedContactId}>
                             <Printer className="mr-2 h-4 w-4" />
