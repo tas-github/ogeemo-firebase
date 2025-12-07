@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -79,7 +78,7 @@ export function ClientTimeLogReport({ initialContacts, initialEntries, initialPr
     
     const handleToggleSelect = (entryId: string) => {
         setSelectedEntryIds(prev =>
-            prev.includes(entryId) ? prev.filter(id => id !== entryId) : [...prev, id]
+            prev.includes(entryId) ? prev.filter(id => id !== entryId) : [...prev, entryId]
         );
     };
 
