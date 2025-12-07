@@ -157,7 +157,7 @@ export function InvoiceGeneratorView() {
                 await loadInvoiceForEditing(invoiceId);
             } else if (preselectedContactId) {
                 setSelectedContactId(preselectedContactId);
-                sessionStorage.removeItem(PRESELECTED_CONTACT_ID_KEY); // Clean up
+                sessionStorage.removeItem(PRESELECTED_CONTACT_ID_KEY);
                 setInvoiceNumber(`INV-${Date.now().toString().slice(-6)}`);
             } else {
                 setSelectedContactId(null);
@@ -592,3 +592,4 @@ export function InvoiceGeneratorView() {
     </>
   );
 }
+
