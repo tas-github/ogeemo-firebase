@@ -25,9 +25,12 @@ export function ActiveTimerIndicator() {
                 
                 if (savedState.isActive) {
                     const now = Date.now();
-                    const pausedDuration = savedState.isPaused ? Math.floor((now - savedState.pauseTime!) / 1000) : 0;
+                    const pausedDuration = savedState.isPaused && savedState.pauseTime ? Math.floor((now - savedState.pauseTime) / 1000) : 0;
                     const elapsed = Math.floor((now - savedState.startTime) / 1000) - savedState.totalPausedDuration - pausedDuration;
                     setElapsedSeconds(elapsed > 0 ? elapsed : 0);
+                } else {
+                    setTimerState(null);
+                    setElapsedSeconds(0);
                 }
             } else {
                 setTimerState(null);
@@ -69,7 +72,7 @@ export function ActiveTimerIndicator() {
         if (savedStateRaw) {
             const savedState: StoredTimerState = JSON.parse(savedStateRaw);
             if(savedState.isActive && savedState.isPaused) {
-                const pausedDuration = Math.floor((Date.now() - savedState.pauseTime!) / 1000);
+                const pausedDuration = savedState.pauseTime ? Math.floor((Date.now() - savedState.pauseTime) / 1000) : 0;
                 const newState: StoredTimerState = {
                     ...savedState,
                     isPaused: false,
@@ -83,12 +86,8 @@ export function ActiveTimerIndicator() {
     };
 
     const handleStopTimer = () => {
-        // This button now only cancels the timer without logging time.
-        // It's a "get out" button. The main page handles proper logging.
-        if (window.confirm("Are you sure you want to cancel this timer? The currently tracked time will be lost.")) {
-            localStorage.removeItem(TIMER_STORAGE_KEY);
-            window.dispatchEvent(new Event('storage'));
-        }
+        localStorage.removeItem(TIMER_STORAGE_KEY);
+        window.dispatchEvent(new Event('storage'));
     };
 
     if (!timerState || !timerState.isActive) {
@@ -98,7 +97,7 @@ export function ActiveTimerIndicator() {
     return (
         <Card className="fixed bottom-4 left-4 z-50 w-80 shadow-lg animate-in fade-in-50 slide-in-from-bottom-5 duration-300">
             <CardContent className="p-2 flex items-center justify-between">
-                <div className="flex items-center gap-2 cursor-pointer flex-1 min-w-0" onClick={() => router.push(`/time?eventId=${timerState.eventId}`)}>
+                <div className="flex items-center gap-2 cursor-pointer flex-1 min-w-0" onClick={() => router.push(`/master-mind?eventId=${timerState.eventId}`)}>
                     <Clock className={`h-6 w-6 text-primary ${!timerState.isPaused ? 'animate-pulse' : ''}`} />
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate">{timerState.notes || 'Timer Active'}</p>

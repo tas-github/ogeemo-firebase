@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import {
@@ -21,7 +22,8 @@ import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskS
 import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info, BrainCircuit, GitMerge, Pencil, ListChecks, FilePenLine, Route, Link as LinkIcon, FileOutput, FileDigit, TrendingUp, TrendingDown, BookText, ShieldCheck, WalletCards, UserPlus, Banknote, Percent, FileSignature, ListPlus, FileInput, Activity } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { addMinutes } from 'date-fns';
-import { allMenuItems, accountingMenuItems } from '@/lib/menu-items';
+import { allMenuItems } from '@/lib/menu-items';
+import { accountingMenuItems } from '@/data/accounting-menu-items';
 
 // Re-export the Project type to make it available for other modules.
 export type { Project };
@@ -517,16 +519,6 @@ export async function getAvailableActionChips(userId: string, type: 'dashboard' 
 
 export async function getTrashedActionChips(userId: string): Promise<ActionChipData[]> {
     return getChipsFromCollection(userId, TRASHED_ACTION_CHIPS_COLLECTION);
-}
-
-export async function updateActionChips(userId: string, chips: ActionChipData[], type: 'dashboard' | 'accountingQuickNavItems' = 'dashboard'): Promise<void> {
-    const collectionName = type === 'accountingQuickNavItems' ? 'accountingQuickNavItems' : ACTION_CHIPS_COLLECTION;
-    await updateChipsInCollection(userId, collectionName, chips);
-}
-
-export async function updateAvailableActionChips(userId: string, chips: ActionChipData[], type: 'dashboard' | 'availableAccountingNavItems' = 'dashboard'): Promise<void> {
-    const collectionName = type === 'availableAccountingNavItems' ? 'availableAccountingNavItems' : AVAILABLE_ACTION_CHIPS_COLLECTION;
-    await updateChipsInCollection(userId, collectionName, chips);
 }
 
 export async function trashActionChips(userId: string, chipsToTrash: ActionChipData[], type: 'dashboard' | 'accounting' = 'dashboard'): Promise<void> {

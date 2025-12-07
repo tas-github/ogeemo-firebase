@@ -13,11 +13,13 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
-interface InvoicePageHeaderProps {
+interface AccountingPageHeaderProps {
   pageTitle: string;
+  hubPath?: string;
+  hubLabel?: string;
 }
 
-export function InvoicePageHeader({ pageTitle }: InvoicePageHeaderProps) {
+export function AccountingPageHeader({ pageTitle, hubPath = "/accounting/accounts-receivable", hubLabel = "Accounts Receivable" }: AccountingPageHeaderProps) {
   return (
     <div className="flex items-center justify-between">
       <Breadcrumb>
@@ -30,7 +32,7 @@ export function InvoicePageHeader({ pageTitle }: InvoicePageHeaderProps) {
           <BreadcrumbSeparator />
           <BreadcrumbItem>
              <BreadcrumbLink asChild>
-                <Link href="/accounting/accounts-receivable">Accounts Receivable</Link>
+                <Link href={hubPath}>{hubLabel}</Link>
              </BreadcrumbLink>
           </BreadcrumbItem>
            <BreadcrumbSeparator />
@@ -40,7 +42,7 @@ export function InvoicePageHeader({ pageTitle }: InvoicePageHeaderProps) {
         </BreadcrumbList>
       </Breadcrumb>
       <Button asChild variant="outline">
-        <Link href="/accounting/accounts-receivable" aria-label="Return to Accounts Receivable">
+        <Link href={hubPath} aria-label={`Return to ${hubLabel}`}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to A/R
         </Link>

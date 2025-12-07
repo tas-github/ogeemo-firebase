@@ -67,7 +67,7 @@ export function ReportsHubView() {
       title: "Client Billing",
       description: "Generate an itemized report of time tracked for clients, including billable rates and totals.",
       cta: "View Billing Report",
-      href: "/reports/client-billing",
+      href: "/client-manager/report",
     },
      {
       icon: FileText,

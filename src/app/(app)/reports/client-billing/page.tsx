@@ -1,6 +1,7 @@
+import { redirect } from 'next/navigation';
 
-import { ClientTimeLogReport } from '@/components/client-manager/client-time-log-report';
-
-export default function ClientBillingReportPage() {
-  return <ClientTimeLogReport />;
+export default function ClientBillingRedirectPage() {
+  // This page now lives at /client-manager/report.
+  // This redirect ensures backward compatibility.
+  redirect('/client-manager/report');
 }

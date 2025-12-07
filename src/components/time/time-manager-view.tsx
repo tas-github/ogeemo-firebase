@@ -12,9 +12,10 @@ import { LoaderCircle, Save, ChevronsUpDown, Check, Plus, X, Info, Timer, Play, 
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { type Project, type Event as TaskEvent, type TimeSession } from '@/types/calendar-types';
-import { type Contact, type FolderData } from '@/data/contacts';
+import { type Contact } from '@/data/contacts';
 import { addTask, getProjects, addProject, updateProject, getTaskById, updateTask } from '@/services/project-service';
-import { getContacts, getFolders } from '@/services/contact-service';
+import { getContacts } from '@/services/contact-service';
+import { getFolders, type FolderData } from '@/services/contact-folder-service';
 import { Textarea } from '../ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { cn, formatTime } from '@/lib/utils';
@@ -54,9 +55,9 @@ export interface StoredTimerState {
 
 const TIMER_STORAGE_KEY = 'activeTimeManagerEntry';
 
-export function TimeManagerView() {
-    const [projects, setProjects] = React.useState<Project[]>([]);
-    const [contacts, setContacts] = React.useState<Contact[]>([]);
+export function TimeManagerView({ projects: initialProjects, contacts: initialContacts }: { projects: Project[], contacts: Contact[] }) {
+    const [projects, setProjects] = React.useState<Project[]>(initialProjects);
+    const [contacts, setContacts] = React.useState<Contact[]>(initialContacts);
     const [contactFolders, setContactFolders] = React.useState<FolderData[]>([]);
     const [isLoadingData, setIsLoadingData] = React.useState(true);
 
@@ -111,6 +112,14 @@ export function TimeManagerView() {
     const hourOptions = Array.from({ length: 24 }, (_, i) => ({ value: String(i), label: formatDate(set(new Date(), { hours: i }), 'h a') }));
     const minuteOptions = Array.from({ length: 12 }, (_, i) => { const minutes = i * 5; return { value: String(minutes), label: `:${minutes.toString().padStart(2, '0')}` }; });
     
+    const totalAccumulatedSeconds = useMemo(() => {
+        return sessions.reduce((acc, session) => acc + session.durationSeconds, 0);
+    }, [sessions]);
+
+    const totalTime = useMemo(() => {
+        return totalAccumulatedSeconds + elapsedSeconds;
+    }, [totalAccumulatedSeconds, elapsedSeconds]);
+
     const createAndSaveNewEvent = useCallback(async (): Promise<TaskEvent | null> => {
         if (!user || !subject.trim()) {
             toast({ variant: 'destructive', title: 'Subject Required', description: 'Please enter a subject before starting the timer.' });
@@ -192,7 +201,64 @@ export function TimeManagerView() {
         }
     }, []);
 
-    const handleLogCurrentSession = () => {
+    const handleSaveEvent = useCallback(async (andClose: boolean = false) => {
+        if (!user || !subject.trim()) {
+            toast({ variant: 'destructive', title: 'Missing Information', description: 'Please enter a subject for the event.' });
+            return;
+        }
+
+        let start: Date | null = null;
+        let end: Date | null = null;
+        let isScheduled = false;
+
+        if (scheduleDate) {
+            const hour = scheduleHour ? parseInt(scheduleHour) : new Date().getHours();
+            const minute = scheduleMinute ? parseInt(scheduleMinute) : new Date().getMinutes();
+            start = set(scheduleDate, { hours: hour, minutes: minute });
+            
+            const endHour = scheduleEnd.hour ? parseInt(scheduleEnd.hour) : hour;
+            const endMinute = scheduleEnd.minute ? parseInt(scheduleEnd.minute) : minute;
+            end = set(scheduleDate, { hours: endHour, minutes: endMinute });
+
+            if (end <= start) {
+                end = addMinutes(start, 30);
+            }
+            isScheduled = true;
+        }
+
+        const eventData: Partial<Omit<TaskEvent, 'id' | 'userId'>> = {
+            title: subject,
+            description: notes,
+            start,
+            end,
+            isScheduled,
+            status: isScheduled ? 'todo' : 'inProgress',
+            projectId: selectedProjectId,
+            contactId: selectedContactId,
+            duration: totalTime,
+            sessions: sessions,
+            isBillable: isBillable,
+            billableRate: isBillable ? (Number(billableRate) || 0) : 0,
+        };
+
+        try {
+            if (eventToEdit) {
+                await updateTask(eventToEdit.id, eventData);
+                toast({ title: "Event Updated", description: `"${eventData.title}" has been saved.` });
+            } else {
+                const newEvent = await addTask({ ...eventData as Omit<TaskEvent, 'id'>, userId: user.uid });
+                setEventToEdit(newEvent);
+                toast({ title: "Event Saved", description: `"${newEvent.title}" has been saved.` });
+            }
+            if (andClose) {
+                router.back();
+            }
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Failed to save event', description: error.message });
+        }
+    }, [user, subject, notes, scheduleDate, scheduleHour, scheduleMinute, scheduleEnd, selectedProjectId, selectedContactId, isBillable, billableRate, sessions, eventToEdit, toast, router, totalTime]);
+
+    const handleLogCurrentSession = async () => {
         if (!timerState || !timerState.isActive || elapsedSeconds <= 0) {
             toast({ variant: 'destructive', title: 'No Time to Log', description: 'The timer is not running or has no elapsed time.' });
             return;
@@ -208,11 +274,14 @@ export function TimeManagerView() {
 
         setSessions(prev => [...prev, newSession]);
         setCurrentSessionNotes('');
-
-        // Reset the timer in localStorage
+        
         localStorage.removeItem(TIMER_STORAGE_KEY);
         window.dispatchEvent(new Event('storage'));
-        toast({ title: 'Session Logged', description: `${formatTime(elapsedSeconds)} has been logged.` });
+        
+        // Auto-save the event
+        await handleSaveEvent(false);
+
+        toast({ title: 'Session Logged', description: `${formatTime(elapsedSeconds)} has been logged and the event has been saved.` });
     };
 
     const handleOpenEditSession = (session: TimeSession) => {
@@ -315,11 +384,10 @@ export function TimeManagerView() {
         loadData();
     }, [loadData]);
     
-    // This effect handles the startTimer URL parameter
     useEffect(() => {
         const startTimerParam = searchParams.get('startTimer');
         if (startTimerParam === 'true' && eventToEdit && !hasStartedTimerRef.current) {
-            hasStartedTimerRef.current = true; // Prevents re-triggering
+            hasStartedTimerRef.current = true;
             handleStartTimer();
         }
     }, [searchParams, eventToEdit, handleStartTimer]);
@@ -329,12 +397,11 @@ export function TimeManagerView() {
             const savedStateRaw = localStorage.getItem(TIMER_STORAGE_KEY);
             if (savedStateRaw) {
                 const savedState: StoredTimerState = JSON.parse(savedStateRaw);
-                // Only sync if the timer belongs to the event being edited
                 if (eventToEdit && savedState.eventId === eventToEdit.id) {
                     setTimerState(savedState);
                     if (savedState.isActive) {
                         const now = Date.now();
-                        const pausedDuration = savedState.isPaused ? Math.floor((now - savedState.pauseTime!) / 1000) : 0;
+                        const pausedDuration = savedState.isPaused && savedState.pauseTime ? Math.floor((now - savedState.pauseTime) / 1000) : 0;
                         const elapsed = Math.floor((now - savedState.startTime) / 1000) - savedState.totalPausedDuration - pausedDuration;
                         setElapsedSeconds(elapsed > 0 ? elapsed : 0);
                     }
@@ -360,70 +427,6 @@ export function TimeManagerView() {
             clearInterval(interval);
         };
     }, [syncWithGlobalTimer]);
-
-    const totalAccumulatedSeconds = useMemo(() => {
-        return sessions.reduce((acc, session) => acc + session.durationSeconds, 0);
-    }, [sessions]);
-
-    const totalTime = useMemo(() => {
-        return totalAccumulatedSeconds + elapsedSeconds;
-    }, [totalAccumulatedSeconds, elapsedSeconds]);
-
-    const handleSaveEvent = async () => {
-        if (!user || !subject.trim()) {
-            toast({ variant: 'destructive', title: 'Missing Information', description: 'Please enter a subject for the event.' });
-            return;
-        }
-
-        let start: Date | null = null;
-        let end: Date | null = null;
-        let isScheduled = false;
-
-        if (scheduleDate) {
-            const hour = scheduleHour ? parseInt(scheduleHour) : new Date().getHours();
-            const minute = scheduleMinute ? parseInt(scheduleMinute) : new Date().getMinutes();
-            start = set(scheduleDate, { hours: hour, minutes: minute });
-            
-            const endHour = scheduleEnd.hour ? parseInt(scheduleEnd.hour) : hour;
-            const endMinute = scheduleEnd.minute ? parseInt(scheduleEnd.minute) : minute;
-            end = set(scheduleDate, { hours: endHour, minutes: endMinute });
-
-            if (end <= start) {
-                end = addMinutes(start, 30); // Default to 30 min duration if end is invalid
-            }
-
-            isScheduled = true;
-        }
-
-        const eventData: Partial<Omit<TaskEvent, 'id' | 'userId'>> = {
-            title: subject,
-            description: notes,
-            start,
-            end,
-            isScheduled,
-            status: isScheduled ? 'todo' : 'inProgress',
-            projectId: selectedProjectId,
-            contactId: selectedContactId,
-            duration: totalTime,
-            sessions: sessions,
-            isBillable: isBillable,
-            billableRate: isBillable ? (Number(billableRate) || 0) : 0,
-        };
-
-        try {
-            if (eventToEdit) {
-                await updateTask(eventToEdit.id, eventData);
-                toast({ title: "Event Updated", description: `"${eventData.title}" has been saved.` });
-            } else {
-                const newEvent = await addTask({ ...eventData as Omit<TaskEvent, 'id'>, userId: user.uid });
-                setEventToEdit(newEvent);
-                toast({ title: "Event Saved", description: `"${newEvent.title}" has been saved.` });
-            }
-            router.back();
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Failed to save event', description: error.message });
-        }
-    };
     
     const handleContactSave = (contact: Contact, isEditing: boolean) => {
         if (isEditing) {
@@ -474,12 +477,12 @@ export function TimeManagerView() {
                              <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="outline" onClick={handleSaveEvent}>
-                                            <Save className="mr-2 h-4 w-4" /> Save
+                                        <Button variant="outline" onClick={() => handleSaveEvent(true)}>
+                                            <Save className="mr-2 h-4 w-4" /> Save &amp; Close
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Save Event</p>
+                                        <p>Save all changes and close the manager.</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -592,76 +595,73 @@ export function TimeManagerView() {
                         </CardContent>
                     </Card>
 
-                    <Card>
-                        <CardHeader className="p-4">
-                            <CardTitle className="text-base">Schedule (Optional)</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-4 pt-0">
-                             <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Card>
+                            <CardHeader><CardTitle className="text-base">Set Start Time</CardTitle></CardHeader>
+                            <CardContent className="space-y-4">
                                 <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}>
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {scheduleDate ? formatDate(scheduleDate, "PPP") : <span>Pick a date</span>}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar
-                                            mode="single"
-                                            selected={scheduleDate}
-                                            onSelect={(date) => {
-                                                setScheduleDate(date);
-                                                setIsDatePickerOpen(false);
-                                            }}
-                                            initialFocus
-                                        />
-                                    </PopoverContent>
+                                    <PopoverTrigger asChild><Button variant="outline" className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4"/>{scheduleDate ? formatDate(scheduleDate, 'PPP') : <span>Pick a date</span>}</Button></PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={scheduleDate} onSelect={(d) => { setScheduleDate(d); setIsDatePickerOpen(false); }} initialFocus /></PopoverContent>
                                 </Popover>
-                                <div className="flex-1 flex gap-2">
-                                    <Select value={scheduleHour} onValueChange={setScheduleHour}><SelectTrigger><SelectValue placeholder="Hour" /></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
-                                    <Select value={scheduleMinute} onValueChange={setScheduleMinute}><SelectTrigger><SelectValue placeholder="Min" /></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                <div className="flex gap-2"><Select value={scheduleHour} onValueChange={setScheduleHour}><SelectTrigger><SelectValue placeholder="Hour"/></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select><Select value={scheduleMinute} onValueChange={setScheduleMinute}><SelectTrigger><SelectValue placeholder="Min"/></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>
+                            </CardContent>
+                        </Card>
+                         <Card>
+                            <CardHeader><CardTitle className="text-base">Billing Status</CardTitle></CardHeader>
+                            <CardContent className="space-y-4">
+                                <RadioGroup value={isBillable ? 'billable' : 'non-billable'} onValueChange={(v) => setIsBillable(v === 'billable')} className="flex space-x-4">
+                                    <div className="flex items-center space-x-2"><RadioGroupItem value="non-billable" id="r1"/><Label htmlFor="r1">Non-Billable</Label></div>
+                                    <div className="flex items-center space-x-2"><RadioGroupItem value="billable" id="r2"/><Label htmlFor="r2">Billable</Label></div>
+                                </RadioGroup>
+                                {isBillable && <div className="space-y-2"><Label htmlFor="rate">Billable Rate ($/hr)</Label><Input id="rate" type="number" value={billableRate} onChange={(e) => setBillableRate(e.target.value === '' ? '' : Number(e.target.value))} placeholder="100.00" /></div>}
+                            </CardContent>
+                        </Card>
+                    </div>
 
-                    <Card className="bg-muted/50">
-                        <CardHeader className="p-4">
-                            <CardTitle className="text-base">Time Log</CardTitle>
-                            <CardDescription>Start a timer to log time for this event and edit logged sessions as needed.</CardDescription>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center justify-between">
+                                <span>Time Log</span>
+                                <span className="font-mono text-lg text-primary">{formatTime(totalTime)}</span>
+                            </CardTitle>
                         </CardHeader>
-                        <CardContent className="p-4 pt-0 space-y-4">
-                            <div className="space-y-4 p-4 border rounded-lg bg-background">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                         <Button onClick={handleStartTimer} disabled={timerState?.isActive && !timerState.isPaused} className="bg-green-600 hover:bg-green-700"><Play className="mr-2 h-4 w-4"/> Start New Session</Button>
-                                         <Button onClick={handlePauseTimer} disabled={!timerState?.isActive || timerState.isPaused} variant="destructive" className="bg-orange-500 hover:bg-orange-600"><Pause className="mr-2 h-4 w-4"/> Pause Session</Button>
-                                         <Button onClick={handleResumeTimer} disabled={!timerState?.isActive || !timerState.isPaused} variant="outline"><Play className="mr-2 h-4 w-4"/> Resume Session</Button>
-                                    </div>
-                                    <div className="text-right">
-                                        <Label className="text-xs">Current Session</Label>
-                                        <div className="font-mono text-2xl font-bold">{formatTime(elapsedSeconds)}</div>
-                                    </div>
-                                     <div className="text-right">
-                                        <Label className="text-xs">Total Logged Time</Label>
-                                        <p className="font-mono text-lg font-bold text-primary">{formatTime(totalTime)}</p>
-                                    </div>
+                        <CardContent>
+                             <div className="flex gap-4 items-end">
+                                <div className="flex-1 space-y-2">
+                                    <Label htmlFor="session-notes">Session Notes</Label>
+                                    <Textarea id="session-notes" placeholder="What are you working on right now?" value={currentSessionNotes} onChange={e => setCurrentSessionNotes(e.target.value)} />
                                 </div>
-                                {timerState?.isActive && (
-                                    <div className="space-y-2 animate-in fade-in-50 duration-300">
-                                        <Label htmlFor="session-notes">Session Notes</Label>
-                                        <Textarea id="session-notes" placeholder="What are you working on right now?" value={currentSessionNotes} onChange={(e) => setCurrentSessionNotes(e.target.value)} />
-                                        <Button size="sm" onClick={handleLogCurrentSession}>Log Session</Button>
+                                <div className="flex-shrink-0 flex gap-2">
+                                     {!timerState || !timerState.isActive ? (
+                                        <Button onClick={handleStartTimer}><Play className="mr-2 h-4 w-4" /> Start New Session</Button>
+                                    ) : timerState.isPaused ? (
+                                        <Button onClick={handleResumeTimer}><Play className="mr-2 h-4 w-4" /> Resume Session</Button>
+                                    ) : (
+                                        <Button onClick={handlePauseTimer} variant="secondary"><Pause className="mr-2 h-4 w-4" /> Pause Session</Button>
+                                    )}
+                                    <Button onClick={handleLogCurrentSession} variant="outline" disabled={!timerState || !timerState.isActive}>Log Session</Button>
+                                </div>
+                            </div>
+
+                            <ScrollArea className="h-40 mt-4 border rounded-md">
+                                <div className="p-4 space-y-2">
+                                {sessions.length > 0 ? sessions.map(session => (
+                                    <div key={session.id} className="flex justify-between items-center p-2 bg-muted rounded-md">
+                                        <div>
+                                            <p className="font-semibold text-sm">{formatTime(session.durationSeconds)}</p>
+                                            <p className="text-xs text-muted-foreground">{session.notes}</p>
+                                        </div>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger>
+                                            <DropdownMenuContent>
+                                                <DropdownMenuItem onSelect={() => handleOpenEditSession(session)}><Edit className="mr-2 h-4 w-4"/>Edit</DropdownMenuItem>
+                                                <DropdownMenuItem onSelect={() => setSessions(prev => prev.filter(s => s.id !== session.id))} className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Delete</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </div>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Logged Sessions</Label>
-                                <ScrollArea className="h-24 w-full rounded-md border bg-background">
-                                   <ScrollBar forceMount />
-                                   <div className="p-2">{sessions.length > 0 ? (sessions.map((session, index) => (<div key={session.id} className="p-2 rounded-md hover:bg-muted/50 group"><div className="flex items-center justify-between"><p className="font-medium text-sm">Session {index + 1}</p><div className="flex items-center gap-4"><span className="font-mono text-sm">{formatTime(session.durationSeconds)}</span><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreVertical className="h-4 w-4"/></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={() => handleOpenEditSession(session)}><Edit className="mr-2 h-4 w-4"/> Edit</DropdownMenuItem><DropdownMenuItem className="text-destructive" onSelect={() => setSessions(prev => prev.filter(s => s.id !== session.id))}><Trash2 className="mr-2 h-4 w-4"/> Delete</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></div>{session.notes && <p className="text-xs text-muted-foreground mt-1 pl-2 whitespace-pre-wrap">{session.notes}</p>}</div>))) : (<div className="text-center text-sm text-muted-foreground p-4">No sessions logged yet.</div>)}</div>
-                                </ScrollArea>
-                            </div>
+                                )) : <p className="text-sm text-center text-muted-foreground pt-4">No sessions logged for this event yet.</p>}
+                                </div>
+                            </ScrollArea>
                         </CardContent>
                     </Card>
                 </div>
@@ -697,7 +697,7 @@ export function TimeManagerView() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="edit-notes">Notes</Label>
-                            <Textarea id="edit-notes" value={editSessionNotes} onChange={(e) => setEditSessionNotes(e.target.value)} placeholder="Add a description of the work done during this session..." className="border-2 border-black" />
+                            <Textarea id="edit-notes" value={editSessionNotes} onChange={(e) => setEditSessionNotes(e.target.value)} placeholder="Add a description of the work done during this session..." />
                         </div>
                     </div>
                     <DialogFooter>
@@ -709,6 +709,5 @@ export function TimeManagerView() {
         </>
     );
 }
-
 
     
