@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { format, addDays } from 'date-fns';
-import { Plus, Trash2, Save, Eye, ChevronsUpDown, Check, LoaderCircle, X, Calendar as CalendarIcon, MoreVertical, Edit, Info, FileDown } from 'lucide-react';
+import { Plus, Trash2, Save, Eye, ChevronsUpDown, Check, LoaderCircle, X, Calendar as CalendarIcon, MoreVertical, Edit, Info, FileDown, Clock } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { AccountingPageHeader } from '@/components/accounting/page-header';
@@ -30,6 +30,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/
 import { getUserProfile } from '@/services/user-profile-service';
 import type { UserProfile } from '@/services/user-profile-service';
 import { getIndustries, type Industry } from '@/services/industry-service';
+import { TimeLogImportDialog } from './time-log-import-dialog'; // New import
+import { Event as TaskEvent } from '@/types/calendar-types';
 
 
 interface LineItem {
@@ -81,11 +83,12 @@ export function InvoiceGeneratorView() {
   
   const [isContactFormOpen, setIsContactFormOpen] = useState(false);
   const [isAddLineItemDialogOpen, setIsAddLineItemDialogOpen] = useState(false);
+  const [isTimeLogDialogOpen, setIsTimeLogDialogOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<LineItem | null>(null);
   
   const [contactFormInitialData, setContactFormInitialData] = useState<Partial<Contact>>({});
   const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
-
+  
   useEffect(() => {
     const contact = contacts.find(c => c.id === selectedContactId);
     if (contact) {
@@ -154,22 +157,20 @@ export function InvoiceGeneratorView() {
             setCustomIndustries(fetchedIndustries);
 
             const invoiceId = localStorage.getItem(EDIT_INVOICE_ID_KEY);
+            const invoiceReportDataRaw = sessionStorage.getItem(INVOICE_FROM_REPORT_KEY);
+            
             if (invoiceId) {
                 setInvoiceToEditId(invoiceId);
                 await loadInvoiceForEditing(invoiceId);
+            } else if (invoiceReportDataRaw) {
+                const { contactId, lineItems: reportLineItems } = JSON.parse(invoiceReportDataRaw);
+                setSelectedContactId(contactId);
+                const itemsWithIds = reportLineItems.map((item: any, index: number) => ({ ...item, id: `report_${Date.now()}_${index}` }));
+                setLineItems(itemsWithIds);
+                sessionStorage.removeItem(INVOICE_FROM_REPORT_KEY);
             } else {
-                const invoiceReportDataRaw = sessionStorage.getItem(INVOICE_FROM_REPORT_KEY);
-                if (invoiceReportDataRaw) {
-                    const { contactId, lineItems: reportLineItems } = JSON.parse(invoiceReportDataRaw);
-                    setSelectedContactId(contactId);
-                    const itemsWithIds = reportLineItems.map((item: any, index: number) => ({ ...item, id: `report_${Date.now()}_${index}` }));
-                    setLineItems(itemsWithIds);
-                    sessionStorage.removeItem(INVOICE_FROM_REPORT_KEY);
-                } else {
-                    // This is the new, explicit logic for a blank invoice
-                    setSelectedContactId(null);
-                    setInvoiceNumber(`INV-${Date.now().toString().slice(-6)}`);
-                }
+                setSelectedContactId(null);
+                setInvoiceNumber(`INV-${Date.now().toString().slice(-6)}`);
             }
 
         } catch (error: any) {
@@ -197,6 +198,20 @@ export function InvoiceGeneratorView() {
     } else {
       setLineItems(prev => [...prev, newItem]);
     }
+  };
+
+  const handleAddTimeLogEntries = (entries: TaskEvent[]) => {
+      const newItems: LineItem[] = entries.map((entry, index) => {
+          const hours = (entry.duration || 0) / 3600;
+          return {
+              id: `time_${Date.now()}_${index}`,
+              description: `${entry.title} - ${entry.start ? format(new Date(entry.start), 'PPP') : 'N/A'}`,
+              quantity: parseFloat(hours.toFixed(2)),
+              price: entry.billableRate || 0,
+          };
+      });
+      setLineItems(prev => [...prev, ...newItems]);
+      toast({ title: `${newItems.length} time entries added to invoice.` });
   };
   
   const handleSaveRepeatableItem = async (item: Omit<ServiceItem, 'id' | 'userId'>) => {
@@ -490,9 +505,12 @@ export function InvoiceGeneratorView() {
                                 </TableBody>
                             </Table>
                         </div>
-                        <div className="mt-4">
+                        <div className="mt-4 flex gap-2">
                            <Button variant="secondary" onClick={() => handleOpenAddItemDialog(null)}>
                                 <Plus className="mr-2 h-4 w-4" /> Add Line Item
+                            </Button>
+                            <Button variant="secondary" onClick={() => setIsTimeLogDialogOpen(true)} disabled={!selectedContactId}>
+                                <Clock className="mr-2 h-4 w-4" /> Add from Time Log
                             </Button>
                         </div>
                     </div>
@@ -563,6 +581,14 @@ export function InvoiceGeneratorView() {
         taxTypes={taxTypes}
         onTaxTypesChange={setTaxTypes}
       />
+      {selectedContactId && (
+          <TimeLogImportDialog
+              isOpen={isTimeLogDialogOpen}
+              onOpenChange={setIsTimeLogDialogOpen}
+              contactId={selectedContactId}
+              onSave={handleAddTimeLogEntries}
+          />
+      )}
     </>
   );
 }

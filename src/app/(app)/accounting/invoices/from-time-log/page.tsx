@@ -1,24 +1,11 @@
 
 'use client';
 
-import dynamic from 'next/dynamic';
-import { LoaderCircle } from 'lucide-react';
+// This page is now obsolete. The functionality has been integrated
+// directly into the invoice generator via a modal dialog.
+// This redirect is for backward compatibility.
+import { redirect } from 'next/navigation';
 
-const InvoiceFromTimeLogView = dynamic(
-  () => import('@/components/accounting/invoice-from-time-log-view').then((mod) => mod.InvoiceFromTimeLogView),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-full w-full items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4">
-          <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading Time Log...</p>
-        </div>
-      </div>
-    ),
-  }
-);
-
-export default function InvoiceFromTimeLogPage() {
-  return <InvoiceFromTimeLogView />;
+export default function InvoiceFromTimeLogRedirectPage() {
+    redirect('/accounting/invoices/create');
 }
