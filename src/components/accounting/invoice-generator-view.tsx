@@ -90,8 +90,6 @@ export function InvoiceGeneratorView() {
     const contact = contacts.find(c => c.id === selectedContactId);
     if (contact) {
         setBusinessNumber(contact.craProgramAccountNumber || userProfile?.businessNumber || '');
-    } else {
-        setBusinessNumber(userProfile?.businessNumber || '');
     }
   }, [selectedContactId, contacts, userProfile]);
 
@@ -168,6 +166,7 @@ export function InvoiceGeneratorView() {
                     setLineItems(itemsWithIds);
                     sessionStorage.removeItem(INVOICE_FROM_REPORT_KEY);
                 } else {
+                    // This is the new, explicit logic for a blank invoice
                     setSelectedContactId(null);
                     setInvoiceNumber(`INV-${Date.now().toString().slice(-6)}`);
                 }
