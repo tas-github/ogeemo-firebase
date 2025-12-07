@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -125,52 +124,64 @@ export function InvoiceGeneratorView() {
 
 
   useEffect(() => {
-    async function loadData() {
-        if (!user) {
-            setIsLoading(false);
-            return;
-        }
-        setIsLoading(true);
-        try {
-            const [fetchedCompanies, fetchedContacts, fetchedServiceItems, fetchedFolders, fetchedTaxTypes, profile, fetchedIndustries] = await Promise.all([
-                getCompanies(user.uid),
-                getContacts(user.uid),
-                getServiceItems(user.uid),
-                getContactFolders(user.uid),
-                getTaxTypes(user.uid),
-                getUserProfile(user.uid),
-                getIndustries(user.uid),
-            ]);
-            setCompanies(fetchedCompanies);
-            setContacts(fetchedContacts);
-            setServiceItems(fetchedServiceItems);
-            setContactFolders(fetchedFolders);
-            setTaxTypes(fetchedTaxTypes);
-            setUserProfile(profile);
-            setCustomIndustries(fetchedIndustries);
+    async function initializeView() {
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+      setIsLoading(true);
+      try {
+        const [
+          fetchedCompanies,
+          fetchedContacts,
+          fetchedServiceItems,
+          fetchedFolders,
+          fetchedTaxTypes,
+          profile,
+          fetchedIndustries
+        ] = await Promise.all([
+          getCompanies(user.uid),
+          getContacts(user.uid),
+          getServiceItems(user.uid),
+          getContactFolders(user.uid),
+          getTaxTypes(user.uid),
+          getUserProfile(user.uid),
+          getIndustries(user.uid),
+        ]);
 
-            const invoiceId = localStorage.getItem(EDIT_INVOICE_ID_KEY);
-            const preselectedContactId = sessionStorage.getItem(PRESELECTED_CONTACT_ID_KEY);
-            
-            if (invoiceId) {
-                setInvoiceToEditId(invoiceId);
-                await loadInvoiceForEditing(invoiceId);
-            } else if (preselectedContactId) {
-                setSelectedContactId(preselectedContactId);
-                sessionStorage.removeItem(PRESELECTED_CONTACT_ID_KEY);
-                setInvoiceNumber(`INV-${Date.now().toString().slice(-6)}`);
-            } else {
-                setSelectedContactId(null);
-                setInvoiceNumber(`INV-${Date.now().toString().slice(-6)}`);
-            }
+        setCompanies(fetchedCompanies);
+        setContacts(fetchedContacts);
+        setServiceItems(fetchedServiceItems);
+        setContactFolders(fetchedFolders);
+        setTaxTypes(fetchedTaxTypes);
+        setUserProfile(profile);
+        setCustomIndustries(fetchedIndustries);
 
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
-        } finally {
-             setIsLoading(false);
+        const invoiceId = localStorage.getItem(EDIT_INVOICE_ID_KEY);
+        if (invoiceId) {
+          setInvoiceToEditId(invoiceId);
+          await loadInvoiceForEditing(invoiceId);
+          return; // Stop further processing if we are editing
         }
+
+        const preselectedContactId = sessionStorage.getItem(PRESELECTED_CONTACT_ID_KEY);
+        if (preselectedContactId) {
+          setSelectedContactId(preselectedContactId);
+          sessionStorage.removeItem(PRESELECTED_CONTACT_ID_KEY);
+          setInvoiceNumber(`INV-${Date.now().toString().slice(-6)}`);
+        } else {
+          // This ensures a truly blank invoice
+          setSelectedContactId(null);
+          setInvoiceNumber(`INV-${Date.now().toString().slice(-6)}`);
+        }
+
+      } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Failed to load data', description: error.message });
+      } finally {
+        setIsLoading(false);
+      }
     }
-    loadData();
+    initializeView();
   }, [user, toast, loadInvoiceForEditing]);
 
   useEffect(() => {
@@ -592,4 +603,3 @@ export function InvoiceGeneratorView() {
     </>
   );
 }
-
