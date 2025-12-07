@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import { ReportsPageHeader } from '@/components/reports/page-header';
 import { Checkbox } from '@/components/ui/checkbox';
 
-const INVOICE_FROM_REPORT_KEY = 'invoiceFromReportData';
+const PRESELECTED_CONTACT_ID_KEY = 'ogeemo-preselected-contact-id';
 
 const formatTime = (totalSeconds: number) => {
     if (!totalSeconds) return '0h 0m';
@@ -79,7 +79,7 @@ export function ClientTimeLogReport({ initialContacts, initialEntries, initialPr
     
     const handleToggleSelect = (entryId: string) => {
         setSelectedEntryIds(prev =>
-            prev.includes(entryId) ? prev.filter(id => id !== entryId) : [...prev, entryId]
+            prev.includes(entryId) ? prev.filter(id => id !== entryId) : [...prev, id]
         );
     };
 
@@ -92,37 +92,17 @@ export function ClientTimeLogReport({ initialContacts, initialEntries, initialPr
     };
 
     const handleCreateInvoice = () => {
-        if (!selectedContact || selectedEntryIds.length === 0) {
-            toast({ variant: 'destructive', title: 'Cannot Create Invoice', description: 'Please select a client and at least one billable time entry.'});
-            return;
-        }
-
-        const lineItems = filteredEntries
-            .filter(entry => selectedEntryIds.includes(entry.id) && (entry.billableRate || 0) > 0)
-            .map(entry => {
-                const hours = (entry.duration || 0) / 3600;
-                return {
-                    description: `${entry.title} - ${entry.start ? format(new Date(entry.start), 'PPP') : 'N/A'}`,
-                    quantity: parseFloat(hours.toFixed(2)),
-                    price: entry.billableRate,
-                };
-            });
-        
-        if (lineItems.length === 0) {
-            toast({ variant: 'destructive', title: 'No Billable Items Selected', description: 'There are no selected entries with a billable rate greater than zero.'});
+        if (!selectedContactId) {
+            toast({ variant: 'destructive', title: 'Client Not Selected', description: 'Please select a client before creating an invoice.'});
             return;
         }
 
         try {
-            const invoiceData = {
-                contactId: selectedContact.id,
-                lineItems: lineItems,
-            };
-            sessionStorage.setItem(INVOICE_FROM_REPORT_KEY, JSON.stringify(invoiceData));
+            sessionStorage.setItem(PRESELECTED_CONTACT_ID_KEY, selectedContactId);
             router.push('/accounting/invoices/create');
         } catch (error) {
-            console.error('Failed to prepare invoice data:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not prepare the invoice data for generation.' });
+            console.error('Failed to prepare for invoice creation:', error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not navigate to the invoice generator.' });
         }
     };
     
@@ -222,9 +202,9 @@ export function ClientTimeLogReport({ initialContacts, initialEntries, initialPr
                         )}
                     </CardContent>
                     <CardFooter className="print:hidden justify-end space-x-2">
-                       <Button onClick={handleCreateInvoice} disabled={!selectedContactId || selectedEntryIds.length === 0}>
+                       <Button onClick={handleCreateInvoice} disabled={!selectedContactId}>
                             <FileDigit className="mr-2 h-4 w-4" />
-                            Create Invoice from Report ({selectedEntryIds.length})
+                            Create Invoice
                         </Button>
                         <Button variant="outline" onClick={handlePrint} disabled={!selectedContactId}>
                             <Printer className="mr-2 h-4 w-4" />

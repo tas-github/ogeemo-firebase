@@ -51,7 +51,7 @@ const formatCurrency = (amount: number) => {
 };
 
 const EDIT_INVOICE_ID_KEY = 'editInvoiceId';
-const INVOICE_FROM_REPORT_KEY = 'invoiceFromReportData';
+const PRESELECTED_CONTACT_ID_KEY = 'ogeemo-preselected-contact-id';
 const INVOICE_PREVIEW_KEY = 'invoicePreviewData';
 
 
@@ -89,13 +89,6 @@ export function InvoiceGeneratorView() {
   const [contactFormInitialData, setContactFormInitialData] = useState<Partial<Contact>>({});
   const [isClientPopoverOpen, setIsClientPopoverOpen] = useState(false);
   
-  useEffect(() => {
-    const contact = contacts.find(c => c.id === selectedContactId);
-    if (contact) {
-        setBusinessNumber(contact.craProgramAccountNumber || userProfile?.businessNumber || '');
-    }
-  }, [selectedContactId, contacts, userProfile]);
-
   const loadInvoiceForEditing = useCallback(async (invoiceId: string) => {
       setIsLoading(true);
       try {
@@ -157,17 +150,15 @@ export function InvoiceGeneratorView() {
             setCustomIndustries(fetchedIndustries);
 
             const invoiceId = localStorage.getItem(EDIT_INVOICE_ID_KEY);
-            const invoiceReportDataRaw = sessionStorage.getItem(INVOICE_FROM_REPORT_KEY);
+            const preselectedContactId = sessionStorage.getItem(PRESELECTED_CONTACT_ID_KEY);
             
             if (invoiceId) {
                 setInvoiceToEditId(invoiceId);
                 await loadInvoiceForEditing(invoiceId);
-            } else if (invoiceReportDataRaw) {
-                const { contactId, lineItems: reportLineItems } = JSON.parse(invoiceReportDataRaw);
-                setSelectedContactId(contactId);
-                const itemsWithIds = reportLineItems.map((item: any, index: number) => ({ ...item, id: `report_${Date.now()}_${index}` }));
-                setLineItems(itemsWithIds);
-                sessionStorage.removeItem(INVOICE_FROM_REPORT_KEY);
+            } else if (preselectedContactId) {
+                setSelectedContactId(preselectedContactId);
+                sessionStorage.removeItem(PRESELECTED_CONTACT_ID_KEY); // Clean up
+                setInvoiceNumber(`INV-${Date.now().toString().slice(-6)}`);
             } else {
                 setSelectedContactId(null);
                 setInvoiceNumber(`INV-${Date.now().toString().slice(-6)}`);
@@ -181,6 +172,15 @@ export function InvoiceGeneratorView() {
     }
     loadData();
   }, [user, toast, loadInvoiceForEditing]);
+
+  useEffect(() => {
+    const contact = contacts.find(c => c.id === selectedContactId);
+    if (contact) {
+        setBusinessNumber(contact.craProgramAccountNumber || userProfile?.businessNumber || '');
+    } else {
+        setBusinessNumber(userProfile?.businessNumber || '');
+    }
+  }, [selectedContactId, contacts, userProfile]);
   
   const handleOpenAddItemDialog = (item: LineItem | null) => {
     setItemToEdit(item);
