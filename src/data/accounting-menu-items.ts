@@ -40,3 +40,5 @@ export const accountingMenuItems: MenuItem[] = [
     { href: "/accounting/onboarding", icon: UserPlus, label: "Client Onboarding" },
     { href: "/accounting/bks", icon: Info, label: "BKS Welcome" },
 ];
+
+export default accountingMenuItems;
