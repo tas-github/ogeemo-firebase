@@ -122,8 +122,9 @@ export default function ManageQuickNavPage() {
   ) => {
     setChipsState({ userChips: newUserChips, availableChips: newAvailableChips });
     if (user) {
-      await updateActionChips(user.uid, newUserChips, 'accountingQuickNavItems');
-      await updateAvailableActionChips(user.uid, newAvailableChips, 'availableAccountingNavItems');
+        // Correctly call the update functions with the 'accounting' type
+        await updateActionChips(user.uid, newUserChips, 'accounting');
+        await updateAvailableActionChips(user.uid, newAvailableChips, 'accounting');
     }
   }, [user]);
 
@@ -207,7 +208,7 @@ export default function ManageQuickNavPage() {
   const handleSaveUserChipOrder = async () => {
     if (!user) return;
     try {
-      await updateActionChips(user.uid, chipsState.userChips, 'accountingQuickNavItems');
+      await updateActionChips(user.uid, chipsState.userChips, 'accounting');
       window.dispatchEvent(new Event('accountingChipsUpdated'));
       toast({
         title: "Quick Nav Order Saved",
