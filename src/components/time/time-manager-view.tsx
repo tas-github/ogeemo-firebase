@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/context/auth-context';
 import { type Project, type Event as TaskEvent, type TimeSession } from '@/types/calendar-types';
 import { type Contact } from '@/data/contacts';
-import { addTask, getProjects, addProject, updateProject, getTaskById, updateTask } from '@/services/project-service';
+import { addTask, getProjects, addProject, updateProject, getTaskById, updateTask, deleteTask } from '@/services/project-service';
 import { getContacts } from '@/services/contact-service';
 import { getFolders, type FolderData } from '@/services/contact-folder-service';
 import { Textarea } from '../ui/textarea';
@@ -34,11 +34,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogFooter,
+} from "@/components/ui/alert-dialog";
 import { format as formatDate, set, addMinutes, parseISO } from 'date-fns';
 import { Calendar } from '../ui/calendar';
 import { Calendar as CalendarIcon } from 'lucide-react';
@@ -102,6 +106,9 @@ export function TimeManagerView({ projects: initialProjects, contacts: initialCo
     const [editSessionHours, setEditSessionHours] = React.useState<number | ''>('');
     const [editSessionMinutes, setEditSessionMinutes] = React.useState<number | ''>('');
     const [editSessionNotes, setEditSessionNotes] = React.useState('');
+    
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
 
     const { user } = useAuth();
     const { toast } = useToast();
@@ -311,6 +318,22 @@ export function TimeManagerView({ projects: initialProjects, contacts: initialCo
         setIsEditSessionDialogOpen(false);
     };
 
+    const handleDeleteEvent = async () => {
+        if (!eventToEdit) {
+            toast({ variant: 'destructive', title: 'No Event to Delete' });
+            return;
+        }
+        
+        try {
+            await deleteTask(eventToEdit.id);
+            toast({ title: 'Event Deleted', description: `"${eventToEdit.title}" has been permanently removed.` });
+            router.back();
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: 'Failed to delete event', description: error.message });
+        }
+    };
+
+
     const loadData = useCallback(async () => {
         if (!user) {
             setIsLoadingData(false);
@@ -475,16 +498,18 @@ export function TimeManagerView({ projects: initialProjects, contacts: initialCo
                     <div className="flex justify-between items-center">
                         <div className="flex items-center justify-start gap-2">
                              <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="outline" onClick={() => handleSaveEvent(true)}>
-                                            <Save className="mr-2 h-4 w-4" /> Save &amp; Close
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>Save all changes and close the manager.</p>
-                                    </TooltipContent>
-                                </Tooltip>
+                                {eventToEdit && (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="outline" className="bg-card text-card-foreground hover:bg-card/90 border border-black" onClick={() => setIsDeleteDialogOpen(true)}>
+                                                <Trash2 className="mr-2 h-4 w-4" /> Delete Event
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Permanently delete this event and all its time logs.</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                )}
                             </TooltipProvider>
                         </div>
                         <div className="text-center">
@@ -493,6 +518,16 @@ export function TimeManagerView({ projects: initialProjects, contacts: initialCo
                         </div>
                         <div className="flex items-center justify-end gap-2">
                              <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button className="bg-card text-card-foreground hover:bg-card/90 border border-black" onClick={() => handleSaveEvent(true)}>
+                                            <Save className="mr-2 h-4 w-4" /> Save &amp; Close
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Save all changes and close the manager.</p>
+                                    </TooltipContent>
+                                </Tooltip>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <Button asChild variant="ghost" size="icon">
@@ -672,6 +707,7 @@ export function TimeManagerView({ projects: initialProjects, contacts: initialCo
                     onOpenChange={setIsContactFormOpen}
                     contactToEdit={null}
                     folders={contactFolders}
+                    onFoldersChange={setContactFolders}
                     onSave={handleContactSave}
                 />
             )}
@@ -706,8 +742,24 @@ export function TimeManagerView({ projects: initialProjects, contacts: initialCo
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will permanently delete this event and all of its logged time sessions. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteEvent} className="bg-destructive hover:bg-destructive/90">
+                            Delete Event
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }
 
-    

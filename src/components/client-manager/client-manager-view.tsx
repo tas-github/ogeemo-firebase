@@ -13,13 +13,7 @@ import { ArrowRight, FileSpreadsheet } from "lucide-react";
 
 export function ClientManagerView() {
   const features = [
-    {
-      icon: FileSpreadsheet,
-      title: "Client Time Report",
-      description: "Generate a detailed, filterable report of all time logged for a specific client.",
-      href: "/reports/client-billing",
-      cta: "Generate Report",
-    },
+    // The "Client Time Report" card has been removed from this array.
   ];
 
   return (
@@ -56,6 +50,11 @@ export function ClientManagerView() {
             </div>
           </Card>
         ))}
+         {features.length === 0 && (
+            <div className="md:col-span-3 text-center text-muted-foreground p-8 border-2 border-dashed rounded-lg">
+                <p>There are no reports currently available in this section.</p>
+            </div>
+        )}
       </div>
     </div>
   );

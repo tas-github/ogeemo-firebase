@@ -151,12 +151,11 @@ export default function InvoicePreviewPage() {
     return (
         <div className="p-4 sm:p-6 space-y-4 bg-muted/30">
             <div className="flex justify-between items-center max-w-4xl mx-auto">
-                 <Button variant="outline" onClick={() => router.back()}>
+                 <Button variant="outline" onClick={() => router.push('/accounting/invoices/create')}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back to Generator
                 </Button>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => router.back()}><Edit className="mr-2 h-4 w-4"/> Edit</Button>
                     <Button variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4"/> Print</Button>
                     <Button onClick={handlePrint}><FileDown className="mr-2 h-4 w-4"/> Download PDF</Button>
                 </div>

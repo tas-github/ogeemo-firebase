@@ -57,19 +57,12 @@ export function ReportsHubView() {
     },
     {
       icon: Clock,
-      title: "Billable Hours",
-      description: "Generate detailed reports on billable hours logged against clients and projects.",
-      cta: "Generate Hours Report",
-      href: "/reports/billable-hours",
+      title: "Time Log Report",
+      description: "Generate detailed reports on all logged time, both billable and non-billable.",
+      cta: "Generate Time Report",
+      href: "/reports/time-log",
     },
     {
-      icon: UserCheck,
-      title: "Client Billing",
-      description: "Generate an itemized report of time tracked for clients, including billable rates and totals.",
-      cta: "View Billing Report",
-      href: "/client-manager/report",
-    },
-     {
       icon: FileText,
       title: "Income Statement",
       description: "Generate a statement of business activities based on your income and expense ledger data.",
