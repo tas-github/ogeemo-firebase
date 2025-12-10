@@ -2,9 +2,9 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { DndProviderWrapper } from '@/components/layout/dnd-provider-wrapper';
 import { MainMenu } from '@/components/layout/main-menu';
-import { ClientLayout } from '@/components/layout/client-layout';
 import { ActiveTimerIndicator } from '@/components/layout/active-timer-indicator';
 import { Sidebar, SidebarTrigger } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
@@ -16,8 +16,22 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { LayoutDashboard, Bot } from 'lucide-react';
+import { LayoutDashboard, Bot, LoaderCircle } from 'lucide-react';
 import { SidebarViewProvider } from '@/context/sidebar-view-context';
+
+// Dynamically import the ClientLayout to ensure it's in a separate client-side chunk
+const ClientLayout = dynamic(
+  () => import('@/components/layout/client-layout').then((mod) => mod.ClientLayout),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-screen w-full items-center justify-center">
+        <LoaderCircle className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    ),
+  }
+);
+
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (

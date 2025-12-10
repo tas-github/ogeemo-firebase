@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, LoaderCircle, MoreVertical, Edit, Trash2, ArrowUpDown, Briefcase, Check, ChevronsUpDown, Folder, Calendar } from 'lucide-react';
+import { Plus, LoaderCircle, MoreVertical, Edit, Trash2, ArrowUpDown, Briefcase, Check, ChevronsUpDown, Folder, Calendar, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuth } from '@/context/auth-context';
@@ -28,10 +28,10 @@ import {
   DropdownMenuItem,
   DropdownMenuSub,
   DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
   DropdownMenuPortal,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -41,6 +41,7 @@ import { format } from 'date-fns';
 import { ProjectManagementHeader } from './ProjectManagementHeader';
 import { Checkbox } from '../ui/checkbox';
 import { Label } from '../ui/label';
+import { TaskCreationInfoDialog } from './task-creation-info-dialog';
 
 const statusDisplayMap: Record<string, string> = {
     todo: 'To Do',
@@ -132,6 +133,7 @@ export default function AllProjectTasksView() {
     const [isProjectPopoverOpen, setIsProjectPopoverOpen] = useState(false);
     const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
     const [isBulkDeleteAlertOpen, setIsBulkDeleteAlertOpen] = useState(false);
+    const [isInfoDialogOpen, setIsInfoDialogOpen] = useState(false);
     
     const router = useRouter();
     const { user } = useAuth();
@@ -220,7 +222,7 @@ export default function AllProjectTasksView() {
         setSelectedTaskIds(prev =>
             prev.includes(taskId)
                 ? prev.filter(id => id !== taskId)
-                : [...prev, taskId]
+                : [...prev, id]
         );
     };
 
@@ -282,9 +284,14 @@ export default function AllProjectTasksView() {
         <>
             <div className="p-4 sm:p-6 flex flex-col h-full items-center">
                 <header className="text-center mb-6">
-                    <h1 className="text-3xl font-bold font-headline text-primary">All Project Tasks</h1>
+                    <div className="flex items-center justify-center gap-2">
+                        <h1 className="text-3xl font-bold font-headline text-primary">All Project Tasks</h1>
+                        <Button variant="ghost" size="icon" onClick={() => setIsInfoDialogOpen(true)}>
+                            <Info className="h-5 w-5 text-muted-foreground" />
+                        </Button>
+                    </div>
                     <p className="text-muted-foreground max-w-2xl mx-auto">
-                        View all tasks across all projects, or filter by a specific project.
+                        A list of all tasks and events, including those scheduled on your calendar.
                     </p>
                 </header>
                 <ProjectManagementHeader />
@@ -392,6 +399,7 @@ export default function AllProjectTasksView() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <TaskCreationInfoDialog isOpen={isInfoDialogOpen} onOpenChange={setIsInfoDialogOpen} />
         </>
     );
 }

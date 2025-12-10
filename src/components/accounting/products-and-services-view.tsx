@@ -58,7 +58,7 @@ const formatCurrency = (amount: number) => {
 
 const emptyItemForm = { description: '', price: '', taxType: '', taxRate: '' };
 
-export function ServiceItemsView() {
+export function ProductsAndServicesView() {
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const { user } = useAuth();
@@ -125,11 +125,11 @@ export function ServiceItemsView() {
         if (itemToEdit) {
             await updateServiceItem(itemToEdit.id, itemData);
             setServiceItems(serviceItems.map(item => item.id === itemToEdit.id ? { ...item, ...itemData, id: itemToEdit.id, userId: user.uid } : item));
-            toast({ title: "Service Item Updated" });
+            toast({ title: "Item Updated" });
         } else {
             const newEntry = await addServiceItem({ ...itemData, userId: user.uid });
             setServiceItems([newEntry, ...serviceItems]);
-            toast({ title: "Service Item Added" });
+            toast({ title: "Item Added" });
         }
         setIsItemDialogOpen(false);
       } catch (error: any) {
@@ -153,9 +153,9 @@ export function ServiceItemsView() {
   return (
     <>
       <div className="p-4 sm:p-6 space-y-6">
-        <AccountingPageHeader pageTitle="Manage Service Items" />
+        <AccountingPageHeader pageTitle="Products & Services" />
         <header className="text-center">
-            <h1 className="text-3xl font-bold font-headline text-primary">Manage Service Items</h1>
+            <h1 className="text-3xl font-bold font-headline text-primary">Products & Services</h1>
             <p className="text-muted-foreground">Create and manage reusable line items for your invoices.</p>
         </header>
 

@@ -1,362 +1,260 @@
 
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UploadCloud, FilePlus2, Landmark, CreditCard, Wallet, Info, Plus, Trash2 } from "lucide-react";
+import {
+  Users,
+  UserPlus,
+  LoaderCircle,
+  ChevronsUpDown,
+  Check,
+  ArrowRight,
+  Briefcase,
+  ListTodo,
+  Pencil,
+} from "lucide-react";
 import { AccountingPageHeader } from "@/components/accounting/page-header";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Separator } from "@/components/ui/separator";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth-context";
+import { getContacts, addContact, type Contact } from '@/services/contact-service';
+import { getFolders as getContactFolders, type FolderData } from '@/services/contact-folder-service';
+import ContactFormDialog from "../contacts/contact-form-dialog";
+import { getCompanies, type Company } from "@/services/accounting-service";
+import { getIndustries, type Industry } from "@/services/industry-service";
+import { Label } from "@/components/ui/label";
 
-const BUSINESS_INFO_KEY = "accountingOnboardingBusinessInfo";
-const BANK_ACCOUNTS_KEY = "accountingBankAccounts";
-const CREDIT_CARDS_KEY = "accountingCreditCards";
-const CASH_ACCOUNT_KEY = "accountingCashAccount";
-const CUSTOM_BUSINESS_FIELDS_KEY = "accountingCustomBusinessFields";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
-const expenseCategories = [
-  "Advertising", "Car & Truck Expenses", "Commissions & Fees",
-  "Contract Labor", "Depreciation", "Insurance", "Interest",
-  "Legal & Professional Services", "Office Expense", "Rent or Lease",
-  "Repairs & Maintenance", "Supplies", "Taxes & Licenses",
-  "Travel", "Meals", "Utilities", "Wages"
-];
-
-interface BusinessInfo {
-  name: string;
-  address: string;
-  businessNumber: string;
-  method: 'cash' | 'accrual';
-}
-
-interface CustomField {
-    id: number;
-    label: string;
-    value: string;
-}
+const PRESELECTED_CONTACT_ID_KEY = 'ogeemo-preselected-contact-id';
 
 export function OnboardingView() {
+    const { user } = useAuth();
     const { toast } = useToast();
-    const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({ name: '', address: '', businessNumber: '', method: 'cash' });
-    const [bankAccounts, setBankAccounts] = useState<string[]>([]);
-    const [newBankAccount, setNewBankAccount] = useState("");
-    const [creditCards, setCreditCards] = useState<string[]>([]);
-    const [newCreditCard, setNewCreditCard] = useState("");
-    const [cashAccount, setCashAccount] = useState("");
-    const [customBusinessFields, setCustomBusinessFields] = useState<CustomField[]>([]);
+    const router = useRouter();
+    
+    const [contacts, setContacts] = useState<Contact[]>([]);
+    const [folders, setFolders] = useState<FolderData[]>([]);
+    const [companies, setCompanies] = useState<Company[]>([]);
+    const [customIndustries, setCustomIndustries] = useState<Industry[]>([]);
+    
+    const [isLoading, setIsLoading] = useState(true);
+    const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+    const [isNewContactDialogOpen, setIsNewContactDialogOpen] = useState(false);
+    const [contactToEdit, setContactToEdit] = useState<Contact | null>(null);
+    const [isContactPopoverOpen, setIsContactPopoverOpen] = useState(false);
 
+    const loadData = useCallback(async () => {
+        if (!user) {
+            setIsLoading(false);
+            return;
+        }
+        setIsLoading(true);
+        try {
+            const [fetchedContacts, fetchedFolders, fetchedCompanies, fetchedIndustries] = await Promise.all([
+                getContacts(user.uid),
+                getContactFolders(user.uid),
+                getCompanies(user.uid),
+                getIndustries(user.uid)
+            ]);
+            setContacts(fetchedContacts);
+            setFolders(fetchedFolders);
+            setCompanies(fetchedCompanies);
+            setCustomIndustries(fetchedIndustries);
+        } catch (error: any) {
+            toast({ variant: 'destructive', title: "Failed to load data", description: error.message });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [user, toast]);
 
     useEffect(() => {
-        try {
-            const savedBusinessInfo = localStorage.getItem(BUSINESS_INFO_KEY);
-            if (savedBusinessInfo) setBusinessInfo(JSON.parse(savedBusinessInfo));
-
-            const savedBankAccounts = localStorage.getItem(BANK_ACCOUNTS_KEY);
-            if (savedBankAccounts) setBankAccounts(JSON.parse(savedBankAccounts));
-            
-            const savedCreditCards = localStorage.getItem(CREDIT_CARDS_KEY);
-            if (savedCreditCards) setCreditCards(JSON.parse(savedCreditCards));
-
-            const savedCashAccount = localStorage.getItem(CASH_ACCOUNT_KEY);
-            if (savedCashAccount) setCashAccount(JSON.parse(savedCashAccount));
-            
-            const savedCustomFields = localStorage.getItem(CUSTOM_BUSINESS_FIELDS_KEY);
-            if (savedCustomFields) setCustomBusinessFields(JSON.parse(savedCustomFields));
-
-        } catch (error) {
-            console.error("Failed to load onboarding data from localStorage", error);
-        }
-    }, []);
-
-    const handleSaveBusinessInfo = () => {
-        try {
-            localStorage.setItem(BUSINESS_INFO_KEY, JSON.stringify(businessInfo));
-            toast({ title: "Business Information Saved" });
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Save Failed", description: "Could not save business info." });
-        }
-    };
+        loadData();
+    }, [loadData]);
     
-    const handleSaveCustomFields = (fields: CustomField[]) => {
-        try {
-            setCustomBusinessFields(fields);
-            localStorage.setItem(CUSTOM_BUSINESS_FIELDS_KEY, JSON.stringify(fields));
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Save Failed", description: "Could not save custom fields." });
-        }
-    };
-
-    const handleAddCustomField = () => {
-        const newFields = [...customBusinessFields, { id: Date.now(), label: "", value: "" }];
-        handleSaveCustomFields(newFields);
-    };
-
-    const handleUpdateCustomField = (id: number, key: 'label' | 'value', updatedValue: string) => {
-        const newFields = customBusinessFields.map(field => 
-            field.id === id ? { ...field, [key]: updatedValue } : field
-        );
-        handleSaveCustomFields(newFields);
-    };
-
-    const handleDeleteCustomField = (id: number) => {
-        const newFields = customBusinessFields.filter(field => field.id !== id);
-        handleSaveCustomFields(newFields);
-    };
-
-
-    const handleAccountListChange = (type: 'bank' | 'card', newList: string[]) => {
-        try {
-            if (type === 'bank') {
-                setBankAccounts(newList);
-                localStorage.setItem(BANK_ACCOUNTS_KEY, JSON.stringify(newList));
-            } else {
-                setCreditCards(newList);
-                localStorage.setItem(CREDIT_CARDS_KEY, JSON.stringify(newList));
-            }
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Save Failed", description: "Could not update account list." });
-        }
-    };
-    
-    const handleCashAccountChange = (value: string) => {
-        try {
-            setCashAccount(value);
-            localStorage.setItem(CASH_ACCOUNT_KEY, JSON.stringify(value));
-        } catch (error) {
-            toast({ variant: 'destructive', title: "Save Failed", description: "Could not update cash account." });
-        }
-    };
-    
-    const handleAddAccount = (type: 'bank' | 'card') => {
-        if (type === 'bank') {
-            if (newBankAccount.trim()) {
-                handleAccountListChange('bank', [...bankAccounts, newBankAccount.trim()]);
-                setNewBankAccount("");
+    const handleContactSave = (savedContact: Contact, isEditing: boolean) => {
+        if (isEditing) {
+            setContacts(prev => prev.map(c => c.id === savedContact.id ? savedContact : c));
+            if (selectedContact?.id === savedContact.id) {
+                setSelectedContact(savedContact);
             }
         } else {
-            if (newCreditCard.trim()) {
-                handleAccountListChange('card', [...creditCards, newCreditCard.trim()]);
-                setNewCreditCard("");
-            }
+            setContacts(prev => [...prev, savedContact]);
+            setSelectedContact(savedContact);
+        }
+        setIsNewContactDialogOpen(false);
+    };
+    
+    const handleNewContactClick = () => {
+        setContactToEdit(null);
+        setIsNewContactDialogOpen(true);
+    };
+
+    const handleEditContactClick = () => {
+        if (selectedContact) {
+            setContactToEdit(selectedContact);
+            setIsNewContactDialogOpen(true);
         }
     };
 
-    const handleDeleteAccount = (type: 'bank' | 'card', accountNameToDelete: string) => {
-        if (type === 'bank') {
-            handleAccountListChange('bank', bankAccounts.filter(acc => acc !== accountNameToDelete));
-        } else {
-            handleAccountListChange('card', creditCards.filter(acc => acc !== accountNameToDelete));
-        }
-    };
+    const nextSteps = [
+        { title: "Create a Task", href: "/master-mind", icon: ListTodo, description: "Create a single task, meeting, or event for this client." },
+        { title: "Create a Project", href: "/projects", icon: Briefcase, description: "Start a new multi-step project for this client." },
+    ];
+
+
+    if (isLoading) {
+        return <div className="flex h-full w-full items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin" /></div>;
+    }
 
     return (
-        <div className="p-4 sm:p-6 space-y-6">
-            <AccountingPageHeader pageTitle="Client Onboarding" />
-            <div className="flex flex-col items-center">
-                <header className="text-center mb-6 max-w-4xl">
-                    <h1 className="text-3xl font-bold font-headline text-primary">
-                    Client Onboarding
-                    </h1>
-                    <p className="text-muted-foreground">
-                    A streamlined process to get your clients set up quickly and accurately.
-                    </p>
-                </header>
-
-                <div className="w-full max-w-3xl space-y-6">
-                    <Card>
+        <>
+            <div className="p-4 sm:p-6 space-y-6">
+                <AccountingPageHeader pageTitle="Client Onboarding" />
+                <div className="flex flex-col items-center">
+                    <header className="text-center mb-6 max-w-4xl">
+                        <h1 className="text-3xl font-bold font-headline text-primary">
+                        Client Onboarding
+                        </h1>
+                        <p className="text-muted-foreground">
+                        A streamlined process to get your clients set up quickly and accurately.
+                        </p>
+                    </header>
+                    
+                    <Card className="w-full max-w-2xl">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <UploadCloud className="h-6 w-6 text-primary" />
-                                AI-Powered Onboarding
-                            </CardTitle>
+                            <CardTitle>Step 1: Select a Client</CardTitle>
                             <CardDescription>
-                                The fastest way to get started. Upload a recent tax return (like a Schedule C) and let our AI extract the necessary information to set up your accounts.
+                                Choose an existing client or create a new one to begin the onboarding process.
                             </CardDescription>
                         </CardHeader>
-                        <CardContent>
-                             <Button size="lg">
-                                <UploadCloud className="mr-4 h-6 w-6" />
-                                Upload Tax Return PDF
-                            </Button>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Existing Client</Label>
+                                <Popover open={isContactPopoverOpen} onOpenChange={setIsContactPopoverOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" role="combobox" className="w-full justify-between">
+                                            <Users className="mr-2 h-4 w-4" />
+                                            <span className="truncate">{selectedContact?.name || "Select client..."}</span>
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search clients..." />
+                                            <CommandList>
+                                                <CommandEmpty>No client found.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {contacts.map(c => (
+                                                        <CommandItem key={c.id} value={c.name} onSelect={() => { setSelectedContact(c); setIsContactPopoverOpen(false); }}>
+                                                            <Check className={cn("mr-2 h-4 w-4", selectedContact?.id === c.id ? "opacity-100" : "opacity-0")} />
+                                                            {c.name}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>New Client</Label>
+                                <Button variant="outline" className="w-full justify-start" onClick={handleNewContactClick}>
+                                    <UserPlus className="mr-2 h-4 w-4" />
+                                    Create New Client
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
 
-                    <div className="relative">
-                        <Separator />
-                        <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                            <div className="w-full border-t" />
-                        </div>
-                        <div className="relative flex justify-center">
-                            <span className="bg-background px-2 text-sm text-muted-foreground">OR</span>
-                        </div>
-                    </div>
-                    
-                    <Card>
-                        <Accordion type="single" collapsible defaultValue="item-1">
-                            <AccordionItem value="item-1" className="border-b-0">
-                                <AccordionTrigger className="p-6 text-left hover:no-underline">
-                                     <div className="flex items-center gap-2 text-primary">
-                                        <FilePlus2 className="h-6 w-6" />
-                                        <div className="flex flex-col items-start">
-                                            <CardTitle>Manual Onboarding</CardTitle>
-                                            <CardDescription className="mt-1">
-                                                Set up your books by providing the following information.
-                                            </CardDescription>
+                    {selectedContact && (
+                         <Card className="w-full max-w-4xl mt-6 animate-in fade-in-50">
+                            <CardHeader>
+                                <CardTitle>Step 2: Client Setup Guide for {selectedContact.name}</CardTitle>
+                                <CardDescription>
+                                    Now that your client is selected, what would you like to do next?
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <Card className="flex flex-col">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-primary/10 rounded-lg">
+                                                <Pencil className="h-5 w-5 text-primary" />
+                                            </div>
+                                            <CardTitle className="text-base">View / Edit Client Details</CardTitle>
                                         </div>
-                                     </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="px-6 pb-6">
-                                    <div className="space-y-6 rounded-lg bg-muted/50 p-4 border">
-                                        
-                                        <div className="space-y-4">
-                                            <h4 className="font-semibold text-foreground">Business Information</h4>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="biz-name">Business Name</Label>
-                                                <Input id="biz-name" value={businessInfo.name} onChange={e => setBusinessInfo(p => ({...p, name: e.target.value}))} onBlur={handleSaveBusinessInfo} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="biz-address">Business Address</Label>
-                                                <Input id="biz-address" value={businessInfo.address} onChange={e => setBusinessInfo(p => ({...p, address: e.target.value}))} onBlur={handleSaveBusinessInfo}/>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="biz-number">Business Number</Label>
-                                                <Input id="biz-number" value={businessInfo.businessNumber} onChange={e => setBusinessInfo(p => ({...p, businessNumber: e.target.value}))} onBlur={handleSaveBusinessInfo}/>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="biz-method">Accounting Method</Label>
-                                                <Select value={businessInfo.method} onValueChange={(value: 'cash' | 'accrual') => { setBusinessInfo(p => ({...p, method: value})); handleSaveBusinessInfo(); }}>
-                                                    <SelectTrigger id="biz-method"><SelectValue /></SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="cash">Cash</SelectItem>
-                                                        <SelectItem value="accrual">Accrual</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <Separator />
-                                            <div className="space-y-4">
-                                                <h5 className="font-medium text-sm text-foreground">Additional Information</h5>
-                                                {customBusinessFields.map((field, index) => (
-                                                    <div key={field.id} className="grid grid-cols-10 gap-2 items-end">
-                                                        <div className="space-y-2 col-span-4">
-                                                            {index === 0 && <Label>Field Label</Label>}
-                                                            <Input 
-                                                                placeholder="e.g., Website" 
-                                                                value={field.label}
-                                                                onChange={(e) => handleUpdateCustomField(field.id, 'label', e.target.value)}
-                                                            />
-                                                        </div>
-                                                        <div className="space-y-2 col-span-5">
-                                                            {index === 0 && <Label>Field Value</Label>}
-                                                            <Input 
-                                                                placeholder="e.g., https://example.com" 
-                                                                value={field.value}
-                                                                onChange={(e) => handleUpdateCustomField(field.id, 'value', e.target.value)}
-                                                            />
-                                                        </div>
-                                                        <div className="col-span-1">
-                                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteCustomField(field.id)} title="Delete field">
-                                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                                <Button variant="outline" size="sm" onClick={handleAddCustomField}>
-                                                    <Plus className="mr-2 h-4 w-4" /> Add Custom Field
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        <Separator />
-
-                                        <div>
-                                            <h4 className="font-semibold text-foreground">Financial Accounts</h4>
-                                            <p className="text-sm text-muted-foreground mt-1">List all accounts used for business transactions.</p>
-                                            <div className="mt-4 space-y-4">
-                                                <Card className="bg-background">
-                                                    <CardHeader className="p-3 pb-2 flex flex-row items-center gap-3">
-                                                         <Landmark className="h-5 w-5 text-primary" />
-                                                         <p className="font-semibold">Bank Accounts</p>
-                                                    </CardHeader>
-                                                    <CardContent className="p-3 space-y-2">
-                                                        {bankAccounts.map(acc => (
-                                                            <div key={acc} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
-                                                                <span className="text-sm">{acc}</span>
-                                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteAccount('bank', acc)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                            </div>
-                                                        ))}
-                                                        <div className="flex items-center gap-2">
-                                                            <Input placeholder="New bank account name..." value={newBankAccount} onChange={e => setNewBankAccount(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddAccount('bank')} />
-                                                            <Button size="sm" onClick={() => handleAddAccount('bank')}><Plus className="mr-1 h-4 w-4"/>Add</Button>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                                <Card className="bg-background">
-                                                    <CardHeader className="p-3 pb-2 flex flex-row items-center gap-3">
-                                                         <CreditCard className="h-5 w-5 text-primary" />
-                                                         <p className="font-semibold">Credit Cards</p>
-                                                    </CardHeader>
-                                                     <CardContent className="p-3 space-y-2">
-                                                        {creditCards.map(acc => (
-                                                            <div key={acc} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
-                                                                <span className="text-sm">{acc}</span>
-                                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDeleteAccount('card', acc)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                            </div>
-                                                        ))}
-                                                        <div className="flex items-center gap-2">
-                                                            <Input placeholder="New credit card name..." value={newCreditCard} onChange={e => setNewCreditCard(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddAccount('card')} />
-                                                            <Button size="sm" onClick={() => handleAddAccount('card')}><Plus className="mr-1 h-4 w-4"/>Add</Button>
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
-                                                <Card className="bg-background">
-                                                    <CardHeader className="p-3 pb-2 flex flex-row items-center gap-3">
-                                                         <Wallet className="h-5 w-5 text-primary" />
-                                                         <p className="font-semibold">Cash Account</p>
-                                                    </CardHeader>
-                                                    <CardContent className="p-3">
-                                                        <Input placeholder="e.g., Petty Cash" value={cashAccount} onChange={e => handleCashAccountChange(e.target.value)} />
-                                                    </CardContent>
-                                                </Card>
-                                            </div>
-                                        </div>
-
-                                        <Separator />
-
-                                        <div>
-                                            <h4 className="font-semibold text-foreground">Income & Expense Categories</h4>
-                                            <p className="text-sm text-muted-foreground mt-1">This helps properly categorize your transactions for tax purposes.</p>
-                                             <div className="flex items-center gap-2 p-2 mt-2 text-xs text-blue-800 bg-blue-50 dark:bg-blue-900/20 dark:text-blue-300 rounded-md">
-                                                <Info className="h-4 w-4 shrink-0"/>
-                                                <span>You will be able to add, edit, or remove these categories later.</span>
-                                            </div>
-                                            <div className="mt-4 space-y-2">
-                                                <h5 className="font-medium text-sm">Common Expense Categories:</h5>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {expenseCategories.map(cat => (
-                                                        <div key={cat} className="text-xs bg-background border rounded-full px-2 py-0.5 text-muted-foreground">{cat}</div>
-                                                    ))}
+                                    </CardHeader>
+                                    <CardContent className="flex-1">
+                                        <p className="text-sm text-muted-foreground">Review or update this client's contact information.</p>
+                                    </CardContent>
+                                    <CardFooter>
+                                        <Button className="w-full" onClick={handleEditContactClick}>
+                                            View / Edit <ArrowRight className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </CardFooter>
+                                </Card>
+                                {nextSteps.map(step => (
+                                    <Card key={step.title} className="flex flex-col">
+                                        <CardHeader>
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-primary/10 rounded-lg">
+                                                    <step.icon className="h-5 w-5 text-primary" />
                                                 </div>
+                                                <CardTitle className="text-base">{step.title}</CardTitle>
                                             </div>
-                                        </div>
-
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        </Accordion>
-                    </Card>
+                                        </CardHeader>
+                                        <CardContent className="flex-1">
+                                            <p className="text-sm text-muted-foreground">{step.description}</p>
+                                        </CardContent>
+                                        <CardFooter>
+                                            <Button asChild className="w-full">
+                                                <Link href={step.href}>Go <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    )}
                 </div>
             </div>
-        </div>
+
+            <ContactFormDialog
+                isOpen={isNewContactDialogOpen}
+                onOpenChange={setIsNewContactDialogOpen}
+                contactToEdit={contactToEdit}
+                folders={folders}
+                onFoldersChange={setFolders}
+                onSave={handleContactSave}
+                companies={companies}
+                onCompaniesChange={setCompanies}
+                customIndustries={customIndustries}
+                onCustomIndustriesChange={setCustomIndustries}
+            />
+        </>
     );
 }

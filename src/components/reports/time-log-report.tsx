@@ -130,41 +130,6 @@ export function TimeLogReport() {
             setEntryToDelete(null);
         }
     };
-
-    const handleCreateInvoice = () => {
-        if (!selectedContact || filteredEntries.length === 0) {
-            toast({ variant: 'destructive', title: 'Cannot Create Invoice', description: 'Please select a client with billable time log entries in the selected range.'});
-            return;
-        }
-
-        const lineItems = filteredEntries
-            .filter(entry => (entry.billableRate || 0) > 0)
-            .map(entry => {
-                const hours = (entry.duration || 0) / 3600;
-                return {
-                    description: `${entry.title} - ${entry.start ? format(new Date(entry.start), 'PPP') : 'N/A'}`,
-                    quantity: parseFloat(hours.toFixed(2)),
-                    price: entry.billableRate,
-                };
-            });
-        
-        if (lineItems.length === 0) {
-            toast({ variant: 'destructive', title: 'No Billable Items', description: 'There are no entries with a billable rate greater than zero.'});
-            return;
-        }
-
-        try {
-            const invoiceData = {
-                contactId: selectedContact.id,
-                lineItems: lineItems,
-            };
-            sessionStorage.setItem(INVOICE_FROM_REPORT_KEY, JSON.stringify(invoiceData));
-            router.push('/accounting/invoices/create');
-        } catch (error) {
-            console.error('Failed to prepare invoice data:', error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not prepare the invoice data for generation.' });
-        }
-    };
     
     const selectedContact = contacts.find(c => c.id === selectedContactId);
 
@@ -277,10 +242,6 @@ export function TimeLogReport() {
                             )}
                         </CardContent>
                         <CardFooter className="print:hidden justify-end space-x-2">
-                           <Button onClick={handleCreateInvoice} disabled={!selectedContactId || filteredEntries.length === 0}>
-                                <FileDigit className="mr-2 h-4 w-4" />
-                                Create Invoice from Report
-                            </Button>
                             <Button asChild variant="secondary">
                               <Link href="/accounting/invoices/create">
                                 <FileDigit className="mr-2 h-4 w-4" />
@@ -357,5 +318,3 @@ export function TimeLogReport() {
         </>
     );
 }
-
-    

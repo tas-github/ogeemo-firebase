@@ -110,8 +110,8 @@ export function ProjectsView() {
   const features = [
     { icon: Briefcase, title: "Project List", description: "A comprehensive list of every project. Use this view to edit project details.", href: "/projects/all", cta: "View Project List" },
     { icon: ListChecks, title: "Status Board", description: "A Kanban-style board to visualize project status and quickly assess your workload.", href: "/project-status", cta: "Go to Status Board" },
-    { icon: Inbox, title: "Action Items Inbox", description: "A central place to capture all your unsorted tasks and ideas before organizing them.", href: "/projects/inbox/tasks", cta: "Go to Inbox" },
-    { icon: ListTodo, title: "All Project Tasks", description: "View a comprehensive list of every task and event across all projects.", href: "/all-project-tasks", cta: "Open Tasks List" },
+    { icon: ListTodo, title: "To-Do List", description: "A simple place to quickly capture your tasks and ideas.", href: "/to-do", cta: "Go to To-Do List" },
+    { icon: ListTodo, title: "All Project Tasks", description: "A list of all tasks and events, including those scheduled on your calendar.", href: "/all-project-tasks", cta: "Open Tasks List" },
   ];
 
   return (

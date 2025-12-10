@@ -23,7 +23,7 @@ import type { MenuItem } from '@/lib/menu-items';
 export const accountingMenuItems: MenuItem[] = [
     { href: "/accounting/invoices/create", icon: FileDigit, label: "Create Invoice" },
     { href: "/accounting/accounts-receivable", icon: FileOutput, label: "Accounts Receivable" },
-    { href: "/accounting/service-items", icon: ListPlus, label: "Service Items" },
+    { href: "/accounting/service-items", icon: ListPlus, label: "Products & Services" },
     { href: "/accounting/ledgers?tab=income", icon: TrendingUp, label: "Manage Income" },
     { href: "/accounting/ledgers?tab=expenses", icon: TrendingDown, label: "Manage Expenses" },
     { href: "/accounting/ledgers", icon: BookText, label: "General Ledger" },

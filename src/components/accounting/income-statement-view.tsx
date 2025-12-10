@@ -171,7 +171,7 @@ export function IncomeStatementView() {
           Income Statement
         </h1>
         <p className="text-muted-foreground max-w-3xl mx-auto">
-          This is a simplified statement populated with data from your ledgers, structured like CRA Form T2125 for review purposes. This is not official tax advice.
+          This is a snap shot view of your financial status based on current data from the general ledger.
         </p>
       </header>
 

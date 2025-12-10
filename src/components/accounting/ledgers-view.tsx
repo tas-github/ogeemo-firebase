@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from "react";
@@ -68,6 +69,7 @@ import { AccountsPayableView } from "./accounts-payable-view";
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { format } from 'date-fns';
+import { ScrollArea } from "../ui/scroll-area";
 
 
 type GeneralTransaction = (IncomeTransaction | ExpenseTransaction) & { transactionType: 'income' | 'expense' };
@@ -566,106 +568,113 @@ export function LedgersView() {
       
       {/* Add/Edit Transaction Dialog */}
       <Dialog open={isTransactionDialogOpen} onOpenChange={setIsTransactionDialogOpen}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader className="text-center sm:text-center"><DialogTitle className="text-2xl text-primary font-bold">{transactionToEdit ? 'Edit Transaction' : `Post New ${newTransactionType === 'income' ? 'Income' : 'Expense'}`}</DialogTitle></DialogHeader>
-          <div className="grid gap-4 py-4">
-            <RadioGroup value={newTransactionType} onValueChange={(value) => setNewTransactionType(value as 'income' | 'expense')} className="grid grid-cols-2 gap-4">
-                <div><RadioGroupItem value="income" id="r-income" className="peer sr-only" /><Label htmlFor="r-income" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-green-600 [&:has([data-state=checked])]:border-green-600">Income</Label></div>
-                <div><RadioGroupItem value="expense" id="r-expense" className="peer sr-only" /><Label htmlFor="r-expense" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-red-600 [&:has([data-state=checked])]:border-red-600">Expense</Label></div>
-            </RadioGroup>
-            <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-date-gl" className="text-right">Date <span className="text-destructive">*</span></Label><Input id="tx-date-gl" type="date" value={newTransaction.date} onChange={(e) => setNewTransaction(prev => ({...prev, date: e.target.value}))} className="col-span-3" /></div>
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="tx-company-gl" className="text-right">Company <span className="text-destructive">*</span></Label>
-                <div className="col-span-3 space-y-2">
-                    <div className="flex gap-2">
-                        <Popover open={isCompanyPopoverOpen} onOpenChange={setIsCompanyPopoverOpen}>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" role="combobox" className="w-full justify-between">
-                                    {newTransaction.company || "Select company..."}
-                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                <Command><CommandInput placeholder="Search company..." /><CommandList><CommandEmpty>No company found.</CommandEmpty><CommandGroup>{companies.map((c) => (<CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, company: c.name })); setIsCompanyPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", newTransaction.company.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")} />{c.name}</CommandItem>))}</CommandGroup></CommandList></Command>
-                            </PopoverContent>
-                        </Popover>
-                        <Button variant="outline" onClick={() => setShowAddCompany(p => !p)}>{showAddCompany ? 'Cancel' : 'Add New'}</Button>
-                    </div>
-                    {showAddCompany && <div className="flex gap-2 animate-in fade-in-50"><Input placeholder="New company name..." value={newCompanyName} onChange={e => setNewCompanyName(e.target.value)} /><Button onClick={handleCreateCompany}><Plus className="mr-2 h-4 w-4"/>Add</Button></div>}
-                </div>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-description-gl" className="text-right">Description</Label><Input id="tx-description-gl" value={newTransaction.description} onChange={(e) => setNewTransaction(prev => ({...prev, description: e.target.value}))} className="col-span-3" /></div>
-            
-            <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-totalAmount-gl" className="text-right">Total Amount <span className="text-destructive">*</span></Label><div className="relative col-span-3"><span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span><Input id="tx-totalAmount-gl" type="number" value={newTransaction.totalAmount} onChange={(e) => setNewTransaction(prev => ({...prev, totalAmount: e.target.value}))} className="pl-7" step="0.01" placeholder="0.00"/></div></div>
-            <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-taxRate-gl" className="text-right">Tax Rate (%)</Label><Input id="tx-taxRate-gl" type="number" value={newTransaction.taxRate} onChange={(e) => setNewTransaction(prev => ({...prev, taxRate: e.target.value}))} className="col-span-3" placeholder="e.g., 15"/></div>
-            
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Pre-Tax Amount</Label>
-                <div className="relative col-span-3">
-                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                    <Input value={newTransaction.preTaxAmount} readOnly disabled className="pl-7 bg-muted/50" />
-                </div>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Tax Amount</Label>
-                <div className="relative col-span-3">
-                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
-                    <Input value={newTransaction.taxAmount} readOnly disabled className="pl-7 bg-muted/50" />
-                </div>
-            </div>
-
-            {newTransactionType === 'income' ? (
-                <>
+        <DialogContent className="sm:max-w-2xl flex flex-col max-h-[90vh]">
+          <DialogHeader className="text-center sm:text-center shrink-0">
+            <DialogTitle className="text-2xl text-primary font-bold">{transactionToEdit ? 'Edit Transaction' : `Post New ${newTransactionType === 'income' ? 'Income' : 'Expense'}`}</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="grid gap-4 py-4 px-6">
+                <RadioGroup value={newTransactionType} onValueChange={(value) => setNewTransactionType(value as 'income' | 'expense')} className="grid grid-cols-2 gap-4">
+                    <div><RadioGroupItem value="income" id="r-income" className="peer sr-only" /><Label htmlFor="r-income" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-green-600 [&:has([data-state=checked])]:border-green-600">Income</Label></div>
+                    <div><RadioGroupItem value="expense" id="r-expense" className="peer sr-only" /><Label htmlFor="r-expense" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-red-600 [&:has([data-state=checked])]:border-red-600">Expense</Label></div>
+                </RadioGroup>
+                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-date-gl" className="text-right">Date <span className="text-destructive">*</span></Label><Input id="tx-date-gl" type="date" value={newTransaction.date} onChange={(e) => setNewTransaction(prev => ({...prev, date: e.target.value}))} className="col-span-3" /></div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="tx-income-category-gl" className="text-right">Income Category <span className="text-destructive">*</span></Label>
+                    <Label htmlFor="tx-company-gl" className="text-right">Company <span className="text-destructive">*</span></Label>
                     <div className="col-span-3 space-y-2">
                         <div className="flex gap-2">
-                            <Popover open={isIncomeCategoryPopoverOpen} onOpenChange={setIsIncomeCategoryPopoverOpen}>
-                                <PopoverTrigger asChild><Button variant="outline" role="combobox" className="w-full justify-between">{newTransaction.incomeCategory || "Select category..."}<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></PopoverTrigger>
-                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Search category..." /><CommandList><CommandEmpty>No category found.</CommandEmpty><CommandGroup>{incomeCategories.map((c) => (<CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, incomeCategory: c.name })); setIsIncomeCategoryPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", newTransaction.incomeCategory.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent>
+                            <Popover open={isCompanyPopoverOpen} onOpenChange={setIsCompanyPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" role="combobox" className="w-full justify-between">
+                                        {newTransaction.company || "Select company..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command><CommandInput placeholder="Search company..." /><CommandList><CommandEmpty>No company found.</CommandEmpty><CommandGroup>{companies.map((c) => (<CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, company: c.name })); setIsCompanyPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", newTransaction.company.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")} />{c.name}</CommandItem>))}</CommandGroup></CommandList></Command>
+                                </PopoverContent>
                             </Popover>
-                            <Button variant="outline" onClick={() => setShowAddIncomeCategory(p => !p)}>{showAddIncomeCategory ? 'Cancel' : 'Add New'}</Button>
+                            <Button variant="outline" onClick={() => setShowAddCompany(p => !p)}>{showAddCompany ? 'Cancel' : 'Add New'}</Button>
                         </div>
-                        {showAddIncomeCategory && <div className="flex gap-2 animate-in fade-in-50"><Input placeholder="New income category..." value={newIncomeCategoryName} onChange={e => setNewIncomeCategoryName(e.target.value)} /><Button onClick={handleCreateIncomeCategory}><Plus className="mr-2 h-4 w-4"/>Add</Button></div>}
+                        {showAddCompany && <div className="flex gap-2 animate-in fade-in-50"><Input placeholder="New company name..." value={newCompanyName} onChange={e => setNewCompanyName(e.target.value)} /><Button onClick={handleCreateCompany}><Plus className="mr-2 h-4 w-4"/>Add</Button></div>}
                     </div>
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-deposit-account-gl" className="text-right">Deposited To</Label><div className="col-span-3"><Select value={newTransaction.depositedTo} onValueChange={(value) => setNewTransaction(prev => ({...prev, depositedTo: value}))}><SelectTrigger id="tx-deposit-account-gl" className="w-full"><SelectValue placeholder="Select an account" /></SelectTrigger><SelectContent>{defaultDepositAccounts.map(acc => <SelectItem key={acc} value={acc}>{acc}</SelectItem>)}</SelectContent></Select></div></div>
-                </>
-            ) : (
+                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-description-gl" className="text-right">Description</Label><Input id="tx-description-gl" value={newTransaction.description} onChange={(e) => setNewTransaction(prev => ({...prev, description: e.target.value}))} className="col-span-3" /></div>
+                
+                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-totalAmount-gl" className="text-right">Total Amount <span className="text-destructive">*</span></Label><div className="relative col-span-3"><span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span><Input id="tx-totalAmount-gl" type="number" value={newTransaction.totalAmount} onChange={(e) => setNewTransaction(prev => ({...prev, totalAmount: e.target.value}))} className="pl-7" step="0.01" placeholder="0.00"/></div></div>
+                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-taxRate-gl" className="text-right">Tax Rate (%)</Label><Input id="tx-taxRate-gl" type="number" value={newTransaction.taxRate} onChange={(e) => setNewTransaction(prev => ({...prev, taxRate: e.target.value}))} className="col-span-3" placeholder="e.g., 15"/></div>
+                
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right">Pre-Tax Amount</Label>
+                    <div className="relative col-span-3">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                        <Input value={newTransaction.preTaxAmount} readOnly disabled className="pl-7 bg-muted/50" />
+                    </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right">Tax Amount</Label>
+                    <div className="relative col-span-3">
+                        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
+                        <Input value={newTransaction.taxAmount} readOnly disabled className="pl-7 bg-muted/50" />
+                    </div>
+                </div>
+
+                {newTransactionType === 'income' ? (
+                    <>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="tx-income-category-gl" className="text-right">Income Category <span className="text-destructive">*</span></Label>
+                        <div className="col-span-3 space-y-2">
+                            <div className="flex gap-2">
+                                <Popover open={isIncomeCategoryPopoverOpen} onOpenChange={setIsIncomeCategoryPopoverOpen}>
+                                    <PopoverTrigger asChild><Button variant="outline" role="combobox" className="w-full justify-between">{newTransaction.incomeCategory || "Select category..."}<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Search category..." /><CommandList><CommandEmpty>No category found.</CommandEmpty><CommandGroup>{incomeCategories.map((c) => (<CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, incomeCategory: c.name })); setIsIncomeCategoryPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", newTransaction.incomeCategory.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent>
+                                </Popover>
+                                <Button variant="outline" onClick={() => setShowAddIncomeCategory(p => !p)}>{showAddIncomeCategory ? 'Cancel' : 'Add New'}</Button>
+                            </div>
+                            {showAddIncomeCategory && <div className="flex gap-2 animate-in fade-in-50"><Input placeholder="New income category..." value={newIncomeCategoryName} onChange={e => setNewIncomeCategoryName(e.target.value)} /><Button onClick={handleCreateIncomeCategory}><Plus className="mr-2 h-4 w-4"/>Add</Button></div>}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-deposit-account-gl" className="text-right">Deposited To</Label><div className="col-span-3"><Select value={newTransaction.depositedTo} onValueChange={(value) => setNewTransaction(prev => ({...prev, depositedTo: value}))}><SelectTrigger id="tx-deposit-account-gl" className="w-full"><SelectValue placeholder="Select an account" /></SelectTrigger><SelectContent>{defaultDepositAccounts.map(acc => <SelectItem key={acc} value={acc}>{acc}</SelectItem>)}</SelectContent></Select></div></div>
+                    </>
+                ) : (
+                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="tx-category-gl" className="text-right">Category <span className="text-destructive">*</span></Label>
+                        <div className="col-span-3 space-y-2">
+                            <div className="flex gap-2">
+                                <Popover open={isCategoryPopoverOpen} onOpenChange={setIsCategoryPopoverOpen}>
+                                    <PopoverTrigger asChild><Button variant="outline" role="combobox" className="w-full justify-between">{newTransaction.category || "Select category..."}<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Search category..." /><CommandList><CommandEmpty>No category found.</CommandEmpty><CommandGroup>{expenseCategories.map((c) => (<CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, category: c.name })); setIsCategoryPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", newTransaction.category.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent>
+                                </Popover>
+                                <Button variant="outline" onClick={() => setShowAddExpenseCategory(p => !p)}>{showAddExpenseCategory ? 'Cancel' : 'Add New'}</Button>
+                            </div>
+                            {showAddExpenseCategory && <div className="flex gap-2 animate-in fade-in-50"><Input placeholder="New expense category..." value={newExpenseCategoryName} onChange={e => setNewExpenseCategoryName(e.target.value)} /><Button onClick={handleCreateExpenseCategory}><Plus className="mr-2 h-4 w-4"/>Add</Button></div>}
+                        </div>
+                    </div>
+                )}
                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="tx-category-gl" className="text-right">Category <span className="text-destructive">*</span></Label>
-                    <div className="col-span-3 space-y-2">
-                        <div className="flex gap-2">
-                            <Popover open={isCategoryPopoverOpen} onOpenChange={setIsCategoryPopoverOpen}>
-                                <PopoverTrigger asChild><Button variant="outline" role="combobox" className="w-full justify-between">{newTransaction.category || "Select category..."}<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></PopoverTrigger>
-                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput placeholder="Search category..." /><CommandList><CommandEmpty>No category found.</CommandEmpty><CommandGroup>{expenseCategories.map((c) => (<CommandItem key={c.id} value={c.name} onSelect={() => { setNewTransaction(prev => ({ ...prev, category: c.name })); setIsCategoryPopoverOpen(false); }}> <Check className={cn("mr-2 h-4 w-4", newTransaction.category.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")}/>{c.name}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent>
-                            </Popover>
-                            <Button variant="outline" onClick={() => setShowAddExpenseCategory(p => !p)}>{showAddExpenseCategory ? 'Cancel' : 'Add New'}</Button>
-                        </div>
-                        {showAddExpenseCategory && <div className="flex gap-2 animate-in fade-in-50"><Input placeholder="New expense category..." value={newExpenseCategoryName} onChange={e => setNewExpenseCategoryName(e.target.value)} /><Button onClick={handleCreateExpenseCategory}><Plus className="mr-2 h-4 w-4"/>Add</Button></div>}
-                    </div>
+                    <Label htmlFor="tx-category-num-gl" className="text-right">Category #</Label>
+                    <Input 
+                        id="tx-category-num-gl" 
+                        readOnly 
+                        disabled 
+                        value={(newTransactionType === 'income'
+                            ? incomeCategories.find(c => c.name === newTransaction.incomeCategory)?.categoryNumber
+                            : expenseCategories.find(c => c.name === newTransaction.category)?.categoryNumber) || ''
+                        } 
+                        className="col-span-3 bg-muted/50" 
+                    />
                 </div>
-            )}
-             <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="tx-category-num-gl" className="text-right">Category #</Label>
-                <Input 
-                    id="tx-category-num-gl" 
-                    readOnly 
-                    disabled 
-                    value={(newTransactionType === 'income'
-                        ? incomeCategories.find(c => c.name === newTransaction.incomeCategory)?.categoryNumber
-                        : expenseCategories.find(c => c.name === newTransaction.category)?.categoryNumber) || ''
-                    } 
-                    className="col-span-3 bg-muted/50" 
-                />
+                
+                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-explanation-gl" className="text-right">Explanation</Label><Input id="tx-explanation-gl" value={newTransaction.explanation} onChange={(e) => setNewTransaction(prev => ({...prev, explanation: e.target.value}))} className="col-span-3" /></div>
+                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-doc-number-gl" className="text-right">Doc #</Label><Input id="tx-doc-number-gl" value={newTransaction.documentNumber} onChange={(e) => setNewTransaction(prev => ({...prev, documentNumber: e.target.value}))} className="col-span-3" /></div>
+                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-doc-url-gl" className="text-right">Doc Link</Label><Input id="tx-doc-url-gl" placeholder="https://..." value={newTransaction.documentUrl} onChange={(e) => setNewTransaction(prev => ({...prev, documentUrl: e.target.value}))} className="col-span-3" /></div>
+                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-type-gl" className="text-right">Type</Label><RadioGroup value={newTransaction.type} onValueChange={(value: 'business' | 'personal') => setNewTransaction(prev => ({ ...prev, type: value }))} className="col-span-3 flex items-center space-x-4" id="tx-type-gl"><div className="flex items-center space-x-2"><RadioGroupItem value="business" id="type-business-gl" /><Label htmlFor="type-business-gl">Business</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="personal" id="type-personal-gl" /><Label htmlFor="type-personal-gl">Personal</Label></div></RadioGroup></div>
             </div>
-            
-            <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-explanation-gl" className="text-right">Explanation</Label><Input id="tx-explanation-gl" value={newTransaction.explanation} onChange={(e) => setNewTransaction(prev => ({...prev, explanation: e.target.value}))} className="col-span-3" /></div>
-            <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-doc-number-gl" className="text-right">Doc #</Label><Input id="tx-doc-number-gl" value={newTransaction.documentNumber} onChange={(e) => setNewTransaction(prev => ({...prev, documentNumber: e.target.value}))} className="col-span-3" /></div>
-            <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-doc-url-gl" className="text-right">Doc Link</Label><Input id="tx-doc-url-gl" placeholder="https://..." value={newTransaction.documentUrl} onChange={(e) => setNewTransaction(prev => ({...prev, documentUrl: e.target.value}))} className="col-span-3" /></div>
-            <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-type-gl" className="text-right">Type</Label><RadioGroup value={newTransaction.type} onValueChange={(value: 'business' | 'personal') => setNewTransaction(prev => ({ ...prev, type: value }))} className="col-span-3 flex items-center space-x-4" id="tx-type-gl"><div className="flex items-center space-x-2"><RadioGroupItem value="business" id="type-business-gl" /><Label htmlFor="type-business-gl">Business</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="personal" id="type-personal-gl" /><Label htmlFor="type-personal-gl">Personal</Label></div></RadioGroup></div>
-          </div>
-          <DialogFooter><Button variant="ghost" onClick={() => setIsTransactionDialogOpen(false)}>Cancel</Button><Button onClick={handleSaveTransaction}>{transactionToEdit ? 'Save Changes' : 'Save Transaction'}</Button></DialogFooter>
+          </ScrollArea>
+          <DialogFooter className="p-6 pt-2 border-t shrink-0">
+            <Button variant="ghost" onClick={() => setIsTransactionDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveTransaction}>{transactionToEdit ? 'Save Changes' : 'Save Transaction'}</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       
@@ -675,4 +684,3 @@ export function LedgersView() {
     </>
   );
 }
-
