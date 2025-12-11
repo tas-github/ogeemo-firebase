@@ -37,7 +37,7 @@ export function ReportsHubView() {
      {
       icon: ListTodo,
       title: "All Project Tasks",
-      description: "View a comprehensive list of every task and event across all projects and your calendar.",
+      description: "A list of all tasks and events, including those scheduled on your calendar.",
       href: "/all-project-tasks",
       cta: "View All Tasks",
     },
@@ -61,6 +61,13 @@ export function ReportsHubView() {
       description: "Generate detailed reports on all logged time, both billable and non-billable.",
       cta: "Generate Time Report",
       href: "/reports/time-log",
+    },
+    {
+      icon: UserCheck,
+      title: "Client Statement",
+      description: "Generate a statement of account for a specific client, showing all invoices and payments.",
+      cta: "View Statement",
+      href: "/reports/client-statement",
     },
     {
       icon: FileText,

@@ -16,11 +16,17 @@ export default function GtdInstructionsPage() {
     return (
         <div className="p-4 sm:p-6 space-y-6">
             <header className="grid grid-cols-3 items-center">
-                <div className="flex justify-start">
+                <div className="flex justify-start gap-2">
                     <Button asChild variant="outline">
                         <Link href="/action-manager">
                             <ArrowLeft className="mr-2 h-4 w-4" />
                             Action Manager
+                        </Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href="/calendar">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Calendar
                         </Link>
                     </Button>
                 </div>

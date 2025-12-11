@@ -13,7 +13,7 @@ import { LoaderCircle, ArrowLeft, Calendar as CalendarIcon, Save, BellRing } fro
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { addTask } from '@/services/project-service';
-import { format, set, addMinutes } from 'date-fns';
+import { format, set } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -25,9 +25,18 @@ export default function NewReminderPage() {
     
     const [title, setTitle] = useState("");
     const [notes, setNotes] = useState("");
-    const [date, setDate] = useState<Date | undefined>(new Date());
-    const [hour, setHour] = useState<string>(String(new Date().getHours()));
-    const [minute, setMinute] = useState<string>(String(Math.floor(new Date().getMinutes() / 5) * 5));
+    
+    const [startDate, setStartDate] = useState<Date | undefined>(new Date());
+    const [startHour, setStartHour] = useState<string>(String(new Date().getHours()));
+    const [startMinute, setStartMinute] = useState<string>(String(Math.floor(new Date().getMinutes() / 5) * 5));
+
+    const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+    const [endHour, setEndHour] = useState<string>(String(new Date().getHours() + 1));
+    const [endMinute, setEndMinute] = useState<string>(String(Math.floor(new Date().getMinutes() / 5) * 5));
+
+    const [isStartPopoverOpen, setIsStartPopoverOpen] = useState(false);
+    const [isEndPopoverOpen, setIsEndPopoverOpen] = useState(false);
+    
     const [isSaving, setIsSaving] = useState(false);
 
     const { user } = useAuth();
@@ -40,7 +49,6 @@ export default function NewReminderPage() {
         }
     }, [searchParams]);
 
-
     const hourOptions = Array.from({ length: 24 }, (_, i) => {
         const d = set(new Date(), { hours: i });
         return { value: String(i), label: format(d, 'h a') };
@@ -52,21 +60,31 @@ export default function NewReminderPage() {
     });
     
     const handleSaveReminder = async () => {
-        if (!user || !title.trim() || !date) {
-            toast({ variant: 'destructive', title: 'Missing Information', description: 'Please provide a title and date for the reminder.' });
+        if (!user || !title.trim() || !startDate) {
+            toast({ variant: 'destructive', title: 'Missing Information', description: 'Please provide a title and start date for the reminder.' });
             return;
         }
         
         setIsSaving(true);
         try {
-            const startTime = set(date, { hours: parseInt(hour), minutes: parseInt(minute) });
-            const endTime = addMinutes(startTime, 30); // Default 30-minute duration
+            const finalStartDate = set(startDate, { hours: parseInt(startHour), minutes: parseInt(startMinute) });
+            
+            let finalEndDate: Date;
+            const finalEndDateDatePart = endDate || finalStartDate;
+            const finalEndHour = endHour || startHour;
+            const finalEndMinute = endMinute || startMinute;
+            
+            finalEndDate = set(finalEndDateDatePart, { hours: parseInt(finalEndHour), minutes: parseInt(finalEndMinute) });
+
+            if (finalEndDate <= finalStartDate) {
+                finalEndDate = new Date(finalStartDate.getTime() + 30 * 60000); // Default to 30 min duration if end is before start
+            }
 
             const reminderData = {
                 title: `Reminder: ${title}`,
                 description: notes,
-                start: startTime,
-                end: endTime,
+                start: finalStartDate,
+                end: finalEndDate,
                 status: 'todo' as const,
                 position: 0,
                 userId: user.uid,
@@ -96,26 +114,42 @@ export default function NewReminderPage() {
                         This will be added as an event on your calendar.
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
                     <div className="space-y-2">
                         <Label htmlFor="reminder-title">Reminder Title</Label>
                         <Input id="reminder-title" value={title} onChange={(e) => setTitle(e.target.value)} />
                     </div>
-                    <div className="space-y-2">
-                        <Label>Date & Time</Label>
-                        <div className="flex flex-col sm:flex-row gap-2">
-                            <Popover>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>Start Time</Label>
+                             <Popover open={isStartPopoverOpen} onOpenChange={setIsStartPopoverOpen}>
                                 <PopoverTrigger asChild>
-                                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}>
+                                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}>
                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {date ? format(date, "PPP") : <span>Pick a date</span>}
+                                        {startDate ? format(startDate, "PPP") : <span>Pick a start date</span>}
                                     </Button>
                                 </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={date} onSelect={setDate} initialFocus /></PopoverContent>
+                                <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={startDate} onSelect={(date) => { setStartDate(date); setIsStartPopoverOpen(false); }} initialFocus /></PopoverContent>
                             </Popover>
                             <div className="flex-1 flex gap-2">
-                                <Select value={hour} onValueChange={setHour}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
-                                <Select value={minute} onValueChange={setMinute}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+                                <Select value={startHour} onValueChange={setStartHour}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+                                <Select value={startMinute} onValueChange={setStartMinute}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+                            </div>
+                        </div>
+                         <div className="space-y-2">
+                            <Label>End Time</Label>
+                             <Popover open={isEndPopoverOpen} onOpenChange={setIsEndPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {endDate ? format(endDate, "PPP") : <span>Pick an end date</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={endDate} onSelect={(date) => { setEndDate(date); setIsEndPopoverOpen(false); }} initialFocus /></PopoverContent>
+                            </Popover>
+                            <div className="flex-1 flex gap-2">
+                                <Select value={endHour} onValueChange={setEndHour}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
+                                <Select value={endMinute} onValueChange={setEndMinute}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select>
                             </div>
                         </div>
                     </div>
@@ -140,3 +174,4 @@ export default function NewReminderPage() {
         </div>
     );
 }
+

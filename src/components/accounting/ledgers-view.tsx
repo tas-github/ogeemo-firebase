@@ -47,7 +47,7 @@ import { AccountingPageHeader } from "@/components/accounting/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, MoreVertical, BookOpen, Pencil, Trash2, LoaderCircle, Check, ChevronsUpDown, FilterX, Plus } from "lucide-react";
+import { PlusCircle, MoreVertical, BookOpen, Pencil, Trash2, LoaderCircle, Check, ChevronsUpDown, FilterX, Plus, Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -70,6 +70,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { format } from 'date-fns';
 import { ScrollArea } from "../ui/scroll-area";
+import { Calendar } from "../ui/calendar";
 
 
 type GeneralTransaction = (IncomeTransaction | ExpenseTransaction) & { transactionType: 'income' | 'expense' };
@@ -90,7 +91,6 @@ const tabTitles: Record<string, string> = {
 export function LedgersView() {
   const [incomeLedger, setIncomeLedger] = React.useState<IncomeTransaction[]>([]);
   const [expenseLedger, setExpenseLedger] = React.useState<ExpenseTransaction[]>([]);
-  const [payableLedger, setPayableLedger] = React.useState<PayableBill[]>([]);
   const [companies, setCompanies] = React.useState<Company[]>([]);
   const [expenseCategories, setExpenseCategories] = React.useState<ExpenseCategory[]>([]);
   const [incomeCategories, setIncomeCategories] = React.useState<IncomeCategory[]>([]);
@@ -115,6 +115,8 @@ export function LedgersView() {
   const [isIncomeCategoryPopoverOpen, setIsIncomeCategoryPopoverOpen] = React.useState(false);
   const [showAddIncomeCategory, setShowAddIncomeCategory] = React.useState(false);
   const [newIncomeCategoryName, setNewIncomeCategoryName] = React.useState('');
+
+  const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
 
   const [showTotals, setShowTotals] = React.useState(false);
   const { toast } = useToast();
@@ -148,17 +150,15 @@ export function LedgersView() {
     const loadData = async () => {
         setIsLoading(true);
         try {
-            const [income, expenses, payables, fetchedCompanies, fetchedExpenseCategories, fetchedIncomeCategories] = await Promise.all([
+            const [income, expenses, fetchedCompanies, fetchedExpenseCategories, fetchedIncomeCategories] = await Promise.all([
                 getIncomeTransactions(user.uid),
                 getExpenseTransactions(user.uid),
-                getPayableBills(user.uid),
                 getCompanies(user.uid),
                 getExpenseCategories(user.uid),
                 getIncomeCategories(user.uid),
             ]);
             setIncomeLedger(income);
             setExpenseLedger(expenses);
-            setPayableLedger(payables);
             setCompanies(fetchedCompanies);
             setExpenseCategories(fetchedExpenseCategories);
             setIncomeCategories(fetchedIncomeCategories);
@@ -248,7 +248,7 @@ export function LedgersView() {
             });
         } else {
             setTransactionToEdit(null);
-            setNewTransaction(emptyTransactionForm);
+            setNewTransaction({...emptyTransactionForm, date: format(new Date(), 'yyyy-MM-dd')});
         }
         setShowAddCompany(false);
         setShowAddExpenseCategory(false);
@@ -383,40 +383,6 @@ export function LedgersView() {
         }
     };
 
-    const handleRecordPayment = async (bill: PayableBill) => {
-        if (!user) return;
-        try {
-            const expenseCategory = expenseCategories.find(c => c.name === bill.category);
-            const newExpense: Omit<ExpenseTransaction, 'id'> = {
-                date: format(new Date(), 'yyyy-MM-dd'),
-                company: bill.vendor,
-                description: bill.description || `Payment for Invoice #${bill.invoiceNumber}`,
-                totalAmount: bill.totalAmount,
-                preTaxAmount: bill.preTaxAmount,
-                taxAmount: bill.taxAmount,
-                taxRate: bill.taxRate,
-                category: expenseCategory?.categoryNumber || bill.category,
-                explanation: `Paid bill from A/P on ${format(new Date(), 'PP')}`,
-                documentNumber: bill.invoiceNumber,
-                documentUrl: bill.documentUrl,
-                type: 'business',
-                userId: user.uid,
-            };
-            
-            const newExpenseEntry = await addExpenseTransaction(newExpense);
-            setExpenseLedger(prev => [newExpenseEntry, ...prev]);
-
-            await deletePayableBill(bill.id);
-            setPayableLedger(prev => prev.filter(b => b.id !== bill.id));
-
-            toast({ title: "Payment Recorded", description: `Bill from ${bill.vendor} marked as paid and moved to expenses.` });
-        } catch (error: any) {
-            console.error("Failed to record payment:", error);
-            toast({ variant: 'destructive', title: 'Error', description: error.message || 'Could not record payment.' });
-            throw error;
-        }
-    };
-
     const renderDocumentNumber = (item: GeneralTransaction) => {
         if (item.documentUrl) {
             return (
@@ -445,7 +411,6 @@ export function LedgersView() {
                   <TabsTrigger value="income">Income</TabsTrigger>
                   <TabsTrigger value="expenses">Expenses</TabsTrigger>
                   <TabsTrigger value="receivables">Accounts Receivable</TabsTrigger>
-                  <TabsTrigger value="payables">Payables</TabsTrigger>
                 </TabsList>
               </div>
               
@@ -549,18 +514,6 @@ export function LedgersView() {
                <TabsContent value="receivables">
                     <InvoicePaymentsView />
                </TabsContent>
-               <TabsContent value="payables">
-                    <AccountsPayableView 
-                        payableLedger={payableLedger}
-                        isLoading={isLoading}
-                        onRecordPayment={handleRecordPayment}
-                        companies={companies}
-                        expenseCategories={expenseCategories}
-                        onCompaniesChange={setCompanies}
-                        onExpenseCategoriesChange={setExpenseCategories}
-                        onPayableLedgerChange={setPayableLedger}
-                    />
-               </TabsContent>
 
             </Tabs>
         </div>
@@ -578,7 +531,18 @@ export function LedgersView() {
                     <div><RadioGroupItem value="income" id="r-income" className="peer sr-only" /><Label htmlFor="r-income" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-green-600 [&:has([data-state=checked])]:border-green-600">Income</Label></div>
                     <div><RadioGroupItem value="expense" id="r-expense" className="peer sr-only" /><Label htmlFor="r-expense" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-red-600 [&:has([data-state=checked])]:border-red-600">Expense</Label></div>
                 </RadioGroup>
-                <div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="tx-date-gl" className="text-right">Date <span className="text-destructive">*</span></Label><Input id="tx-date-gl" type="date" value={newTransaction.date} onChange={(e) => setNewTransaction(prev => ({...prev, date: e.target.value}))} className="col-span-3" /></div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="tx-date-gl" className="text-right">Date <span className="text-destructive">*</span></Label>
+                    <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className={cn("col-span-3 justify-start text-left font-normal", !newTransaction.date && "text-muted-foreground")}>
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {newTransaction.date ? format(new Date(newTransaction.date), "PPP") : <span>Pick a date</span>}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={newTransaction.date ? new Date(newTransaction.date) : undefined} onSelect={(date) => { if (date) setNewTransaction(p => ({ ...p, date: format(date, 'yyyy-MM-dd') })); setIsDatePickerOpen(false); }} initialFocus /></PopoverContent>
+                    </Popover>
+                </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="tx-company-gl" className="text-right">Company <span className="text-destructive">*</span></Label>
                     <div className="col-span-3 space-y-2">

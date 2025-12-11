@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -49,8 +50,10 @@ export default function PlanningRitualsPage() {
         day: 'Friday',
         duration: 90,
     });
-    const [weeklyDateRange, setWeeklyDateRange] = useState<DateRange | undefined>(undefined);
-    const [isWeeklyPickerOpen, setIsWeeklyPickerOpen] = useState(false);
+    const [weeklyStartDate, setWeeklyStartDate] = useState<Date | undefined>();
+    const [weeklyEndDate, setWeeklyEndDate] = useState<Date | undefined>();
+    const [isWeeklyStartPickerOpen, setIsWeeklyStartPickerOpen] = useState(false);
+    const [isWeeklyEndPickerOpen, setIsWeeklyEndPickerOpen] = useState(false);
 
 
     // Load settings on mount
@@ -178,7 +181,7 @@ export default function PlanningRitualsPage() {
     const handleSaveWeekly = async () => {
         if (!user) return;
 
-        if (!weeklyDateRange?.from || !weeklyDateRange?.to) {
+        if (!weeklyStartDate || !weeklyEndDate) {
             toast({ variant: 'destructive', title: 'Date Range Required', description: 'Please select a start and end date for the weekly ritual.' });
             return;
         }
@@ -208,7 +211,7 @@ export default function PlanningRitualsPage() {
 
             // 3. Create new tasks
             const targetDayIndex = daysOfWeek.indexOf(weeklyRitual.day!);
-            const allDaysInRange = eachDayOfInterval({ start: weeklyDateRange.from, end: weeklyDateRange.to });
+            const allDaysInRange = eachDayOfInterval({ start: weeklyStartDate, end: weeklyEndDate });
             const targetDates = allDaysInRange.filter(d => getDay(d) === targetDayIndex);
             
             const [hoursStr, minutesStr] = weeklyRitual.time.split(':');
@@ -245,18 +248,13 @@ export default function PlanningRitualsPage() {
         }
     };
     
-    const handleWeeklyDateSelect = (range: DateRange | undefined) => {
-        setWeeklyDateRange(range);
-        if (range?.from && range?.to) {
-            setIsWeeklyPickerOpen(false);
-        }
-    };
 
     if (isLoading) {
         return <div className="flex h-full w-full items-center justify-center"><LoaderCircle className="h-8 w-8 animate-spin" /></div>;
     }
 
     return (
+        <>
         <div className="p-4 sm:p-6 space-y-6">
             <header className="relative text-center">
                 <div className="absolute top-0 right-0 flex items-center gap-2">
@@ -380,40 +378,35 @@ export default function PlanningRitualsPage() {
                         <CardDescription>Block off a 90-minute session each week to review progress and plan the upcoming week.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label>Date Range</Label>
-                            <Popover open={isWeeklyPickerOpen} onOpenChange={setIsWeeklyPickerOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant={"outline"}
-                                        className={cn("w-full justify-start text-left font-normal", !weeklyDateRange && "text-muted-foreground")}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {weeklyDateRange?.from ? (
-                                            weeklyDateRange.to ? (
-                                                <>{format(weeklyDateRange.from, "LLL dd, y")} - {format(weeklyDateRange.to, "LLL dd, y")}</>
-                                            ) : (
-                                                format(weeklyDateRange.from, "LLL dd, y")
-                                            )
-                                        ) : (
-                                            <span>Pick a date range</span>
-                                        )}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent 
-                                    className="w-auto p-0" 
-                                    align="start"
-                                >
-                                    <Calendar
-                                        initialFocus
-                                        mode="range"
-                                        defaultMonth={weeklyDateRange?.from}
-                                        selected={weeklyDateRange}
-                                        onSelect={handleWeeklyDateSelect}
-                                        numberOfMonths={2}
-                                    />
-                                </PopoverContent>
-                            </Popover>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-2">
+                                <Label>Start Date</Label>
+                                <Popover open={isWeeklyStartPickerOpen} onOpenChange={setIsWeeklyStartPickerOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !weeklyStartDate && "text-muted-foreground")}>
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {weeklyStartDate ? format(weeklyStartDate, "PPP") : <span>Start Date</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <Calendar mode="single" selected={weeklyStartDate} onSelect={(date) => { setWeeklyStartDate(date); setIsWeeklyStartPickerOpen(false); }} initialFocus />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>End Date</Label>
+                                <Popover open={isWeeklyEndPickerOpen} onOpenChange={setIsWeeklyEndPickerOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !weeklyEndDate && "text-muted-foreground")}>
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {weeklyEndDate ? format(weeklyEndDate, "PPP") : <span>End Date</span>}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <Calendar mode="single" selected={weeklyEndDate} onSelect={(date) => { setWeeklyEndDate(date); setIsWeeklyEndPickerOpen(false); }} disabled={(date) => weeklyStartDate ? date < weeklyStartDate : false} initialFocus />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <Label>Day of the Week</Label>
@@ -453,5 +446,6 @@ export default function PlanningRitualsPage() {
                 </CardFooter>
             </Card>
         </div>
+        </>
     );
 }

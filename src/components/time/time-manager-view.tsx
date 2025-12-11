@@ -43,6 +43,12 @@ import {
   AlertDialogTitle,
   AlertDialogFooter,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { format as formatDate, set, addMinutes, parseISO } from 'date-fns';
 import { Calendar } from '../ui/calendar';
 import { Calendar as CalendarIcon } from 'lucide-react';
@@ -73,12 +79,16 @@ export function TimeManagerView({ projects: initialProjects, contacts: initialCo
     const [isBillable, setIsBillable] = React.useState(false);
     const [billableRate, setBillableRate] = React.useState<number | ''>(100);
     
-    // State for scheduling
-    const [scheduleDate, setScheduleDate] = React.useState<Date | undefined>(undefined);
-    const [scheduleHour, setScheduleHour] = React.useState<string | undefined>(undefined);
-    const [scheduleMinute, setScheduleMinute] = React.useState<string | undefined>(undefined);
-    const [scheduleEnd, setScheduleEnd] = React.useState<{hour?: string, minute?: string}>({});
-    const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
+    // Updated state for scheduling
+    const [startDate, setStartDate] = React.useState<Date | undefined>(undefined);
+    const [startHour, setStartHour] = React.useState<string | undefined>(undefined);
+    const [startMinute, setStartMinute] = React.useState<string | undefined>(undefined);
+    const [endDate, setEndDate] = React.useState<Date | undefined>(undefined);
+    const [endHour, setEndHour] = React.useState<string | undefined>(undefined);
+    const [endMinute, setEndMinute] = React.useState<string | undefined>(undefined);
+    
+    const [isStartPickerOpen, setIsStartPickerOpen] = React.useState(false);
+    const [isEndPickerOpen, setIsEndPickerOpen] = React.useState(false);
 
 
     // State for new client selection UI
@@ -218,14 +228,15 @@ export function TimeManagerView({ projects: initialProjects, contacts: initialCo
         let end: Date | null = null;
         let isScheduled = false;
 
-        if (scheduleDate) {
-            const hour = scheduleHour ? parseInt(scheduleHour) : new Date().getHours();
-            const minute = scheduleMinute ? parseInt(scheduleMinute) : new Date().getMinutes();
-            start = set(scheduleDate, { hours: hour, minutes: minute });
+        if (startDate) {
+            const hour = startHour ? parseInt(startHour) : new Date().getHours();
+            const minute = startMinute ? parseInt(startMinute) : new Date().getMinutes();
+            start = set(startDate, { hours: hour, minutes: minute });
             
-            const endHour = scheduleEnd.hour ? parseInt(scheduleEnd.hour) : hour;
-            const endMinute = scheduleEnd.minute ? parseInt(scheduleEnd.minute) : minute;
-            end = set(scheduleDate, { hours: endHour, minutes: endMinute });
+            const finalEndDate = endDate || startDate;
+            const finalEndHour = endHour ? parseInt(endHour) : hour;
+            const finalEndMinute = endMinute ? parseInt(endMinute) : minute;
+            end = set(finalEndDate, { hours: finalEndHour, minutes: finalEndMinute });
 
             if (end <= start) {
                 end = addMinutes(start, 30);
@@ -263,7 +274,7 @@ export function TimeManagerView({ projects: initialProjects, contacts: initialCo
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Failed to save event', description: error.message });
         }
-    }, [user, subject, notes, scheduleDate, scheduleHour, scheduleMinute, scheduleEnd, selectedProjectId, selectedContactId, isBillable, billableRate, sessions, eventToEdit, toast, router, totalTime]);
+    }, [user, subject, notes, startDate, startHour, startMinute, endDate, endHour, endMinute, selectedProjectId, selectedContactId, isBillable, billableRate, sessions, eventToEdit, toast, router, totalTime]);
 
     const handleLogCurrentSession = async () => {
         if (!timerState || !timerState.isActive || elapsedSeconds <= 0) {
@@ -341,13 +352,12 @@ export function TimeManagerView({ projects: initialProjects, contacts: initialCo
         }
         setIsLoadingData(true);
         try {
-            const [fetchedProjects, fetchedContacts, fetchedFolders] = await Promise.all([
-                getProjects(user.uid),
-                getContacts(user.uid),
+            setProjects(initialProjects);
+            setContacts(initialContacts);
+
+            const [fetchedFolders] = await Promise.all([
                 getFolders(user.uid),
             ]);
-            setProjects(fetchedProjects);
-            setContacts(fetchedContacts);
             setContactFolders(fetchedFolders);
             
             const eventIdParam = searchParams.get('eventId');
@@ -366,25 +376,30 @@ export function TimeManagerView({ projects: initialProjects, contacts: initialCo
                     setBillableRate(eventData.billableRate || 0);
                     setSessions(eventData.sessions || []);
                     if (eventData.start) {
-                        const startDate = new Date(eventData.start);
-                        setScheduleDate(startDate);
-                        setScheduleHour(String(startDate.getHours()));
-                        setScheduleMinute(String(startDate.getMinutes()));
+                        const eventStartDate = new Date(eventData.start);
+                        setStartDate(eventStartDate);
+                        setStartHour(String(eventStartDate.getHours()));
+                        setStartMinute(String(eventStartDate.getMinutes()));
+                    }
+                    if (eventData.end) {
+                        const eventEndDate = new Date(eventData.end);
+                        setEndDate(eventEndDate);
+                        setEndHour(String(eventEndDate.getHours()));
+                        setEndMinute(String(eventEndDate.getMinutes()));
                     }
                 } else {
                     toast({ variant: 'destructive', title: 'Error', description: 'Could not load event data.' });
                 }
             } else if (startParam) {
-                const startDate = parseISO(startParam);
-                setScheduleDate(startDate);
-                setScheduleHour(String(startDate.getHours()));
-                setScheduleMinute(String(startDate.getMinutes()));
+                const eventStartDate = parseISO(startParam);
+                setStartDate(eventStartDate);
+                setStartHour(String(eventStartDate.getHours()));
+                setStartMinute(String(eventStartDate.getMinutes()));
                  if (endParam) {
-                    const endDate = parseISO(endParam);
-                    setScheduleEnd({
-                        hour: String(endDate.getHours()),
-                        minute: String(endDate.getMinutes())
-                    });
+                    const eventEndDate = parseISO(endParam);
+                    setEndDate(eventEndDate);
+                    setEndHour(String(eventEndDate.getHours()));
+                    setEndMinute(String(eventEndDate.getMinutes()));
                 }
             } else {
                  const title = searchParams.get('title');
@@ -401,7 +416,7 @@ export function TimeManagerView({ projects: initialProjects, contacts: initialCo
         } finally {
             setIsLoadingData(false);
         }
-    }, [user, searchParams, toast]);
+    }, [user, searchParams, toast, initialProjects, initialContacts]);
 
     useEffect(() => {
         loadData();
@@ -631,27 +646,38 @@ export function TimeManagerView({ projects: initialProjects, contacts: initialCo
                     </Card>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Card>
+                       <Card>
                             <CardHeader><CardTitle className="text-base">Set Start Time</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
-                                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-                                    <PopoverTrigger asChild><Button variant="outline" className={cn("w-full justify-start text-left font-normal", !scheduleDate && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4"/>{scheduleDate ? formatDate(scheduleDate, 'PPP') : <span>Pick a date</span>}</Button></PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={scheduleDate} onSelect={(d) => { setScheduleDate(d); setIsDatePickerOpen(false); }} initialFocus /></PopoverContent>
+                                <Popover open={isStartPickerOpen} onOpenChange={setIsStartPickerOpen}>
+                                    <PopoverTrigger asChild><Button variant="outline" className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4"/>{startDate ? formatDate(startDate, 'PPP') : <span>Pick a start date</span>}</Button></PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={startDate} onSelect={(d) => { setStartDate(d); setIsStartPickerOpen(false); }} initialFocus /></PopoverContent>
                                 </Popover>
-                                <div className="flex gap-2"><Select value={scheduleHour} onValueChange={setScheduleHour}><SelectTrigger><SelectValue placeholder="Hour"/></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select><Select value={scheduleMinute} onValueChange={setScheduleMinute}><SelectTrigger><SelectValue placeholder="Min"/></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>
+                                <div className="flex gap-2"><Select value={startHour} onValueChange={setStartHour}><SelectTrigger><SelectValue placeholder="Hour"/></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select><Select value={startMinute} onValueChange={setStartMinute}><SelectTrigger><SelectValue placeholder="Min"/></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>
                             </CardContent>
                         </Card>
-                         <Card>
-                            <CardHeader><CardTitle className="text-base">Billing Status</CardTitle></CardHeader>
+                        <Card>
+                            <CardHeader><CardTitle className="text-base">Set End Time</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
-                                <RadioGroup value={isBillable ? 'billable' : 'non-billable'} onValueChange={(v) => setIsBillable(v === 'billable')} className="flex space-x-4">
-                                    <div className="flex items-center space-x-2"><RadioGroupItem value="non-billable" id="r1"/><Label htmlFor="r1">Non-Billable</Label></div>
-                                    <div className="flex items-center space-x-2"><RadioGroupItem value="billable" id="r2"/><Label htmlFor="r2">Billable</Label></div>
-                                </RadioGroup>
-                                {isBillable && <div className="space-y-2"><Label htmlFor="rate">Billable Rate ($/hr)</Label><Input id="rate" type="number" value={billableRate} onChange={(e) => setBillableRate(e.target.value === '' ? '' : Number(e.target.value))} placeholder="100.00" /></div>}
+                                <Popover open={isEndPickerOpen} onOpenChange={setIsEndPickerOpen}>
+                                    <PopoverTrigger asChild><Button variant="outline" className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4"/>{endDate ? formatDate(endDate, 'PPP') : <span>Pick an end date</span>}</Button></PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={endDate} onSelect={(d) => { setEndDate(d); setIsEndPickerOpen(false); }} initialFocus /></PopoverContent>
+                                </Popover>
+                                <div className="flex gap-2"><Select value={endHour} onValueChange={setEndHour}><SelectTrigger><SelectValue placeholder="Hour"/></SelectTrigger><SelectContent>{hourOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select><Select value={endMinute} onValueChange={setEndMinute}><SelectTrigger><SelectValue placeholder="Min"/></SelectTrigger><SelectContent>{minuteOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent></Select></div>
                             </CardContent>
                         </Card>
                     </div>
+
+                    <Card>
+                        <CardHeader><CardTitle className="text-base">Billing Status</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                            <RadioGroup value={isBillable ? 'billable' : 'non-billable'} onValueChange={(v) => setIsBillable(v === 'billable')} className="flex space-x-4">
+                                <div className="flex items-center space-x-2"><RadioGroupItem value="non-billable" id="r1"/><Label htmlFor="r1">Non-Billable</Label></div>
+                                <div className="flex items-center space-x-2"><RadioGroupItem value="billable" id="r2"/><Label htmlFor="r2">Billable</Label></div>
+                            </RadioGroup>
+                            {isBillable && <div className="space-y-2"><Label htmlFor="rate">Billable Rate ($/hr)</Label><Input id="rate" type="number" value={billableRate} onChange={(e) => setBillableRate(e.target.value === '' ? '' : Number(e.target.value))} placeholder="100.00" /></div>}
+                        </CardContent>
+                    </Card>
 
                     <Card>
                         <CardHeader>
@@ -763,3 +789,4 @@ export function TimeManagerView({ projects: initialProjects, contacts: initialCo
     );
 }
 
+    

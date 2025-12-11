@@ -140,20 +140,20 @@ export function ManageDashboardView() {
 
   const handleDrop = React.useCallback((item: ActionChipData & { index: number }, target: 'user' | 'available') => {
     setChipsState(prevState => {
-      const sourceListKey = prevState.userChips.some(c => c.id === item.id) ? 'userChips' : 'availableChips';
+      const sourceListKey = (prevState.userChips || []).some(c => c && c.id === item.id) ? 'userChips' : 'availableChips';
       const targetListKey = target === 'user' ? 'userChips' : 'availableChips';
 
       if (sourceListKey === targetListKey) {
         return prevState;
       }
       
-      const sourceList = [...prevState[sourceListKey]];
-      const targetList = [...prevState[targetListKey]];
+      const sourceList = [...(prevState[sourceListKey] || [])];
+      const targetList = [...(prevState[targetListKey] || [])];
       
-      const movedItem = sourceList.find(c => c.id === item.id);
+      const movedItem = sourceList.find(c => c && c.id === item.id);
       if (!movedItem) return prevState;
 
-      const newSourceList = sourceList.filter(c => c.id !== item.id);
+      const newSourceList = sourceList.filter(c => c && c.id !== item.id);
       const newTargetList = [...targetList, movedItem];
 
       const newUserChips = targetListKey === 'userChips' ? newTargetList : newSourceList;
@@ -250,8 +250,7 @@ export function ManageDashboardView() {
                     <Link href="/action-manager/manage/instructions"><BookOpen className="mr-2 h-4 w-4"/> Instructions</Link>
                 </Button>
                 <Button asChild className="bg-slate-900 text-white hover:bg-slate-900/90 h-6 px-2 py-1 text-xs">
-                    <Link href="/action-manager"><ArrowLeft className="mr-2 h-4 w-4"/> Back to Action Manager</Link>
-                </Button>
+                    <Link href="/action-manager"><ArrowLeft className="mr-2 h-4 w-4"/> Back to Action Manager</Link></Button>
             </div>
         </header>
 
@@ -270,7 +269,7 @@ export function ManageDashboardView() {
                     </div>
                 </CardHeader>
                 <ChipDropZone onDrop={(item) => handleDrop(item, 'user')} onMove={handleMoveUserChip} className="min-h-[150px] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1 p-4 place-items-center">
-                    {chipsState.userChips.map((chip, index) => (
+                    {chipsState.userChips.filter(Boolean).map((chip, index) => (
                         <ActionChip key={chip.id} chip={chip} index={index} onDelete={() => handleTrashChip(chip)} onEdit={() => handleEditChip(chip)} />
                     ))}
                 </ChipDropZone>
@@ -282,7 +281,7 @@ export function ManageDashboardView() {
                     <CardDescription>Drag actions to "Selected Actions" to add them to your dashboard.</CardDescription>
                 </CardHeader>
                 <ChipDropZone onDrop={(item) => handleDrop(item, 'available')} className="min-h-[150px] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1 p-4 place-items-center">
-                    {chipsState.availableChips.map((chip, index) => (
+                    {chipsState.availableChips.filter(Boolean).map((chip, index) => (
                         <ActionChip key={chip.id} chip={chip} index={index} onDelete={() => handleTrashChip(chip)} onEdit={() => handleEditChip(chip)} />
                     ))}
                 </ChipDropZone>
@@ -302,3 +301,5 @@ export function ManageDashboardView() {
     </>
   );
 }
+
+    
