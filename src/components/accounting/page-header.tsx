@@ -1,9 +1,10 @@
+
 'use client';
 
 import Link from 'next/link';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ChevronDown, LoaderCircle } from 'lucide-react';
+import { ArrowLeft, ChevronDown, LoaderCircle, Landmark } from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -24,17 +25,23 @@ import { getActionChips, type ActionChipData } from '@/services/project-service'
 
 interface AccountingPageHeaderProps {
   pageTitle: string;
-  hubPath?: '/accounting' | '/accounting/bks';
+  hubPath?: '/accounting' | '/accounting/bks' | '/reports';
   hubLabel?: string;
+  showLoanManagerButton?: boolean;
 }
 
-export function AccountingPageHeader({ pageTitle, hubPath = '/accounting', hubLabel: hubLabelProp }: AccountingPageHeaderProps) {
+export function AccountingPageHeader({ pageTitle, hubPath = '/accounting', hubLabel: hubLabelProp, showLoanManagerButton = false }: AccountingPageHeaderProps) {
   const [navItems, setNavItems] = useState<ActionChipData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   
-  const defaultHubLabel = hubPath === '/accounting/bks' ? 'BKS Welcome' : 'Accounting Hub';
-  const hubLabel = hubLabelProp || defaultHubLabel;
+  const defaultHubLabels: Record<string, string> = {
+    '/accounting': 'Accounting Hub',
+    '/accounting/bks': 'BKS Welcome',
+    '/reports': 'Reports'
+  };
+  
+  const hubLabel = hubLabelProp || defaultHubLabels[hubPath] || 'Accounting Hub';
 
   const loadNavItems = useCallback(async () => {
     if (user) {
@@ -84,7 +91,7 @@ export function AccountingPageHeader({ pageTitle, hubPath = '/accounting', hubLa
             <DropdownMenuContent align="end">
               {navItems.map(item => (
                 <DropdownMenuItem key={item.id} asChild>
-                  <Link href={item.href}>
+                  <Link href={typeof item.href === 'string' ? item.href : item.href.pathname || '#'}>
                     <item.icon className="mr-2 h-4 w-4" />
                     <span>{item.label}</span>
                   </Link>
@@ -96,6 +103,13 @@ export function AccountingPageHeader({ pageTitle, hubPath = '/accounting', hubLa
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {showLoanManagerButton && (
+             <Button asChild variant="outline">
+                <Link href="/accounting/loan-manager">
+                  <Landmark className="mr-2 h-4 w-4" /> Back to Loan Manager
+                </Link>
+             </Button>
+          )}
          <Button asChild>
             <Link href={hubPath}>
                 <ArrowLeft className="mr-2 h-4 w-4" />

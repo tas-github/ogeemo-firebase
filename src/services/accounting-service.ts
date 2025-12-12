@@ -439,6 +439,47 @@ export async function deleteEquityTransaction(id: string): Promise<void> {
     await deleteDoc(doc(db, EQUITY_COLLECTION, id));
 }
 
+// --- Loan Interfaces & Functions ---
+export interface Loan {
+  id: string;
+  loanType: 'payable' | 'receivable';
+  counterparty: string;
+  originalAmount: number;
+  outstandingBalance: number;
+  interestRate?: number;
+  termMonths?: number;
+  monthlyPayment?: number;
+  startDate: string;
+  userId: string;
+}
+
+const LOANS_COLLECTION = 'loans';
+const docToLoan = (doc: any): Loan => ({ id: doc.id, ...doc.data() } as Loan);
+
+export async function getLoans(userId: string): Promise<Loan[]> {
+    const db = await getDb();
+    const q = query(collection(db, LOANS_COLLECTION), where("userId", "==", userId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(docToLoan);
+}
+
+export async function addLoan(data: Omit<Loan, 'id'>): Promise<Loan> {
+    const db = await getDb();
+    const docRef = await addDoc(collection(db, LOANS_COLLECTION), data);
+    return { id: docRef.id, ...data };
+}
+
+export async function updateLoan(id: string, data: Partial<Omit<Loan, 'id' | 'userId'>>): Promise<void> {
+    const db = await getDb();
+    await updateDoc(doc(db, LOANS_COLLECTION, id), data);
+}
+
+export async function deleteLoan(id: string): Promise<void> {
+    const db = await getDb();
+    await deleteDoc(doc(db, LOANS_COLLECTION, id));
+}
+
+
 // --- Company Interfaces & Functions ---
 export interface Company {
   id: string;

@@ -19,7 +19,7 @@ import {
 } from 'firebase/firestore';
 import { initializeFirebase } from '@/lib/firebase';
 import { type Project, type Event as TaskEvent, type ProjectTemplate, type TaskStatus, type ProjectStep, type ProjectFolder, type ActionChipData, TimeSession, type ProjectUrgency, type ProjectImportance } from '@/types/calendar-types';
-import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info, BrainCircuit, GitMerge, Pencil, ListChecks, FilePenLine, Route, Link as LinkIcon, FileOutput, FileDigit, TrendingUp, TrendingDown, BookText, ShieldCheck, WalletCards, UserPlus, Banknote, Percent, FileSignature, ListPlus, FileInput, Activity } from 'lucide-react';
+import { Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info, BrainCircuit, GitMerge, Pencil, ListChecks, FilePenLine, Route, Link as LinkIcon, FileOutput, FileDigit, TrendingUp, TrendingDown, BookText, ShieldCheck, WalletCards, UserPlus, Banknote, Percent, FileSignature, ListPlus, FileInput, Activity, Wrench } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { addMinutes } from 'date-fns';
 import { allMenuItems } from '@/lib/menu-items';
@@ -104,7 +104,7 @@ const docToFolder = (doc: any): ProjectFolder => ({ id: doc.id, ...doc.data() } 
 const iconMap: { [key: string]: LucideIcon } = {
   Mail, Briefcase, ListTodo, Calendar, Clock, Contact, Beaker, Calculator, Folder, Wand2, MessageSquare, HardHat, Contact2, Share2, Users2, PackageSearch, Megaphone, Landmark, DatabaseBackup, BarChart3, HeartPulse, Bell, Bug, Database, FilePlus2, LogOut, Settings, Lightbulb, Info, BrainCircuit, GitMerge, Pencil, ListChecks, FilePenLine, Route, LinkIcon,
   // Add accounting icons here
-  FileDigit, FileOutput, ListPlus, TrendingUp, TrendingDown, BookText, ShieldCheck, WalletCards, Activity, UserPlus, Banknote, Percent, FileSignature, FileInput
+  FileDigit, FileOutput, ListPlus, TrendingUp, TrendingDown, BookText, ShieldCheck, WalletCards, UserPlus, Banknote, Percent, FileSignature, FileInput, Activity, Wrench
 };
 const docToActionChip = (chipData: any): ActionChipData => {
     const iconName = chipData.iconName as keyof typeof iconMap;
@@ -478,7 +478,16 @@ async function updateChipsInCollection(userId: string, collectionName: string, c
 
 export async function getActionChips(userId: string, type: 'dashboard' | 'accountingQuickNavItems' = 'dashboard'): Promise<ActionChipData[]> {
     const collectionName = type === 'accountingQuickNavItems' ? ACCOUNTING_QUICK_NAV_ITEMS_COLLECTION : ACTION_CHIPS_COLLECTION;
-    const defaultSource = type === 'accountingQuickNavItems' ? accountingMenuItems : defaultChips;
+    
+    // Define your default accounting chips here, ensuring "Financial Snapshot" is correct
+    const defaultAccountingChips = [
+        { label: "Create Invoice", icon: FileDigit, href: "/accounting/invoices/create" },
+        { label: "Accounts Receivable", icon: FileOutput, href: "/accounting/accounts-receivable" },
+        { label: "Products & Services", icon: ListPlus, href: "/accounting/service-items" },
+        { label: "Financial Snapshot", icon: Activity, href: "/accounting/financial-snapshot" },
+    ];
+    
+    const defaultSource = type === 'accountingQuickNavItems' ? defaultAccountingChips : defaultChips;
     
     const chips = await getChipsFromCollection(userId, collectionName);
     if (chips.length === 0) {
@@ -495,7 +504,12 @@ export async function getActionChips(userId: string, type: 'dashboard' | 'accoun
 
 export async function getAvailableActionChips(userId: string, type: 'dashboard' | 'availableAccountingNavItems' = 'dashboard'): Promise<ActionChipData[]> {
     const collectionName = type === 'availableAccountingNavItems' ? AVAILABLE_ACCOUNTING_NAV_ITEMS_COLLECTION : AVAILABLE_ACTION_CHIPS_COLLECTION;
-    const defaultSource = type === 'availableAccountingNavItems' ? accountingMenuItems : allMenuItems;
+    
+    const defaultAccountingSource = [
+        ...accountingMenuItems,
+        { href: "/accounting/financial-snapshot?summary=matchbook", icon: FileDigit, label: "Matchbook Loan Summary" },
+    ];
+    const defaultSource = type === 'availableAccountingNavItems' ? defaultAccountingSource : allMenuItems;
 
     const chips = await getChipsFromCollection(userId, collectionName);
     const userActionChipsCollection = type === 'availableAccountingNavItems' ? ACCOUNTING_QUICK_NAV_ITEMS_COLLECTION : ACTION_CHIPS_COLLECTION;

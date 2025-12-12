@@ -261,6 +261,23 @@
         "userId": { "type": "string" }
       },
       "required": ["code", "description", "userId"]
+    },
+    "Loan": {
+        "title": "Loan",
+        "description": "Represents a loan, either payable to a creditor or receivable from a debtor.",
+        "type": "object",
+        "properties": {
+            "loanType": { "type": "string", "enum": ["payable", "receivable"] },
+            "counterparty": { "type": "string", "description": "The name of the lender (for payables) or borrower (for receivables)." },
+            "originalAmount": { "type": "number" },
+            "outstandingBalance": { "type": "number" },
+            "interestRate": { "type": "number", "description": "Annual interest rate in percentage." },
+            "termMonths": { "type": "number", "description": "The total term of the loan in months." },
+            "monthlyPayment": { "type": "number" },
+            "startDate": { "type": "string", "format": "date" },
+            "userId": { "type": "string" }
+        },
+        "required": ["loanType", "counterparty", "originalAmount", "outstandingBalance", "startDate", "userId"]
     }
   },
   "auth": {
@@ -338,6 +355,10 @@
     "/industries/{industryId}": {
       "schema": { "$ref": "#/entities/Industry" },
       "description": "Stores user-defined custom industries."
+    },
+    "/loans/{loanId}": {
+        "schema": { "$ref": "#/entities/Loan" },
+        "description": "Collection of all business loans, both payable and receivable."
     }
   }
 }

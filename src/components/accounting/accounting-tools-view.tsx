@@ -121,7 +121,7 @@ export function AccountingToolsView() {
               title={item.label}
               description={`Manage ${item.label.toLowerCase()}.`}
               href={typeof item.href === 'string' ? item.href : item.href.pathname || '#'}
-              cta={`Go to ${item.label}`}
+              cta={item.label === 'Matchbook Loan Summary' ? 'Go to Summary' : `Go to ${item.label}`}
             />
           ))}
         </div>

@@ -29,7 +29,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth-context";
 import { getContacts, addContact, type Contact } from '@/services/contact-service';
 import { getFolders as getContactFolders, type FolderData } from '@/services/contact-folder-service';
+import { addProject, type Project, type Event as TaskEvent } from '@/services/project-service';
 import ContactFormDialog from "../contacts/contact-form-dialog";
+import { NewTaskDialog } from '../tasks/NewTaskDialog';
 import { getCompanies, type Company } from "@/services/accounting-service";
 import { getIndustries, type Industry } from "@/services/industry-service";
 import { Label } from "@/components/ui/label";
@@ -66,6 +68,9 @@ export function OnboardingView() {
     const [isNewContactDialogOpen, setIsNewContactDialogOpen] = useState(false);
     const [contactToEdit, setContactToEdit] = useState<Contact | null>(null);
     const [isContactPopoverOpen, setIsContactPopoverOpen] = useState(false);
+    
+    const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState(false);
+    const [initialDialogData, setInitialDialogData] = useState({});
 
     const loadData = useCallback(async () => {
         if (!user) {
@@ -120,10 +125,28 @@ export function OnboardingView() {
         }
     };
 
-    const nextSteps = [
-        { title: "Create a Task", href: "/master-mind", icon: ListTodo, description: "Create a single task, meeting, or event for this client." },
-        { title: "Create a Project", href: "/projects", icon: Briefcase, description: "Start a new multi-step project for this client." },
-    ];
+    const handleMakeProject = () => {
+        if (!selectedContact) return;
+        setInitialDialogData({ contactId: selectedContact.id });
+        setIsNewProjectDialogOpen(true);
+    };
+
+    const handleProjectCreated = async (projectData: Omit<Project, 'id' | 'createdAt' | 'userId'>, tasks: Omit<TaskEvent, 'id' | 'userId' | 'projectId'>[]) => {
+        if (!user) return;
+        try {
+            const newProject = await addProject({ ...projectData, status: 'planning', userId: user.uid, createdAt: new Date() });
+            toast({ title: "Project Created", description: `"${newProject.name}" has been successfully created.` });
+            router.push(`/projects/${newProject.id}/tasks`);
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Failed to create project", description: error.message });
+        }
+    };
+    
+    const handleCreateTask = () => {
+        if (!selectedContact) return;
+        sessionStorage.setItem(PRESELECTED_CONTACT_ID_KEY, selectedContact.id);
+        router.push('/master-mind');
+    };
 
 
     if (isLoading) {
@@ -217,26 +240,26 @@ export function OnboardingView() {
                                         </Button>
                                     </CardFooter>
                                 </Card>
-                                {nextSteps.map(step => (
-                                    <Card key={step.title} className="flex flex-col">
-                                        <CardHeader>
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-primary/10 rounded-lg">
-                                                    <step.icon className="h-5 w-5 text-primary" />
-                                                </div>
-                                                <CardTitle className="text-base">{step.title}</CardTitle>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="flex-1">
-                                            <p className="text-sm text-muted-foreground">{step.description}</p>
-                                        </CardContent>
-                                        <CardFooter>
-                                            <Button asChild className="w-full">
-                                                <Link href={step.href}>Go <ArrowRight className="ml-2 h-4 w-4" /></Link>
-                                            </Button>
-                                        </CardFooter>
-                                    </Card>
-                                ))}
+                                <Card className="flex flex-col">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-primary/10 rounded-lg"><ListTodo className="h-5 w-5 text-primary" /></div>
+                                            <CardTitle className="text-base">Create a Task</CardTitle>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="flex-1"><p className="text-sm text-muted-foreground">Create a single task, meeting, or event for this client.</p></CardContent>
+                                    <CardFooter><Button className="w-full" onClick={handleCreateTask}>Go <ArrowRight className="ml-2 h-4 w-4" /></Button></CardFooter>
+                                </Card>
+                                <Card className="flex flex-col">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-primary/10 rounded-lg"><Briefcase className="h-5 w-5 text-primary" /></div>
+                                            <CardTitle className="text-base">Create a Project</CardTitle>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="flex-1"><p className="text-sm text-muted-foreground">Start a new multi-step project for this client.</p></CardContent>
+                                    <CardFooter><Button className="w-full" onClick={handleMakeProject}>Go <ArrowRight className="ml-2 h-4 w-4" /></Button></CardFooter>
+                                </Card>
                             </CardContent>
                         </Card>
                     )}
@@ -254,6 +277,16 @@ export function OnboardingView() {
                 onCompaniesChange={setCompanies}
                 customIndustries={customIndustries}
                 onCustomIndustriesChange={setCustomIndustries}
+            />
+
+            <NewTaskDialog
+                isOpen={isNewProjectDialogOpen}
+                onOpenChange={setIsNewProjectDialogOpen}
+                onProjectCreate={handleProjectCreated}
+                contacts={contacts}
+                onContactsChange={setContacts}
+                projectToEdit={null}
+                initialData={initialDialogData}
             />
         </>
     );
