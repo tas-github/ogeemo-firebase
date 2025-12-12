@@ -1,1 +1,0 @@
-"use strict";exports.id=555,exports.ids=[555],exports.modules={60555:(e,o,t)=>{t.r(o),t.d(o,{IncomeView:()=>n});var r=t(68570);let s=(0,r.createProxy)(String.raw`/home/user/studio/src/components/accounting/income-view.tsx`),{__esModule:c,$$typeof:i}=s;s.default;let n=(0,r.createProxy)(String.raw`/home/user/studio/src/components/accounting/income-view.tsx#IncomeView`)}};

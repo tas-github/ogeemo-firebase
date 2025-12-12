@@ -1,1 +1,0 @@
-"use strict";exports.id=1398,exports.ids=[1398],exports.modules={1398:(t,e,s)=>{s.r(e),s.d(e,{VitalsView:()=>c});var r=s(68570);let i=(0,r.createProxy)(String.raw`/home/user/studio/src/components/accounting/vitals-view.tsx`),{__esModule:o,$$typeof:a}=i;i.default;let c=(0,r.createProxy)(String.raw`/home/user/studio/src/components/accounting/vitals-view.tsx#VitalsView`)}};

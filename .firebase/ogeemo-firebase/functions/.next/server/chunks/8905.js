@@ -1,1 +1,0 @@
-"use strict";exports.id=8905,exports.ids=[8905],exports.modules={98905:(e,r,a)=>{a.r(r),a.d(r,{CalendarView:()=>n});var t=a(68570);let s=(0,t.createProxy)(String.raw`/home/user/studio/src/components/calendar/calendar-view.tsx`),{__esModule:o,$$typeof:d}=s;s.default;let n=(0,t.createProxy)(String.raw`/home/user/studio/src/components/calendar/calendar-view.tsx#CalendarView`)}};

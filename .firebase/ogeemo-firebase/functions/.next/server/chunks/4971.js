@@ -1,1 +1,0 @@
-"use strict";exports.id=4971,exports.ids=[4971],exports.modules={54971:(e,t,r)=>{r.r(t),r.d(t,{T2125View:()=>n});var s=r(68570);let o=(0,s.createProxy)(String.raw`/home/user/studio/src/components/accounting/t2125-view.tsx`),{__esModule:i,$$typeof:c}=o;o.default;let n=(0,s.createProxy)(String.raw`/home/user/studio/src/components/accounting/t2125-view.tsx#T2125View`)}};

@@ -1,1 +1,0 @@
-"use strict";exports.id=3106,exports.ids=[3106],exports.modules={73106:(s,e,t)=>{t.r(e),t.d(e,{TasksView:()=>c});var r=t(68570);let o=(0,r.createProxy)(String.raw`/home/user/studio/src/components/tasks/tasks-view.tsx`),{__esModule:a,$$typeof:i}=o;o.default;let c=(0,r.createProxy)(String.raw`/home/user/studio/src/components/tasks/tasks-view.tsx#TasksView`)}};
